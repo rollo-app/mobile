@@ -4,6 +4,7 @@ import { getToken, saveSession, updateMemberName } from "@/storage/trips";
 
 export type Trip = Schemas["Trip"];
 export type TripDetail = Schemas["TripDetail"];
+export type Feed = Schemas["Feed"];
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -61,6 +62,16 @@ export async function fetchTrip(tripId: string): Promise<TripDetail> {
 
   return unwrap(
     createApiClient({ baseUrl: API_URL, token }).GET("/trips/{tripId}", { params: { path: { tripId } } }),
+  );
+}
+
+/** Todo lo subido al viaje. Antes del revelado trae solo metadata (autor, hora, lugar, thumbhash). */
+export async function fetchFeed(tripId: string): Promise<Schemas["Feed"]> {
+  const token = await getToken(tripId);
+  if (!token) throw new Error("No estás en este viaje");
+
+  return unwrap(
+    createApiClient({ baseUrl: API_URL, token }).GET("/trips/{tripId}/feed", { params: { path: { tripId } } }),
   );
 }
 

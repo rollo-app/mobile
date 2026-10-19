@@ -1,5 +1,5 @@
 import { getToken, listTrips, saveSession } from "@/storage/trips";
-import { createTrip, fetchTrip, joinTrip, renameMe } from "../actions";
+import { createTrip, fetchFeed, fetchTrip, joinTrip, renameMe } from "../actions";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2027, 0, 5, 12, 0);
@@ -148,5 +148,25 @@ describe("renameMe", () => {
 
     await expect(renameMe(trip.id, "Fede")).rejects.toThrow("Ya hay alguien con ese nombre en el viaje");
     expect((await listTrips())[0]!.memberName).toBe("Juani");
+  });
+});
+
+describe("fetchFeed", () => {
+  it("pide el feed del viaje con el token y devuelve el feed", async () => {
+    mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok-fede" });
+    await joinTrip({ code: "HUB5FT", name: "Fede" });
+
+    const feed = { revealed: false, revealAt: NOW, items: [] };
+    const fetchMock = mockFetch(200, feed);
+    const result = await fetchFeed(trip.id);
+
+    expect(result).toEqual(feed);
+    const req = fetchMock.mock.calls[0]![0] as Request;
+    expect(new URL(req.url).pathname).toBe(`/trips/${trip.id}/feed`);
+    expect(req.headers.get("authorization")).toBe("Bearer tok-fede");
+  });
+
+  it("falla si no tenés sesión en ese viaje", async () => {
+    await expect(fetchFeed("desconocido")).rejects.toThrow("No estás en este viaje");
   });
 });

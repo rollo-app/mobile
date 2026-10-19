@@ -3,6 +3,7 @@ import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
 import { getToken } from "@/storage/trips";
 import { getQueue } from "./store";
+import { pendingItemsKey } from "./use-pending-items";
 import { pendingKey } from "./use-pending-count";
 import { createUploader } from "./uploader";
 
@@ -33,10 +34,17 @@ function getUploader() {
       onUploaded: async (tripId) => {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["trip", tripId] }),
+          queryClient.invalidateQueries({ queryKey: ["feed", tripId] }),
           queryClient.invalidateQueries({ queryKey: pendingKey(tripId) }),
+          queryClient.invalidateQueries({ queryKey: pendingItemsKey(tripId) }),
         ]);
       },
-      onDiscarded: (tripId) => queryClient.invalidateQueries({ queryKey: pendingKey(tripId) }),
+      onDiscarded: async (tripId) => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: pendingKey(tripId) }),
+          queryClient.invalidateQueries({ queryKey: pendingItemsKey(tripId) }),
+        ]);
+      },
     }),
   );
   return uploader;

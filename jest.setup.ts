@@ -71,3 +71,100 @@ beforeEach(() => {
     queries: { ...queryClient.getDefaultOptions().queries, retry: false },
   });
 });
+
+// MapLibre es nativo: en los tests el mapa y sus partes son vistas vacías y no hay zonas offline.
+jest.mock("@maplibre/maplibre-react-native", () => {
+  const React = require("react");
+  const { Pressable, View } = require("react-native");
+  return {
+    // El mapa deja tocar "el vacío"; la fuente de pins, un botón por pin (así las pantallas se prueban sin nativo).
+    Map: ({ children, onPress }: any) =>
+      React.createElement(
+        View,
+        null,
+        React.createElement(Pressable, { accessibilityLabel: "mapa", onPress: () => onPress?.({ nativeEvent: {} }) }),
+        children,
+      ),
+    Camera: View,
+    ViewAnnotation: View,
+    GeoJSONSource: ({ data, onPress }: any) =>
+      React.createElement(
+        View,
+        null,
+        data.features.map((f: any) =>
+          React.createElement(Pressable, {
+            key: f.properties.id,
+            accessibilityLabel: `pin ${f.properties.id}`,
+            onPress: () => onPress({ nativeEvent: { features: [f] }, stopPropagation: () => {} }),
+          }),
+        ),
+      ),
+    Layer: View,
+    UserLocation: View,
+    LogManager: { onLog: jest.fn(), setLogLevel: jest.fn() },
+    OfflineManager: {
+      createPack: jest.fn(),
+      getPacks: jest.fn(async () => []),
+      setTileCountLimit: jest.fn(),
+      deletePack: jest.fn(),
+    },
+  };
+});
+
+// El estilo del mapa se escribe a Documents (expo-file-system, nativo): en los tests es una ruta fija.
+jest.mock("@/features/map/style-file", () => ({
+  writeStyleFile: jest.fn((scheme: string) => `file:///docs/map/style-${scheme}.json`),
+}));
+
+// Controles nativos de @expo/ui: en los tests, botones simples que disparan el mismo callback.
+jest.mock("@expo/ui/community/segmented-control", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+  return {
+    SegmentedControl: ({ values, onValueChange }: { values: string[]; onValueChange: (v: string) => void }) =>
+      React.createElement(
+        View,
+        null,
+        values.map((v) =>
+          React.createElement(
+            Pressable,
+            { key: v, accessibilityRole: "button", accessibilityLabel: v, onPress: () => onValueChange(v) },
+            React.createElement(Text, null, v),
+          ),
+        ),
+      ),
+  };
+});
+jest.mock("@expo/ui/community/menu", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+  return {
+    MenuView: ({ actions, onPressAction, children }: any) =>
+      React.createElement(
+        View,
+        null,
+        children,
+        actions.map((a: { id: string; title: string }) =>
+          React.createElement(
+            Pressable,
+            {
+              key: a.id,
+              accessibilityRole: "menuitem",
+              accessibilityLabel: a.title,
+              onPress: () => onPressAction({ nativeEvent: { event: a.id } }),
+            },
+            React.createElement(Text, null, a.title),
+          ),
+        ),
+      ),
+  };
+});
+
+// Ubicación: nativa; en los tests, sin permiso y sin posición (los tests que la necesitan la pisan).
+jest.mock("expo-location", () => ({
+  getForegroundPermissionsAsync: jest.fn(async () => ({ granted: false })),
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: false })),
+  getLastKnownPositionAsync: jest.fn(async () => null),
+  getCurrentPositionAsync: jest.fn(async () => null),
+  Accuracy: { Balanced: 3, High: 5 },
+}));
