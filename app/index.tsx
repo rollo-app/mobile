@@ -17,7 +17,7 @@ export default function IndexScreen() {
       <View style={styles.copy}>
         <Text style={[type.largeTitle, { color: colors.label }]}>Rollo</Text>
         <Text style={[type.body, { color: colors.secondaryLabel }]}>
-          Cada uno saca fotos durante el viaje y nadie las ve hasta el revelado, cuando termina.
+          Cada uno saca fotos y nadie las ve hasta el revelado, ni las propias.
         </Text>
       </View>
       <View style={styles.actions}>

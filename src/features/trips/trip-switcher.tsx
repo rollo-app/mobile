@@ -8,7 +8,7 @@ export function TripSwitcher({ name }: { name: string }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${name}, cambiar de viaje`}
+      accessibilityLabel={`${name}, cambiar de rollo`}
       onPress={() => router.push("/trips")}
       style={({ pressed }) => [styles.switcher, { opacity: pressed ? 0.6 : 1 }]}
     >

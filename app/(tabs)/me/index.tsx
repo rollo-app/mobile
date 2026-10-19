@@ -35,12 +35,12 @@ export default function MeScreen() {
 
       {detail && (
         <>
-          <Section title="Invitar" footer="Con este código se suman al viaje.">
+          <Section title="Invitar" footer="Con este código se suman al rollo.">
             <Row label="Código" value={detail.trip.joinCode} />
             <Row label="Compartir invitación" onPress={share} />
           </Section>
 
-          <Section title={`En el viaje · ${detail.members.length}`}>
+          <Section title={`En el rollo · ${detail.members.length}`}>
             {detail.members.map((m) => (
               <Row key={m.id} label={m.name} value={m.role === "admin" ? "Admin" : undefined} />
             ))}
@@ -49,7 +49,7 @@ export default function MeScreen() {
       )}
 
       <Section>
-        <Row label="Tus viajes" value={String(trips.length)} onPress={() => router.push("/trips")} />
+        <Row label="Tus rollos" value={String(trips.length)} onPress={() => router.push("/trips")} />
       </Section>
 
       {__DEV__ && (

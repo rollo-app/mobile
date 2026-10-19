@@ -186,6 +186,49 @@ jest.mock("@expo/ui/community/menu", () => {
   };
 });
 
+// Native SwiftUI controls (@expo/ui/swift-ui): in tests, plain views that expose the same callbacks.
+// Controls are found by accessibilityLabel (DatePicker title, Stepper label) or placeholder (TextField).
+jest.mock("@expo/ui/swift-ui", () => {
+  const React = require("react");
+  const { Pressable, Text: RNText, TextInput, View } = require("react-native");
+  const h = React.createElement;
+  const Wrap = ({ children }: any) => h(View, null, children);
+  return {
+    Host: Wrap,
+    Form: Wrap,
+    Text: ({ children }: any) => h(RNText, null, children),
+    Section: ({ title, footer, children }: any) =>
+      h(View, null, title && h(RNText, null, title), children, footer),
+    TextField: ({ placeholder, onTextChange }: any) =>
+      h(TextInput, { placeholder, onChangeText: onTextChange }),
+    DatePicker: ({ title, selection, range }: any) =>
+      h(View, { accessibilityLabel: title, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
+    Stepper: ({ label, value }: any) =>
+      h(View, { accessibilityLabel: label, accessibilityValue: { text: String(value) } }, h(RNText, null, label)),
+    Picker: ({ selection, onSelectionChange, children }: any) =>
+      h(
+        View,
+        null,
+        React.Children.map(children, (child: any) =>
+          h(
+            Pressable,
+            {
+              accessibilityRole: "button",
+              accessibilityLabel: child.props.children,
+              accessibilityState: { selected: child.props.modifiers?.[0]?.tag === selection },
+              onPress: () => onSelectionChange(child.props.modifiers?.[0]?.tag),
+            },
+            h(RNText, null, child.props.children),
+          ),
+        ),
+      ),
+  };
+});
+jest.mock("@expo/ui/swift-ui/modifiers", () => ({
+  tag: (tag: string) => ({ tag }),
+  pickerStyle: (style: string) => ({ style }),
+}));
+
 // Location: native; in tests, no permission and no position (tests that need it override it).
 jest.mock("expo-location", () => ({
   getForegroundPermissionsAsync: jest.fn(async () => ({ granted: false })),
@@ -213,3 +256,19 @@ jest.mock("expo-background-task", () => ({
   registerTaskAsync: jest.fn(async () => {}),
   triggerTaskWorkerForTestingAsync: jest.fn(async () => true),
 }));
+
+// Header buttons (Stack.Toolbar) are drawn by UIKit, not React: in tests, plain buttons rendered in place.
+{
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+  const { Stack } = require("expo-router");
+  const Toolbar = ({ children }: any) => React.createElement(View, null, children);
+  Toolbar.Button = ({ children, onPress, disabled }: any) =>
+    React.createElement(
+      Pressable,
+      { accessibilityRole: "button", accessibilityLabel: children, accessibilityState: { disabled: !!disabled }, disabled, onPress },
+      React.createElement(Text, null, children),
+    );
+  Toolbar.View = ({ children }: any) => React.createElement(View, null, children);
+  Object.defineProperty(Stack, "Toolbar", { value: Toolbar, configurable: true });
+}
