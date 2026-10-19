@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { buildContactSheet } from "@/features/roll/contact-sheet";
-import { formatDate, formatTime, startsIn } from "@/features/trips/phase";
+import { daysUntil, formatDateTime, startsIn } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
@@ -13,7 +13,6 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
-const DAY = 24 * 60 * 60 * 1000;
 const COLUMNS = 6;
 
 export default function RollScreen() {
@@ -25,6 +24,13 @@ export default function RollScreen() {
   const phase = useRollPhase(detail);
   // Your queued photos are already in the roll, even if they haven't been uploaded yet.
   const total = (detail?.totalUploaded ?? 0) + pending;
+
+  const tz = detail?.trip.timezone ?? "";
+  const at = (ms: number) => formatDateTime(ms, Date.now(), tz);
+  const startNote = phase === "upcoming" ? startsIn(detail!.trip.startsAt, Date.now(), tz) : "Empezó";
+  const endNote = phase === "ended" || phase === "revealed" ? "Terminó" : undefined;
+  const revealNote =
+    phase === "revealed" ? "Se reveló" : detail ? daysUntil(detail.trip.revealAt, Date.now(), tz) : undefined;
 
   return (
     <Screen grouped>
@@ -54,27 +60,10 @@ export default function RollScreen() {
             </Section>
           )}
 
-          {phase === "upcoming" && (
-            <Section title="Empieza">
-              <Row
-                label={`${formatDate(detail.trip.startsAt, detail.trip.timezone)}, ${formatTime(detail.trip.startsAt, detail.trip.timezone)}`}
-                value={startsIn(detail.trip.startsAt, Date.now(), detail.trip.timezone)}
-              />
-            </Section>
-          )}
-
-          {phase === "ended" && (
-            <Section title="Terminó">
-              <Row label={formatDay(detail.trip.endsAt, detail.trip.timezone)} />
-            </Section>
-          )}
-
-          <Section title="Revelado">
-            {phase === "revealed" ? (
-              <Row label="Ya se reveló" value={formatDay(detail.trip.revealAt, detail.trip.timezone)} />
-            ) : (
-              <Row label={formatDay(detail.trip.revealAt, detail.trip.timezone)} value={untilReveal(detail.trip)} />
-            )}
+          <Section title="Fechas">
+            <Row label="Empieza" value={at(detail.trip.startsAt)} note={startNote} />
+            <Row label="Termina" value={at(detail.trip.endsAt)} note={endNote} />
+            <Row label="Se revela" value={at(detail.trip.revealAt)} note={revealNote} />
           </Section>
         </>
       )}
@@ -124,17 +113,6 @@ function ContactSheet({
       ))}
     </View>
   );
-}
-
-function formatDay(ms: number, timeZone: string) {
-  return new Date(ms).toLocaleDateString("es-AR", { day: "numeric", month: "long", timeZone });
-}
-
-function untilReveal(trip: { revealed: boolean; revealAt: number }) {
-  if (trip.revealed) return "revelado";
-  const days = Math.ceil((trip.revealAt - Date.now()) / DAY);
-  if (days <= 0) return "hoy";
-  return days === 1 ? "mañana" : `en ${days} días`;
 }
 
 const styles = StyleSheet.create({

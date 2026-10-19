@@ -113,14 +113,17 @@ export function Section({ title, footer, children }: { title?: string; footer?: 
   );
 }
 
-export function Row({ label, value, onPress }: { label: string; value?: string; onPress?: () => void }) {
+export function Row({ label, value, note, onPress }: { label: string; value?: string; note?: string; onPress?: () => void }) {
   const content = (
     <>
       <Text style={[type.body, styles.rowLabel]}>{label}</Text>
       {value !== undefined && (
-        <Text selectable style={[type.body, styles.rowValue]}>
-          {value}
-        </Text>
+        <View style={styles.rowValueBox}>
+          <Text selectable style={[type.body, styles.rowValue]}>
+            {value}
+          </Text>
+          {note !== undefined && <Text style={[type.footnote, styles.rowNote]}>{note}</Text>}
+        </View>
       )}
       {onPress && <SymbolView name="chevron.right" size={14} weight="semibold" tintColor={colors.tertiaryLabel as string} />}
     </>
@@ -167,5 +170,7 @@ const styles = StyleSheet.create({
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 50, paddingHorizontal: spacing.md },
   rowLabel: { flex: 1, color: colors.label },
+  rowValueBox: { alignItems: "flex-end", paddingVertical: spacing.xs },
+  rowNote: { color: colors.tertiaryLabel },
   rowValue: { color: colors.secondaryLabel, fontVariant: ["tabular-nums"] },
 });

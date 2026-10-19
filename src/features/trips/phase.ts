@@ -36,3 +36,18 @@ export function startsIn(startsAt: number, now: number, timeZone: string) {
   if (days <= 0) return `hoy a las ${formatTime(startsAt, timeZone)}`;
   return days === 1 ? "mañana" : `en ${days} días`;
 }
+
+/** "29 oct, 19:00" in the trip's zone; "12 ene 2025, 10:00" when the year isn't the current one. */
+export function formatDateTime(ms: number, now: number, timeZone: string) {
+  const day = new Date(ms).toLocaleDateString("es-AR", { day: "numeric", month: "short", timeZone });
+  const year = localDay(ms, timeZone).slice(0, 4);
+  const sameYear = year === localDay(now, timeZone).slice(0, 4);
+  return `${day}${sameYear ? "" : ` ${year}`}, ${formatTime(ms, timeZone)}`;
+}
+
+/** "hoy" / "mañana" / "en N días", counting calendar days in the trip's zone. */
+export function daysUntil(ms: number, now: number, timeZone: string) {
+  const days = Math.round((Date.parse(localDay(ms, timeZone)) - Date.parse(localDay(now, timeZone))) / DAY);
+  if (days <= 0) return "hoy";
+  return days === 1 ? "mañana" : `en ${days} días`;
+}

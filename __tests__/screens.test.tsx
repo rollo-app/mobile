@@ -3,6 +3,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testi
 import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
+import { formatDateTime } from "@/features/trips/phase";
 import { listTrips, saveSession, updateMemberName } from "@/storage/trips";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
@@ -83,42 +84,61 @@ describe("Roll", () => {
     expect(screen.getByText("en 9 días")).toBeVisible();
   });
 
-  it("before it starts it hides today's quota and says when it begins", async () => {
-    mocked.fetchTrip.mockResolvedValue(
-      detail({ trip: trip({ startsAt: Date.now() + 5 * DAY, endsAt: Date.now() + 9 * DAY }) }),
-    );
+  const TZ = "America/Argentina/Buenos_Aires";
+  const when = (ms: number) => formatDateTime(ms, Date.now(), TZ);
+
+  it("while active it shows today's quota above the three dates, with when it ends and is revealed", async () => {
+    const t = trip();
+    mocked.fetchTrip.mockResolvedValue(detail({ trip: t }));
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
-    expect(screen.getByText("Empieza")).toBeVisible();
+    expect(screen.getByText("Fechas")).toBeVisible();
+    for (const label of ["Empieza", "Termina", "Se revela"]) expect(screen.getByText(label)).toBeVisible();
+    expect(screen.getByText(when(t.startsAt))).toBeVisible();
+    expect(screen.getByText("Empezó")).toBeVisible();
+    expect(screen.getAllByText(when(t.endsAt))).toHaveLength(2);
+  });
+
+  it("before it starts it hides today's quota and counts down to the start", async () => {
+    const t = trip({ startsAt: Date.now() + 5 * DAY, endsAt: Date.now() + 9 * DAY, revealAt: Date.now() + 10 * DAY });
+    mocked.fetchTrip.mockResolvedValue(detail({ trip: t }));
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findByLabelText("12 en el rollo");
+    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
     expect(screen.getByText("en 5 días")).toBeVisible();
-    expect(screen.queryByText("Fotos")).toBeNull();
     expect(screen.queryByText("Fotos")).toBeNull();
   });
 
-  it("once it ended and before the reveal it says it ended and keeps the reveal date", async () => {
-    mocked.fetchTrip.mockResolvedValue(
-      detail({ trip: trip({ startsAt: Date.now() - 9 * DAY, endsAt: Date.now() - DAY, revealAt: Date.now() + 3 * DAY }) }),
-    );
+  it("once it ended it keeps the three dates, marks it ended and counts down to the reveal", async () => {
+    const t = trip({ startsAt: Date.now() - 9 * DAY, endsAt: Date.now() - DAY, revealAt: Date.now() + 3 * DAY });
+    mocked.fetchTrip.mockResolvedValue(detail({ trip: t }));
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
+    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
     expect(screen.getByText("Terminó")).toBeVisible();
-    expect(screen.getByText("Revelado")).toBeVisible();
     expect(screen.getByText("en 3 días")).toBeVisible();
     expect(screen.queryByText("Fotos")).toBeNull();
   });
 
-  it("once revealed it says so and hides today's quota", async () => {
-    mocked.fetchTrip.mockResolvedValue(
-      detail({ trip: trip({ startsAt: Date.now() - 9 * DAY, endsAt: Date.now() - 2 * DAY, revealAt: Date.now() - DAY, revealed: true }) }),
-    );
+  it("once revealed all three rows keep their full date, with the year if it isn't this one", async () => {
+    const t = trip({
+      startsAt: Date.UTC(2025, 0, 5, 13),
+      endsAt: Date.UTC(2025, 0, 12, 13),
+      revealAt: Date.UTC(2025, 0, 13, 13),
+      revealed: true,
+    });
+    mocked.fetchTrip.mockResolvedValue(detail({ trip: t }));
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
-    expect(screen.getByText("Ya se reveló")).toBeVisible();
+    expect(screen.getByText("5 ene 2025, 10:00")).toBeVisible();
+    expect(screen.getByText("12 ene 2025, 10:00")).toBeVisible();
+    expect(screen.getByText("13 ene 2025, 10:00")).toBeVisible();
+    expect(screen.getByText("Se reveló")).toBeVisible();
     expect(screen.queryByText("Fotos")).toBeNull();
-    expect(screen.queryByText("Terminó")).toBeNull();
   });
 
   it("the contact sheet shows each photo's ThumbHash, newest to oldest", async () => {

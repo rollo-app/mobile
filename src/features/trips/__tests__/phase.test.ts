@@ -1,4 +1,4 @@
-import { formatDate, formatTime, nextPhaseEdge, rollPhase, startsIn } from "../phase";
+import { formatDate, formatDateTime, formatTime, nextPhaseEdge, rollPhase, startsIn } from "../phase";
 
 const TZ = "America/Argentina/Buenos_Aires";
 const HOUR = 60 * 60 * 1000;
@@ -42,5 +42,10 @@ describe("formatting in the trip's zone", () => {
     expect(startsIn(at, at - 3 * HOUR, TZ)).toBe("hoy a las 19:00");
     expect(startsIn(at, at - 24 * HOUR, TZ)).toBe("mañana");
     expect(startsIn(at, at - 5 * 24 * HOUR, TZ)).toBe("en 5 días");
+  });
+
+  it("formats a short date with time, adding the year only when it is not the current one", () => {
+    expect(formatDateTime(at, at, TZ)).toBe("29 oct, 19:00");
+    expect(formatDateTime(Date.UTC(2025, 0, 12, 13, 0), at, TZ)).toBe("12 ene 2025, 10:00");
   });
 });
