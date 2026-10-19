@@ -893,12 +893,12 @@ export interface components {
              */
             startsAt: number;
             /**
-             * @description Trip end
+             * @description Trip end; must be after startsAt
              * @example 1767225600000
              */
             endsAt: number;
             /**
-             * @description When the roll is revealed
+             * @description When the roll is revealed; must be >= endsAt
              * @example 1767225600000
              */
             revealAt: number;
@@ -933,7 +933,9 @@ export interface components {
         };
         UpdateTripRequest: {
             name?: string;
+            /** @description Trip end; must be after startsAt and <= the resulting revealAt */
             endsAt?: number;
+            /** @description Must be >= the resulting endsAt */
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
