@@ -204,7 +204,7 @@ jest.mock("@expo/ui/swift-ui", () => {
     DatePicker: ({ title, selection, range }: any) =>
       h(View, { accessibilityLabel: title, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
     Stepper: ({ label, value }: any) =>
-      h(View, { accessibilityLabel: label, accessibilityValue: { text: String(value) } }),
+      h(View, { accessibilityLabel: label, accessibilityValue: { text: String(value) } }, h(RNText, null, label)),
     Picker: ({ selection, onSelectionChange, children }: any) =>
       h(
         View,
@@ -256,3 +256,19 @@ jest.mock("expo-background-task", () => ({
   registerTaskAsync: jest.fn(async () => {}),
   triggerTaskWorkerForTestingAsync: jest.fn(async () => true),
 }));
+
+// Header buttons (Stack.Toolbar) are drawn by UIKit, not React: in tests, plain buttons rendered in place.
+{
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+  const { Stack } = require("expo-router");
+  const Toolbar = ({ children }: any) => React.createElement(View, null, children);
+  Toolbar.Button = ({ children, onPress, disabled }: any) =>
+    React.createElement(
+      Pressable,
+      { accessibilityRole: "button", accessibilityLabel: children, accessibilityState: { disabled: !!disabled }, disabled, onPress },
+      React.createElement(Text, null, children),
+    );
+  Toolbar.View = ({ children }: any) => React.createElement(View, null, children);
+  Object.defineProperty(Stack, "Toolbar", { value: Toolbar, configurable: true });
+}

@@ -1,15 +1,17 @@
 import { DatePicker, Form, Host, Picker, Section, Stepper, Text, TextField } from "@expo/ui/swift-ui";
 import { pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { createTrip } from "@/features/trips/actions";
 import { defaultStart, validateRoll } from "@/features/trips/create-form";
-import { Button, ErrorText } from "@/ui/components";
+import { ErrorText } from "@/ui/components";
 import { colors, spacing } from "@/ui/theme";
 
 const HOUR = 60 * 60 * 1000;
 const DATE_TIME = ["date", "hourAndMinute"] as const;
+
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 type RevealMode = "end" | "custom";
 
@@ -59,6 +61,20 @@ export default function CreateScreen() {
 
   return (
     <View style={styles.screen}>
+      <Stack.Toolbar placement="left">
+        <Stack.Toolbar.Button onPress={() => router.back()}>Cancelar</Stack.Toolbar.Button>
+      </Stack.Toolbar>
+      <Stack.Toolbar placement="right">
+        {loading ? (
+          <Stack.Toolbar.View>
+            <ActivityIndicator />
+          </Stack.Toolbar.View>
+        ) : (
+          <Stack.Toolbar.Button variant="done" disabled={!valid} onPress={submit}>
+            Crear
+          </Stack.Toolbar.Button>
+        )}
+      </Stack.Toolbar>
       <Host style={styles.form}>
         <Form>
           <Section>
@@ -105,16 +121,17 @@ export default function CreateScreen() {
           </Section>
 
           <Section title="Por persona, por día" footer={<Text>Cada día se renueva a la medianoche.</Text>}>
-            <Stepper label="Fotos" value={photos} min={1} max={100} onValueChange={setPhotos} />
-            <Stepper label="Videos" value={videos} min={0} max={20} onValueChange={setVideos} />
+            <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={100} onValueChange={setPhotos} />
+            <Stepper label={count(videos, "video", "videos")} value={videos} min={0} max={20} onValueChange={setVideos} />
           </Section>
         </Form>
       </Host>
 
-      <View style={styles.actions}>
-        {error && <ErrorText>{error}</ErrorText>}
-        <Button label="Crear rollo" onPress={submit} disabled={!valid} loading={loading} />
-      </View>
+      {error && (
+        <View style={styles.error}>
+          <ErrorText>{error}</ErrorText>
+        </View>
+      )}
     </View>
   );
 }
@@ -122,5 +139,5 @@ export default function CreateScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.groupedBackground },
   form: { flex: 1 },
-  actions: { gap: spacing.md, padding: spacing.lg },
+  error: { padding: spacing.lg },
 });

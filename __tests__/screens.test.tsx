@@ -324,11 +324,22 @@ describe("Join", () => {
   });
 });
 
+describe("Join roll header", () => {
+  it("cancels from the header and goes back", async () => {
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Sumate con un código" }));
+    expect(screen).toHavePathname("/join");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen).toHavePathname("/");
+  });
+});
+
 describe("Create roll", () => {
   const HOUR = 60 * 60 * 1000;
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const dateOf = (label: string) => Number(screen.getByLabelText(label).props.accessibilityValue.text);
-  const numberOf = (label: string) => Number(screen.getByLabelText(label).props.accessibilityValue.text);
   const changeDate = (label: string, ms: number) => fireEvent(screen.getByLabelText(label), "dateChange", new Date(ms));
   const fillNames = async () => {
     await fireEvent.changeText(await screen.findByPlaceholderText("Sur 2027"), "Sur 2027");
@@ -337,7 +348,7 @@ describe("Create roll", () => {
 
   it("needs the roll name and your name before it can be created", async () => {
     await renderRouter(routes, { initialUrl: "/create" });
-    const button = await screen.findByRole("button", { name: "Crear rollo" });
+    const button = await screen.findByRole("button", { name: "Crear" });
     expect(button).toBeDisabled();
 
     await fireEvent.changeText(screen.getByPlaceholderText("Sur 2027"), "Sur 2027");
@@ -348,15 +359,15 @@ describe("Create roll", () => {
 
   it("starts at the next full hour, lasts 3 days and allows 10 photos and 3 videos a day", async () => {
     await renderRouter(routes, { initialUrl: "/create" });
-    await screen.findByRole("button", { name: "Crear rollo" });
+    await screen.findByRole("button", { name: "Crear" });
 
     const start = dateOf("Empieza");
     expect(start % HOUR).toBe(0);
     expect(start).toBeGreaterThan(Date.now());
     expect(start - Date.now()).toBeLessThanOrEqual(HOUR);
     expect(dateOf("Termina")).toBe(start + 72 * HOUR);
-    expect(numberOf("Fotos")).toBe(10);
-    expect(numberOf("Videos")).toBe(3);
+    expect(screen.getByLabelText("10 fotos")).toBeVisible();
+    expect(screen.getByLabelText("3 videos")).toBeVisible();
     expect(screen.getByText("Hasta el revelado nadie ve las fotos, ni las propias.")).toBeVisible();
     expect(screen.getByText("Cada día se renueva a la medianoche.")).toBeVisible();
   });
@@ -371,9 +382,11 @@ describe("Create roll", () => {
     await fillNames();
     const start = dateOf("Empieza");
     await changeDate("Termina", start + 5 * 24 * HOUR);
-    await fireEvent(screen.getByLabelText("Fotos"), "valueChange", 25);
-    await fireEvent(screen.getByLabelText("Videos"), "valueChange", 0);
-    await fireEvent.press(screen.getByRole("button", { name: "Crear rollo" }));
+    await fireEvent(screen.getByLabelText("10 fotos"), "valueChange", 25);
+    await fireEvent(screen.getByLabelText("3 videos"), "valueChange", 0);
+    expect(screen.getByLabelText("25 fotos")).toBeVisible();
+    expect(screen.getByLabelText("0 videos")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(mocked.createTrip).toHaveBeenCalledWith({
@@ -401,7 +414,7 @@ describe("Create roll", () => {
     expect(dateOf("Se revela")).toBe(end + 12 * HOUR);
     expect(screen.getByLabelText("Se revela").props.testID).toBe(String(end));
     await changeDate("Se revela", end + 48 * HOUR);
-    await fireEvent.press(screen.getByRole("button", { name: "Crear rollo" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
     expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ endsAt: end, revealAt: end + 48 * HOUR }));
   });
@@ -413,7 +426,7 @@ describe("Create roll", () => {
     await changeDate("Termina", dateOf("Empieza"));
 
     expect(screen.getByText("El fin tiene que ser después del inicio")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Crear rollo" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Crear" })).toBeDisabled();
   });
 
   it("shows an error when a custom reveal is left before the new end", async () => {
@@ -424,16 +437,26 @@ describe("Create roll", () => {
     await changeDate("Termina", dateOf("Se revela") + HOUR);
 
     expect(screen.getByText("El revelado no puede ser antes del fin")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Crear rollo" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Crear" })).toBeDisabled();
+  });
+
+  it("cancels from the header and goes back", async () => {
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Empezar un nuevo rollo" }));
+    expect(screen).toHavePathname("/create");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen).toHavePathname("/");
   });
 
   it("shows the server error without losing what was typed", async () => {
     mocked.createTrip.mockRejectedValue(new Error("Nombre demasiado largo"));
     await renderRouter(routes, { initialUrl: "/create" });
     await fillNames();
-    await fireEvent.press(screen.getByRole("button", { name: "Crear rollo" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
     expect(await screen.findByText("Nombre demasiado largo")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Crear rollo" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
   });
 });
