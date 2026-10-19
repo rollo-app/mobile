@@ -36,5 +36,5 @@ export function useTripDetail(tripId: string | undefined) {
 }
 
 function messageOf(error: unknown) {
-  return error instanceof Error ? error.message : "No se pudo cargar el viaje";
+  return error instanceof Error ? error.message : "No se pudo cargar el rollo";
 }

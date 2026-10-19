@@ -179,7 +179,7 @@ describe("Me", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/me" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Tus viajes, 1" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Tus rollos, 1" }));
     expect(screen).toHavePathname("/trips");
   });
 
@@ -287,11 +287,11 @@ describe("Join", () => {
     const button = await screen.findByRole("button", { name: "Unirme" });
 
     expect(button).toBeDisabled();
-    await fireEvent.changeText(screen.getByLabelText("Código del viaje"), "hub5f");
+    await fireEvent.changeText(screen.getByLabelText("Código del rollo"), "hub5f");
     await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Fede");
     expect(button).toBeDisabled();
 
-    await fireEvent.changeText(screen.getByLabelText("Código del viaje"), "hub5ft");
+    await fireEvent.changeText(screen.getByLabelText("Código del rollo"), "hub5ft");
     expect(button).toBeEnabled();
   });
 
@@ -303,7 +303,7 @@ describe("Join", () => {
     mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
     await renderRouter(routes, { initialUrl: "/join" });
 
-    await fireEvent.changeText(await screen.findByLabelText("Código del viaje"), "hub5ft");
+    await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "hub5ft");
     await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Fede");
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
@@ -315,7 +315,7 @@ describe("Join", () => {
     mocked.joinTrip.mockRejectedValue(new Error("Código inválido"));
     await renderRouter(routes, { initialUrl: "/join" });
 
-    await fireEvent.changeText(await screen.findByLabelText("Código del viaje"), "ZZZZZZ");
+    await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "ZZZZZZ");
     await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Fede");
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
@@ -324,39 +324,138 @@ describe("Join", () => {
   });
 });
 
-describe("Create trip", () => {
-  it("asks for the trip name, your name and days", async () => {
+describe("Join roll header", () => {
+  it("cancels from the header and goes back", async () => {
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Sumate con un código" }));
+    expect(screen).toHavePathname("/join");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen).toHavePathname("/");
+  });
+});
+
+describe("Create roll", () => {
+  const HOUR = 60 * 60 * 1000;
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const dateOf = (label: string) => Number(screen.getByLabelText(label).props.accessibilityValue.text);
+  const changeDate = (label: string, ms: number) => fireEvent(screen.getByLabelText(label), "dateChange", new Date(ms));
+  const fillNames = async () => {
+    await fireEvent.changeText(await screen.findByPlaceholderText("Nombre del rollo"), "Sur 2027");
+    await fireEvent.changeText(screen.getByPlaceholderText("Tu nombre"), "Juani");
+  };
+
+  it("needs the roll name and your name before it can be created", async () => {
     await renderRouter(routes, { initialUrl: "/create" });
-    const button = await screen.findByRole("button", { name: "Crear viaje" });
-
+    const button = await screen.findByRole("button", { name: "Crear" });
     expect(button).toBeDisabled();
-    await fireEvent.changeText(screen.getByLabelText("Nombre del viaje"), "Viaje al sur");
-    await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Juani");
+
+    await fireEvent.changeText(screen.getByPlaceholderText("Nombre del rollo"), "Sur 2027");
+    expect(button).toBeDisabled();
+    await fireEvent.changeText(screen.getByPlaceholderText("Tu nombre"), "Juani");
     expect(button).toBeEnabled();
-
-    await fireEvent.changeText(screen.getByLabelText("Días de viaje"), "0");
-    expect(button).toBeDisabled();
   });
 
-  it("creates the trip with the phone's time zone and goes to the roll", async () => {
+  it("starts at the next full hour, lasts 3 days and allows 10 photos and 3 videos a day", async () => {
+    await renderRouter(routes, { initialUrl: "/create" });
+    await screen.findByRole("button", { name: "Crear" });
+
+    const start = dateOf("Empieza");
+    expect(start % HOUR).toBe(0);
+    expect(start).toBeGreaterThan(Date.now());
+    expect(start - Date.now()).toBeLessThanOrEqual(HOUR);
+    expect(dateOf("Termina")).toBe(start + 72 * HOUR);
+    expect(screen.getByLabelText("10 fotos")).toBeVisible();
+    expect(screen.getByLabelText("3 videos")).toBeVisible();
+    expect(screen.getByText("Hasta el revelado nadie ve las fotos, ni las propias.")).toBeVisible();
+    expect(screen.getByText("Cada día se renueva a la medianoche.")).toBeVisible();
+  });
+
+  it("creates the roll with the chosen dates and limits, revealing at the end by default", async () => {
     mocked.createTrip.mockImplementation(async () => {
-      await saveTrip(SUR, "Viaje al sur");
+      await saveTrip(SUR, "Sur 2027");
       return trip();
     });
     mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
     await renderRouter(routes, { initialUrl: "/create" });
-
-    await fireEvent.changeText(await screen.findByLabelText("Nombre del viaje"), "Viaje al sur");
-    await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Juani");
-    await fireEvent.changeText(screen.getByLabelText("Días de viaje"), "10");
-    await fireEvent.press(screen.getByRole("button", { name: "Crear viaje" }));
+    await fillNames();
+    const start = dateOf("Empieza");
+    await changeDate("Termina", start + 5 * 24 * HOUR);
+    await fireEvent(screen.getByLabelText("10 fotos"), "valueChange", 25);
+    await fireEvent(screen.getByLabelText("3 videos"), "valueChange", 0);
+    expect(screen.getByLabelText("25 fotos")).toBeVisible();
+    expect(screen.getByLabelText("0 videos")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(mocked.createTrip).toHaveBeenCalledWith({
-      name: "Viaje al sur",
+      name: "Sur 2027",
       adminName: "Juani",
-      days: 10,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      startsAt: start,
+      endsAt: start + 5 * 24 * HOUR,
+      revealAt: start + 5 * 24 * HOUR,
+      dailyPhotoLimit: 25,
+      dailyVideoLimit: 0,
+      timezone: tz,
     });
+  });
+
+  it("lets you pick another reveal moment, 12 hours after the end by default", async () => {
+    mocked.createTrip.mockResolvedValue(trip());
+    mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: "/create" });
+    await fillNames();
+    expect(screen.queryByLabelText("Se revela")).toBeNull();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Otro momento" }));
+
+    const end = dateOf("Termina");
+    expect(dateOf("Se revela")).toBe(end + 12 * HOUR);
+    await changeDate("Se revela", end + 48 * HOUR);
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ endsAt: end, revealAt: end + 48 * HOUR }));
+  });
+
+  it("sends whatever dates were picked and shows the server's reason inline, keeping the form", async () => {
+    mocked.createTrip.mockClear();
+    mocked.createTrip.mockRejectedValue(new Error("El revelado no puede ser antes del fin"));
+    await renderRouter(routes, { initialUrl: "/create" });
+    await fillNames();
+    await fireEvent.press(screen.getByRole("button", { name: "Otro momento" }));
+    const end = dateOf("Termina");
+    await changeDate("Se revela", end - HOUR);
+    await changeDate("Empieza", end + 5 * HOUR);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    expect(mocked.createTrip).toHaveBeenCalledWith(
+      expect.objectContaining({ startsAt: end + 5 * HOUR, endsAt: end, revealAt: end - HOUR }),
+    );
+    expect(await screen.findByText("El revelado no puede ser antes del fin")).toBeVisible();
+    expect(dateOf("Empieza")).toBe(end + 5 * HOUR);
+    expect(dateOf("Se revela")).toBe(end - HOUR);
+    expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
+  });
+
+  it("cancels from the header and goes back", async () => {
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Empezar un nuevo rollo" }));
+    expect(screen).toHavePathname("/create");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen).toHavePathname("/");
+  });
+
+  it("shows the server error without losing what was typed", async () => {
+    mocked.createTrip.mockRejectedValue(new Error("Nombre demasiado largo"));
+    await renderRouter(routes, { initialUrl: "/create" });
+    await fillNames();
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    expect(await screen.findByText("Nombre demasiado largo")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
   });
 });

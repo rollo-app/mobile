@@ -8,6 +8,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "es",
+        "CFBundleLocalizations": ["es"]
+      },
       "bundleIdentifier": "com.juanifraga.rollo",
       "icon": {
         "light": "./assets/icon.png",

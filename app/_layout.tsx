@@ -18,12 +18,12 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="create" options={{ title: "Nuevo rollo", headerLargeTitle: true }} />
-          <Stack.Screen name="join" options={{ title: "Sumate a un rollo", headerLargeTitle: true }} />
+          <Stack.Screen name="create" options={{ title: "Nuevo rollo", presentation: "modal" }} />
+          <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />
           <Stack.Screen
             name="trips"
             options={{
-              title: "Tus viajes",
+              title: "Tus rollos",
               presentation: "formSheet",
               sheetAllowedDetents: [0.5, 1],
               sheetGrabberVisible: true,

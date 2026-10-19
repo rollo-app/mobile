@@ -135,7 +135,7 @@ export default function CaptureScreen() {
       <Message
         symbol="camera.fill"
         title="Rollo necesita la cámara"
-        body="Activala en Ajustes para sacar fotos del viaje."
+        body="Activala en Ajustes para sacar fotos del rollo."
         action={{ label: "Abrir Ajustes", onPress: () => Linking.openSettings() }}
       />
     );
