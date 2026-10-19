@@ -47,7 +47,7 @@ describe("Inicio", () => {
   it("sin viajes invita a abrir un rollo o sumarse", async () => {
     await renderRouter(routes, { initialUrl: "/" });
 
-    expect(await screen.findByRole("button", { name: "Abrí un rollo" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Empezar un nuevo rollo" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Sumate con un código" })).toBeVisible();
   });
 
@@ -266,7 +266,7 @@ describe("Selector de viajes", () => {
     await saveTrip(SUR, "Viaje al sur");
     await renderRouter(routes, { initialUrl: "/trips" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Abrí un rollo" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Empezar un nuevo rollo" }));
     expect(screen).toHavePathname("/create");
   });
 });

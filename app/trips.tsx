@@ -44,7 +44,7 @@ export default function TripsScreen() {
       </View>
 
       <View style={styles.actions}>
-        <Button label="Abrí un rollo" onPress={() => router.replace("/create")} />
+        <Button label="Empezar un nuevo rollo" onPress={() => router.replace("/create")} />
         <Button label="Sumate con un código" variant="secondary" onPress={() => router.replace("/join")} />
       </View>
     </Screen>
