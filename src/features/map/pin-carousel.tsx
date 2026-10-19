@@ -4,12 +4,12 @@ import type { MapItem } from "./features";
 import { PinCard } from "./pin-card";
 
 const GAP = spacing.sm;
-/** Cuánto de la tarjeta siguiente asoma, para que se note que se desliza. */
+/** How much of the next card peeks out, so it's clear it swipes. */
 const PEEK = 28;
 
 /**
- * Las fotos de un mismo lugar, de la más vieja a la más nueva, en tarjetas que se deslizan una a
- * una con un poco de la siguiente asomando. Con una sola foto es la tarjeta suelta.
+ * The photos of one spot, oldest to newest, in cards that swipe one by
+ * one with a bit of the next peeking out. With a single photo it's the lone card.
  */
 export function PinCarousel({
   items,

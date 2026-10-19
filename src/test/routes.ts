@@ -1,14 +1,14 @@
-// Todas las rutas de la app, para renderRouter con navegación real.
+// All the app's routes, for renderRouter with real navigation.
 import TabsLayout from "../../app/(tabs)/_layout";
-import CameraTab from "../../app/(tabs)/camara";
+import CameraTab from "../../app/(tabs)/camera";
 import FeedLayout from "../../app/(tabs)/feed/_layout";
 import FeedScreen from "../../app/(tabs)/feed/index";
-import MapLayout from "../../app/(tabs)/mapa/_layout";
-import MapScreen from "../../app/(tabs)/mapa/index";
-import RolloLayout from "../../app/(tabs)/rollo/_layout";
-import RolloScreen from "../../app/(tabs)/rollo/index";
-import VosLayout from "../../app/(tabs)/vos/_layout";
-import VosScreen from "../../app/(tabs)/vos/index";
+import MapLayout from "../../app/(tabs)/map/_layout";
+import MapScreen from "../../app/(tabs)/map/index";
+import RollLayout from "../../app/(tabs)/roll/_layout";
+import RollScreen from "../../app/(tabs)/roll/index";
+import MeLayout from "../../app/(tabs)/me/_layout";
+import MeScreen from "../../app/(tabs)/me/index";
 import RootLayout from "../../app/_layout";
 import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
@@ -27,14 +27,14 @@ export const routes = {
   rename: RenameScreen,
   capture: CaptureScreen,
   "(tabs)/_layout": TabsLayout,
-  "(tabs)/rollo/_layout": RolloLayout,
-  "(tabs)/rollo/index": RolloScreen,
-  "(tabs)/mapa/_layout": MapLayout,
-  "(tabs)/mapa/index": MapScreen,
-  "(tabs)/camara": CameraTab,
+  "(tabs)/roll/_layout": RollLayout,
+  "(tabs)/roll/index": RollScreen,
+  "(tabs)/map/_layout": MapLayout,
+  "(tabs)/map/index": MapScreen,
+  "(tabs)/camera": CameraTab,
   "(tabs)/feed/_layout": FeedLayout,
   "(tabs)/feed/index": FeedScreen,
-  "(tabs)/vos/_layout": VosLayout,
-  "(tabs)/vos/index": VosScreen,
+  "(tabs)/me/_layout": MeLayout,
+  "(tabs)/me/index": MeScreen,
 };
 

@@ -1,7 +1,7 @@
 /**
- * Cola local de lo que se sacó y todavía no se subió. Vive en SQLite para
- * sobrevivir a cierres de la app y a días sin señal. El id es el UUID generado
- * en el celular: reintentar la subida con el mismo id es seguro.
+ * Local queue of what was captured and not yet uploaded. Lives in SQLite to
+ * survive app restarts and days without signal. The id is the UUID generated
+ * on the phone: retrying the upload with the same id is safe.
  */
 
 export type MediaType = "photo" | "video";
@@ -11,7 +11,7 @@ export type QueuedMedia = {
   tripId: string;
   type: MediaType;
   takenAt: number;
-  /** Fecha local del viaje (YYYY-MM-DD), para el cupo diario. */
+  /** Trip-local date (YYYY-MM-DD), for the daily quota. */
   day: string;
   lat: number | null;
   lng: number | null;
@@ -28,14 +28,14 @@ export type QueuedMedia = {
 
 export type PendingMedia = QueuedMedia & {
   attempts: number;
-  /** No reintentar antes de esta hora (ms): el backoff entre intentos. */
+  /** Do not retry before this time (ms): the backoff between attempts. */
   retryAt: number | null;
 };
 
-/** Lo que el server rechazó para siempre: se queda en el celular con sus archivos. */
+/** What the server rejected for good: stays on the phone with its files. */
 export type FailedMedia = PendingMedia & { failedReason: string };
 
-/** Lo que usamos de expo-sqlite (en los tests se cumple con node:sqlite). */
+/** What we use from expo-sqlite (in tests it is satisfied with node:sqlite). */
 export type QueueDb = {
   execAsync(sql: string): Promise<void>;
   runAsync(sql: string, ...params: unknown[]): Promise<unknown>;
@@ -66,7 +66,7 @@ const SCHEMA = `
   );
 `;
 
-/** Columnas agregadas después de la primera versión: se suman a bases ya creadas. */
+/** Columns added after the first version: added to already-created databases. */
 const ADDED_COLUMNS = [
   ["retry_at", "INTEGER"],
   ["failed_reason", "TEXT"],
@@ -150,17 +150,17 @@ export async function createQueue(db: QueueDb) {
       await db.runAsync("DELETE FROM pending_media WHERE id = ?", id);
     },
 
-    /** Un intento que no salió: suma al contador y difiere el próximo hasta `retryAt`. */
+    /** A failed attempt: bumps the counter and defers the next one until `retryAt`. */
     async markAttempt(id: string, retryAt: number) {
       await db.runAsync("UPDATE pending_media SET attempts = attempts + 1, retry_at = ? WHERE id = ?", retryAt, id);
     },
 
-    /** El server lo rechazó para siempre (cupo, rollo revelado…): no se reintenta ni se borra. */
+    /** The server rejected it for good (quota, developed roll…): neither retried nor deleted. */
     async markFailed(id: string, reason: string) {
       await db.runAsync("UPDATE pending_media SET failed_reason = ? WHERE id = ?", reason, id);
     },
 
-    /** Lo pendiente de un viaje que tiene ubicación (para el mapa), sin las fallidas. */
+    /** Pending items of a trip that have a location (for the map), excluding failed ones. */
     async pendingForTrip(tripId: string): Promise<PendingMedia[]> {
       const rows = await db.getAllAsync<Row>(
         "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL ORDER BY taken_at",
@@ -169,7 +169,7 @@ export async function createQueue(db: QueueDb) {
       return rows.map(fromRow);
     },
 
-    /** Todo lo sacado y no subido de un viaje, de cualquier día, sin las fallidas. */
+    /** Everything captured and not uploaded for a trip, any day, excluding failed ones. */
     async countPendingForTrip(tripId: string) {
       const rows = await db.getAllAsync<{ n: number }>(
         "SELECT COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL",
@@ -178,7 +178,7 @@ export async function createQueue(db: QueueDb) {
       return rows[0]?.n ?? 0;
     },
 
-    /** Lo sacado y no subido de un viaje en un día: se descuenta del cupo que informó el server. */
+    /** Captured and not uploaded for a trip on a day: subtracted from the quota the server reported. */
     async countPending(tripId: string, day: string) {
       const rows = await db.getAllAsync<{ type: MediaType; n: number }>(
         "SELECT type, COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND day = ? AND failed_reason IS NULL GROUP BY type",

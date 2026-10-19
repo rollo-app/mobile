@@ -1,8 +1,8 @@
 import { Layer } from "@maplibre/maplibre-react-native";
 
 /**
- * El punto azul del usuario, en cobalto. MapLibre no acepta colores dinámicos, así que el color
- * llega en hex según el esquema claro/oscuro. Se dibuja sobre la fuente que arma `UserLocation`.
+ * The user's blue dot, in cobalt. MapLibre doesn't accept dynamic colors, so the color
+ * comes in as hex per the light/dark scheme. Drawn over the source that `UserLocation` builds.
  */
 export function UserLocationDot({ color }: { color: string }) {
   return (

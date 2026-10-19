@@ -6,9 +6,9 @@ const FRESH_TIMEOUT_MS = 8000;
 const LAST_KNOWN_MAX_AGE_MS = 30 * 60 * 1000;
 
 /**
- * Ubicación para la foto. Se pide apenas se abre la cámara, así hay fix para
- * cuando se manda. Si no llega a tiempo (montaña, sin señal), usa la última
- * conocida con su precisión. Sin permiso, sin ubicación: la foto igual se guarda.
+ * Location for the photo. Requested as soon as the camera opens, so there is a fix by
+ * the time it is sent. If it does not arrive in time (mountains, no signal), uses the last
+ * known one with its accuracy. Without permission, no location: the photo is still saved.
  */
 export async function startFix(): Promise<Fix | null> {
   try {

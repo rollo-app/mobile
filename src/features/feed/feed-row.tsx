@@ -9,7 +9,7 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 const AVATAR = 36;
 const THUMB = 56;
 
-/** Hora de captura "14:32" en la zona del viaje. */
+/** Capture time "14:32" in the trip's time zone. */
 export function clockTime(takenAt: number, timeZone: string): string {
   return new Intl.DateTimeFormat("es-AR", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(takenAt);
 }
@@ -17,13 +17,13 @@ export function clockTime(takenAt: number, timeZone: string): string {
 type Props = {
   item: MapItem;
   timeZone: string;
-  /** Tocar una fila con ubicación (lleva al mapa). Sin ubicación la fila no es tocable. */
+  /** Tap on a row with a location (goes to the map). Without a location the row is not tappable. */
   onPress?: (item: MapItem) => void;
-  /** Solo para el admin: habilita "Borrar foto" (action sheet) al mantener apretada la fila. */
+  /** Admin only: enables "Borrar foto" (action sheet) on long-press of the row. */
   onDelete?: (item: MapItem) => void;
 };
 
-/** Una fila nativa del Feed: quién, cuándo, el caption (o qué sacó) y la foto borrosa. */
+/** A native Feed row: who, when, the caption (or what they took) and the blurred photo. */
 export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete }: Props) {
   const when = clockTime(item.takenAt, timeZone);
   const generic = item.type === "video" ? `sacó un video · ${Math.round(item.durationS ?? 0)} s` : "sacó una foto";
@@ -60,8 +60,8 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
   const canDelete = !!onDelete && !item.pending;
   if (!(located && onPress) && !canDelete) return content;
 
-  // Mantener apretada abre la action sheet nativa (solo admin). No usamos MenuView: es un host nativo
-  // que toma el tamaño de su contenido y la fila dejaba de ocupar el ancho.
+  // Long-press opens the native action sheet (admin only). We don't use MenuView: it is a native host
+  // that takes its content's size and the row stopped filling the width.
   function openSheet() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     ActionSheetIOS.showActionSheetWithOptions(
@@ -87,7 +87,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
 });
 
 const styles = StyleSheet.create({
-  // Todos los envoltorios (Pressable, MenuView) ocupan el ancho: así la miniatura queda siempre a la derecha.
+  // All wrappers (Pressable, MenuView) fill the width: so the thumbnail always stays on the right.
   fill: { alignSelf: "stretch" },
   row: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, alignItems: "center", justifyContent: "center" },

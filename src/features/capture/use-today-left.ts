@@ -5,8 +5,8 @@ import { localDay, remaining } from "./quota";
 import { getQueue } from "./store";
 
 /**
- * Fotos y videos que te quedan hoy en el viaje, descontando lo que está en la cola.
- * `null` mientras no se sabe. Se recalcula al volver a la pantalla (por ej. al cerrar la cámara).
+ * Photos and videos you have left today on the trip, discounting what is in the queue.
+ * `null` while unknown. Recomputed when returning to the screen (e.g. when closing the camera).
  */
 export function useTodayLeft(tripId: string | undefined, detail: TripDetail | null) {
   const [left, setLeft] = useState<{ photos: number; videos: number } | null>(null);

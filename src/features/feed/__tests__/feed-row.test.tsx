@@ -27,7 +27,7 @@ const item = (over: Partial<MapItem> = {}): MapItem => ({
 });
 
 describe("FeedRow", () => {
-  it("muestra la inicial, el nombre con la hora del viaje y 'sacó una foto' si no hay caption", async () => {
+  it("shows the initial, the name with the trip time and 'sacó una foto' if there is no caption", async () => {
     await render(<FeedRow item={item()} timeZone={TZ} />);
 
     expect(screen.getByText("C")).toBeTruthy();
@@ -36,19 +36,19 @@ describe("FeedRow", () => {
     expect(screen.getByText("sacó una foto")).toBeTruthy();
   });
 
-  it("para un video sin caption dice cuánto dura", async () => {
+  it("for a video without a caption it shows how long it lasts", async () => {
     await render(<FeedRow item={item({ type: "video", durationS: 12.2 })} timeZone={TZ} />);
     expect(screen.getByText("sacó un video · 12 s")).toBeTruthy();
   });
 
-  it("con caption, el caption es lo principal y no aparece el texto genérico", async () => {
+  it("with a caption, the caption is the main text and the generic text does not appear", async () => {
     await render(<FeedRow item={item({ caption: "el viento no perdona" })} timeZone={TZ} />);
 
     expect(screen.getByText("el viento no perdona")).toBeTruthy();
     expect(screen.queryByText("sacó una foto")).toBeNull();
   });
 
-  it("muestra el thumbhash borroso, o un relleno gris si no hay", async () => {
+  it("shows the blurry thumbhash, or a gray fill if there is none", async () => {
     const { rerender } = await render(<FeedRow item={item()} timeZone={TZ} />);
     expect(screen.getByTestId("feed-thumb")).toBeTruthy();
 
@@ -56,12 +56,12 @@ describe("FeedRow", () => {
     expect(screen.getByTestId("feed-thumb-empty")).toBeTruthy();
   });
 
-  it("una foto pendiente dice 'Esperando señal'", async () => {
+  it("a pending photo says 'Esperando señal'", async () => {
     await render(<FeedRow item={item({ pending: true })} timeZone={TZ} />);
     expect(screen.getByText("Esperando señal")).toBeTruthy();
   });
 
-  it("tocar una fila con ubicación avisa con el item", async () => {
+  it("tapping a row with a location reports the item", async () => {
     const onPress = jest.fn();
     await render(<FeedRow item={item()} timeZone={TZ} onPress={onPress} />);
 
@@ -70,13 +70,13 @@ describe("FeedRow", () => {
     expect(onPress).toHaveBeenCalledWith(expect.objectContaining({ id: "f1" }));
   });
 
-  it("sin ubicación la fila no es tocable ni muestra lugar", async () => {
+  it("without a location the row is not tappable and shows no place", async () => {
     await render(<FeedRow item={item({ lat: null, lng: null })} timeZone={TZ} onPress={jest.fn()} />);
 
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("el admin mantiene apretada la fila: haptic, action sheet y, si elige Borrar foto, avisa con el item", async () => {
+  it("the admin long-presses the row: haptic, action sheet and, if they pick Borrar foto, reports the item", async () => {
     const onDelete = jest.fn();
     await render(<FeedRow item={item()} timeZone={TZ} onDelete={onDelete} />);
 
@@ -92,7 +92,7 @@ describe("FeedRow", () => {
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: "f1" }));
   });
 
-  it("si cancela la action sheet no pasa nada", async () => {
+  it("if they cancel the action sheet nothing happens", async () => {
     const onDelete = jest.fn();
     await render(<FeedRow item={item()} timeZone={TZ} onDelete={onDelete} />);
     await fireEvent(screen.getByLabelText(/^Cami, /), "longPress");
@@ -102,7 +102,7 @@ describe("FeedRow", () => {
     expect(onDelete).not.toHaveBeenCalled();
   });
 
-  it("sin onDelete (no admin) o con la foto pendiente no hay long press", async () => {
+  it("without onDelete (non-admin) or with a pending photo there is no long press", async () => {
     const { rerender } = await render(<FeedRow item={item()} timeZone={TZ} onPress={jest.fn()} />);
     expect(screen.getByLabelText(/^Cami, /).props.onLongPress).toBeUndefined();
 
@@ -110,16 +110,16 @@ describe("FeedRow", () => {
     expect(screen.getByLabelText(/^Cami, /).props.onLongPress).toBeUndefined();
   });
 
-  describe("la miniatura queda siempre en la columna de la derecha", () => {
+  describe("the thumbnail always stays in the right-hand column", () => {
     const stretch = (node: { props: { style?: unknown } }) => StyleSheet.flatten(node.props.style as never)?.alignSelf;
 
     const variants: [string, Partial<React.ComponentProps<typeof FeedRow>>][] = [
-      ["tocable", { onPress: jest.fn() }],
-      ["no tocable", {}],
-      ["con menú de admin", { onPress: jest.fn(), onDelete: jest.fn() }],
+      ["tappable", { onPress: jest.fn() }],
+      ["not tappable", {}],
+      ["with admin menu", { onPress: jest.fn(), onDelete: jest.fn() }],
     ];
 
-    it.each(variants)("fila %s: envoltorios a todo el ancho y miniatura última, de ancho fijo", async (_name, props) => {
+    it.each(variants)("%s row: full-width wrappers and the thumbnail last, fixed width", async (_name, props) => {
       await render(<FeedRow item={item({ caption: "ibai con netflix" })} timeZone={TZ} {...props} />);
 
       const row = screen.getByTestId("feed-row");

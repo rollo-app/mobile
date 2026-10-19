@@ -6,10 +6,10 @@ import { fetchTrip } from "./actions";
 export const tripKey = (tripId: string) => ["trip", tripId] as const;
 
 /**
- * Detalle de un viaje, compartido por la barra de tabs, Rollo, Vos y la captura: un
- * solo pedido y un solo cache (que sobrevive a cerrar la app). `detail` es lo último
- * que se sabe aunque esté viejo; `error` aparece solo si no hay ningún dato. Al ganar
- * foco una pantalla vuelve a pedir únicamente si los datos están viejos (30 s).
+ * A trip's detail, shared by the tab bar, Roll, Me and capture: a
+ * single request and a single cache (which survives closing the app). `detail` is the latest
+ * known data even if stale; `error` appears only if there's no data at all. When a
+ * screen gains focus it refetches only if the data is stale (30 s).
  */
 export function useTripDetail(tripId: string | undefined) {
   const queryClient = useQueryClient();
@@ -19,7 +19,7 @@ export function useTripDetail(tripId: string | undefined) {
     enabled: !!tripId,
   });
 
-  // prefetchQuery solo pide si los datos están viejos, se suma a un pedido en curso y no tira.
+  // prefetchQuery only fetches if the data is stale, joins an in-flight request and doesn't throw.
   useFocusEffect(
     useCallback(() => {
       if (tripId) void queryClient.prefetchQuery({ queryKey: tripKey(tripId), queryFn: () => fetchTrip(tripId) });

@@ -3,7 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { colors, spacing, type } from "@/ui/theme";
 
-/** Título del header con el nombre del viaje activo; abre el selector de viajes. */
+/** Header title with the active trip's name; opens the trip selector. */
 export function TripSwitcher({ name }: { name: string }) {
   return (
     <Pressable

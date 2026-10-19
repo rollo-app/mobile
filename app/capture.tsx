@@ -31,8 +31,8 @@ type State =
 const MAX_VIDEO_S = 15;
 
 /**
- * Captura: cámara del sistema → preview (repetir o mandar, con caption) → cola.
- * Una vez en el rollo no se ve más hasta el revelado.
+ * Capture: system camera → preview (retake or send, with caption) → queue.
+ * Once in the roll it can't be seen again until the reveal.
  */
 export default function CaptureScreen() {
   const queryClient = useQueryClient();
@@ -64,7 +64,7 @@ export default function CaptureScreen() {
     setState({ kind: "preview", shot: { asset, takenAt: Date.now(), poster }, sending: false, error: null });
   }
 
-  // Cuando sabemos el cupo (o que no hay señal para saberlo), abre la cámara o muestra el candado.
+  // Once we know the quota (or that there's no signal to know it), open the camera or show the lock.
   useEffect(() => {
     if (!trip || started.current || (!detail && !detailError)) return;
     started.current = true;
@@ -173,8 +173,8 @@ function Preview(props: {
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
   const { asset, poster } = props.shot;
-  // Columna normal (sin posiciones absolutas): al abrir el teclado, los controles suben con él
-  // y la foto se achica en el espacio que queda, en vez de quedar tapada.
+  // Normal column (no absolute positioning): when the keyboard opens, the controls rise with it
+  // and the photo shrinks into the remaining space, instead of being covered.
   return (
     <KeyboardAvoidingView behavior="padding" style={styles.dark}>
       <View style={[styles.top, { paddingTop: insets.top + spacing.sm }]}>
@@ -228,7 +228,7 @@ function Preview(props: {
   );
 }
 
-/** Si el teclado está abierto (para no sumar el margen inferior de la pantalla encima del teclado). */
+/** Whether the keyboard is open (to avoid adding the screen's bottom margin on top of the keyboard). */
 function useKeyboardOpen() {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -261,7 +261,7 @@ function Message(props: {
   );
 }
 
-// El preview es siempre oscuro, como la cámara: la foto manda.
+// The preview is always dark, like the camera: the photo takes the lead.
 const styles = StyleSheet.create({
   dark: { flex: 1, backgroundColor: "#000" },
   top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.md, paddingBottom: spacing.sm },

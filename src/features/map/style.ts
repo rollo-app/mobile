@@ -2,9 +2,9 @@ import type { StyleSpecification } from "@maplibre/maplibre-react-native";
 import base from "./positron.json";
 
 /**
- * Estilo propio del mapa: parte del "positron" de OpenFreeMap (copia local, así el estilo no
- * depende de la red) y le cambia la paleta: tierra casi blanca, agua gris azulado apagado, rutas
- * finas y grises, casi sin puntos de interés y etiquetas chicas. Solo tienen color los pins.
+ * Custom map style: starts from OpenFreeMap's "positron" (local copy, so the style doesn't
+ * depend on the network) and changes its palette: almost-white land, muted blue-gray water,
+ * thin gray roads, almost no points of interest and small labels. Only the pins have color.
  */
 
 export type MapScheme = "light" | "dark";
@@ -36,10 +36,10 @@ const palettes = {
 
 type Layer = { id: string; type: string; paint?: Record<string, unknown>; layout?: Record<string, unknown>; [k: string]: unknown };
 
-/** Capas que no hacen falta: edificios, vías, aeropuertos, escudos de rutas, límites menores. */
+/** Layers not needed: buildings, rails, airports, route shields, minor boundaries. */
 const REMOVED = /^(tunnel_|aeroway|road_area_pier|road_pier|railway|highway_motorway_bridge|highway-shield|road_shield|airport|boundary_3|boundary_disputed|highway-name-path|building)/;
 
-/** Achica un `text-size`: número suelto o `interpolate` / `step` (los valores van en las posiciones de salida). */
+/** Shrinks a `text-size`: plain number or `interpolate` / `step` (the values sit at the output positions). */
 function scaleSize(size: unknown, factor: number): unknown {
   if (typeof size === "number") return size * factor;
   if (!Array.isArray(size)) return size;
@@ -65,7 +65,7 @@ function restyle(layer: Layer, p: (typeof palettes)[MapScheme]): Layer {
   else if (layer.type === "line" && id.startsWith("highway")) {
     paint["line-color"] = id.includes("minor") ? p.road : p.roadMajor;
     paint["line-opacity"] = 1;
-    // Rutas finas: todo el ancho a la mitad.
+    // Thin roads: all widths halved.
     const w = paint["line-width"];
     if (Array.isArray(w) && w[0] === "interpolate") {
       paint["line-width"] = w.map((v, i) => (i >= 4 && i % 2 === 0 && typeof v === "number" ? v * 0.5 : v));
@@ -75,7 +75,7 @@ function restyle(layer: Layer, p: (typeof palettes)[MapScheme]): Layer {
     paint["text-halo-color"] = p.halo;
     paint["text-halo-width"] = 1.2;
     layout["text-size"] = scaleSize(layout["text-size"], 0.82);
-    // Sin puntitos de ciudad: el nombre solo.
+    // No city dots: just the name.
     delete layout["icon-image"];
     delete layout["icon-size"];
   }
@@ -89,6 +89,6 @@ export function buildMapStyle(scheme: MapScheme): StyleSpecification {
   return { ...base, sources, layers } as unknown as StyleSpecification;
 }
 
-/** Estilo de OpenFreeMap tal cual, para comparar. */
+/** OpenFreeMap style as is, for comparison. */
 export const OPENFREEMAP_POSITRON = "https://tiles.openfreemap.org/styles/positron";
 export const OPENFREEMAP_LIBERTY = "https://tiles.openfreemap.org/styles/liberty";

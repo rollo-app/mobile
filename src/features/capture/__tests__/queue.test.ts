@@ -23,8 +23,8 @@ const item = (overrides: Partial<QueuedMedia> = {}): QueuedMedia => ({
   ...overrides,
 });
 
-describe("cola de subida", () => {
-  it("guarda lo que se saca y lo devuelve pendiente, con todos sus datos", async () => {
+describe("upload queue", () => {
+  it("saves what is shot and returns it as pending, with all its data", async () => {
     const queue = await createQueue(memoryDb());
 
     await queue.enqueue(item());
@@ -32,7 +32,7 @@ describe("cola de subida", () => {
     expect(await queue.pending()).toEqual([{ ...item(), attempts: 0, retryAt: null }]);
   });
 
-  it("devuelve lo pendiente en el orden en que se sacó", async () => {
+  it("returns pending items in the order they were shot", async () => {
     const queue = await createQueue(memoryDb());
 
     await queue.enqueue(item({ id: "b", takenAt: 2000 }));
@@ -41,7 +41,7 @@ describe("cola de subida", () => {
     expect((await queue.pending()).map((m) => m.id)).toEqual(["a", "b"]);
   });
 
-  it("guardar dos veces el mismo id no lo duplica", async () => {
+  it("saving the same id twice does not duplicate it", async () => {
     const queue = await createQueue(memoryDb());
 
     await queue.enqueue(item());
@@ -50,7 +50,7 @@ describe("cola de subida", () => {
     expect(await queue.pending()).toHaveLength(1);
   });
 
-  it("acepta datos opcionales vacíos (sin GPS, sin caption)", async () => {
+  it("accepts empty optional data (no GPS, no caption)", async () => {
     const queue = await createQueue(memoryDb());
 
     await queue.enqueue(item({ lat: null, lng: null, accuracyM: null, caption: null, thumbhash: null }));
@@ -58,7 +58,7 @@ describe("cola de subida", () => {
     expect((await queue.pending())[0]).toMatchObject({ lat: null, caption: null, thumbhash: null });
   });
 
-  it("cuenta lo que todavía no se subió de un viaje, por tipo y día", async () => {
+  it("counts what is not yet uploaded for a trip, by type and day", async () => {
     const queue = await createQueue(memoryDb());
 
     await queue.enqueue(item({ id: "1" }));
@@ -70,14 +70,14 @@ describe("cola de subida", () => {
     expect(await queue.countPending(TRIP, "2027-01-12")).toEqual({ photos: 2, videos: 1 });
   });
 
-  it("abrir la cola de nuevo sobre la misma base no pierde nada", async () => {
+  it("reopening the queue on the same database loses nothing", async () => {
     const db = memoryDb();
     await (await createQueue(db)).enqueue(item());
 
     expect(await (await createQueue(db)).pending()).toHaveLength(1);
   });
 
-  it("remove saca el ítem de la cola", async () => {
+  it("remove takes the item out of the queue", async () => {
     const queue = await createQueue(memoryDb());
     await queue.enqueue(item({ id: "a" }));
     await queue.enqueue(item({ id: "b" }));
@@ -87,7 +87,7 @@ describe("cola de subida", () => {
     expect((await queue.pending()).map((m) => m.id)).toEqual(["b"]);
   });
 
-  it("markAttempt suma un intento y guarda cuándo reintentar", async () => {
+  it("markAttempt adds an attempt and stores when to retry", async () => {
     const queue = await createQueue(memoryDb());
     await queue.enqueue(item());
 
@@ -97,7 +97,7 @@ describe("cola de subida", () => {
     expect((await queue.pending())[0]).toMatchObject({ attempts: 2, retryAt: 9000 });
   });
 
-  it("markFailed lo saca de lo pendiente y de la cuenta del cupo, pero no lo borra", async () => {
+  it("markFailed removes it from pending and from the quota count, but does not delete it", async () => {
     const db = memoryDb();
     const queue = await createQueue(db);
     await queue.enqueue(item({ id: "a" }));
@@ -110,7 +110,7 @@ describe("cola de subida", () => {
     expect(await queue.failed()).toEqual([expect.objectContaining({ id: "a", failedReason: "quota" })]);
   });
 
-  it("un markFailed sobrevive a reabrir la cola", async () => {
+  it("a markFailed survives reopening the queue", async () => {
     const db = memoryDb();
     const queue = await createQueue(db);
     await queue.enqueue(item());
@@ -119,7 +119,7 @@ describe("cola de subida", () => {
     expect(await (await createQueue(db)).pending()).toEqual([]);
   });
 
-  it("migra una base vieja sin las columnas nuevas", async () => {
+  it("migrates an old database without the new columns", async () => {
     const db = memoryDb();
     await db.execAsync(`CREATE TABLE pending_media (
       id TEXT PRIMARY KEY NOT NULL, trip_id TEXT NOT NULL, type TEXT NOT NULL, taken_at INTEGER NOT NULL,
@@ -137,7 +137,7 @@ describe("cola de subida", () => {
 });
 
 describe("countPendingForTrip", () => {
-  it("cuenta las pendientes del viaje de cualquier día, sin las fallidas ni las de otros viajes", async () => {
+  it("counts the trip's pending items from any day, excluding failed ones and other trips'", async () => {
     const queue = await createQueue(memoryDb());
     await queue.enqueue(item({ id: "a", day: "2027-01-12" }));
     await queue.enqueue(item({ id: "b", day: "2027-01-13", type: "video" }));
@@ -149,7 +149,7 @@ describe("countPendingForTrip", () => {
     expect(await queue.countPendingForTrip("vacio")).toBe(0);
   });
 
-  it("pendingForTrip devuelve lo pendiente de ese viaje (con o sin ubicación), sin las fallidas", async () => {
+  it("pendingForTrip returns that trip's pending items (with or without a location), excluding failed ones", async () => {
     const queue = await createQueue(memoryDb());
     await queue.enqueue(item({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1" }));
     await queue.enqueue(item({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2", lat: null, lng: null }));

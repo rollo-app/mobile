@@ -3,7 +3,7 @@ import { createQueue, type Queue } from "./queue";
 
 let queue: Promise<Queue> | null = null;
 
-/** La cola de la app, sobre `rollo.db`. Se abre una sola vez. */
+/** The app's queue, on `rollo.db`. Opened only once. */
 export function getQueue(): Promise<Queue> {
   queue ??= SQLite.openDatabaseAsync("rollo.db").then(createQueue);
   return queue;

@@ -1,4 +1,4 @@
-/** Fecha local (YYYY-MM-DD) de un instante en la zona del viaje. Es la que usa el server para el cupo. */
+/** Local date (YYYY-MM-DD) of an instant in the trip's time zone. The server uses it for the quota. */
 export function localDay(ms: number, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
 }
@@ -6,8 +6,8 @@ export function localDay(ms: number, timeZone: string): string {
 type Today = { date: string; photosLeft: number; videosLeft: number };
 
 /**
- * Lo que queda hoy: lo que informó el server menos lo sacado que sigue en la cola.
- * `null` si no sabemos (sin señal o el dato es de otro día): ahí se deja sacar y el server decide.
+ * What is left today: what the server reported minus what was captured and is still in the queue.
+ * `null` if we don't know (no signal or the data is from another day): capture is allowed and the server decides.
  */
 export function remaining(
   today: Today | null,

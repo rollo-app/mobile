@@ -9,20 +9,20 @@ const item = (id: string, authorName: string): MapItem => ({
 });
 
 describe("PinCarousel", () => {
-  it("con una sola foto es la tarjeta de siempre, sin lista", async () => {
+  it("with a single photo it is the usual card, no list", async () => {
     await render(<PinCarousel items={[item("a", "Cami")]} index={0} onIndexChange={jest.fn()} timeZone={TZ} />);
     expect(screen.getByText("Cami")).toBeVisible();
     expect(screen.queryByTestId("pin-carousel")).toBeNull();
   });
 
-  it("con varias muestra una tarjeta por foto", async () => {
+  it("with several it shows one card per photo", async () => {
     await render(<PinCarousel items={[item("a", "Cami"), item("b", "Fede")]} index={0} onIndexChange={jest.fn()} timeZone={TZ} />);
     expect(screen.getByTestId("pin-carousel")).toBeTruthy();
     expect(screen.getByText("Cami")).toBeTruthy();
     expect(screen.getByText("Fede")).toBeTruthy();
   });
 
-  it("al deslizar avisa qué tarjeta quedó a la vista", async () => {
+  it("on swipe it reports which card is in view", async () => {
     const onIndexChange = jest.fn();
     await render(<PinCarousel items={[item("a", "Cami"), item("b", "Fede")]} index={0} onIndexChange={onIndexChange} timeZone={TZ} />);
 
@@ -33,7 +33,7 @@ describe("PinCarousel", () => {
     expect(onIndexChange).toHaveBeenCalledWith(1);
   });
 
-  it("arranca en la tarjeta de `index` (la foto que se abrió desde el Feed)", async () => {
+  it("starts at the `index` card (the photo opened from the Feed)", async () => {
     await render(<PinCarousel items={[item("a", "Cami"), item("b", "Fede"), item("c", "Nico")]} index={2} onIndexChange={jest.fn()} timeZone={TZ} />);
 
     expect(screen.getByTestId("pin-carousel").props.initialScrollIndex).toBe(2);

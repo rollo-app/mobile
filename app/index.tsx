@@ -10,7 +10,7 @@ export default function IndexScreen() {
   const insets = useSafeAreaInsets();
 
   if (!loaded) return null;
-  if (trip) return <Redirect href="/rollo" />;
+  if (trip) return <Redirect href="/roll" />;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + spacing.xl * 2, paddingBottom: insets.bottom + spacing.lg }]}>

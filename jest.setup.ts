@@ -1,4 +1,4 @@
-// SecureStore en memoria: los tests no tocan el llavero real.
+// In-memory SecureStore: tests don't touch the real keychain.
 jest.mock("expo-secure-store", () => {
   const store = new Map<string, string>();
   return {
@@ -17,14 +17,14 @@ beforeEach(() => {
   (require("expo-secure-store").__store as Map<string, string>).clear();
 });
 
-// La cola de subida usa expo-sqlite (nativo): en los tests va un SQLite en memoria.
+// The upload queue uses expo-sqlite (native): tests get an in-memory SQLite.
 jest.mock("@/features/capture/store", () => {
   const { createQueue } = jest.requireActual("@/features/capture/queue");
   const { memoryDb } = jest.requireActual("@/test/sqlite-memory");
   return { getQueue: jest.fn(() => createQueue(memoryDb())) };
 });
 
-// expo-file-system es nativo: un File que existe y sube bien, y carpetas que no hacen nada.
+// expo-file-system is native: a File that exists and uploads fine, and folders that do nothing.
 jest.mock("expo-file-system", () => {
   class File {
     constructor(..._parts: unknown[]) {}
@@ -46,7 +46,7 @@ jest.mock("expo-file-system", () => {
   return { File, Directory, Paths: { document: "file:///docs/", cache: "file:///cache/" } };
 });
 
-// El cache de datos persiste en expo-sqlite/kv-store (nativo): en los tests va en memoria.
+// The data cache persists in expo-sqlite/kv-store (native): in tests it's in memory.
 jest.mock("expo-sqlite/kv-store", () => {
   const store = new Map<string, string>();
   const kv = {
@@ -61,7 +61,7 @@ jest.mock("expo-sqlite/kv-store", () => {
   return { __esModule: true, default: kv, __store: store };
 });
 
-// Cada test arranca sin datos en cache y sin reintentos (los errores se ven al toque).
+// Each test starts with no cached data and no retries (errors show up immediately).
 beforeEach(() => {
   const { queryClient } = require("@/api/query-client") as typeof import("@/api/query-client");
   queryClient.clear();
@@ -72,14 +72,14 @@ beforeEach(() => {
   });
 });
 
-// MapLibre es nativo: en los tests el mapa y sus partes son vistas vacías y no hay zonas offline.
+// MapLibre is native: in tests the map and its parts are empty views and there are no offline regions.
 jest.mock("@maplibre/maplibre-react-native", () => {
   const React = require("react");
   const { Pressable, View } = require("react-native");
   const camera = { flyTo: jest.fn(), easeTo: jest.fn(), fitBounds: jest.fn() };
   return {
     __camera: camera,
-    // El mapa deja tocar "el vacío"; la fuente de pins, un botón por pin (así las pantallas se prueban sin nativo).
+    // The map lets you tap "the void"; the pin source renders a button per pin (so screens can be tested without native).
     Map: ({ children, onPress, onDidFinishLoadingMap }: any) => {
       React.useEffect(() => {
         onDidFinishLoadingMap?.();
@@ -97,7 +97,7 @@ jest.mock("@maplibre/maplibre-react-native", () => {
       return null;
     },
     ViewAnnotation: View,
-    // Con 2+ fotos suma un "cluster" que no se puede abrir (necesita zoom 19) y cuyas hojas son las dos primeras.
+    // With 2+ photos it adds a "cluster" that can't be opened (needs zoom 19) and whose leaves are the first two.
     GeoJSONSource: ({ data, onPress, ref }: any) => {
       React.useImperativeHandle(ref, () => ({
         getClusterExpansionZoom: async () => 19,
@@ -137,12 +137,12 @@ jest.mock("@maplibre/maplibre-react-native", () => {
   };
 });
 
-// El estilo del mapa se escribe a Documents (expo-file-system, nativo): en los tests es una ruta fija.
+// The map style is written to Documents (expo-file-system, native): in tests it's a fixed path.
 jest.mock("@/features/map/style-file", () => ({
   writeStyleFile: jest.fn((scheme: string) => `file:///docs/map/style-${scheme}.json`),
 }));
 
-// Controles nativos de @expo/ui: en los tests, botones simples que disparan el mismo callback.
+// Native @expo/ui controls: in tests, simple buttons that fire the same callback.
 jest.mock("@expo/ui/community/segmented-control", () => {
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");
@@ -186,7 +186,7 @@ jest.mock("@expo/ui/community/menu", () => {
   };
 });
 
-// Ubicación: nativa; en los tests, sin permiso y sin posición (los tests que la necesitan la pisan).
+// Location: native; in tests, no permission and no position (tests that need it override it).
 jest.mock("expo-location", () => ({
   getForegroundPermissionsAsync: jest.fn(async () => ({ granted: false })),
   requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: false })),

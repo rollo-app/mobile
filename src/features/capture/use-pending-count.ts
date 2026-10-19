@@ -6,10 +6,10 @@ import { getQueue } from "./store";
 export const pendingKey = (tripId: string) => ["pending", tripId] as const;
 
 /**
- * Fotos y videos tuyos de un viaje que todavía no se subieron (la cola local, sin las
- * fallidas). Se suma al total del server para que "En el rollo" suba apenas sacás una
- * foto, sin señal. Es local, así que no depende de la red; se invalida al encolar y al
- * confirmar o descartar, y se relee al ganar foco.
+ * Your photos and videos of a trip that have not been uploaded yet (the local queue, excluding
+ * failed ones). Added to the server total so "En el rollo" goes up as soon as you take a
+ * photo, with no signal. It is local, so it does not depend on the network; invalidated on enqueue and on
+ * confirm or discard, and re-read on focus.
  */
 export function usePendingCount(tripId: string | undefined) {
   const query = useQuery({

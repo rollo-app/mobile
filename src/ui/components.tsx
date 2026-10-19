@@ -14,7 +14,7 @@ import {
 import { SymbolView } from "expo-symbols";
 import { colors, radius, spacing, type } from "./theme";
 
-/** Pantalla con scroll. `grouped` usa el fondo gris de las listas agrupadas de iOS. */
+/** Scrolling screen. `grouped` uses the gray background of iOS grouped lists. */
 export function Screen({ children, grouped }: { children: ReactNode; grouped?: boolean }) {
   return (
     <ScrollView
@@ -94,7 +94,7 @@ export function Field({ label, ...props }: { label: string } & TextInputProps) {
   );
 }
 
-/** Sección de lista agrupada (inset grouped de iOS): filas separadas por hairlines, sin bordes. */
+/** Inset grouped list section (iOS): rows separated by hairlines, no borders. */
 export function Section({ title, footer, children }: { title?: string; footer?: string; children: ReactNode }) {
   const rows = Children.toArray(children);
   return (

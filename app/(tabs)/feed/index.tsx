@@ -13,7 +13,7 @@ import { tripKey, useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Footnote } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 
-// Avatar (36) + márgenes de la fila: el hairline arranca donde empieza el texto, como en Mensajes.
+// Avatar (36) + row margins: the hairline starts where the text starts, like in Messages.
 const SEPARATOR_INSET = spacing.md + 36 + spacing.md;
 
 const Separator = memo(function Separator() {
@@ -44,12 +44,12 @@ export default function FeedScreen() {
     return mergeItems(feed ? feedToItems(feed.items) : [], mine);
   }, [feed, pending, me]);
 
-  // El server manda todo junto: se muestra de a tandas, lo más nuevo primero, y se suma al llegar al final.
+  // The server sends everything at once: show it in batches, newest first, and add more on reaching the end.
   const sections = useMemo(() => groupByDay(newest(all, limit), timeZone), [all, limit, timeZone]);
   const loadMore = useCallback(() => setLimit((n) => (n < all.length ? n + PAGE : n)), [all.length]);
 
   const openOnMap = useCallback(
-    (item: MapItem) => router.navigate({ pathname: "/mapa", params: { focus: item.id } }),
+    (item: MapItem) => router.navigate({ pathname: "/map", params: { focus: item.id } }),
     [router],
   );
 

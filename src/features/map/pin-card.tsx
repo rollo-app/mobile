@@ -4,7 +4,7 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 import type { MapItem } from "./features";
 import { formatPinTime } from "./pin-time";
 
-/** Tarjeta flotante de una foto del mapa: ni la foto se ve, solo su thumbhash borroso. */
+/** Floating card for a map photo: the photo itself isn't shown, only its blurry thumbhash. */
 export function PinCard({ item, timeZone, now }: { item: MapItem; timeZone: string; now?: number }) {
   const when = formatPinTime(item.takenAt, timeZone, now);
   const meta = item.type === "video" ? `Video · ${Math.round(item.durationS ?? 0)} s` : null;

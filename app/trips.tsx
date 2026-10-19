@@ -7,13 +7,13 @@ import { markOpened } from "@/storage/trips";
 import { Button, Screen } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
-/** Selector de viajes (sheet). El elegido pasa a ser el activo. */
+/** Trip selector (sheet). The chosen one becomes the active one. */
 export default function TripsScreen() {
   const { trip: active, trips } = useActiveTrip();
 
   async function select(tripId: string) {
     await markOpened(tripId);
-    router.dismissTo("/rollo");
+    router.dismissTo("/roll");
   }
 
   return (

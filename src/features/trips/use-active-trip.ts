@@ -3,9 +3,9 @@ import { useCallback, useState } from "react";
 import { listTrips, type TripSummary } from "@/storage/trips";
 
 /**
- * El viaje activo es el último que abriste (el primero de la lista guardada).
- * Se relee cada vez que la pantalla gana foco, así cambiarlo desde el selector
- * se ve al volver.
+ * The active trip is the last one you opened (the first of the saved list).
+ * Re-read every time the screen gains focus, so changing it from the selector
+ * shows up on return.
  */
 export function useActiveTrip() {
   const [state, setState] = useState<{ trips: TripSummary[]; loaded: boolean }>({ trips: [], loaded: false });

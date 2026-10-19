@@ -22,7 +22,7 @@ const item = (over: Partial<MapItem> = {}): MapItem => ({
 });
 
 describe("PinCard", () => {
-  it("muestra autor, hora relativa y la foto borrosa", async () => {
+  it("shows author, relative time and the blurry photo", async () => {
     await render(<PinCard item={item()} timeZone={TZ} now={NOW} />);
 
     expect(screen.getByText("Cami")).toBeVisible();
@@ -30,23 +30,23 @@ describe("PinCard", () => {
     expect(screen.getByTestId("pin-thumb")).toBeTruthy();
   });
 
-  it("muestra el caption si hay", async () => {
+  it("shows the caption if there is one", async () => {
     await render(<PinCard item={item({ caption: "el viento no perdona" })} timeZone={TZ} now={NOW} />);
     expect(screen.getByText("el viento no perdona")).toBeVisible();
   });
 
-  it("sin thumbhash, un relleno gris", async () => {
+  it("without a thumbhash, a gray fill", async () => {
     await render(<PinCard item={item({ thumbhash: null })} timeZone={TZ} now={NOW} />);
     expect(screen.getByTestId("pin-thumb-empty")).toBeTruthy();
     expect(screen.queryByTestId("pin-thumb")).toBeNull();
   });
 
-  it("un video dice su duración", async () => {
+  it("a video shows its duration", async () => {
     await render(<PinCard item={item({ type: "video", durationS: 12.2 })} timeZone={TZ} now={NOW} />);
     expect(screen.getByText("hoy 13:10 · Video · 12 s")).toBeVisible();
   });
 
-  it("una pendiente avisa que espera señal", async () => {
+  it("a pending one says it is waiting for signal", async () => {
     await render(<PinCard item={item({ pending: true })} timeZone={TZ} now={NOW} />);
     expect(screen.getByText("Esperando señal")).toBeVisible();
   });

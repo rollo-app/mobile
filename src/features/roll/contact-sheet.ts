@@ -3,9 +3,9 @@ export const SHEET_FRAMES = 18;
 type Frame = { takenAt: number; thumbhash: string | null };
 
 /**
- * Los cuadros de la hoja de contacto: los ThumbHash de lo subido y lo pendiente, de la más
- * nueva a la más vieja, hasta `limit`. `null` es un cuadro sin colores (sin thumbhash, o una
- * foto que todavía no conocemos). `rest` es cuánto queda afuera, para el "+N".
+ * The contact sheet frames: the ThumbHashes of what's uploaded and what's pending, newest
+ * to oldest, up to `limit`. `null` is a frame without colors (no thumbhash, or a
+ * photo we don't know yet). `rest` is how many are left out, for the "+N".
  */
 export function buildContactSheet({
   feed,

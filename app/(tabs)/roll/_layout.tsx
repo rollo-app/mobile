@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-// El título lo pone la pantalla: es el selector con el nombre del viaje activo.
+// The screen sets the title: it's the selector with the active trip's name.
 export default function Layout() {
   return <Stack />;
 }

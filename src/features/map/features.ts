@@ -2,7 +2,7 @@ import type { Schemas } from "@/api/client";
 import type { PendingMedia } from "@/features/capture/queue";
 import { memberColor } from "./member-color";
 
-/** Una foto o video en el mapa: del feed del server o tuya de la cola local (pendiente). */
+/** A photo or video on the map: from the server feed or yours from the local queue (pending). */
 export type MapItem = {
   id: string;
   type: "photo" | "video";
@@ -41,7 +41,7 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
   }));
 }
 
-/** Tus fotos sin subir (cola local) como items, con vos de autor. */
+/** Your not-yet-uploaded photos (local queue) as items, with you as author. */
 export function pendingToItems(pending: PendingMedia[], me: { id: string; name: string }): MapItem[] {
   return pending.map((m) => ({
     id: m.id,
@@ -59,13 +59,13 @@ export function pendingToItems(pending: PendingMedia[], me: { id: string; name: 
   }));
 }
 
-/** Si una pendiente ya figura en el feed (recién subida), gana la del server. */
+/** If a pending one already appears in the feed (just uploaded), the server's wins. */
 export function mergeItems(feed: MapItem[], pending: MapItem[]): MapItem[] {
   const ids = new Set(feed.map((i) => i.id));
   return [...feed, ...pending.filter((i) => !ids.has(i.id))];
 }
 
-/** Los items con esos ids, ordenados por hora de captura (para el carrusel). */
+/** The items with those ids, sorted by capture time (for the carousel). */
 export function itemsByTime(items: MapItem[], ids: string[]): MapItem[] {
   const wanted = new Set(ids);
   return items.filter((i) => wanted.has(i.id)).sort((a, b) => a.takenAt - b.takenAt);
@@ -91,7 +91,7 @@ export function toFeatures(items: MapItem[], filters: MapFilters): PinCollection
   return { type: "FeatureCollection", features };
 }
 
-/** Caja [oeste, sur, este, norte] que abarca los puntos; null si no hay ninguno. */
+/** Box [west, south, east, north] spanning the points; null if there are none. */
 export function boundsOf(features: PinFeature[]): [number, number, number, number] | null {
   if (features.length === 0) return null;
   let [w, s, e, n] = [Infinity, Infinity, -Infinity, -Infinity];

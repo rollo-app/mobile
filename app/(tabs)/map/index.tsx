@@ -23,12 +23,12 @@ import { colors, radius, spacing, tintHex, type } from "@/ui/theme";
 
 silenceTileNetworkErrors();
 
-// Sin pins ni ubicación: el sur de Argentina, donde es el viaje.
+// No pins or location: southern Argentina, where the trip is.
 const DEFAULT_REGION = { center: [-72.89, -49.33] as [number, number], zoom: 6 };
 const HEADER_HEIGHT = 44;
 const TAB_BAR_GAP = 12;
-// Altura de la barra de tabs nativa (49 pt + indicador de inicio de 34 pt en iPhones con notch). Si el
-// safe area ya la incluye, `Math.max` no cambia nada; si no, esto garantiza que no tape lo de abajo.
+// Height of the native tab bar (49 pt + 34 pt home indicator on notch iPhones). If the
+// safe area already includes it, `Math.max` changes nothing; if not, this keeps it from covering what's below.
 const TAB_BAR_MIN_INSET = 83;
 const USER_ZOOM = 12;
 const FOCUS_ZOOM = 15;
@@ -47,7 +47,7 @@ export default function MapScreen() {
 
   const [scope, setScope] = useState<"all" | "today">("all");
   const [authorId, setAuthorId] = useState<string | null>(null);
-  // Las fotos del lugar tocado (ordenadas por hora) y cuál de ellas está a la vista en el carrusel.
+  // Photos at the tapped place (sorted by time) and which of them is showing in the carousel.
   const [selection, setSelection] = useState<{ ids: string[]; index: number } | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [hasLocation, setHasLocation] = useState<boolean | null>(null);
@@ -76,7 +76,7 @@ export default function MapScreen() {
   const selectedId = selection ? (carousel[selection.index]?.id ?? null) : null;
   const noPins = shown.features.length === 0;
 
-  // Si lo tocado queda afuera de los filtros, la tarjeta se va con el pin.
+  // If the tapped thing falls outside the filters, the card goes away with the pin.
   useEffect(() => {
     if (selection && !selection.ids.some((id) => shown.features.some((f) => f.properties.id === id))) setSelection(null);
   }, [shown, selection]);
@@ -98,8 +98,8 @@ export default function MapScreen() {
     else cameraRef.current?.fitBounds(target.bounds, { padding, duration });
   }
 
-  // Al entrar: con el viaje en curso y permiso de ubicación, donde estás; si no, todos los pins a la
-  // vista; sin pins, la región del viaje por defecto. Espera a saber el permiso y a tener datos.
+  // On enter: with the trip in progress and location permission, where you are; otherwise, all pins in
+  // view; with no pins, the trip's default region. Waits to know the permission and to have data.
   const tripKnown = !!detail || !!error;
   useEffect(() => {
     if (!mapReady || framed.current || hasLocation === null || !tripKnown || !(feed || error)) return;
@@ -112,8 +112,8 @@ export default function MapScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, hasLocation, tripKnown, all, feed, error, detail, padding]);
 
-  // Llegó desde el Feed con una foto: sin filtros, volar a ella (zoom 15) y abrir su tarjeta. Se
-  // consume el param para que volver a tocar la misma foto después de mover el mapa funcione.
+  // Arrived from the Feed with a photo: no filters, fly to it (zoom 15) and open its card. The
+  // param is consumed so tapping the same photo again after moving the map works.
   useEffect(() => {
     if (!focus || !mapReady) return;
     const target = items.find((i) => i.id === focus);
@@ -146,7 +146,7 @@ export default function MapScreen() {
       });
       return true;
     } catch {
-      return false; // Sin ubicación el mapa queda donde está.
+      return false; // With no location the map stays where it is.
     }
   }
 
@@ -166,7 +166,7 @@ export default function MapScreen() {
       void (async () => {
         const source = sourceRef.current;
         const expansion = await source?.getClusterExpansionZoom(props.cluster_id);
-        // Un cluster que ya no se puede abrir (fotos en el mismo punto): sus hojas pasan al carrusel.
+        // A cluster that can no longer be opened (photos at the same spot): its leaves go to the carousel.
         if (!canExpandCluster(expansion, zoomRef.current)) {
           const leaves = (await source?.getClusterLeaves(props.cluster_id, props.point_count ?? 100, 0)) ?? [];
           select(leaves.map((l) => l.properties?.id).filter((id): id is string => typeof id === "string"));
@@ -275,7 +275,7 @@ export default function MapScreen() {
         </Pressable>
       </View>
 
-      {/* ODbL obliga a mostrar la atribución mientras se ve el mapa: texto fijo, no tocable. */}
+      {/* ODbL requires showing the attribution while the map is visible: fixed text, not tappable. */}
       <Text pointerEvents="none" style={[type.caption, styles.attribution, { bottom: barInset + 2 }]}>
         © OpenStreetMap · OpenFreeMap
       </Text>

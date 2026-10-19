@@ -1,8 +1,8 @@
 import type { QueueDb } from "@/features/capture/queue";
 
-/** SQLite real en memoria (node:sqlite) con la forma async de expo-sqlite, para los tests. */
+/** Real in-memory SQLite (node:sqlite) with expo-sqlite's async shape, for tests. */
 export function memoryDb(): QueueDb {
-  // require en runtime: node:sqlite no existe para el bundler de la app.
+  // require at runtime: node:sqlite doesn't exist for the app's bundler.
   const { DatabaseSync } = require("node:sqlite") as { DatabaseSync: new (path: string) => NodeSqlite };
   const db = new DatabaseSync(":memory:");
   return {
@@ -16,7 +16,7 @@ export function memoryDb(): QueueDb {
   };
 }
 
-/** Lo que usamos de node:sqlite (sin depender de @types/node). */
+/** What we use from node:sqlite (without depending on @types/node). */
 type NodeSqlite = {
   exec(sql: string): void;
   prepare(sql: string): { run(...params: unknown[]): unknown; all(...params: unknown[]): unknown[] };

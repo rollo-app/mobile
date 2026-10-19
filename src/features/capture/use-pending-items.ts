@@ -5,7 +5,7 @@ import { getQueue } from "./store";
 
 export const pendingItemsKey = (tripId: string) => ["pending-items", tripId] as const;
 
-/** Tus fotos y videos sin subir de un viaje que tienen ubicación: el mapa las muestra apenas las sacás. */
+/** Your not-yet-uploaded photos and videos of a trip that have a location: the map shows them as soon as you take them. */
 export function usePendingItems(tripId: string | undefined) {
   const query = useQuery({
     queryKey: pendingItemsKey(tripId ?? ""),

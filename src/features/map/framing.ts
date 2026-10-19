@@ -1,10 +1,10 @@
 import type { PinFeature } from "./features";
 
-/** Zoom máximo del mapa. Con `clusterMaxZoom` por encima, el clustering rige en todos los zooms posibles. */
+/** Max map zoom. With `clusterMaxZoom` above it, clustering applies at every possible zoom. */
 export const MAX_ZOOM = 17;
-/** Zoom máximo al encuadrar, aunque todo entre en pocos metros. */
+/** Max zoom when framing, even if everything fits within a few meters. */
 export const FIT_MAX_ZOOM = 15;
-/** Distancia en píxeles de pantalla dentro de la cual dos fotos cuentan como "el mismo lugar". */
+/** Distance in screen pixels within which two photos count as "the same spot". */
 export const SAME_SPOT_PX = 24;
 
 export function isTripActive(trip: { startsAt: number; endsAt: number }, now: number): boolean {
@@ -16,19 +16,19 @@ type Bounds = [number, number, number, number];
 export type FitTarget = { kind: "bounds"; bounds: Bounds } | { kind: "center"; center: [number, number]; zoom: number };
 
 /**
- * Cómo encuadrar los pins. Si están todos casi en el mismo punto, `fitBounds` haría zoom al
- * máximo y quedarían desagrupados (el clustering corta en `clusterMaxZoom`): se centra con un zoom fijo.
+ * How to frame the pins. If they are all at almost the same point, `fitBounds` would zoom to the
+ * max and they would end up ungrouped (clustering stops at `clusterMaxZoom`): center with a fixed zoom instead.
  */
 export function fitTarget(bounds: Bounds): FitTarget {
   const [w, s, e, n] = bounds;
-  // A zoom 15 entran ~0.006° (~300 px de pantalla): con menos que eso, fitBounds pasaría de FIT_MAX_ZOOM.
+  // At zoom 15, ~0.006° (~300 screen px) fit: with less than that, fitBounds would exceed FIT_MAX_ZOOM.
   if (Math.max(e - w, n - s) < 0.006) return { kind: "center", center: [(w + e) / 2, (s + n) / 2], zoom: FIT_MAX_ZOOM };
   return { kind: "bounds", bounds };
 }
 
 /**
- * Las fotos que están "en el mismo lugar" que `center` a este zoom: a menos de SAME_SPOT_PX píxeles
- * (las de coordenadas idénticas siempre). Siempre incluye la más cercana.
+ * The photos that are "in the same spot" as `center` at this zoom: within SAME_SPOT_PX pixels
+ * (those with identical coordinates always). Always includes the closest one.
  */
 export function photosNear(features: PinFeature[], center: [number, number], zoom: number): PinFeature[] {
   const degPerPx = 360 / (512 * 2 ** zoom);
@@ -42,7 +42,7 @@ export function photosNear(features: PinFeature[], center: [number, number], zoo
   return near;
 }
 
-/** ¿Tocar el cluster lo abre con zoom? No si el zoom necesario no existe o ya estamos al tope: van al carrusel. */
+/** Does tapping the cluster zoom into it? Not if the needed zoom doesn't exist or we're already at the max: they go to the carousel. */
 export function canExpandCluster(expansionZoom: number | undefined, currentZoom: number): boolean {
   return expansionZoom !== undefined && expansionZoom <= MAX_ZOOM && currentZoom < MAX_ZOOM - 0.5;
 }

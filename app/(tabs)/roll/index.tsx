@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
-import { buildContactSheet } from "@/features/rollo/contact-sheet";
+import { buildContactSheet } from "@/features/roll/contact-sheet";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useFeed } from "@/features/trips/use-feed";
@@ -14,13 +14,13 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 const DAY = 24 * 60 * 60 * 1000;
 const COLUMNS = 6;
 
-export default function RolloScreen() {
+export default function RollScreen() {
   const { trip } = useActiveTrip();
   const { detail, error, refetch, isRefetching } = useTripDetail(trip?.tripId);
   const pending = usePendingCount(trip?.tripId);
   const { feed } = useFeed(trip?.tripId);
   const pendingItems = usePendingItems(trip?.tripId);
-  // Tus fotos en cola ya están en el rollo, aunque todavía no se hayan subido.
+  // Your queued photos are already in the roll, even if they haven't been uploaded yet.
   const total = (detail?.totalUploaded ?? 0) + pending;
 
   return (
@@ -59,9 +59,9 @@ export default function RolloScreen() {
 }
 
 /**
- * La hoja de contacto: un cuadro por cada foto del rollo, todavía sin revelar. Cada uno muestra
- * los colores difusos (ThumbHash) de su foto, de la más nueva a la más vieja; sin thumbhash
- * queda gris, y los cuadros de relleno de la última fila, más apagados.
+ * The contact sheet: one frame per photo in the roll, not yet developed. Each shows
+ * the blurry colors (ThumbHash) of its photo, newest to oldest; without a thumbhash
+ * it's gray, and the filler frames in the last row are dimmer.
  */
 function ContactSheet({
   total,

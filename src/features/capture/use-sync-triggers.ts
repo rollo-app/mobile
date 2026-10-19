@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { AppState } from "react-native";
 import { syncQueue } from "./sync";
 
-/** Sube la cola al abrir la app y cada vez que vuelve a primer plano. */
+/** Uploads the queue when the app opens and each time it returns to foreground. */
 export function useSyncTriggers() {
   useEffect(() => {
     void syncQueue();

@@ -4,7 +4,7 @@ import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
 
-export default function VosScreen() {
+export default function MeScreen() {
   const { trip, trips } = useActiveTrip();
   const { detail, error, refetch, isRefetching } = useTripDetail(trip?.tripId);
 

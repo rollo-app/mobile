@@ -8,15 +8,15 @@ const log = (over: Partial<{ level: string; tag: string; message: string }>) => 
 });
 
 describe("isTileNetworkNoise", () => {
-  it("silencia los pedidos de red que fallan sin señal", () => {
+  it("silences network requests that fail with no signal", () => {
     expect(isTileNetworkNoise(log({}))).toBe(true);
   });
 
-  it("silencia los tiles que no se pudieron cargar", () => {
+  it("silences tiles that could not be loaded", () => {
     expect(isTileNetworkNoise(log({ tag: "Mbgl-Tile", message: "Failed to load tile 12/1234/2345: offline" }))).toBe(true);
   });
 
-  it("deja pasar el resto de los errores", () => {
+  it("lets the rest of the errors through", () => {
     expect(isTileNetworkNoise(log({ tag: "Mbgl-Style", message: "Invalid layer 'foo'" }))).toBe(false);
     expect(isTileNetworkNoise(log({ tag: "Mbgl-Map", message: "Failed to compile shader" }))).toBe(false);
   });

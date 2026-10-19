@@ -16,7 +16,7 @@ export default function JoinScreen() {
     setLoading(true);
     try {
       await joinTrip({ code, name });
-      router.dismissTo("/rollo");
+      router.dismissTo("/roll");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo entrar al viaje");
     } finally {

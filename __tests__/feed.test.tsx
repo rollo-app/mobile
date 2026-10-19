@@ -94,7 +94,7 @@ beforeEach(async () => {
 afterEach(() => alert.mockRestore());
 
 describe("Feed", () => {
-  it("agrupa por día, del más nuevo al más viejo, con lo último de cada día primero", async () => {
+  it("groups by day, newest to oldest, with the latest of each day first", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
         feedItem({ id: "a", day: "2027-01-11", takenAt: Date.parse("2027-01-11T15:00:00Z"), caption: "ayer vieja" }),
@@ -109,7 +109,7 @@ describe("Feed", () => {
     expect(texts).toEqual(["Martes 12", "tarde", "temprano", "Lunes 11", "ayer vieja"]);
   });
 
-  it("tus fotos sin subir van en su día con 'Esperando señal'", async () => {
+  it("your unuploaded photos go in their day with 'Esperando señal'", async () => {
     await queue.enqueue(queued());
     await renderRouter(routes, { initialUrl: "/feed" });
 
@@ -118,18 +118,18 @@ describe("Feed", () => {
     expect(screen.getByText("Martes 12")).toBeVisible();
   });
 
-  it("tocar una fila con ubicación lleva al mapa centrado en esa foto", async () => {
+  it("tapping a row with a location goes to the map centered on that photo", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
     await renderRouter(routes, { initialUrl: "/feed" });
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Fede, / }));
 
-    await waitFor(() => expect(screen).toHavePathname("/mapa"));
-    // El Mapa recibió el id: vuela a la foto.
+    await waitFor(() => expect(screen).toHavePathname("/map"));
+    // The Map received the id: it flies to the photo.
     await waitFor(() => expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33], zoom: 15 })));
   });
 
-  it("una fila sin ubicación no es tocable", async () => {
+  it("a row without a location is not tappable", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem({ lat: null, lng: null })]));
     await renderRouter(routes, { initialUrl: "/feed" });
 
@@ -137,7 +137,7 @@ describe("Feed", () => {
     expect(screen.queryByRole("button", { name: /^Fede, / })).toBeNull();
   });
 
-  it("deslizar para actualizar vuelve a pedir el feed", async () => {
+  it("pull to refresh requests the feed again", async () => {
     await renderRouter(routes, { initialUrl: "/feed" });
     await screen.findByText(EMPTY);
     mocked.fetchFeed.mockClear();
@@ -149,14 +149,14 @@ describe("Feed", () => {
     expect(mocked.fetchFeed).toHaveBeenCalledTimes(1);
   });
 
-  it("no recalcula la agrupación en cada render", async () => {
+  it("does not recompute the grouping on every render", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
     const group = jest.spyOn(sections, "groupByDay");
     await renderRouter(routes, { initialUrl: "/feed" });
     await screen.findByText("el viento no perdona");
     const before = group.mock.calls.length;
 
-    // Refrescar cambia el estado de la pantalla (re-render) pero no los datos.
+    // Refreshing changes the screen state (re-render) but not the data.
     await act(async () => {
       await screen.getByTestId("feed-list").props.refreshControl.props.onRefresh();
     });
@@ -165,12 +165,12 @@ describe("Feed", () => {
     group.mockRestore();
   });
 
-  it("muestra de a tandas y carga más al llegar al final de la lista", async () => {
+  it("shows items in batches and loads more when reaching the end of the list", async () => {
     const many = Array.from({ length: 70 }, (_, n) => feedItem({ id: `f${n}`, takenAt: 1_800_000_000_000 + n * 60_000 }));
     mocked.fetchFeed.mockResolvedValue(feed(many));
     await renderRouter(routes, { initialUrl: "/feed" });
     await screen.findByTestId("feed-list");
-    // El host no expone las props de la lista: se sube hasta el SectionList.
+    // The host does not expose the list props: walk up to the SectionList.
     const list = () => {
       let node: { props: Record<string, any>; parent: any } | null = screen.getByTestId("feed-list");
       while (node && !node.props.onEndReached) node = node.parent;
@@ -191,7 +191,7 @@ describe("Feed", () => {
   });
 
   describe("admin", () => {
-    it("Borrar foto pide confirmación y, si confirma, borra y vuelve a pedir feed y viaje", async () => {
+    it("Borrar foto asks for confirmation and, if confirmed, deletes and refetches feed and trip", async () => {
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
       await renderRouter(routes, { initialUrl: "/feed" });
       await screen.findByText("el viento no perdona");
@@ -219,7 +219,7 @@ describe("Feed", () => {
       await waitFor(() => expect(mocked.fetchTrip).toHaveBeenCalled());
     });
 
-    it("si el server rechaza, avisa con una alerta con su mensaje", async () => {
+    it("if the server rejects, it shows an alert with its message", async () => {
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
       mocked.deleteMedia.mockRejectedValue(new Error("El viaje ya se reveló"));
       await renderRouter(routes, { initialUrl: "/feed" });
@@ -233,7 +233,7 @@ describe("Feed", () => {
       await waitFor(() => expect(alert).toHaveBeenLastCalledWith("No se pudo borrar", "El viaje ya se reveló"));
     });
 
-    it("una foto pendiente no se puede borrar", async () => {
+    it("a pending photo cannot be deleted", async () => {
       await queue.enqueue(queued());
       await renderRouter(routes, { initialUrl: "/feed" });
 
@@ -243,7 +243,7 @@ describe("Feed", () => {
     });
   });
 
-  it("un miembro que no es admin no puede borrar", async () => {
+  it("a non-admin member cannot delete", async () => {
     mocked.fetchTrip.mockResolvedValue(detail("member"));
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
     await renderRouter(routes, { initialUrl: "/feed" });
@@ -253,12 +253,12 @@ describe("Feed", () => {
     expect(sheet).not.toHaveBeenCalled();
   });
 
-  it("sin fotos explica que van a aparecer acá", async () => {
+  it("with no photos it explains they will show up here", async () => {
     await renderRouter(routes, { initialUrl: "/feed" });
     expect(await screen.findByText(EMPTY)).toBeVisible();
   });
 
-  it("mientras carga muestra un indicador chico y no el vacío", async () => {
+  it("while loading it shows a small indicator, not the empty state", async () => {
     mocked.fetchFeed.mockReturnValue(new Promise(() => {}));
     await renderRouter(routes, { initialUrl: "/feed" });
 
@@ -266,7 +266,7 @@ describe("Feed", () => {
     expect(screen.queryByText(EMPTY)).toBeNull();
   });
 
-  it("si falla y no hay cache muestra el error con Reintentar", async () => {
+  it("if it fails with no cache it shows the error with Reintentar", async () => {
     mocked.fetchFeed.mockRejectedValueOnce(new Error("Sin conexión"));
     await renderRouter(routes, { initialUrl: "/feed" });
 

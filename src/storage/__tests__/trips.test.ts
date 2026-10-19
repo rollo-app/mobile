@@ -12,8 +12,8 @@ const session = (overrides: Partial<TripSession> = {}): TripSession => ({
   ...overrides,
 });
 
-describe("sesiones de viaje", () => {
-  it("guarda el viaje y su token", async () => {
+describe("trip sessions", () => {
+  it("saves the trip and its token", async () => {
     await saveSession(session());
 
     expect(await listTrips()).toEqual([
@@ -22,7 +22,7 @@ describe("sesiones de viaje", () => {
     expect(await getToken(session().tripId)).toBe("secret-token");
   });
 
-  it("nunca guarda el token en la lista de viajes", async () => {
+  it("never stores the token in the trip list", async () => {
     await saveSession(session());
 
     const [trip] = await listTrips();
@@ -33,14 +33,14 @@ describe("sesiones de viaje", () => {
     expect(indexEntry[1]).not.toContain("secret-token");
   });
 
-  it("muestra primero el último viaje al que entraste", async () => {
+  it("shows the last trip you entered first", async () => {
     await saveSession(session({ tripId: "a", tripName: "Primero" }));
     await saveSession(session({ tripId: "b", tripName: "Segundo" }));
 
     expect((await listTrips()).map((t) => t.tripName)).toEqual(["Segundo", "Primero"]);
   });
 
-  it("volver a guardar el mismo viaje lo actualiza sin duplicarlo", async () => {
+  it("saving the same trip again updates it without duplicating it", async () => {
     await saveSession(session({ tripName: "Viejo nombre" }));
     await saveSession(session({ tripName: "Nuevo nombre", token: "otro-token" }));
 
@@ -50,7 +50,7 @@ describe("sesiones de viaje", () => {
     expect(await getToken(session().tripId)).toBe("otro-token");
   });
 
-  it("sacar un viaje borra también su token", async () => {
+  it("removing a trip also deletes its token", async () => {
     await saveSession(session());
     await removeTrip(session().tripId);
 
@@ -58,11 +58,11 @@ describe("sesiones de viaje", () => {
     expect(await getToken(session().tripId)).toBeNull();
   });
 
-  it("sin viajes guardados devuelve una lista vacía", async () => {
+  it("with no saved trips returns an empty list", async () => {
     expect(await listTrips()).toEqual([]);
   });
 
-  it("abrir un viaje lo pone primero sin tocar su token", async () => {
+  it("opening a trip puts it first without touching its token", async () => {
     await saveSession(session({ tripId: "a", tripName: "Primero", token: "token-a" }));
     await saveSession(session({ tripId: "b", tripName: "Segundo" }));
 
@@ -72,7 +72,7 @@ describe("sesiones de viaje", () => {
     expect(await getToken("a")).toBe("token-a");
   });
 
-  it("abrir un viaje que no está guardado no hace nada", async () => {
+  it("opening a trip that is not saved does nothing", async () => {
     await saveSession(session({ tripId: "a", tripName: "Primero" }));
 
     await markOpened("otro");
@@ -82,7 +82,7 @@ describe("sesiones de viaje", () => {
 });
 
 describe("updateMemberName", () => {
-  it("cambia el nombre del viaje sin tocar el token ni el orden", async () => {
+  it("changes the name on the trip without touching the token or the order", async () => {
     await saveSession(session());
     await saveSession(session({ tripId: "otro", tripName: "Bariloche" }));
 
@@ -95,7 +95,7 @@ describe("updateMemberName", () => {
     expect(await getToken(session().tripId)).toBe("secret-token");
   });
 
-  it("si el viaje no existe no hace nada", async () => {
+  it("if the trip does not exist it does nothing", async () => {
     await updateMemberName("nada", "Juan");
 
     expect(await listTrips()).toEqual([]);

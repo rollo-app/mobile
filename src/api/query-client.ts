@@ -6,13 +6,13 @@ import { AppState } from "react-native";
 const SECOND = 1000;
 const DAY = 24 * 60 * 60 * SECOND;
 
-/** Cuánto se guarda el cache en el celular (también es el `maxAge` del persister). */
+/** How long the cache is kept on the phone (also the persister's `maxAge`). */
 export const CACHE_MAX_AGE = 7 * DAY;
 
 /**
- * Cliente de datos de la app. `offlineFirst`: siempre se intenta pedir, pero si no hay
- * señal se muestra lo que hay en cache. Los datos son "frescos" 30 s: dentro de ese
- * rato nadie vuelve a pedir el mismo viaje.
+ * The app's data client. `offlineFirst`: it always tries to fetch, but with no
+ * signal it shows what's cached. Data is "fresh" for 30 s: within that
+ * window nobody refetches the same trip.
  */
 export function createQueryClient() {
   return new QueryClient({
@@ -32,8 +32,8 @@ export const queryClient = createQueryClient();
 export const persister = createAsyncStoragePersister({ storage: Storage, key: "rollo.query-cache" });
 
 /**
- * El foco de la app es AppState. Sin NetInfo no sabemos si hay señal: damos por
- * "online" a la app mientras está en primer plano, así al volver se reintenta lo pausado.
+ * The app's focus is AppState. Without NetInfo we can't tell if there's signal: we treat
+ * the app as "online" while it's in the foreground, so paused requests retry on return.
  */
 export function connectAppState() {
   const subscription = AppState.addEventListener("change", (state) => focusManager.setFocused(state === "active"));
