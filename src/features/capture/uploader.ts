@@ -13,6 +13,8 @@ export type UploaderDeps = {
   getToken: (tripId: string) => Promise<string | null>;
   /** PUT del archivo a la URL firmada; devuelve el status. Rechaza si no hay red. */
   putFile: (uri: string, url: string, contentType: string) => Promise<number>;
+  /** Si el archivo local existe todavía. */
+  fileExists: (uri: string) => Promise<boolean>;
   /** Borra la carpeta Documents/pending/<id>. */
   removeFiles: (id: string) => Promise<void>;
   now?: () => number;
@@ -118,20 +120,27 @@ export function createUploader(deps: UploaderDeps) {
   async function pass() {
     const due = (await deps.queue.pending()).filter((m) => m.retryAt === null || m.retryAt <= now());
     for (const m of due) {
-      const token = await deps.getToken(m.tripId);
-      if (!token) {
-        await deps.queue.markFailed(m.id, "no_token");
-        continue;
-      }
       try {
+        const token = await deps.getToken(m.tripId);
+        if (!token) {
+          await deps.queue.markFailed(m.id, "no_token");
+          continue;
+        }
+        if (!(await deps.fileExists(m.originalUri)) || !(await deps.fileExists(m.thumbUri))) {
+          await deps.queue.markFailed(m.id, "missing_file");
+          continue;
+        }
         await send(m, token);
       } catch (e) {
         const phase: Phase = e instanceof CompleteFailed ? "complete" : "register";
-        const verdict = classify(e instanceof CompleteFailed ? e.cause : e, phase);
-        if (!verdict) throw e;
+        // Un error que no sabemos clasificar se reintenta: nunca corta la pasada ni traba la cola.
+        const verdict = classify(e instanceof CompleteFailed ? e.cause : e, phase) ?? { kind: "retry" };
         if (verdict.kind === "failed") {
           await deps.queue.markFailed(m.id, verdict.reason);
           continue;
+        }
+        if (!(e instanceof PutFailed || e instanceof ApiError || e instanceof CompleteFailed)) {
+          console.warn("Error inesperado al subir", m.id, e);
         }
         await deps.queue.markAttempt(m.id, now() + retryDelay(m.attempts + 1));
         if (verdict.kind === "offline") return;

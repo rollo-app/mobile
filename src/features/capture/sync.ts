@@ -21,6 +21,10 @@ function getUploader() {
         });
         return result.status;
       },
+      fileExists: async (uri) => {
+        const { File } = await import("expo-file-system");
+        return new File(uri).exists;
+      },
       removeFiles: async (id) => {
         const { Directory, Paths } = await import("expo-file-system");
         const dir = new Directory(Paths.document, "pending", id);

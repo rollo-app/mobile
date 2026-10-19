@@ -45,6 +45,7 @@ let routes: Array<(c: Call) => Response | undefined>;
 let puts: Array<{ uri: string; url: string; contentType: string }>;
 let putStatus: (url: string) => number | Error;
 let removed: string[];
+let missing: Set<string>;
 let now: number;
 let deps: UploaderDeps;
 
@@ -56,6 +57,7 @@ beforeEach(async () => {
   calls = [];
   puts = [];
   removed = [];
+  missing = new Set();
   now = NOW;
   putStatus = () => 200;
   routes = [];
@@ -86,6 +88,7 @@ beforeEach(async () => {
       if (status instanceof Error) throw status;
       return status;
     },
+    fileExists: async (uri) => !missing.has(uri),
     removeFiles: async (id) => {
       removed.push(id);
     },
@@ -362,6 +365,58 @@ describe("uploader", () => {
       await createUploader(deps).run();
 
       expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "http_400" })]);
+    });
+  });
+
+  describe("ítems que no deben trabar la cola", () => {
+    it("si falta el thumb lo marca missing_file y sube el siguiente igual", async () => {
+      happyServer();
+      await queue.enqueue(item({ id: "a", takenAt: 1, thumbUri: "file:///docs/pending/a/thumb.jpg" }));
+      await queue.enqueue(item({ id: "b", takenAt: 2, originalUri: "file:///b/o.jpg", thumbUri: "file:///b/t.jpg" }));
+      missing.add("file:///docs/pending/a/thumb.jpg");
+
+      await createUploader(deps).run();
+
+      expect(await queue.failed()).toEqual([expect.objectContaining({ id: "a", failedReason: "missing_file" })]);
+      expect(await queue.pending()).toEqual([]);
+      expect(removed).toEqual(["b"]);
+      expect(calls.some((c) => c.url.includes("/a/") || (c.body as { id?: string } | undefined)?.id === "a")).toBe(false);
+    });
+
+    it("si falta el original también", async () => {
+      happyServer();
+      await queue.enqueue(item());
+      missing.add(item().originalUri);
+
+      await createUploader(deps).run();
+
+      expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "missing_file" })]);
+      expect(removed).toEqual([]);
+    });
+
+    it("un error raro en un ítem le suma un intento y no frena a los demás", async () => {
+      happyServer();
+      await queue.enqueue(item({ id: "a", takenAt: 1 }));
+      await queue.enqueue(item({ id: "b", takenAt: 2 }));
+      const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+      let first = true;
+      const uploader = createUploader({
+        ...deps,
+        getToken: async (tripId) => {
+          if (first) {
+            first = false;
+            throw new TypeError("raro");
+          }
+          return deps.getToken(tripId);
+        },
+      });
+
+      await uploader.run();
+
+      expect(removed).toEqual(["b"]);
+      expect(await queue.pending()).toEqual([expect.objectContaining({ id: "a", attempts: 1, retryAt: NOW + 1000 })]);
+      expect(warn).toHaveBeenCalled();
+      warn.mockRestore();
     });
   });
 
