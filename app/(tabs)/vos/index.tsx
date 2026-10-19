@@ -2,11 +2,11 @@ import { router } from "expo-router";
 import { Share } from "react-native";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
+import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
 
 export default function VosScreen() {
   const { trip, trips } = useActiveTrip();
-  const { detail, error } = useTripDetail(trip?.tripId);
+  const { detail, error, refetch, isRefetching } = useTripDetail(trip?.tripId);
 
   const share = () =>
     detail &&
@@ -24,7 +24,12 @@ export default function VosScreen() {
         </Section>
       )}
 
-      {error && <ErrorText>{error}</ErrorText>}
+      {error && (
+        <>
+          <ErrorText>{error}</ErrorText>
+          <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
+        </>
+      )}
       {!error && !detail && trip && <Loading />}
 
       {detail && (

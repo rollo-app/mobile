@@ -17,6 +17,8 @@ export type UploaderDeps = {
   fileExists: (uri: string) => Promise<boolean>;
   /** Borra la carpeta Documents/pending/<id>. */
   removeFiles: (id: string) => Promise<void>;
+  /** Se llama con el viaje cada vez que una subida queda confirmada (cambian el cupo y el total). */
+  onUploaded?: (tripId: string) => void | Promise<void>;
   now?: () => number;
 };
 
@@ -151,6 +153,7 @@ export function createUploader(deps: UploaderDeps) {
       }
       await deps.queue.remove(m.id);
       await deps.removeFiles(m.id);
+      await deps.onUploaded?.(m.tripId);
     }
   }
 

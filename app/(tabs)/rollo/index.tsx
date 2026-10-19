@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
+import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -12,13 +12,16 @@ const COLUMNS = 6;
 
 export default function RolloScreen() {
   const { trip } = useActiveTrip();
-  const { detail, error } = useTripDetail(trip?.tripId);
+  const { detail, error, refetch, isRefetching } = useTripDetail(trip?.tripId);
 
   return (
     <Screen grouped>
       {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.tripName} /> }} />}
       {error ? (
-        <ErrorText>{error}</ErrorText>
+        <>
+          <ErrorText>{error}</ErrorText>
+          <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
+        </>
       ) : !detail ? (
         <Loading />
       ) : (

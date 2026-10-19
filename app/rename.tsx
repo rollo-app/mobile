@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { renameMe } from "@/features/trips/actions";
@@ -7,6 +8,7 @@ import { Button, ErrorText, Field, Screen } from "@/ui/components";
 /** Editar tu nombre en el viaje activo (sheet). */
 export default function RenameScreen() {
   const { trip } = useActiveTrip();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,7 @@ export default function RenameScreen() {
     setLoading(true);
     try {
       await renameMe(trip.tripId, trimmed);
+      void queryClient.invalidateQueries({ queryKey: ["trip", trip.tripId] });
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cambiar el nombre");

@@ -1,3 +1,5 @@
+import { Directory, File, Paths } from "expo-file-system";
+import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
 import { getToken } from "@/storage/trips";
 import { getQueue } from "./store";
@@ -13,8 +15,6 @@ function getUploader() {
       apiUrl: API_URL,
       getToken,
       putFile: async (uri, url, contentType) => {
-        // Import perezoso: expo-file-system es nativo y los tests no lo cargan.
-        const { File } = await import("expo-file-system");
         const result = await new File(uri).upload(url, {
           httpMethod: "PUT",
           headers: { "Content-Type": contentType },
@@ -22,14 +22,13 @@ function getUploader() {
         return result.status;
       },
       fileExists: async (uri) => {
-        const { File } = await import("expo-file-system");
         return new File(uri).exists;
       },
       removeFiles: async (id) => {
-        const { Directory, Paths } = await import("expo-file-system");
         const dir = new Directory(Paths.document, "pending", id);
         if (dir.exists) dir.delete();
       },
+      onUploaded: (tripId) => queryClient.invalidateQueries({ queryKey: ["trip", tripId] }),
     }),
   );
   return uploader;
