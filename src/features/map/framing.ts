@@ -1,7 +1,9 @@
 import type { PinFeature } from "./features";
 
-/** El zoom máximo con el que se encuadra: por debajo del `clusterMaxZoom`, así las fotos juntas se agrupan. */
-export const FIT_MAX_ZOOM = 14;
+/** Zoom máximo del mapa. Con `clusterMaxZoom` por encima, el clustering rige en todos los zooms posibles. */
+export const MAX_ZOOM = 17;
+/** Zoom máximo al encuadrar, aunque todo entre en pocos metros. */
+export const FIT_MAX_ZOOM = 15;
 /** Distancia en píxeles de pantalla dentro de la cual dos fotos cuentan como "el mismo lugar". */
 export const SAME_SPOT_PX = 24;
 
@@ -19,8 +21,8 @@ export type FitTarget = { kind: "bounds"; bounds: Bounds } | { kind: "center"; c
  */
 export function fitTarget(bounds: Bounds): FitTarget {
   const [w, s, e, n] = bounds;
-  // Con 0.02° (~2 km) de lado ya cabe a zoom FIT_MAX_ZOOM en cualquier pantalla.
-  if (Math.max(e - w, n - s) < 0.02) return { kind: "center", center: [(w + e) / 2, (s + n) / 2], zoom: FIT_MAX_ZOOM };
+  // A zoom 15 entran ~0.006° (~300 px de pantalla): con menos que eso, fitBounds pasaría de FIT_MAX_ZOOM.
+  if (Math.max(e - w, n - s) < 0.006) return { kind: "center", center: [(w + e) / 2, (s + n) / 2], zoom: FIT_MAX_ZOOM };
   return { kind: "bounds", bounds };
 }
 
@@ -38,4 +40,9 @@ export function photosNear(features: PinFeature[], center: [number, number], zoo
     if (closest) near.push(closest);
   }
   return near;
+}
+
+/** ¿Tocar el cluster lo abre con zoom? No si el zoom necesario no existe o ya estamos al tope: van al carrusel. */
+export function canExpandCluster(expansionZoom: number | undefined, currentZoom: number): boolean {
+  return expansionZoom !== undefined && expansionZoom <= MAX_ZOOM && currentZoom < MAX_ZOOM - 0.5;
 }

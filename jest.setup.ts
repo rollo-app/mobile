@@ -87,10 +87,25 @@ jest.mock("@maplibre/maplibre-react-native", () => {
       ),
     Camera: View,
     ViewAnnotation: View,
-    GeoJSONSource: ({ data, onPress }: any) =>
-      React.createElement(
+    // Con 2+ fotos suma un "cluster" que no se puede abrir (necesita zoom 19) y cuyas hojas son las dos primeras.
+    GeoJSONSource: ({ data, onPress, ref }: any) => {
+      React.useImperativeHandle(ref, () => ({
+        getClusterExpansionZoom: async () => 19,
+        getClusterLeaves: async () => data.features.slice(0, 2),
+      }));
+      const cluster = {
+        type: "Feature",
+        geometry: data.features[0]?.geometry,
+        properties: { cluster: true, cluster_id: 1, point_count: 2 },
+      };
+      return React.createElement(
         View,
         null,
+        data.features.length > 1 &&
+          React.createElement(Pressable, {
+            accessibilityLabel: "cluster",
+            onPress: () => onPress({ nativeEvent: { features: [cluster] }, stopPropagation: () => {} }),
+          }),
         data.features.map((f: any) =>
           React.createElement(Pressable, {
             key: f.properties.id,
@@ -98,7 +113,8 @@ jest.mock("@maplibre/maplibre-react-native", () => {
             onPress: () => onPress({ nativeEvent: { features: [f] }, stopPropagation: () => {} }),
           }),
         ),
-      ),
+      );
+    },
     Layer: View,
     UserLocation: View,
     LogManager: { onLog: jest.fn(), setLogLevel: jest.fn() },

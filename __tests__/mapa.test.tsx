@@ -179,4 +179,22 @@ describe("Mapa", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Ver todas" }));
     expect(screen.getByLabelText("mapa")).toBeVisible();
   });
+
+  it("un cluster que no se puede abrir con zoom (mismo punto) abre el carrusel con sus hojas", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([
+        feedItem({ id: "a", caption: "una", takenAt: 1 }),
+        feedItem({ id: "b", caption: "dos", takenAt: 2 }),
+        feedItem({ id: "c", caption: "tres", lat: -48, takenAt: 3 }),
+      ]),
+    );
+    await renderRouter(routes, { initialUrl: "/mapa" });
+
+    await fireEvent.press(await screen.findByLabelText("cluster"));
+
+    expect(await screen.findByTestId("pin-carousel")).toBeTruthy();
+    expect(screen.getByText("una")).toBeTruthy();
+    expect(screen.getByText("dos")).toBeTruthy();
+    expect(screen.queryByText("tres")).toBeNull();
+  });
 });

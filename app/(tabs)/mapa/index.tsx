@@ -9,10 +9,10 @@ import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { boundsOf, feedToItems, itemsByTime, mergeItems, toFeatures, type MapItem } from "@/features/map/features";
-import { fitTarget, isTripActive, photosNear } from "@/features/map/framing";
+import { canExpandCluster, fitTarget, isTripActive, MAX_ZOOM, photosNear } from "@/features/map/framing";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
 import { PinCarousel } from "@/features/map/pin-carousel";
-import { CLUSTER_MAX_ZOOM, PinLayers } from "@/features/map/pin-layers";
+import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -163,11 +163,11 @@ export default function MapScreen() {
         const source = sourceRef.current;
         const expansion = await source?.getClusterExpansionZoom(props.cluster_id);
         // Un cluster que ya no se puede abrir (fotos en el mismo punto): sus hojas pasan al carrusel.
-        if (expansion === undefined || expansion > CLUSTER_MAX_ZOOM || zoomRef.current >= CLUSTER_MAX_ZOOM) {
+        if (!canExpandCluster(expansion, zoomRef.current)) {
           const leaves = (await source?.getClusterLeaves(props.cluster_id, props.point_count ?? 100, 0)) ?? [];
           select(leaves.map((l) => l.properties?.id).filter((id): id is string => typeof id === "string"));
         } else {
-          cameraRef.current?.easeTo({ center, zoom: expansion, duration: 400 });
+          cameraRef.current?.easeTo({ center, zoom: expansion!, duration: 400 });
         }
       })();
     },
@@ -204,7 +204,7 @@ export default function MapScreen() {
         }}
         onPress={() => setSelection(null)}
       >
-        <Camera ref={cameraRef} initialViewState={DEFAULT_REGION} />
+        <Camera ref={cameraRef} initialViewState={DEFAULT_REGION} maxZoom={MAX_ZOOM} />
         {hasLocation === true && <UserLocation />}
         <PinLayers data={shown} selectedId={selectedId} sourceRef={sourceRef} onPress={onPinsPress} />
       </Map>

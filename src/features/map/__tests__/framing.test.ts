@@ -1,4 +1,4 @@
-import { fitTarget, isTripActive, photosNear } from "../framing";
+import { canExpandCluster, fitTarget, isTripActive, photosNear } from "../framing";
 import { toFeatures, type MapItem } from "../features";
 
 describe("isTripActive", () => {
@@ -18,11 +18,11 @@ describe("fitTarget", () => {
     expect(fitTarget([-73, -50, -72, -49])).toEqual({ kind: "bounds", bounds: [-73, -50, -72, -49] });
   });
 
-  it("si están todos juntos (o es uno solo) centra con un zoom que no pasa el del clustering", () => {
+  it("si están todos juntos (o es uno solo) centra con zoom 15 como tope", () => {
     const t = fitTarget([-72.89, -49.33, -72.8899, -49.3299]);
     expect(t.kind).toBe("center");
     if (t.kind === "center") {
-      expect(t.zoom).toBeLessThanOrEqual(14);
+      expect(t.zoom).toBe(15);
       expect(t.center[0]).toBeCloseTo(-72.88995, 4);
     }
   });
@@ -50,5 +50,19 @@ describe("photosNear", () => {
   it("devuelve al menos la tocada aunque el punto no coincida exacto", () => {
     const { features } = toFeatures([item("a", -72.9, -49.3)], none);
     expect(photosNear(features, [-72.9, -49.3], 20).map((f) => f.properties.id)).toEqual(["a"]);
+  });
+});
+
+describe("canExpandCluster", () => {
+  it("se abre con zoom si el zoom necesario está dentro del máximo", () => {
+    expect(canExpandCluster(14, 12)).toBe(true);
+  });
+  it("no se abre si necesita más zoom del máximo (fotos en el mismo punto)", () => {
+    expect(canExpandCluster(18, 12)).toBe(false);
+    expect(canExpandCluster(undefined, 12)).toBe(false);
+  });
+  it("no se abre si ya estamos al zoom máximo", () => {
+    expect(canExpandCluster(17, 17)).toBe(false);
+    expect(canExpandCluster(17, 16.8)).toBe(false);
   });
 });
