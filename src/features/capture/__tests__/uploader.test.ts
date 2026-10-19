@@ -135,6 +135,19 @@ describe("uploader", () => {
     expect(uploaded).toEqual([{ tripId: TRIP, pending: 0 }]);
   });
 
+  it("avisa cuando descarta una foto para siempre, con el viaje, después de marcarla fallida", async () => {
+    routes.push((c) => (c.method === "POST" && c.url.endsWith("/media") ? json(409, { error: "El rollo ya se reveló" }) : undefined));
+    await queue.enqueue(item());
+    const discarded: Array<{ tripId: string; pending: number }> = [];
+    deps.onDiscarded = async (tripId) => {
+      discarded.push({ tripId, pending: await queue.countPendingForTrip(tripId) });
+    };
+
+    await createUploader(deps).run();
+
+    expect(discarded).toEqual([{ tripId: TRIP, pending: 0 }]);
+  });
+
   it("registra con el token del viaje y todos los datos de la captura", async () => {
     happyServer();
     await queue.enqueue(item());

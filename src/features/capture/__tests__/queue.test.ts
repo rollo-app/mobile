@@ -135,3 +135,17 @@ describe("cola de subida", () => {
     expect((await queue.pending())[0]).toMatchObject({ id: "old", attempts: 0, retryAt: null });
   });
 });
+
+describe("countPendingForTrip", () => {
+  it("cuenta las pendientes del viaje de cualquier día, sin las fallidas ni las de otros viajes", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "a", day: "2027-01-12" }));
+    await queue.enqueue(item({ id: "b", day: "2027-01-13", type: "video" }));
+    await queue.enqueue(item({ id: "c", day: "2027-01-13" }));
+    await queue.enqueue(item({ id: "d", tripId: "otro" }));
+    await queue.markFailed("c", "quota");
+
+    expect(await queue.countPendingForTrip(TRIP)).toBe(2);
+    expect(await queue.countPendingForTrip("vacio")).toBe(0);
+  });
+});

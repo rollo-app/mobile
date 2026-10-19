@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
+import { usePendingCount } from "@/features/capture/use-pending-count";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
@@ -13,6 +14,9 @@ const COLUMNS = 6;
 export default function RolloScreen() {
   const { trip } = useActiveTrip();
   const { detail, error, refetch, isRefetching } = useTripDetail(trip?.tripId);
+  const pending = usePendingCount(trip?.tripId);
+  // Tus fotos en cola ya están en el rollo, aunque todavía no se hayan subido.
+  const total = (detail?.totalUploaded ?? 0) + pending;
 
   return (
     <Screen grouped>
@@ -29,9 +33,9 @@ export default function RolloScreen() {
           <View style={styles.block}>
             <View style={styles.header}>
               <Text style={[type.headline, { color: colors.label }]}>En el rollo</Text>
-              <Text style={[type.body, styles.count]}>{detail.totalUploaded}</Text>
+              <Text style={[type.body, styles.count]}>{total}</Text>
             </View>
-            <ContactSheet total={detail.totalUploaded} />
+            <ContactSheet total={total} />
             <Footnote>Nadie las ve hasta el revelado. Ni vos.</Footnote>
           </View>
 

@@ -19,6 +19,8 @@ export type UploaderDeps = {
   removeFiles: (id: string) => Promise<void>;
   /** Se llama con el viaje cada vez que una subida queda confirmada (cambian el cupo y el total). */
   onUploaded?: (tripId: string) => void | Promise<void>;
+  /** Se llama con el viaje cuando una foto sale de la cola sin subirse (falla definitiva). */
+  onDiscarded?: (tripId: string) => void | Promise<void>;
   now?: () => number;
 };
 
@@ -122,17 +124,23 @@ export function createUploader(deps: UploaderDeps) {
     }
   }
 
+  /** Falla definitiva: se marca y se avisa, porque deja de contar como pendiente. */
+  async function discard(m: PendingMedia, reason: string) {
+    await deps.queue.markFailed(m.id, reason);
+    await deps.onDiscarded?.(m.tripId);
+  }
+
   async function pass() {
     const due = (await deps.queue.pending()).filter((m) => m.retryAt === null || m.retryAt <= now());
     for (const m of due) {
       try {
         const token = await deps.getToken(m.tripId);
         if (!token) {
-          await deps.queue.markFailed(m.id, "no_token");
+          await discard(m, "no_token");
           continue;
         }
         if (!(await deps.fileExists(m.originalUri)) || !(await deps.fileExists(m.thumbUri))) {
-          await deps.queue.markFailed(m.id, "missing_file");
+          await discard(m, "missing_file");
           continue;
         }
         await send(m, token);
@@ -141,7 +149,7 @@ export function createUploader(deps: UploaderDeps) {
         // Un error que no sabemos clasificar se reintenta: nunca corta la pasada ni traba la cola.
         const verdict = classify(e instanceof CompleteFailed ? e.cause : e, phase) ?? { kind: "retry" };
         if (verdict.kind === "failed") {
-          await deps.queue.markFailed(m.id, verdict.reason);
+          await discard(m, verdict.reason);
           continue;
         }
         if (!(e instanceof PutFailed || e instanceof ApiError || e instanceof CompleteFailed)) {

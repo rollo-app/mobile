@@ -3,6 +3,7 @@ import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
 import { getToken } from "@/storage/trips";
 import { getQueue } from "./store";
+import { pendingKey } from "./use-pending-count";
 import { createUploader } from "./uploader";
 
 let uploader: Promise<ReturnType<typeof createUploader>> | null = null;
@@ -28,7 +29,14 @@ function getUploader() {
         const dir = new Directory(Paths.document, "pending", id);
         if (dir.exists) dir.delete();
       },
-      onUploaded: (tripId) => queryClient.invalidateQueries({ queryKey: ["trip", tripId] }),
+      // Después de sacarla de la cola: si no, por un instante cuenta en el server y en la cola.
+      onUploaded: async (tripId) => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["trip", tripId] }),
+          queryClient.invalidateQueries({ queryKey: pendingKey(tripId) }),
+        ]);
+      },
+      onDiscarded: (tripId) => queryClient.invalidateQueries({ queryKey: pendingKey(tripId) }),
     }),
   );
   return uploader;

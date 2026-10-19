@@ -160,6 +160,15 @@ export async function createQueue(db: QueueDb) {
       await db.runAsync("UPDATE pending_media SET failed_reason = ? WHERE id = ?", reason, id);
     },
 
+    /** Todo lo sacado y no subido de un viaje, de cualquier día, sin las fallidas. */
+    async countPendingForTrip(tripId: string) {
+      const rows = await db.getAllAsync<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL",
+        tripId,
+      );
+      return rows[0]?.n ?? 0;
+    },
+
     /** Lo sacado y no subido de un viaje en un día: se descuenta del cupo que informó el server. */
     async countPending(tripId: string, day: string) {
       const rows = await db.getAllAsync<{ type: MediaType; n: number }>(

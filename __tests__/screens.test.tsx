@@ -1,10 +1,14 @@
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { queryClient } from "@/api/query-client";
+import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { listTrips, saveSession, updateMemberName } from "@/storage/trips";
+import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
 const mocked = jest.mocked(actions);
+const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
@@ -83,6 +87,61 @@ describe("Rollo", () => {
     await renderRouter(routes, { initialUrl: "/rollo" });
 
     expect(await screen.findByText("Sin conexión. Probá de nuevo cuando tengas señal.")).toBeVisible();
+  });
+});
+
+describe("Rollo con fotos sin subir", () => {
+  let queue: Queue;
+  const queued = (): QueuedMedia => ({
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    tripId: SUR,
+    type: "photo",
+    takenAt: Date.now(),
+    day: "2027-01-05",
+    lat: null,
+    lng: null,
+    accuracyM: null,
+    caption: null,
+    durationS: null,
+    width: 4000,
+    height: 3000,
+    sizeBytes: 1000,
+    originalUri: "file:///docs/pending/a/original.jpg",
+    thumbUri: "file:///docs/pending/a/thumb.jpg",
+    thumbhash: null,
+  });
+
+  beforeEach(async () => {
+    await saveTrip(SUR, "Viaje al sur");
+    queue = await createQueue(memoryDb());
+    getQueue.mockImplementation(() => Promise.resolve(queue));
+  });
+
+  it("cuenta tus fotos en la cola además de las del server", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 1 }));
+    await queue.enqueue(queued());
+    await renderRouter(routes, { initialUrl: "/rollo" });
+
+    expect(await screen.findByLabelText("2 en el rollo")).toBeVisible();
+    expect(screen.getByText("2")).toBeVisible();
+  });
+
+  it("al subirse sigue en 2: el server la suma y la cola la suelta, sin contarla doble", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 1 }));
+    await queue.enqueue(queued());
+    await renderRouter(routes, { initialUrl: "/rollo" });
+    expect(await screen.findByLabelText("2 en el rollo")).toBeVisible();
+
+    // Lo mismo que hace el uploader: sacarla de la cola y después avisar.
+    mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 2 }));
+    await queue.remove(queued().id);
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ["trip", SUR] });
+      await queryClient.invalidateQueries({ queryKey: ["pending", SUR] });
+    });
+
+    expect(await screen.findByLabelText("2 en el rollo")).toBeVisible();
+    expect(screen.queryByLabelText("3 en el rollo")).toBeNull();
   });
 });
 
