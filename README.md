@@ -19,12 +19,28 @@ src/
 __tests__/              tests de pantallas
 ```
 
-## Correr la app
+## Correr la app en el iPhone
+
+Expo Go de la App Store va atrasado varios SDKs, así que usamos un **development build**
+(nuestra propia app de desarrollo, que además soporta módulos nativos).
+
+Requisitos (una sola vez):
+- Node 22 (`nvm use` toma la versión del `.nvmrc`).
+- Xcode instalado y abierto al menos una vez. En Xcode → Settings → Accounts, agregá tu Apple ID.
+- iPhone por cable, con **Modo desarrollador** activado (Ajustes → Privacidad y seguridad → Modo desarrollador).
 
 ```bash
+nvm use
 npm install
-npm start          # escaneá el QR con Expo Go en el iPhone
+npx expo run:ios --device   # elegí tu iPhone de la lista
 ```
+
+La primera vez, si falla la firma: abrí `ios/Rollo.xcworkspace` en Xcode, en *Signing & Capabilities*
+elegí tu *Personal Team*, y volvé a correr el comando. En el iPhone, confiá en el certificado
+(Ajustes → General → VPN y gestión de dispositivos).
+
+Con la cuenta gratis de Apple el build vence a los 7 días: se vuelve a instalar con el mismo comando.
+Después del primer build, para el día a día alcanza con `npm start` y abrir la app Rollo en el iPhone.
 
 Contra el backend local en vez del de producción:
 
