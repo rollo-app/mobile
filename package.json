@@ -62,7 +62,7 @@
     },
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/.claude/"
+      "<rootDir>/.claude/"
     ],
     "modulePathIgnorePatterns": [
       "<rootDir>/.claude/"
