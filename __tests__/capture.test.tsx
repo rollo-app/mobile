@@ -137,7 +137,7 @@ describe("Captura", () => {
 
     expect(await screen.findByRole("button", { name: "Mandar al rollo" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Repetir" })).toBeVisible();
-    expect(screen.getByLabelText("Epígrafe")).toBeVisible();
+    expect(screen.getByLabelText("Caption")).toBeVisible();
   });
 
   it("repetir descarta la foto y vuelve a abrir la cámara", async () => {
@@ -151,11 +151,11 @@ describe("Captura", () => {
     expect(mediaMock.discard).toHaveBeenCalledWith(photo.uri);
   });
 
-  it("mandar la guarda en la cola con hora, ubicación y epígrafe, y vuelve", async () => {
+  it("mandar la guarda en la cola con hora, ubicación y caption, y vuelve", async () => {
     picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
     await openCapture();
 
-    await fireEvent.changeText(await screen.findByLabelText("Epígrafe"), "  el viento no perdona ");
+    await fireEvent.changeText(await screen.findByLabelText("Caption"), "  el viento no perdona ");
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
 
     await waitFor(() => expect(screen).toHavePathname("/rollo"));

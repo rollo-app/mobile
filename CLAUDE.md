@@ -24,7 +24,7 @@ Decisiones de producto:
   abre la cámara; sin fix, usar la última conocida y guardar su precisión. Cola local en SQLite, subida
   en segundo plano cuando hay señal, **UUID generado en el celular** (reintentar es seguro).
 - **Captura:** cámara nativa con selector foto/video (máx. 15 s); si no quedan videos hoy, abre solo en
-  foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + epígrafe opcional. Una vez
+  foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + caption opcional. Una vez
   mandada no se puede repetir ni ver.
 - **Antes del revelado** no se ve ninguna foto, solo su **ThumbHash** (colores difusos, lo genera el
   celular y el server lo devuelve en el feed). Para que den ganas de abrir la app: **mapa en vivo** con
@@ -51,7 +51,7 @@ Decisiones de producto:
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
   cards por todos lados, bordes de wireframe ni fuentes descargadas: se ve hecho con IA. La
-  personalidad va en pocos detalles: los epígrafes en la serif del sistema (New York), la hoja de
+  personalidad va en pocos detalles: los captions en la serif del sistema (New York), la hoja de
   contacto del rollo, la animación de "mandar al rollo". Antes de diseñar una pantalla, repasar las 20
   "native slop tells" de la skill `expo-design-system`.
 - **Cómo se entera el usuario de lo que pasa (sin toasts: en iOS no existen):**
@@ -149,7 +149,7 @@ Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre*
    Paquetes a evaluar para el SDK 58: `expo-image-picker`, `expo-location`, `expo-sqlite`,
    `expo-image-manipulator`, `expo-file-system` (subida en background), `expo-video-thumbnails`,
    `react-native-compressor`.
-2. **Antes del revelado:** mapa con pins (`react-native-maps`) + feed de epígrafes + contador.
+2. **Antes del revelado:** mapa con pins (`react-native-maps`) + feed de captions + contador.
 3. **Revelado:** galería, mapa con fotos, timeline por día, descarga.
 4. **Modo viaje:** push con Expo, momento doble (principal + selfie). Es lo primero que se recorta si no llegamos.
 5. **Prueba real** en una escapada corta con amigos, antes del viaje.

@@ -4,7 +4,7 @@ import { Platform, type ColorValue, type TextStyle } from "react-native";
 /**
  * Tokens de diseño. La app usa los colores y la tipografía del sistema (iOS):
  * se adaptan solos a claro/oscuro y a la accesibilidad. La personalidad va en
- * pocos detalles (epígrafes en serif, la hoja de contacto del rollo), no acá.
+ * pocos detalles (captions en serif, la hoja de contacto del rollo), no acá.
  */
 
 const pick = (ios: ColorValue, fallback: string): ColorValue => Platform.select({ ios, default: fallback })!;
@@ -37,6 +37,6 @@ export const type = {
   subhead: { fontSize: 15 },
   footnote: { fontSize: 13 },
   caption: { fontSize: 12 },
-  /** Los epígrafes: la voz de la gente, en la serif del sistema (New York). */
+  /** Los captions: la voz de la gente, en la serif del sistema (New York). */
   quote: { fontSize: 19, lineHeight: 25, fontFamily: Platform.select({ ios: "ui-serif", default: "serif" }) },
 } as const satisfies Record<string, TextStyle>;
