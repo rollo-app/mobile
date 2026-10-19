@@ -50,7 +50,7 @@ describe("cola de subida", () => {
     expect(await queue.pending()).toHaveLength(1);
   });
 
-  it("acepta datos opcionales vacíos (sin GPS, sin epígrafe)", async () => {
+  it("acepta datos opcionales vacíos (sin GPS, sin caption)", async () => {
     const queue = await createQueue(memoryDb());
 
     await queue.enqueue(item({ lat: null, lng: null, accuracyM: null, caption: null, thumbhash: null }));

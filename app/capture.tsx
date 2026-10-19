@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { startFix, type Fix } from "@/features/capture/location";
 import { discard, prepareMedia, videoPoster } from "@/features/capture/media";
@@ -28,7 +28,7 @@ type State =
 const MAX_VIDEO_S = 15;
 
 /**
- * Captura: cámara del sistema → preview (repetir o mandar, con epígrafe) → cola.
+ * Captura: cámara del sistema → preview (repetir o mandar, con caption) → cola.
  * Una vez en el rollo no se ve más hasta el revelado.
  */
 export default function CaptureScreen() {
@@ -165,10 +165,12 @@ function Preview(props: {
   onSend: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const keyboardOpen = useKeyboardOpen();
   const { asset, poster } = props.shot;
+  // Columna normal (sin posiciones absolutas): al abrir el teclado, los controles suben con él
+  // y la foto se achica en el espacio que queda, en vez de quedar tapada.
   return (
     <KeyboardAvoidingView behavior="padding" style={styles.dark}>
-      <Image source={{ uri: poster }} style={StyleSheet.absoluteFill} contentFit="contain" />
       <View style={[styles.top, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable
           accessibilityRole="button"
@@ -184,15 +186,21 @@ function Preview(props: {
         ) : null}
       </View>
 
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.md }]}>
+      <Pressable accessible={false} onPress={Keyboard.dismiss} style={styles.photo}>
+        <Image source={{ uri: poster }} style={styles.photo} contentFit="contain" />
+      </Pressable>
+
+      <View style={[styles.bottom, { paddingBottom: keyboardOpen ? spacing.sm : insets.bottom + spacing.md }]}>
         <TextInput
-          accessibilityLabel="Epígrafe"
-          placeholder="Agregá un epígrafe"
+          accessibilityLabel="Caption"
+          placeholder="Agregá un caption"
           placeholderTextColor="rgba(255,255,255,0.55)"
           value={props.caption}
           onChangeText={props.onCaption}
           maxLength={140}
           editable={!props.sending}
+          returnKeyType="done"
+          submitBehavior="blurAndSubmit"
           style={[type.body, styles.caption]}
         />
         {props.error && <ErrorText>{props.error}</ErrorText>}
@@ -212,6 +220,20 @@ function Preview(props: {
       </View>
     </KeyboardAvoidingView>
   );
+}
+
+/** Si el teclado está abierto (para no sumar el margen inferior de la pantalla encima del teclado). */
+function useKeyboardOpen() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardWillShow", () => setOpen(true));
+    const hide = Keyboard.addListener("keyboardWillHide", () => setOpen(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return open;
 }
 
 function Message(props: {
@@ -236,8 +258,9 @@ function Message(props: {
 // El preview es siempre oscuro, como la cámara: la foto manda.
 const styles = StyleSheet.create({
   dark: { flex: 1, backgroundColor: "#000" },
-  top: { position: "absolute", left: 0, right: 0, top: 0, flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.md },
-  bottom: { position: "absolute", left: 0, right: 0, bottom: 0, gap: spacing.sm, paddingHorizontal: spacing.md },
+  top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
+  photo: { flex: 1 },
+  bottom: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   glass: { backgroundColor: "rgba(0,0,0,0.45)", borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: 10 },
   light: { color: "#fff" },
   dim: { color: "rgba(255,255,255,0.75)" },
