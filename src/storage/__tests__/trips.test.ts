@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { getToken, listTrips, removeTrip, saveSession, type TripSession } from "../trips";
+import { getToken, listTrips, markOpened, removeTrip, saveSession, type TripSession } from "../trips";
 
 const session = (overrides: Partial<TripSession> = {}): TripSession => ({
   tripId: "11111111-1111-4111-8111-111111111111",
@@ -60,5 +60,23 @@ describe("sesiones de viaje", () => {
 
   it("sin viajes guardados devuelve una lista vacía", async () => {
     expect(await listTrips()).toEqual([]);
+  });
+
+  it("abrir un viaje lo pone primero sin tocar su token", async () => {
+    await saveSession(session({ tripId: "a", tripName: "Primero", token: "token-a" }));
+    await saveSession(session({ tripId: "b", tripName: "Segundo" }));
+
+    await markOpened("a");
+
+    expect((await listTrips()).map((t) => t.tripName)).toEqual(["Primero", "Segundo"]);
+    expect(await getToken("a")).toBe("token-a");
+  });
+
+  it("abrir un viaje que no está guardado no hace nada", async () => {
+    await saveSession(session({ tripId: "a", tripName: "Primero" }));
+
+    await markOpened("otro");
+
+    expect((await listTrips()).map((t) => t.tripId)).toEqual(["a"]);
   });
 });
