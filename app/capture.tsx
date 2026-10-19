@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,6 +13,7 @@ import { discard, prepareMedia, videoPoster } from "@/features/capture/media";
 import { localDay, remaining } from "@/features/capture/quota";
 import { getQueue } from "@/features/capture/store";
 import { syncQueue } from "@/features/capture/sync";
+import { pendingKey } from "@/features/capture/use-pending-count";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Body, Button, ErrorText } from "@/ui/components";
@@ -32,6 +34,7 @@ const MAX_VIDEO_S = 15;
  * Una vez en el rollo no se ve más hasta el revelado.
  */
 export default function CaptureScreen() {
+  const queryClient = useQueryClient();
   const { trip } = useActiveTrip();
   const { detail, error: detailError } = useTripDetail(trip?.tripId);
   const [state, setState] = useState<State>({ kind: "waiting" });
@@ -98,6 +101,7 @@ export default function CaptureScreen() {
         caption: caption.trim() || null,
         ...prepared,
       });
+      void queryClient.invalidateQueries({ queryKey: pendingKey(trip.tripId) });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       void syncQueue();
       router.back();
