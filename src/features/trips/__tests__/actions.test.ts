@@ -36,25 +36,45 @@ afterEach(() => {
 });
 
 describe("createTrip", () => {
-  it("starts today, lasts the given days and is revealed at the end", async () => {
+  it("sends the configured dates and limits as they are", async () => {
     const fetchMock = mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok" });
 
-    await createTrip({ name: "  Viaje al sur ", adminName: " Juani ", days: 10, timezone: "America/Argentina/Buenos_Aires" });
+    await createTrip({
+      name: "  Sur 2027 ",
+      adminName: " Juani ",
+      startsAt: NOW,
+      endsAt: NOW + 10 * DAY,
+      revealAt: NOW + 11 * DAY,
+      dailyPhotoLimit: 20,
+      dailyVideoLimit: 0,
+      timezone: "America/Argentina/Buenos_Aires",
+    });
 
     expect(await sentBody(fetchMock)).toEqual({
-      name: "Viaje al sur",
+      name: "Sur 2027",
       adminName: "Juani",
       timezone: "America/Argentina/Buenos_Aires",
       startsAt: NOW,
       endsAt: NOW + 10 * DAY,
-      revealAt: NOW + 10 * DAY,
+      revealAt: NOW + 11 * DAY,
+      dailyPhotoLimit: 20,
+      dailyVideoLimit: 0,
     });
   });
 
   it("saves the session with the admin token", async () => {
     mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok-admin" });
 
-    const created = await createTrip({ name: "Viaje al sur", adminName: "Juani", days: 10, timezone: "UTC" });
+    const created = await createTrip({
+      name: "Viaje al sur",
+      adminName: "Juani",
+      startsAt: NOW,
+      endsAt: NOW + 10 * DAY,
+      revealAt: NOW + 10 * DAY,
+      dailyPhotoLimit: 10,
+      dailyVideoLimit: 3,
+      timezone: "UTC",
+    });
 
     expect(created.id).toBe(trip.id);
     expect(await getToken(trip.id)).toBe("tok-admin");
@@ -111,7 +131,7 @@ describe("fetchTrip", () => {
   });
 
   it("fails if you have no session on that trip", async () => {
-    await expect(fetchTrip("desconocido")).rejects.toThrow("No estás en este viaje");
+    await expect(fetchTrip("desconocido")).rejects.toThrow("No estás en este rollo");
   });
 });
 
@@ -167,7 +187,7 @@ describe("fetchFeed", () => {
   });
 
   it("fails if you have no session on that trip", async () => {
-    await expect(fetchFeed("desconocido")).rejects.toThrow("No estás en este viaje");
+    await expect(fetchFeed("desconocido")).rejects.toThrow("No estás en este rollo");
   });
 });
 
@@ -195,6 +215,6 @@ describe("deleteMedia", () => {
   });
 
   it("fails if you have no session on that trip", async () => {
-    await expect(deleteMedia("desconocido", "foto-1")).rejects.toThrow("No estás en este viaje");
+    await expect(deleteMedia("desconocido", "foto-1")).rejects.toThrow("No estás en este rollo");
   });
 });

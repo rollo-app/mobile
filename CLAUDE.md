@@ -5,15 +5,15 @@ La UI de la app también va en rioplatense con voseo ("Sumate", "Abrí un rollo"
 
 ## Qué es Rollo
 
-App iOS para fotos y videos de viaje en grupo. Cada uno saca fotos durante el viaje y **una vez
-mandadas nadie las ve —ni siquiera las propias— hasta el revelado al terminar el viaje**, como un rollo
-de fotos. Es un MVP de red social. Pensada para un viaje con
+App iOS para fotos y videos en grupo. La unidad es el **rollo**: un viaje, un evento, una fiesta, la última
+semana de facultad. Cada uno saca fotos durante el rollo y **una vez mandadas nadie las ve —ni siquiera
+las propias— hasta el revelado**, como un rollo de fotos. Es un MVP de red social. Pensada para un viaje con
 amigos al sur de Argentina en **enero de 2027** (mucho tramo sin señal) y para armar fotolibros después.
 
 Decisiones de producto:
 
-- **Solo iOS** en la primera versión. **Sin cuentas:** crear viaje o unirse con código de 6 + nombre;
-  el token de cada viaje va al llavero (SecureStore).
+- **Solo iOS** en la primera versión. **Sin cuentas:** crear rollo o unirse con código de 6 + nombre;
+  el token de cada rollo va al llavero (SecureStore).
 - **Cámara nativa del sistema** (`expo-image-picker` → `launchCameraAsync`), no una cámara propia:
   funciona mejor, sobre todo en video. Lo que se saca **no queda en el carrete**: se sube y se borra
   del caché local.
@@ -33,16 +33,19 @@ Decisiones de producto:
 - **Antes del revelado** no se ve ninguna foto, solo su **ThumbHash** (colores difusos, lo genera el
   celular y el server lo devuelve en el feed). Para que den ganas de abrir la app: **mapa en vivo** con
   pins (autor y hora), **feed** y la hoja de contacto del rollo. Se muestra solo el total del grupo.
-- **Varios viajes por persona**, se puede volver a ver uno viejo. El **viaje activo** es el último que
-  abriste; se cambia con el selector del header (sheet "Tus viajes"). Las fechas del viaje van con
+- **Rollo configurable al crearlo** (lo hace el admin, formulario nativo con `@expo/ui`): nombre, inicio y fin
+  **con fecha y hora**, fotos y videos por persona por día, y **cuándo se revela** (al terminar o en otro
+  momento, siempre igual o posterior al fin). La validación vive en `src/features/trips/create-form.ts`.
+- **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
+  abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
 - **Modo viaje:** una notificación por día a un horario random distinto para cada uno, con un
   disparador opcional. Ese "momento" es foto principal + selfie, con cámara propia
   (`react-native-vision-camera` o `expo-camera`); la selfie chica (~1080 px).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
   La ceremonia del revelado será una presentación (a definir).
-- **A futuro (no para enero):** cuentas, amigos y feeds públicos de viajes. No cerrarle la puerta: la
-  tab "Vos" será el perfil y los miembros por viaje se podrán vincular a una cuenta.
+- **A futuro (no para enero):** cuentas, amigos y feeds públicos de rollos. No cerrarle la puerta: la
+  tab "Vos" será el perfil y los miembros por rollo se podrán vincular a una cuenta.
 
 ## Navegación y diseño
 
@@ -63,7 +66,7 @@ Decisiones de producto:
   (`colors.tint`: claro `#3155F5`, oscuro `#5C7CFF`; `colors.onTint` es el blanco del texto encima). Es el
   acento del sistema y aparece **solo en acciones y en lo seleccionado, nunca de relleno**.
   - **Sí:** la tab activa, los botones `primary`, los links y acciones de texto ("Reintentar", chevron del
-    TripSwitcher, check del selector de viajes), en el Mapa el filtro elegido / el punto de ubicación / el halo
+    TripSwitcher, check del selector de rollos), en el Mapa el filtro elegido / el punto de ubicación / el halo
     del pin seleccionado, y "Mandar al rollo".
   - **No:** fondos, textos, cards, contadores, íconos inactivos, `memberColor` ni el badge rojo de la cámara.
   - MapLibre no acepta colores dinámicos: ahí se usa `tintHex[scheme]` según `useColorScheme`.
@@ -101,7 +104,7 @@ src/api/              schema.d.ts generado + client.ts
 src/features/capture/ cola offline (SQLite), procesar foto/video + ThumbHash, ubicación, cupo del día
 src/features/trips/   acciones (lo que mockean los tests), useActiveTrip, useTripDetail, TripSwitcher
 src/test/             helpers de tests: rutas de la app y SQLite en memoria (node:sqlite)
-src/storage/          sesiones de viaje en SecureStore (el primero de la lista es el activo)
+src/storage/          sesiones de rollo (trip) en SecureStore (el primero de la lista es el activo)
 src/ui/               theme.ts (colors, spacing, radius, type) y componentes: Screen, Section, Row,
                       Button, Field, Body, Footnote, ErrorText, Loading
 __tests__/            tests de pantallas
@@ -159,8 +162,8 @@ EXPO_PUBLIC_API_URL=http://$(ipconfig getifaddr en0):8787 npx expo start --clear
 
 ## Estado y plan (octubre 2026)
 
-Hecho: crear viaje, unirse con código, cliente tipado, CI. Navegación con tabs nativas, selector de
-viajes, Rollo (hoja de contacto, cupo, revelado) y Vos (código, miembros). Mapa y Feed son pantallas
+Hecho: crear rollo (configurable), unirse con código, cliente tipado, CI. Navegación con tabs nativas, selector de
+rollos, Rollo (hoja de contacto, cupo, revelado) y Vos (código, miembros). Mapa y Feed son pantallas
 vacías por ahora. Corre en el iPhone con dev build contra el backend local.
 
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):

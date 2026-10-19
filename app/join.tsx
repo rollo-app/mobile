@@ -18,7 +18,7 @@ export default function JoinScreen() {
       await joinTrip({ code, name });
       router.dismissTo("/roll");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo entrar al viaje");
+      setError(e instanceof Error ? e.message : "No se pudo entrar al rollo");
     } finally {
       setLoading(false);
     }
@@ -26,10 +26,10 @@ export default function JoinScreen() {
 
   return (
     <Screen grouped>
-      <Footnote>Pedile el código a quien creó el viaje.</Footnote>
+      <Footnote>Pedile el código a quien creó el rollo.</Footnote>
 
       <Field
-        label="Código del viaje"
+        label="Código del rollo"
         value={code}
         onChangeText={setCode}
         autoCapitalize="characters"

@@ -23,7 +23,7 @@ export default function RootLayout() {
           <Stack.Screen
             name="trips"
             options={{
-              title: "Tus viajes",
+              title: "Tus rollos",
               presentation: "formSheet",
               sheetAllowedDetents: [0.5, 1],
               sheetGrabberVisible: true,
