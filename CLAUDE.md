@@ -54,6 +54,18 @@ Decisiones de producto:
   personalidad va en pocos detalles: los captions en la serif del sistema (New York), la hoja de
   contacto del rollo, la animación de "mandar al rollo". Antes de diseñar una pantalla, repasar las 20
   "native slop tells" de la skill `expo-design-system`.
+- **Identidad:** logo **"Revelado"** (sobre un cuadrado de 120×120, tres círculos que se concentran hacia
+  arriba a la derecha: r 34 / 24 / 14, opacidades 0.18 / 0.38 / 1) y **cobalto** como color de marca
+  (`colors.tint`: claro `#3155F5`, oscuro `#5C7CFF`; `colors.onTint` es el blanco del texto encima). Es el
+  acento del sistema y aparece **solo en acciones y en lo seleccionado, nunca de relleno**.
+  - **Sí:** la tab activa, los botones `primary`, los links y acciones de texto ("Reintentar", chevron del
+    TripSwitcher, check del selector de viajes), en el Mapa el filtro elegido / el punto de ubicación / el halo
+    del pin seleccionado, y "Mandar al rollo".
+  - **No:** fondos, textos, cards, contadores, íconos inactivos, `memberColor` ni el badge rojo de la cámara.
+  - MapLibre no acepta colores dinámicos: ahí se usa `tintHex[scheme]` según `useColorScheme`.
+  - El ícono (claro / oscuro / tinted) y el splash salen de `scripts/build-icons.mjs`: `npm run icons`
+    regenera los PNG de `assets/`. Son nativos: cambiarlos pide `npx expo prebuild --clean` + rebuild.
+    Pendiente: un `.icon` de Icon Composer (Liquid Glass) en vez de los PNG.
 - **Cómo se entera el usuario de lo que pasa (sin toasts: en iOS no existen):**
   - **Éxito = la UI cambia**, sin cartel: se cierra la sheet, aparece el dato nuevo, vuelve a donde
     estaba. Al mandar una foto: haptic + la animación de "mandar al rollo".
@@ -114,6 +126,7 @@ __tests__/            tests de pantallas
 npm test                      # 110 tests
 npm run test:watch
 npm run typecheck
+npm run icons                 # regenera ícono y splash (assets/)
 npx expo run:ios --device     # compila e instala el dev build en el iPhone
 npm start                     # día a día, con el dev build ya instalado
 ```

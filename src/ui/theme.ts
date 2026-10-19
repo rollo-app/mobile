@@ -1,11 +1,14 @@
 import { Color } from "expo-router";
-import { Platform, type ColorValue, type TextStyle } from "react-native";
+import { DynamicColorIOS, Platform, type ColorValue, type TextStyle } from "react-native";
 
 /**
  * Tokens de diseño. La app usa los colores y la tipografía del sistema (iOS):
  * se adaptan solos a claro/oscuro y a la accesibilidad. La personalidad va en
  * pocos detalles (captions en serif, la hoja de contacto del rollo), no acá.
  */
+
+/** El cobalto en hex fijo, para lo que no acepta colores dinámicos (MapLibre, controles de Android). */
+export const tintHex = { light: "#3155F5", dark: "#5C7CFF" } as const;
 
 const pick = (ios: ColorValue, fallback: string): ColorValue => Platform.select({ ios, default: fallback })!;
 
@@ -18,6 +21,10 @@ export const colors = {
   groupedBackground: pick(Color.ios.systemGroupedBackground, "#F2F2F7"),
   cell: pick(Color.ios.secondarySystemGroupedBackground, "#FFFFFF"),
   fill: pick(Color.ios.tertiarySystemFill, "#7676801F"),
+  /** Cobalto de la marca: acento del sistema. Solo en acciones y en lo seleccionado, nunca de relleno. */
+  tint: pick(DynamicColorIOS(tintHex), tintHex.light),
+  /** Texto sobre un fondo cobalto. */
+  onTint: "#FFFFFF",
   danger: pick(Color.ios.systemRed, "#FF3B30"),
   /** Cuadros del rollo que todavía nadie ve. */
   latent: pick(Color.ios.systemGray5, "#E5E5EA"),

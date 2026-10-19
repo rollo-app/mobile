@@ -21,7 +21,7 @@ export default function IndexScreen() {
         </Text>
       </View>
       <View style={styles.actions}>
-        <Button label="Abrí un rollo" onPress={() => router.push("/create")} />
+        <Button label="Empezar un nuevo rollo" onPress={() => router.push("/create")} />
         <Button label="Sumate con un código" variant="secondary" onPress={() => router.push("/join")} />
       </View>
     </View>

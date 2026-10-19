@@ -109,7 +109,7 @@ export default function FeedScreen() {
     <View style={styles.message}>
       <ErrorText>{error}</ErrorText>
       <Pressable accessibilityRole="button" accessibilityLabel="Reintentar" onPress={() => void refetch()}>
-        <Text style={[type.headline, { color: colors.label }]}>Reintentar</Text>
+        <Text style={[type.headline, { color: colors.tint }]}>Reintentar</Text>
       </Pressable>
     </View>
   ) : (

@@ -220,7 +220,7 @@ function Preview(props: {
             onPress={props.onSend}
             style={({ pressed }) => [styles.send, { opacity: props.sending ? 0.6 : pressed ? 0.8 : 1 }]}
           >
-            <Text style={[type.headline, { color: "#000" }]}>{props.sending ? "Guardando…" : "Mandar al rollo"}</Text>
+            <Text style={[type.headline, { color: colors.onTint }]}>{props.sending ? "Guardando…" : "Mandar al rollo"}</Text>
           </Pressable>
         </View>
       </View>
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   caption: { color: "#fff", backgroundColor: "rgba(0,0,0,0.5)", borderRadius: radius.lg, borderCurve: "continuous", paddingHorizontal: 18, minHeight: 50 },
   sendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   note: { flex: 1 },
-  send: { backgroundColor: "#fff", borderRadius: radius.full, paddingHorizontal: 22, minHeight: 52, justifyContent: "center" },
+  send: { backgroundColor: colors.tint, borderRadius: radius.full, paddingHorizontal: 22, minHeight: 52, justifyContent: "center" },
   message: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, padding: spacing.xl, backgroundColor: colors.background },
   actions: { alignSelf: "stretch", gap: spacing.sm, marginTop: spacing.md },
 });

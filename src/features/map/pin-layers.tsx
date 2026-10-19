@@ -18,11 +18,14 @@ type PressEvent = NativeSyntheticEvent<{ features: GeoJSON.Feature[] }>;
 export function PinLayers({
   data,
   selectedId,
+  haloColor,
   sourceRef,
   onPress,
 }: {
   data: PinCollection;
   selectedId: string | null;
+  /** Cobalto (hex) del halo del pin seleccionado. */
+  haloColor: string;
   sourceRef: Ref<GeoJSONSourceRef>;
   onPress: (event: PressEvent) => void;
 }) {
@@ -80,7 +83,7 @@ export function PinLayers({
           "circle-color": ["get", "color"],
           "circle-radius": 20,
           "circle-stroke-width": 3,
-          "circle-stroke-color": "#FFFFFF",
+          "circle-stroke-color": haloColor,
         }}
       />
       <Layer

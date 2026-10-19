@@ -15,7 +15,7 @@ export function TripSwitcher({ name }: { name: string }) {
       <Text numberOfLines={1} style={[type.headline, { color: colors.label }]}>
         {name}
       </Text>
-      <SymbolView name="chevron.down" size={12} weight="bold" tintColor={colors.secondaryLabel as string} />
+      <SymbolView name="chevron.down" size={12} weight="bold" tintColor={colors.tint as string} />
     </Pressable>
   );
 }

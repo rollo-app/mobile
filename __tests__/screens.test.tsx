@@ -47,7 +47,7 @@ describe("Inicio", () => {
   it("sin viajes invita a abrir un rollo o sumarse", async () => {
     await renderRouter(routes, { initialUrl: "/" });
 
-    expect(await screen.findByRole("button", { name: "Abrí un rollo" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Empezar un nuevo rollo" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Sumate con un código" })).toBeVisible();
   });
 
@@ -80,6 +80,24 @@ describe("Rollo", () => {
     expect(screen.getByText("7 de 10")).toBeVisible();
     expect(screen.getByText("2 de 3")).toBeVisible();
     expect(screen.getByText("en 9 días")).toBeVisible();
+  });
+
+  it("la hoja de contacto muestra el ThumbHash de cada foto, de la más nueva a la más vieja", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 2 }));
+    mocked.fetchFeed.mockResolvedValue({
+      revealed: false,
+      revealAt: Date.now() + 9 * DAY,
+      items: [
+        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", name: "Fede" } },
+        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", name: "Fede" } },
+      ],
+    });
+    await renderRouter(routes, { initialUrl: "/rollo" });
+
+    await screen.findByLabelText("2 en el rollo");
+    const frames = await screen.findAllByTestId(/^thumbhash-/);
+    const hashes = frames.map((n) => n.props.testID);
+    expect(hashes).toEqual(["thumbhash-nueva", "thumbhash-vieja"]);
   });
 
   it("si falla la carga muestra el error", async () => {
@@ -248,7 +266,7 @@ describe("Selector de viajes", () => {
     await saveTrip(SUR, "Viaje al sur");
     await renderRouter(routes, { initialUrl: "/trips" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Abrí un rollo" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Empezar un nuevo rollo" }));
     expect(screen).toHavePathname("/create");
   });
 });
