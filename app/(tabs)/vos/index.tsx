@@ -16,7 +16,11 @@ export default function VosScreen() {
     <Screen grouped>
       {trip && (
         <Section>
-          <Row label={trip.memberName} value={trip.role === "admin" ? "Admin" : undefined} />
+          <Row
+            label={trip.memberName}
+            value={trip.role === "admin" ? "Admin" : undefined}
+            onPress={() => router.push("/rename")}
+          />
         </Section>
       )}
 

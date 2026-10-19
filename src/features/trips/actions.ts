@@ -1,6 +1,6 @@
 import { createApiClient, unwrap, type Schemas } from "@/api/client";
 import { API_URL } from "@/config";
-import { getToken, saveSession } from "@/storage/trips";
+import { getToken, saveSession, updateMemberName } from "@/storage/trips";
 
 export type Trip = Schemas["Trip"];
 export type TripDetail = Schemas["TripDetail"];
@@ -62,4 +62,18 @@ export async function fetchTrip(tripId: string): Promise<TripDetail> {
   return unwrap(
     createApiClient({ baseUrl: API_URL, token }).GET("/trips/{tripId}", { params: { path: { tripId } } }),
   );
+}
+
+/** Cambia tu nombre en el viaje: primero en el server, y si sale bien también en el celular. */
+export async function renameMe(tripId: string, name: string): Promise<void> {
+  const token = await getToken(tripId);
+  if (!token) throw new Error("No estás en este viaje");
+
+  const member = await unwrap(
+    createApiClient({ baseUrl: API_URL, token }).PATCH("/trips/{tripId}/members/me", {
+      params: { path: { tripId } },
+      body: { name: name.trim() },
+    }),
+  );
+  await updateMemberName(tripId, member.name);
 }

@@ -1,5 +1,5 @@
-import { getToken, listTrips } from "@/storage/trips";
-import { createTrip, fetchTrip, joinTrip } from "../actions";
+import { getToken, listTrips, saveSession } from "@/storage/trips";
+import { createTrip, fetchTrip, joinTrip, renameMe } from "../actions";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2027, 0, 5, 12, 0);
@@ -112,5 +112,41 @@ describe("fetchTrip", () => {
 
   it("falla si no tenés sesión en ese viaje", async () => {
     await expect(fetchTrip("desconocido")).rejects.toThrow("No estás en este viaje");
+  });
+});
+
+describe("renameMe", () => {
+  const save = () =>
+    saveSession({
+      tripId: trip.id,
+      tripName: trip.name,
+      joinCode: trip.joinCode,
+      memberId: "m1",
+      memberName: "Juani",
+      role: "admin",
+      token: "tok",
+    });
+
+  it("manda el nombre con el token del viaje y lo guarda en el celular", async () => {
+    await save();
+    const fetchMock = mockFetch(200, { id: "m1", name: "Juan", role: "admin" });
+
+    await renameMe(trip.id, "  Juan ");
+
+    const req = fetchMock.mock.calls[0]![0] as Request;
+    expect(req.method).toBe("PATCH");
+    expect(new URL(req.url).pathname).toBe(`/trips/${trip.id}/members/me`);
+    expect(req.headers.get("authorization")).toBe("Bearer tok");
+    expect(await sentBody(fetchMock)).toEqual({ name: "Juan" });
+    expect((await listTrips())[0]!.memberName).toBe("Juan");
+    expect(await getToken(trip.id)).toBe("tok");
+  });
+
+  it("si el server rechaza el nombre tira el error y no cambia nada", async () => {
+    await save();
+    mockFetch(409, { error: "Ya hay alguien con ese nombre en el viaje" });
+
+    await expect(renameMe(trip.id, "Fede")).rejects.toThrow("Ya hay alguien con ese nombre en el viaje");
+    expect((await listTrips())[0]!.memberName).toBe("Juani");
   });
 });

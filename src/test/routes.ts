@@ -14,6 +14,7 @@ import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
+import RenameScreen from "../../app/rename";
 import TripsScreen from "../../app/trips";
 
 
@@ -23,6 +24,7 @@ export const routes = {
   join: JoinScreen,
   create: CreateScreen,
   trips: TripsScreen,
+  rename: RenameScreen,
   capture: CaptureScreen,
   "(tabs)/_layout": TabsLayout,
   "(tabs)/rollo/_layout": RolloLayout,

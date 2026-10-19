@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { getToken, listTrips, markOpened, removeTrip, saveSession, type TripSession } from "../trips";
+import { getToken, listTrips, markOpened, removeTrip, saveSession, updateMemberName, type TripSession } from "../trips";
 
 const session = (overrides: Partial<TripSession> = {}): TripSession => ({
   tripId: "11111111-1111-4111-8111-111111111111",
@@ -78,5 +78,26 @@ describe("sesiones de viaje", () => {
     await markOpened("otro");
 
     expect((await listTrips()).map((t) => t.tripId)).toEqual(["a"]);
+  });
+});
+
+describe("updateMemberName", () => {
+  it("cambia el nombre del viaje sin tocar el token ni el orden", async () => {
+    await saveSession(session());
+    await saveSession(session({ tripId: "otro", tripName: "Bariloche" }));
+
+    await updateMemberName(session().tripId, "Juan");
+
+    const trips = await listTrips();
+    expect(trips.map((t) => t.tripId)).toEqual(["otro", session().tripId]);
+    expect(trips[1]!.memberName).toBe("Juan");
+    expect(trips[0]!.memberName).toBe("Juani");
+    expect(await getToken(session().tripId)).toBe("secret-token");
+  });
+
+  it("si el viaje no existe no hace nada", async () => {
+    await updateMemberName("nada", "Juan");
+
+    expect(await listTrips()).toEqual([]);
   });
 });

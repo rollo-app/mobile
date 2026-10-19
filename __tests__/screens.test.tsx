@@ -1,6 +1,6 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
-import { listTrips, saveSession } from "@/storage/trips";
+import { listTrips, saveSession, updateMemberName } from "@/storage/trips";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
@@ -103,6 +103,72 @@ describe("Vos", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Tus viajes, 1" }));
     expect(screen).toHavePathname("/trips");
+  });
+});
+
+describe("Tu nombre", () => {
+  beforeEach(() => saveTrip(SUR, "Viaje al sur"));
+
+  it("desde Vos se abre la sheet con tu nombre actual", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/vos" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Juani, Admin" }));
+
+    expect(screen).toHavePathname("/rename");
+    expect(screen.getByLabelText("Tu nombre").props.value).toBe("Juani");
+  });
+
+  it("el botón Guardar sigue apagado si el nombre está vacío o no cambió", async () => {
+    await renderRouter(routes, { initialUrl: "/rename" });
+    const input = await screen.findByLabelText("Tu nombre");
+    await waitFor(() => expect(input.props.value).toBe("Juani"));
+
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+    await fireEvent.changeText(input, "   ");
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+    await fireEvent.changeText(input, "Juan");
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
+  });
+
+  it("al guardar cierra la sheet y Vos muestra el nombre nuevo", async () => {
+    const renamed = detail({
+      me: { id: "m1", name: "Juan", role: "admin" },
+      members: [
+        { id: "m1", name: "Juan", role: "admin" },
+        { id: "m2", name: "Fede", role: "member" },
+      ],
+    });
+    mocked.fetchTrip.mockResolvedValueOnce(detail()).mockResolvedValue(renamed);
+    mocked.renameMe.mockImplementation((tripId, name) => updateMemberName(tripId, name));
+    await renderRouter(routes, { initialUrl: "/vos" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Juani, Admin" }));
+    const input = await screen.findByLabelText("Tu nombre");
+    await waitFor(() => expect(input.props.value).toBe("Juani"));
+    await fireEvent.changeText(input, "Juan");
+    await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/vos"));
+    expect(mocked.renameMe).toHaveBeenCalledWith(SUR, "Juan");
+    expect(await screen.findByRole("button", { name: "Juan, Admin" })).toBeVisible();
+    // la lista de miembros también se actualiza, sin volver a mostrar "cargando"
+    await waitFor(() => expect(screen.getAllByText("Juan")).toHaveLength(2));
+    expect(screen.queryByText("Juani")).toBeNull();
+  });
+
+  it("si el server lo rechaza muestra el error y deja la sheet abierta", async () => {
+    mocked.renameMe.mockRejectedValue(new Error("Ya hay alguien con ese nombre en el viaje"));
+    await renderRouter(routes, { initialUrl: "/rename" });
+    const input = await screen.findByLabelText("Tu nombre");
+    await waitFor(() => expect(input.props.value).toBe("Juani"));
+
+    await fireEvent.changeText(input, "Fede");
+    await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(await screen.findByText("Ya hay alguien con ese nombre en el viaje")).toBeVisible();
+    expect(screen).toHavePathname("/rename");
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
   });
 });
 
