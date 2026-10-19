@@ -61,7 +61,7 @@ export function Button({
 }) {
   const isDisabled = disabled || loading;
   const primary = variant === "primary";
-  const textColor = primary ? colors.background : colors.label;
+  const textColor = primary ? colors.onTint : colors.label;
   return (
     <Pressable
       accessibilityRole="button"
@@ -71,7 +71,7 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor: primary ? colors.label : colors.fill, opacity: isDisabled ? 0.35 : pressed ? 0.7 : 1 },
+        { backgroundColor: primary ? colors.tint : colors.fill, opacity: isDisabled ? 0.35 : pressed ? 0.7 : 1 },
         style,
       ]}
     >

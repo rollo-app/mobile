@@ -12,13 +12,14 @@ import { boundsOf, feedToItems, itemsByTime, mergeItems, pendingToItems, toFeatu
 import { canExpandCluster, fitTarget, isTripActive, MAX_ZOOM, photosNear } from "@/features/map/framing";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
 import { PinCarousel } from "@/features/map/pin-carousel";
+import { UserLocationDot } from "@/features/map/user-location-dot";
 import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { colors, radius, spacing, type } from "@/ui/theme";
+import { colors, radius, spacing, tintHex, type } from "@/ui/theme";
 
 silenceTileNetworkErrors();
 
@@ -208,8 +209,12 @@ export default function MapScreen() {
         onPress={() => setSelection(null)}
       >
         <Camera ref={cameraRef} initialViewState={DEFAULT_REGION} maxZoom={MAX_ZOOM} />
-        {hasLocation === true && <UserLocation />}
-        <PinLayers data={shown} selectedId={selectedId} sourceRef={sourceRef} onPress={onPinsPress} />
+        {hasLocation === true && (
+          <UserLocation>
+            <UserLocationDot color={tintHex[scheme]} />
+          </UserLocation>
+        )}
+        <PinLayers data={shown} selectedId={selectedId} haloColor={tintHex[scheme]} sourceRef={sourceRef} onPress={onPinsPress} />
       </Map>
 
       <View pointerEvents="box-none" style={[styles.controls, { top: insets.top + HEADER_HEIGHT + spacing.sm }]}>
@@ -217,6 +222,7 @@ export default function MapScreen() {
           <SegmentedControl
             style={styles.segmented}
             values={["Todo", "Hoy"]}
+            tintColor={tintHex[scheme]}
             selectedIndex={scope === "all" ? 0 : 1}
             onValueChange={(v) => setScope(v === "Hoy" ? "today" : "all")}
           />
@@ -226,8 +232,8 @@ export default function MapScreen() {
             onPressAction={({ nativeEvent }) => setAuthorId(nativeEvent.event === "all" ? null : nativeEvent.event)}
           >
             <View style={styles.pill}>
-              <SymbolView name="person.2" size={15} tintColor={colors.label as string} />
-              <Text style={[type.subhead, { color: colors.label }]} numberOfLines={1}>
+              <SymbolView name="person.2" size={15} tintColor={(authorId ? colors.tint : colors.label) as string} />
+              <Text style={[type.subhead, { color: authorId ? colors.tint : colors.label }]} numberOfLines={1}>
                 {authorName ?? "Personas"}
               </Text>
             </View>
@@ -239,7 +245,7 @@ export default function MapScreen() {
               {error}
             </Text>
             <Pressable accessibilityRole="button" accessibilityLabel="Reintentar" onPress={() => void refetch()}>
-              <Text style={[type.footnote, { color: colors.label, fontWeight: "600" }]}>Reintentar</Text>
+              <Text style={[type.footnote, { color: colors.tint, fontWeight: "600" }]}>Reintentar</Text>
             </Pressable>
           </View>
         )}

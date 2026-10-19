@@ -17,7 +17,7 @@ export default function TabsLayout() {
   const locked = left !== null && left.photos === 0 && left.videos === 0;
 
   return (
-    <NativeTabs tintColor={colors.label} minimizeBehavior="onScrollDown">
+    <NativeTabs tintColor={colors.tint} minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="rollo">
         <NativeTabs.Trigger.Icon sf={{ default: "film", selected: "film.fill" }} md="movie" />
         <NativeTabs.Trigger.Label hidden>Rollo</NativeTabs.Trigger.Label>

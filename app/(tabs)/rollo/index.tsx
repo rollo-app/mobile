@@ -1,20 +1,25 @@
+import { Image } from "expo-image";
 import { Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
+import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
+import { buildContactSheet } from "@/features/rollo/contact-sheet";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
 const DAY = 24 * 60 * 60 * 1000;
-const SHEET_FRAMES = 18;
 const COLUMNS = 6;
 
 export default function RolloScreen() {
   const { trip } = useActiveTrip();
   const { detail, error, refetch, isRefetching } = useTripDetail(trip?.tripId);
   const pending = usePendingCount(trip?.tripId);
+  const { feed } = useFeed(trip?.tripId);
+  const pendingItems = usePendingItems(trip?.tripId);
   // Tus fotos en cola ya están en el rollo, aunque todavía no se hayan subido.
   const total = (detail?.totalUploaded ?? 0) + pending;
 
@@ -35,7 +40,7 @@ export default function RolloScreen() {
               <Text style={[type.headline, { color: colors.label }]}>En el rollo</Text>
               <Text style={[type.body, styles.count]}>{total}</Text>
             </View>
-            <ContactSheet total={total} />
+            <ContactSheet total={total} feed={feed?.items ?? []} pending={pendingItems} />
             <Footnote>Nadie las ve hasta el revelado. Ni vos.</Footnote>
           </View>
 
@@ -54,12 +59,21 @@ export default function RolloScreen() {
 }
 
 /**
- * La hoja de contacto: un cuadro por cada foto del rollo, todavía sin revelar.
- * Cuando el server mande el ThumbHash, cada cuadro va a mostrar sus colores difusos.
+ * La hoja de contacto: un cuadro por cada foto del rollo, todavía sin revelar. Cada uno muestra
+ * los colores difusos (ThumbHash) de su foto, de la más nueva a la más vieja; sin thumbhash
+ * queda gris, y los cuadros de relleno de la última fila, más apagados.
  */
-function ContactSheet({ total }: { total: number }) {
-  const shown = Math.min(total, SHEET_FRAMES);
-  const rest = total - shown;
+function ContactSheet({
+  total,
+  feed,
+  pending,
+}: {
+  total: number;
+  feed: { takenAt: number; thumbhash: string | null }[];
+  pending: { takenAt: number; thumbhash: string | null }[];
+}) {
+  const { frames, rest } = buildContactSheet({ feed, pending, total });
+  const shown = frames.length;
   const cells = Math.max(Math.ceil(shown / COLUMNS), 1) * COLUMNS;
   const rows = Array.from({ length: cells / COLUMNS }, (_, r) =>
     Array.from({ length: COLUMNS }, (_, c) => r * COLUMNS + c),
@@ -68,11 +82,20 @@ function ContactSheet({ total }: { total: number }) {
     <View accessible accessibilityLabel={`${total} en el rollo`} style={styles.sheet}>
       {rows.map((row, r) => (
         <View key={r} style={styles.sheetRow}>
-          {row.map((i) => (
-            <View key={i} style={[styles.frame, { backgroundColor: i < shown ? colors.latent : colors.fill }]}>
-              {rest > 0 && i === shown - 1 && <Text style={[type.footnote, styles.more]}>+{rest + 1}</Text>}
-            </View>
-          ))}
+          {row.map((i) => {
+            const thumbhash = frames[i];
+            return (
+              <View key={i} style={[styles.frame, { backgroundColor: i < shown ? colors.latent : colors.fill }]}>
+                {thumbhash && <Image testID={`thumbhash-${thumbhash}`} placeholder={{ thumbhash }} style={StyleSheet.absoluteFill} />}
+                {rest > 0 && i === shown - 1 && (
+                  <>
+                    {thumbhash && <View style={styles.dim} />}
+                    <Text style={[type.footnote, styles.more, thumbhash ? styles.moreOnPhoto : null]}>+{rest + 1}</Text>
+                  </>
+                )}
+              </View>
+            );
+          })}
         </View>
       ))}
     </View>
@@ -103,4 +126,6 @@ const styles = StyleSheet.create({
   sheetRow: { flexDirection: "row", gap: 3 },
   frame: { flex: 1, aspectRatio: 1, alignItems: "center", justifyContent: "center" },
   more: { color: colors.secondaryLabel, fontWeight: "600" },
+  moreOnPhoto: { color: "#FFFFFF" },
+  dim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.35)" },
 });

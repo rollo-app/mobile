@@ -36,7 +36,7 @@ export default function TripsScreen() {
                 </Text>
               </View>
               {t.tripId === active?.tripId && (
-                <SymbolView name="checkmark" size={16} weight="semibold" tintColor={colors.label as string} />
+                <SymbolView name="checkmark" size={16} weight="semibold" tintColor={colors.tint as string} />
               )}
             </Pressable>
           </Fragment>
