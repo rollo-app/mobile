@@ -35,7 +35,7 @@ describe("background upload task", () => {
     const result = await runBackgroundUpload();
 
     expect(result).toBe(BackgroundTask.BackgroundTaskResult.Success);
-    const { deadline } = pass.mock.calls[0][0]!;
+    const { deadline } = pass.mock.calls[0]![0]!;
     expect(deadline).toBeGreaterThanOrEqual(before + BACKGROUND_BUDGET_MS);
     expect(deadline).toBeLessThanOrEqual(Date.now() + BACKGROUND_BUDGET_MS);
   });
