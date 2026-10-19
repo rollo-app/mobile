@@ -54,6 +54,19 @@ Decisiones de producto:
   personalidad va en pocos detalles: los epígrafes en la serif del sistema (New York), la hoja de
   contacto del rollo, la animación de "mandar al rollo". Antes de diseñar una pantalla, repasar las 20
   "native slop tells" de la skill `expo-design-system`.
+- **Cómo se entera el usuario de lo que pasa (sin toasts: en iOS no existen):**
+  - **Éxito = la UI cambia**, sin cartel: se cierra la sheet, aparece el dato nuevo, vuelve a donde
+    estaba. Al mandar una foto: haptic + la animación de "mandar al rollo".
+  - **Error de un formulario:** inline debajo del campo o del botón (`ErrorText`), sin perder lo que
+    escribió.
+  - **Error al cargar una pantalla:** estado de error en la pantalla con botón "Reintentar"; si hay datos
+    viejos, se mantienen.
+  - **Procesos de fondo (subida de fotos):** nunca toasts ni alertas. Estado persistente: ícono de nube en
+    Rollo si hay pendientes y en Vos "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
+  - **Alerta nativa** (`Alert`) solo para algo grave e irreversible (por ej. el rollo se reveló con fotos
+    tuyas sin subir) o para confirmar una acción destructiva (borrar como admin).
+  - Si un momento puntual necesita una confirmación fugaz, usar `burnt` (HUD nativo tipo AirPods), no un
+    toast hecho a mano.
 
 El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 
