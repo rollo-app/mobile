@@ -38,6 +38,15 @@ export default function RootLayout() {
               sheetGrabberVisible: true,
             }}
           />
+          <Stack.Screen
+            name="dev-token"
+            options={{
+              title: "Entrar con token",
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.4, 0.6],
+              sheetGrabberVisible: true,
+            }}
+          />
           <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
         </Stack>
       </ThemeProvider>

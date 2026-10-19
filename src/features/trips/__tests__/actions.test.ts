@@ -1,5 +1,5 @@
 import { getToken, listTrips, saveSession } from "@/storage/trips";
-import { createTrip, deleteMedia, fetchFeed, fetchTrip, joinTrip, renameMe } from "../actions";
+import { createTrip, deleteMedia, fetchFeed, fetchTrip, joinTrip, joinWithToken, renameMe } from "../actions";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2027, 0, 5, 12, 0);
@@ -216,5 +216,44 @@ describe("deleteMedia", () => {
 
   it("fails if you have no session on that trip", async () => {
     await expect(deleteMedia("desconocido", "foto-1")).rejects.toThrow("No estás en este rollo");
+  });
+});
+
+describe("joinWithToken", () => {
+  const detail = {
+    trip,
+    me: { id: "m9", name: "Vos (prueba)", role: "member" },
+    members: [{ id: "m9", name: "Vos (prueba)", role: "member" }],
+    today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
+    totalUploaded: 0,
+  };
+
+  it("fetches the trip with that token and saves the session", async () => {
+    const fetchMock = mockFetch(200, detail);
+
+    const joined = await joinWithToken(trip.id, "tok-dev");
+
+    const req = fetchMock.mock.calls.at(-1)![0] as Request;
+    expect(req.url).toContain(`/trips/${trip.id}`);
+    expect(req.headers.get("authorization")).toBe("Bearer tok-dev");
+    expect(joined.id).toBe(trip.id);
+    expect(await getToken(trip.id)).toBe("tok-dev");
+    expect(await listTrips()).toEqual([
+      expect.objectContaining({
+        tripId: trip.id,
+        tripName: trip.name,
+        joinCode: trip.joinCode,
+        memberId: "m9",
+        memberName: "Vos (prueba)",
+        role: "member",
+      }),
+    ]);
+  });
+
+  it("throws the server error and saves nothing when the token is invalid", async () => {
+    mockFetch(401, { error: "Falta el token o es inválido" });
+
+    await expect(joinWithToken(trip.id, "mal")).rejects.toThrow("Falta el token o es inválido");
+    expect(await getToken(trip.id)).toBeNull();
   });
 });

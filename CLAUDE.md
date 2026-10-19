@@ -151,6 +151,8 @@ npm run dev -- --ip 0.0.0.0
 EXPO_PUBLIC_API_URL=http://$(ipconfig getifaddr en0):8787 npx expo start --clear
 ```
 
+Para entrar a un rollo revelado del seed: Vos → Desarrollo → Entrar con token (el ID y el token los imprime `npm run seed` o se consultan en la D1 local).
+
 ## Apple
 
 - Desarrollo: cuenta gratis de Apple (Personal Team). El build vence a los 7 días y se reinstala con

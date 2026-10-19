@@ -193,6 +193,50 @@ describe("Me", () => {
   });
 });
 
+// The row and the screen only exist under __DEV__ (the screen redirects to "/" otherwise); jest runs with __DEV__ = true.
+describe("Enter with token (dev)", () => {
+  beforeEach(() => saveTrip(SUR, "Viaje al sur"));
+
+  it("from Me the sheet opens", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Entrar con token" }));
+
+    expect(screen).toHavePathname("/dev-token");
+  });
+
+  it("entering makes that trip the active one and goes to the roll", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.joinWithToken.mockImplementation(async (tripId) => {
+      await saveTrip(tripId, "Bariloche 2025 (revelado)");
+      return trip({ id: tripId, name: "Bariloche 2025 (revelado)" });
+    });
+    await renderRouter(routes, { initialUrl: "/dev-token" });
+
+    await fireEvent.changeText(await screen.findByLabelText("ID del rollo"), BARILOCHE);
+    await fireEvent.changeText(screen.getByLabelText("Token"), "tok-dev");
+    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(mocked.joinWithToken).toHaveBeenCalledWith(BARILOCHE, "tok-dev");
+    expect((await listTrips())[0]?.tripId).toBe(BARILOCHE);
+  });
+
+  it("shows the error inline and keeps what was typed", async () => {
+    mocked.joinWithToken.mockRejectedValue(new Error("Falta el token o es inválido"));
+    await renderRouter(routes, { initialUrl: "/dev-token" });
+
+    await fireEvent.changeText(await screen.findByLabelText("ID del rollo"), BARILOCHE);
+    await fireEvent.changeText(screen.getByLabelText("Token"), "mal");
+    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByText("Falta el token o es inválido")).toBeVisible();
+    expect(screen).toHavePathname("/dev-token");
+    expect(screen.getByLabelText("Token").props.value).toBe("mal");
+  });
+});
+
 describe("Your name", () => {
   beforeEach(() => saveTrip(SUR, "Viaje al sur"));
 

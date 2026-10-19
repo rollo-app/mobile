@@ -12,6 +12,7 @@ import MeScreen from "../../app/(tabs)/me/index";
 import RootLayout from "../../app/_layout";
 import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
+import DevTokenScreen from "../../app/dev-token";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
 import RenameScreen from "../../app/rename";
@@ -25,6 +26,7 @@ export const routes = {
   create: CreateScreen,
   trips: TripsScreen,
   rename: RenameScreen,
+  "dev-token": DevTokenScreen,
   capture: CaptureScreen,
   "(tabs)/_layout": TabsLayout,
   "(tabs)/roll/_layout": RollLayout,

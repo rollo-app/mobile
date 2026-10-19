@@ -55,6 +55,7 @@ export default function MeScreen() {
       {__DEV__ && (
         <Section title="Desarrollo">
           <Row label="Probar subida en segundo plano" onPress={() => void triggerBackgroundUploadForTesting()} />
+          <Row label="Entrar con token" onPress={() => router.push("/dev-token")} />
         </Section>
       )}
     </Screen>
