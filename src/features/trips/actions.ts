@@ -56,6 +56,25 @@ export async function joinTrip(input: { code: string; name: string }): Promise<T
   return joined.trip;
 }
 
+/** Dev only: enters a trip with its id and a known token (e.g. a revealed trip from the backend seed). */
+export async function joinWithToken(tripId: string, token: string): Promise<Trip> {
+  const { trip, me } = await unwrap(
+    createApiClient({ baseUrl: API_URL, token: token.trim() }).GET("/trips/{tripId}", {
+      params: { path: { tripId: tripId.trim() } },
+    }),
+  );
+  await saveSession({
+    tripId: trip.id,
+    tripName: trip.name,
+    joinCode: trip.joinCode,
+    memberId: me.id,
+    memberName: me.name,
+    role: me.role,
+    token: token.trim(),
+  });
+  return trip;
+}
+
 export async function fetchTrip(tripId: string): Promise<TripDetail> {
   const token = await getToken(tripId);
   if (!token) throw new Error("No estás en este viaje");
