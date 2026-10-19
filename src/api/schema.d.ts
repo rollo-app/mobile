@@ -546,7 +546,7 @@ export interface paths {
         };
         /**
          * Feed del viaje
-         * @description Antes del revelado: solo metadata (autor, hora, lugar, epígrafe), sin archivos, ni siquiera los propios. Después: incluye dimensiones y los paths para descargar.
+         * @description Antes del revelado: solo metadata (autor, hora, lugar, epígrafe, thumbhash), sin archivos, ni siquiera los propios. Después: incluye dimensiones y los paths para descargar.
          */
         get: {
             parameters: {
@@ -890,6 +890,11 @@ export interface components {
             lng?: number | null;
             accuracyM?: number | null;
             caption?: string | null;
+            /**
+             * @description ThumbHash (https://evanw.github.io/thumbhash/) en base64 estándar, generado en el celular desde el thumbnail. Si un reintento trae otro valor, se conserva el primero.
+             * @example 3OcRJYB4d3h/iIeHeEh3eIhw+j3A
+             */
+            thumbhash?: string | null;
             durationS?: number | null;
             width?: number | null;
             height?: number | null;
@@ -912,6 +917,8 @@ export interface components {
             lat: number | null;
             lng: number | null;
             caption: string | null;
+            /** @description ThumbHash en base64. Se devuelve siempre, también antes del revelado, a propósito: solo codifica colores difusos (~25 bytes), no deja reconstruir la foto. */
+            thumbhash: string | null;
             durationS: number | null;
             author: {
                 /** Format: uuid */
