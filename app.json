@@ -60,7 +60,8 @@
             "backgroundColor": "#0E0F14"
           }
         }
-      ]
+      ],
+      "expo-background-task"
     ],
     "scheme": "rollo",
     "experiments": {

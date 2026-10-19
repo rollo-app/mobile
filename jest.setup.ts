@@ -194,3 +194,22 @@ jest.mock("expo-location", () => ({
   getCurrentPositionAsync: jest.fn(async () => null),
   Accuracy: { Balanced: 3, High: 5 },
 }));
+
+// Background tasks are native: tests get task definitions they can read back and a BackgroundTask that does nothing.
+jest.mock("expo-task-manager", () => {
+  const tasks = new Map<string, () => Promise<unknown>>();
+  return {
+    __tasks: tasks,
+    defineTask: jest.fn((name: string, executor: () => Promise<unknown>) => {
+      tasks.set(name, executor);
+    }),
+  };
+});
+
+jest.mock("expo-background-task", () => ({
+  BackgroundTaskStatus: { Restricted: 1, Available: 2 },
+  BackgroundTaskResult: { Success: 1, Failed: 2 },
+  getStatusAsync: jest.fn(async () => 2),
+  registerTaskAsync: jest.fn(async () => {}),
+  triggerTaskWorkerForTestingAsync: jest.fn(async () => true),
+}));

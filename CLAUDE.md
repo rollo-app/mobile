@@ -23,6 +23,10 @@ Decisiones de producto:
 - **Offline first:** al disparar se guardan foto, hora (UTC + zona) y GPS. Pedir ubicación apenas se
   abre la cámara; sin fix, usar la última conocida y guardar su precisión. Cola local en SQLite, subida
   en segundo plano cuando hay señal, **UUID generado en el celular** (reintentar es seguro).
+  Con la app cerrada o suspendida sube `expo-background-task` (tarea `rollo-upload`, BGProcessingTask de iOS: solo
+  con red, cuándo corre lo decide el sistema, ~25 s por pasada con corte limpio entre ítems); los PUT usan sesión
+  de URLSession en background. Si se mata la app a mano, iOS no la despierta hasta que se vuelva a abrir.
+  En dev, la fila "Probar subida en segundo plano" de Vos la dispara.
 - **Captura:** cámara nativa con selector foto/video (máx. 15 s); si no quedan videos hoy, abre solo en
   foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + caption opcional. Una vez
   mandada no se puede repetir ni ver.

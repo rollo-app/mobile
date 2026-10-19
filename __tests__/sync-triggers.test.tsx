@@ -3,6 +3,10 @@ import { AppState, type AppStateStatus } from "react-native";
 import { useSyncTriggers } from "@/features/capture/use-sync-triggers";
 
 jest.mock("@/features/capture/sync", () => ({ syncQueue: jest.fn(async () => {}) }));
+jest.mock("@/features/capture/background-upload", () => ({ registerBackgroundUpload: jest.fn(async () => {}) }));
+const { registerBackgroundUpload } = jest.requireMock("@/features/capture/background-upload") as {
+  registerBackgroundUpload: jest.Mock;
+};
 const { syncQueue } = jest.requireMock("@/features/capture/sync") as { syncQueue: jest.Mock };
 
 describe("upload triggers", () => {
@@ -11,6 +15,7 @@ describe("upload triggers", () => {
 
   beforeEach(() => {
     syncQueue.mockClear();
+    registerBackgroundUpload.mockClear();
     remove.mockClear();
     jest.spyOn(AppState, "addEventListener").mockImplementation((_type, handler) => {
       emit = handler as (state: AppStateStatus) => void;
@@ -34,6 +39,16 @@ describe("upload triggers", () => {
 
     emit("active");
     expect(syncQueue).toHaveBeenCalledTimes(1);
+  });
+
+  it("registers the background task on open and on every return to the foreground", async () => {
+    await renderHook(() => useSyncTriggers());
+    expect(registerBackgroundUpload).toHaveBeenCalledTimes(1);
+
+    emit("background");
+    expect(registerBackgroundUpload).toHaveBeenCalledTimes(1);
+    emit("active");
+    expect(registerBackgroundUpload).toHaveBeenCalledTimes(2);
   });
 
   it("stops listening on unmount", async () => {

@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Share } from "react-native";
+import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
@@ -50,6 +51,12 @@ export default function MeScreen() {
       <Section>
         <Row label="Tus viajes" value={String(trips.length)} onPress={() => router.push("/trips")} />
       </Section>
+
+      {__DEV__ && (
+        <Section title="Desarrollo">
+          <Row label="Probar subida en segundo plano" onPress={() => void triggerBackgroundUploadForTesting()} />
+        </Section>
+      )}
     </Screen>
   );
 }

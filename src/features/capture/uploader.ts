@@ -59,10 +59,19 @@ function classify(error: unknown, phase: Phase): Verdict | null {
   return { kind: "failed", reason: `http_${status}` };
 }
 
+export type RunOptions = {
+  /**
+   * Epoch ms (same clock as `now`). No new item starts once it has passed: the pass ends between
+   * items, never in the middle of one, so nothing is left half done. What remains stays pending.
+   */
+  deadline?: number;
+};
+
 export function createUploader(deps: UploaderDeps) {
   const now = deps.now ?? Date.now;
   let running: Promise<void> | null = null;
   let again = false;
+  let deadline: number | undefined;
 
   async function putAll(m: PendingMedia, urls: { original: string; thumb: string }) {
     const files = [
@@ -133,6 +142,7 @@ export function createUploader(deps: UploaderDeps) {
   async function pass() {
     const due = (await deps.queue.pending()).filter((m) => m.retryAt === null || m.retryAt <= now());
     for (const m of due) {
+      if (deadline !== undefined && now() >= deadline) return;
       try {
         const token = await deps.getToken(m.tripId);
         if (!token) {
@@ -176,12 +186,14 @@ export function createUploader(deps: UploaderDeps) {
     /**
      * Uploads what is pending. Runs one at a time: if a run is already going, requests another pass
      * when it finishes (in case something was enqueued meanwhile) and waits for the current one.
+     * The deadline only applies to the run that starts the loop.
      */
-    run(): Promise<void> {
+    run(options: RunOptions = {}): Promise<void> {
       if (running) {
         again = true;
         return running;
       }
+      deadline = options.deadline;
       running = loop().finally(() => {
         running = null;
       });
