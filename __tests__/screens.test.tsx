@@ -401,7 +401,7 @@ describe("Create roll", () => {
     });
   });
 
-  it("lets you pick another reveal moment, at least at the end and 12 hours after it by default", async () => {
+  it("lets you pick another reveal moment, 12 hours after the end by default", async () => {
     mocked.createTrip.mockResolvedValue(trip());
     mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
     await renderRouter(routes, { initialUrl: "/create" });
@@ -412,68 +412,31 @@ describe("Create roll", () => {
 
     const end = dateOf("Termina");
     expect(dateOf("Se revela")).toBe(end + 12 * HOUR);
-    expect(screen.getByLabelText("Se revela").props.testID).toBe(String(end));
     await changeDate("Se revela", end + 48 * HOUR);
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
     expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ endsAt: end, revealAt: end + 48 * HOUR }));
   });
 
-  it("blocks the roll when the end is not after the start", async () => {
-    await renderRouter(routes, { initialUrl: "/create" });
-    await fillNames();
-
-    await changeDate("Termina", dateOf("Empieza"));
-
-    expect(screen.getByText("El fin tiene que ser después del inicio")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Crear" })).toBeDisabled();
-  });
-
-  it("moves a custom reveal to the new end when the end passes it, and says so", async () => {
+  it("sends whatever dates were picked and shows the server's reason inline, keeping the form", async () => {
+    mocked.createTrip.mockClear();
+    mocked.createTrip.mockRejectedValue(new Error("El revelado no puede ser antes del fin"));
     await renderRouter(routes, { initialUrl: "/create" });
     await fillNames();
     await fireEvent.press(screen.getByRole("button", { name: "Otro momento" }));
-    const newEnd = dateOf("Se revela") + HOUR;
-
-    await changeDate("Termina", newEnd);
-
-    expect(dateOf("Se revela")).toBe(newEnd);
-    expect(screen.getByText("El revelado pasó al fin del rollo.")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
-  });
-
-  it("moves the end along when the start is moved past it", async () => {
-    await renderRouter(routes, { initialUrl: "/create" });
-    await screen.findByRole("button", { name: "Crear" });
-    const start = dateOf("Empieza");
     const end = dateOf("Termina");
-
-    await changeDate("Empieza", end + HOUR);
-
-    expect(dateOf("Empieza")).toBe(end + HOUR);
-    expect(dateOf("Termina")).toBe(end + HOUR + (end - start));
-  });
-
-  it("limits the pickers: start from now, end from start + 1 hour", async () => {
-    await renderRouter(routes, { initialUrl: "/create" });
-    await screen.findByRole("button", { name: "Crear" });
-
-    expect(Number(screen.getByLabelText("Empieza").props.testID)).toBeLessThanOrEqual(Date.now());
-    expect(screen.getByLabelText("Termina").props.testID).toBe(String(dateOf("Empieza") + HOUR));
-  });
-
-  it("validates against the current time when you tap Crear on a form left open", async () => {
-    mocked.createTrip.mockClear();
-    await renderRouter(routes, { initialUrl: "/create" });
-    await fillNames();
-    const realNow = Date.now;
-    jest.spyOn(Date, "now").mockImplementation(() => realNow() + 3 * HOUR);
+    await changeDate("Se revela", end - HOUR);
+    await changeDate("Empieza", end + 5 * HOUR);
 
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    expect(screen.getByText("El inicio no puede ser en el pasado")).toBeVisible();
-    expect(mocked.createTrip).not.toHaveBeenCalled();
-    jest.restoreAllMocks();
+    expect(mocked.createTrip).toHaveBeenCalledWith(
+      expect.objectContaining({ startsAt: end + 5 * HOUR, endsAt: end, revealAt: end - HOUR }),
+    );
+    expect(await screen.findByText("El revelado no puede ser antes del fin")).toBeVisible();
+    expect(dateOf("Empieza")).toBe(end + 5 * HOUR);
+    expect(dateOf("Se revela")).toBe(end - HOUR);
+    expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
   });
 
   it("cancels from the header and goes back", async () => {

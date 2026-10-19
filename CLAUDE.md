@@ -35,7 +35,7 @@ Decisiones de producto:
   pins (autor y hora), **feed** y la hoja de contacto del rollo. Se muestra solo el total del grupo.
 - **Rollo configurable al crearlo** (lo hace el admin, formulario nativo con `@expo/ui`): nombre, inicio y fin
   **con fecha y hora**, fotos y videos por persona por día, y **cuándo se revela** (al terminar o en otro
-  momento, siempre igual o posterior al fin). La validación vive en `src/features/trips/create-form.ts`.
+  momento, siempre igual o posterior al fin). Las fechas las valida el server; la app muestra su mensaje inline (`src/features/trips/create-form.ts` solo chequea los nombres).
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").

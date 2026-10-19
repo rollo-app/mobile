@@ -4,7 +4,7 @@ import { router, Stack } from "expo-router";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { createTrip } from "@/features/trips/actions";
-import { defaultStart, fitReveal, moveStart, validateRoll } from "@/features/trips/create-form";
+import { canCreate, defaultStart } from "@/features/trips/create-form";
 import { ErrorText } from "@/ui/components";
 import { colors, spacing } from "@/ui/theme";
 
@@ -27,39 +27,17 @@ export default function CreateScreen() {
   const [videos, setVideos] = useState(3);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [revealMoved, setRevealMoved] = useState(false);
-  // Validation runs against this; refreshed on submit so a form left open doesn't keep a stale "now".
-  const [now, setNow] = useState(() => Date.now());
 
   // With "Al terminar" the reveal follows the end on its own.
   const revealAt = revealMode === "end" ? endsAt : customReveal;
-  const { valid, startError, endError, revealError } = validateRoll({ name, adminName, startsAt, endsAt, revealAt }, now);
-
-  const dateError = startError ?? endError;
+  const valid = canCreate(name, adminName);
 
   function chooseReveal(mode: RevealMode) {
     if (mode === "custom") setCustomReveal(endsAt + 12 * HOUR);
-    setRevealMoved(false);
     setRevealMode(mode);
   }
 
-  function changeStart(date: Date) {
-    const moved = moveStart({ startsAt, endsAt }, date.getTime());
-    setStartsAt(moved.startsAt);
-    changeEnd(moved.endsAt);
-  }
-
-  function changeEnd(end: number) {
-    setEndsAt(end);
-    const fit = fitReveal(customReveal, end);
-    setCustomReveal(fit.revealAt);
-    setRevealMoved(revealMode === "custom" && fit.moved);
-  }
-
   async function submit() {
-    const current = Date.now();
-    setNow(current);
-    if (!validateRoll({ name, adminName, startsAt, endsAt, revealAt }, current).valid) return;
     setError(null);
     setLoading(true);
     try {
@@ -97,6 +75,11 @@ export default function CreateScreen() {
           </Stack.Toolbar.Button>
         )}
       </Stack.Toolbar>
+      {error && (
+        <View style={styles.error}>
+          <ErrorText>{error}</ErrorText>
+        </View>
+      )}
       <Host style={styles.form}>
         <Form>
           <Section>
@@ -104,27 +87,22 @@ export default function CreateScreen() {
             <TextField placeholder="Tu nombre" maxLength={30} onTextChange={setAdminName} />
           </Section>
 
-          <Section title="Cuándo" footer={dateError ? <Text>{dateError}</Text> : undefined}>
+          <Section title="Cuándo">
             <DatePicker
               title="Empieza"
               selection={new Date(startsAt)}
-              range={{ start: new Date(now) }}
               displayedComponents={[...DATE_TIME]}
-              onDateChange={changeStart}
+              onDateChange={(date) => setStartsAt(date.getTime())}
             />
             <DatePicker
               title="Termina"
               selection={new Date(endsAt)}
-              range={{ start: new Date(startsAt + HOUR) }}
               displayedComponents={[...DATE_TIME]}
-              onDateChange={(date) => changeEnd(date.getTime())}
+              onDateChange={(date) => setEndsAt(date.getTime())}
             />
           </Section>
 
-          <Section
-            title="Revelado"
-            footer={<Text>{revealError ?? (revealMoved ? "El revelado pasó al fin del rollo." : "Hasta el revelado nadie ve las fotos, ni las propias.")}</Text>}
-          >
+          <Section title="Revelado" footer={<Text>Hasta el revelado nadie ve las fotos, ni las propias.</Text>}>
             <Picker
               selection={revealMode}
               onSelectionChange={chooseReveal}
@@ -137,12 +115,8 @@ export default function CreateScreen() {
               <DatePicker
                 title="Se revela"
                 selection={new Date(customReveal)}
-                range={{ start: new Date(endsAt) }}
                 displayedComponents={[...DATE_TIME]}
-                onDateChange={(date) => {
-                  setRevealMoved(false);
-                  setCustomReveal(date.getTime());
-                }}
+                onDateChange={(date) => setCustomReveal(date.getTime())}
               />
             )}
           </Section>
@@ -154,11 +128,6 @@ export default function CreateScreen() {
         </Form>
       </Host>
 
-      {error && (
-        <View style={styles.error}>
-          <ErrorText>{error}</ErrorText>
-        </View>
-      )}
     </View>
   );
 }
