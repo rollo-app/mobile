@@ -14,8 +14,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Crear un viaje
-         * @description Quien lo crea queda como admin. Devuelve el código para invitar y el token del admin.
+         * Create a trip
+         * @description Whoever creates it becomes the admin. Returns the invite code and the admin token.
          */
         post: {
             parameters: {
@@ -30,7 +30,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Viaje creado */
+                /** @description Trip created */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -39,7 +39,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripCreated"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -66,8 +66,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Unirse a un viaje
-         * @description Con el código y un nombre. El nombre es único por viaje (sin distinguir mayúsculas).
+         * Join a trip
+         * @description With the code and a name. The name is unique per trip (case-insensitive).
          */
         post: {
             parameters: {
@@ -82,7 +82,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Te uniste al viaje */
+                /** @description Joined the trip */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -91,7 +91,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripCreated"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -100,7 +100,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -109,7 +109,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Conflicto con el estado actual */
+                /** @description Conflict with the current state */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -134,8 +134,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Info del viaje
-         * @description Viaje, miembros y cuántas fotos y videos te quedan hoy.
+         * Trip info
+         * @description Trip, members and how many photos and videos you have left today.
          */
         get: {
             parameters: {
@@ -148,7 +148,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Detalle del viaje */
+                /** @description Trip detail */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -157,7 +157,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripDetail"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -166,7 +166,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -182,7 +182,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Editar el viaje (admin) */
+        /** Edit the trip (admin) */
         patch: {
             parameters: {
                 query?: never;
@@ -198,7 +198,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Viaje actualizado */
+                /** @description Trip updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -207,7 +207,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripResponse"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -216,7 +216,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -225,7 +225,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -247,7 +247,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revelar el rollo ya (admin) */
+        /** Reveal the roll now (admin) */
         post: {
             parameters: {
                 query?: never;
@@ -259,7 +259,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Rollo revelado */
+                /** @description Roll revealed */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -268,7 +268,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripResponse"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -277,7 +277,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -308,8 +308,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Cambiar tu nombre en el viaje
-         * @description Mismas reglas que al unirse: único por viaje, sin distinguir mayúsculas.
+         * Change your name in the trip
+         * @description Same rules as when joining: unique per trip, case-insensitive.
          */
         patch: {
             parameters: {
@@ -326,7 +326,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Nombre actualizado */
+                /** @description Name updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -335,7 +335,7 @@ export interface paths {
                         "application/json": components["schemas"]["Member"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -344,7 +344,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -353,7 +353,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -362,7 +362,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Conflicto con el estado actual */
+                /** @description Conflict with the current state */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -386,8 +386,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Sacar a alguien del viaje (admin)
-         * @description Su token deja de servir y su nombre queda libre. Sus fotos quedan en el rollo.
+         * Remove someone from the trip (admin)
+         * @description Their token stops working and their name is freed. Their photos stay in the roll.
          */
         delete: {
             parameters: {
@@ -401,14 +401,14 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Miembro removido */
+                /** @description Member removed */
                 204: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -417,7 +417,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -426,7 +426,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -435,7 +435,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -461,8 +461,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Registrar una foto o video
-         * @description Devuelve URLs firmadas para subir el original y el thumbnail directo a R2. Idempotente por `id`: reintentar desde la cola offline no duplica ni gasta cupo.
+         * Register a photo or video
+         * @description Returns signed URLs to upload the original and the thumbnail straight to R2. Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota.
          */
         post: {
             parameters: {
@@ -479,7 +479,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Reintento: URLs nuevas, o ya estaba subida */
+                /** @description Retry: new URLs, or it was already uploaded */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -488,7 +488,7 @@ export interface paths {
                         "application/json": components["schemas"]["MediaRegistered"] | components["schemas"]["MediaStatus"];
                     };
                 };
-                /** @description Registrada; subí los archivos */
+                /** @description Registered; upload the files */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -497,7 +497,7 @@ export interface paths {
                         "application/json": components["schemas"]["MediaRegistered"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -506,7 +506,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -515,7 +515,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -524,7 +524,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Conflicto con el estado actual */
+                /** @description Conflict with the current state */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -533,7 +533,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Se alcanzó el límite del día */
+                /** @description Daily limit reached */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -560,8 +560,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Confirmar que se subieron los archivos
-         * @description Verifica que original y thumbnail estén en R2. Recién ahí la foto aparece en el feed.
+         * Confirm the files were uploaded
+         * @description Checks that the original and the thumbnail are in R2. Only then does the photo show up in the feed.
          */
         post: {
             parameters: {
@@ -574,7 +574,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Subida confirmada */
+                /** @description Upload confirmed */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -583,7 +583,7 @@ export interface paths {
                         "application/json": components["schemas"]["MediaStatus"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -592,7 +592,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -601,7 +601,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -626,8 +626,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Feed del viaje
-         * @description Antes del revelado: solo metadata (autor, hora, lugar, epígrafe, thumbhash), sin archivos, ni siquiera los propios. Después: incluye dimensiones y los paths para descargar.
+         * Trip feed
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions and the download paths.
          */
         get: {
             parameters: {
@@ -640,7 +640,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Feed ordenado por hora en que se sacó */
+                /** @description Feed ordered by the time the shot was taken */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -649,7 +649,7 @@ export interface paths {
                         "application/json": components["schemas"]["Feed"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -658,7 +658,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -685,8 +685,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Descargar un archivo (solo después del revelado)
-         * @description Streaming desde R2 con el mismo Bearer token.
+         * Download a file (only after the reveal)
+         * @description Streamed from R2 with the same Bearer token.
          */
         get: {
             parameters: {
@@ -701,7 +701,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Archivo */
+                /** @description File */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -711,7 +711,7 @@ export interface paths {
                         "video/mp4": string;
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -720,7 +720,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -729,7 +729,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -759,8 +759,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Borrar una foto o video del viaje (admin, antes del revelado)
-         * @description Una vez mandada, una foto no se puede borrar ni repetir. La excepción es el admin, por si alguien manda algo que no corresponde: puede borrar cualquier foto del viaje antes del revelado. Se borran los archivos pero **no se devuelve el cupo** a nadie, y el id no se puede volver a registrar.
+         * Delete a photo or video from the trip (admin, before the reveal)
+         * @description Once sent, a photo can be neither deleted nor retaken. The exception is the admin, in case someone sends something inappropriate: they can delete any photo of the trip before the reveal. The files are deleted but the quota is **not given back** to anyone, and the id cannot be registered again.
          */
         delete: {
             parameters: {
@@ -773,14 +773,14 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Borrada */
+                /** @description Deleted */
                 204: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -789,7 +789,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -798,7 +798,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -807,7 +807,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Conflicto con el estado actual */
+                /** @description Conflict with the current state */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -830,7 +830,7 @@ export interface components {
         TripCreated: {
             trip: components["schemas"]["Trip"];
             member: components["schemas"]["Member"];
-            /** @description Guardalo en el celular: es la única vez que se devuelve */
+            /** @description Store it on the phone: it is only returned once */
             token: string;
         };
         Trip: {
@@ -839,24 +839,24 @@ export interface components {
             /** @example Viaje al sur */
             name: string;
             /**
-             * @description Código de 6 caracteres para unirse
+             * @description 6-character code to join
              * @example HUB5FT
              */
             joinCode: string;
             /** @example America/Argentina/Buenos_Aires */
             timezone: string;
             /**
-             * @description Inicio del viaje
+             * @description Trip start
              * @example 1767225600000
              */
             startsAt: number;
             /**
-             * @description Fin del viaje
+             * @description Trip end
              * @example 1767225600000
              */
             endsAt: number;
             /**
-             * @description Revelado automático
+             * @description Automatic reveal
              * @example 1767225600000
              */
             revealAt: number;
@@ -883,22 +883,22 @@ export interface components {
             /** @example Juani */
             adminName: string;
             /**
-             * @description Zona IANA del destino
+             * @description IANA time zone of the destination
              * @example America/Argentina/Buenos_Aires
              */
             timezone: string;
             /**
-             * @description Inicio del viaje
+             * @description Trip start
              * @example 1767225600000
              */
             startsAt: number;
             /**
-             * @description Fin del viaje
+             * @description Trip end
              * @example 1767225600000
              */
             endsAt: number;
             /**
-             * @description Cuándo se revela el rollo
+             * @description When the roll is revealed
              * @example 1767225600000
              */
             revealAt: number;
@@ -919,7 +919,7 @@ export interface components {
             members: components["schemas"]["Member"][];
             today: {
                 /**
-                 * @description Fecha local del viaje
+                 * @description Trip's local date
                  * @example 2027-01-12
                  */
                 date: string;
@@ -950,16 +950,16 @@ export interface components {
             upload: {
                 /**
                  * Format: uri
-                 * @description PUT del archivo original
+                 * @description PUT of the original file
                  */
                 original: string;
                 /**
                  * Format: uri
-                 * @description PUT del thumbnail JPEG (~800px)
+                 * @description PUT of the JPEG thumbnail (~800px)
                  */
                 thumb: string;
             };
-            /** @description Segundos de validez de las URLs */
+            /** @description Seconds the URLs stay valid */
             expiresIn: number;
         };
         MediaStatus: {
@@ -971,12 +971,12 @@ export interface components {
         RegisterMediaRequest: {
             /**
              * Format: uuid
-             * @description UUID generado en el celular; reintentar con el mismo id es seguro
+             * @description UUID generated on the phone; retrying with the same id is safe
              */
             id: string;
             type: components["schemas"]["MediaType"];
             /**
-             * @description Hora del celular al disparar
+             * @description Phone time when the shot was taken
              * @example 1767225600000
              */
             takenAt: number;
@@ -985,7 +985,7 @@ export interface components {
             accuracyM?: number | null;
             caption?: string | null;
             /**
-             * @description ThumbHash (https://evanw.github.io/thumbhash/) en base64 estándar, generado en el celular desde el thumbnail. Si un reintento trae otro valor, se conserva el primero.
+             * @description ThumbHash (https://evanw.github.io/thumbhash/) in standard base64, generated on the phone from the thumbnail. If a retry brings a different value, the first one is kept.
              * @example 3OcRJYB4d3h/iIeHeEh3eIhw+j3A
              */
             thumbhash?: string | null;
@@ -1011,7 +1011,7 @@ export interface components {
             lat: number | null;
             lng: number | null;
             caption: string | null;
-            /** @description ThumbHash en base64. Se devuelve siempre, también antes del revelado, a propósito: solo codifica colores difusos (~25 bytes), no deja reconstruir la foto. */
+            /** @description ThumbHash in base64. Always returned, also before the reveal, on purpose: it only encodes blurry colors (~25 bytes), the photo cannot be reconstructed from it. */
             thumbhash: string | null;
             durationS: number | null;
             author: {
@@ -1019,11 +1019,11 @@ export interface components {
                 id: string;
                 name: string;
             };
-            /** @description Solo después del revelado */
+            /** @description Only after the reveal */
             width?: number | null;
-            /** @description Solo después del revelado */
+            /** @description Only after the reveal */
             height?: number | null;
-            /** @description Paths de descarga; solo después del revelado */
+            /** @description Download paths; only after the reveal */
             files?: {
                 thumb: string;
                 original: string;
