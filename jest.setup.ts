@@ -16,3 +16,10 @@ jest.mock("expo-secure-store", () => {
 beforeEach(() => {
   (require("expo-secure-store").__store as Map<string, string>).clear();
 });
+
+// La cola de subida usa expo-sqlite (nativo): en los tests va un SQLite en memoria.
+jest.mock("@/features/capture/store", () => {
+  const { createQueue } = jest.requireActual("@/features/capture/queue");
+  const { memoryDb } = jest.requireActual("@/test/sqlite-memory");
+  return { getQueue: jest.fn(() => createQueue(memoryDb())) };
+});

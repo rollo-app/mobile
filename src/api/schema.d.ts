@@ -294,6 +294,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trips/{tripId}/members/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Cambiar tu nombre en el viaje
+         * @description Mismas reglas que al unirse: único por viaje, sin distinguir mayúsculas.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateMeRequest"];
+                };
+            };
+            responses: {
+                /** @description Nombre actualizado */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Member"];
+                    };
+                };
+                /** @description Datos inválidos */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Falta el token o es inválido */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sin permiso */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflicto con el estado actual */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/trips/{tripId}/members/{memberId}": {
         parameters: {
             query?: never;
@@ -678,8 +759,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Borrar una foto propia (antes del revelado)
-         * @description Borra los archivos y devuelve el cupo del día.
+         * Borrar una foto o video del viaje (admin, antes del revelado)
+         * @description Una vez mandada, una foto no se puede borrar ni repetir. La excepción es el admin, por si alguien manda algo que no corresponde: puede borrar cualquier foto del viaje antes del revelado. Se borran los archivos pero **no se devuelve el cupo** a nadie, y el id no se puede volver a registrar.
          */
         delete: {
             parameters: {
@@ -701,6 +782,15 @@ export interface paths {
                 };
                 /** @description Falta el token o es inválido */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sin permiso */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -847,6 +937,10 @@ export interface components {
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
+        };
+        UpdateMeRequest: {
+            /** @example Juani */
+            name: string;
         };
         MediaRegistered: {
             /** Format: uuid */
