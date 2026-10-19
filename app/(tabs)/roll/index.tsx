@@ -4,8 +4,10 @@ import { StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { buildContactSheet } from "@/features/roll/contact-sheet";
+import { formatDate, formatTime, startsIn } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
@@ -20,6 +22,7 @@ export default function RollScreen() {
   const pending = usePendingCount(trip?.tripId);
   const { feed } = useFeed(trip?.tripId);
   const pendingItems = usePendingItems(trip?.tripId);
+  const phase = useRollPhase(detail);
   // Your queued photos are already in the roll, even if they haven't been uploaded yet.
   const total = (detail?.totalUploaded ?? 0) + pending;
 
@@ -44,13 +47,34 @@ export default function RollScreen() {
             <Footnote>Nadie las ve hasta el revelado. Ni vos.</Footnote>
           </View>
 
-          <Section title="Hoy">
-            <Row label="Fotos" value={`${detail.today.photosLeft} de ${detail.trip.dailyPhotoLimit}`} />
-            <Row label="Videos" value={`${detail.today.videosLeft} de ${detail.trip.dailyVideoLimit}`} />
-          </Section>
+          {phase === "active" && (
+            <Section title="Hoy">
+              <Row label="Fotos" value={`${detail.today.photosLeft} de ${detail.trip.dailyPhotoLimit}`} />
+              <Row label="Videos" value={`${detail.today.videosLeft} de ${detail.trip.dailyVideoLimit}`} />
+            </Section>
+          )}
+
+          {phase === "upcoming" && (
+            <Section title="Empieza">
+              <Row
+                label={`${formatDate(detail.trip.startsAt, detail.trip.timezone)}, ${formatTime(detail.trip.startsAt, detail.trip.timezone)}`}
+                value={startsIn(detail.trip.startsAt, Date.now(), detail.trip.timezone)}
+              />
+            </Section>
+          )}
+
+          {phase === "ended" && (
+            <Section title="Terminó">
+              <Row label={formatDay(detail.trip.endsAt, detail.trip.timezone)} />
+            </Section>
+          )}
 
           <Section title="Revelado">
-            <Row label={formatDay(detail.trip.revealAt, detail.trip.timezone)} value={untilReveal(detail.trip)} />
+            {phase === "revealed" ? (
+              <Row label="Ya se reveló" value={formatDay(detail.trip.revealAt, detail.trip.timezone)} />
+            ) : (
+              <Row label={formatDay(detail.trip.revealAt, detail.trip.timezone)} value={untilReveal(detail.trip)} />
+            )}
           </Section>
         </>
       )}

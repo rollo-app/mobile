@@ -83,6 +83,44 @@ describe("Roll", () => {
     expect(screen.getByText("en 9 días")).toBeVisible();
   });
 
+  it("before it starts it hides today's quota and says when it begins", async () => {
+    mocked.fetchTrip.mockResolvedValue(
+      detail({ trip: trip({ startsAt: Date.now() + 5 * DAY, endsAt: Date.now() + 9 * DAY }) }),
+    );
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findByLabelText("12 en el rollo");
+    expect(screen.getByText("Empieza")).toBeVisible();
+    expect(screen.getByText("en 5 días")).toBeVisible();
+    expect(screen.queryByText("Fotos")).toBeNull();
+    expect(screen.queryByText("Fotos")).toBeNull();
+  });
+
+  it("once it ended and before the reveal it says it ended and keeps the reveal date", async () => {
+    mocked.fetchTrip.mockResolvedValue(
+      detail({ trip: trip({ startsAt: Date.now() - 9 * DAY, endsAt: Date.now() - DAY, revealAt: Date.now() + 3 * DAY }) }),
+    );
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findByLabelText("12 en el rollo");
+    expect(screen.getByText("Terminó")).toBeVisible();
+    expect(screen.getByText("Revelado")).toBeVisible();
+    expect(screen.getByText("en 3 días")).toBeVisible();
+    expect(screen.queryByText("Fotos")).toBeNull();
+  });
+
+  it("once revealed it says so and hides today's quota", async () => {
+    mocked.fetchTrip.mockResolvedValue(
+      detail({ trip: trip({ startsAt: Date.now() - 9 * DAY, endsAt: Date.now() - 2 * DAY, revealAt: Date.now() - DAY, revealed: true }) }),
+    );
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findByLabelText("12 en el rollo");
+    expect(screen.getByText("Ya se reveló")).toBeVisible();
+    expect(screen.queryByText("Fotos")).toBeNull();
+    expect(screen.queryByText("Terminó")).toBeNull();
+  });
+
   it("the contact sheet shows each photo's ThumbHash, newest to oldest", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 2 }));
     mocked.fetchFeed.mockResolvedValue({

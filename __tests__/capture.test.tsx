@@ -116,6 +116,39 @@ describe("Capture", () => {
     expect(picker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
+  it("before the roll starts it says so and does not open the camera", async () => {
+    const d = tripDetail(10, 3);
+    trips.fetchTrip.mockResolvedValue({ ...d, trip: { ...d.trip, startsAt: Date.UTC(2099, 9, 29, 22, 0), endsAt: Date.UTC(2099, 10, 5) } });
+    await openCapture();
+
+    expect(await screen.findByText("Este rollo todavía no empezó")).toBeVisible();
+    expect(screen.getByText("Arranca el 29 de octubre a las 19:00.")).toBeVisible();
+    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+  });
+
+  it("after the roll ended it says when it is revealed and does not open the camera", async () => {
+    const d = tripDetail(10, 3);
+    trips.fetchTrip.mockResolvedValue({
+      ...d,
+      trip: { ...d.trip, startsAt: Date.now() - 9 * DAY, endsAt: Date.now() - DAY, revealAt: Date.UTC(2099, 0, 24, 14, 0) },
+    });
+    await openCapture();
+
+    expect(await screen.findByText("Este rollo ya terminó")).toBeVisible();
+    expect(screen.getByText("Se revela el 24 de enero a las 11:00.")).toBeVisible();
+    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+  });
+
+  it("once revealed it says no more photos can be taken and does not open the camera", async () => {
+    const d = tripDetail(10, 3);
+    trips.fetchTrip.mockResolvedValue({ ...d, trip: { ...d.trip, endsAt: Date.now() - DAY, revealed: true } });
+    await openCapture();
+
+    expect(await screen.findByText("Este rollo ya se reveló")).toBeVisible();
+    expect(screen.getByText("Ya no se pueden sacar fotos.")).toBeVisible();
+    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+  });
+
   it("with no signal it computes the quota from the trip's saved data", async () => {
     queryClient.setQueryData(["trip", SUR], tripDetail(0, 0), { updatedAt: Date.now() - 60_000 });
     trips.fetchTrip.mockRejectedValue(new Error("Sin conexión"));
