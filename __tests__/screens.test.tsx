@@ -1,3 +1,4 @@
+import * as BackgroundTask from "expo-background-task";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
@@ -180,6 +181,15 @@ describe("Me", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Tus viajes, 1" }));
     expect(screen).toHavePathname("/trips");
+  });
+
+  it("in development, a row triggers the background upload for testing", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Probar subida en segundo plano" }));
+
+    expect(BackgroundTask.triggerTaskWorkerForTestingAsync).toHaveBeenCalled();
   });
 });
 

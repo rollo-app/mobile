@@ -5,7 +5,7 @@ import { getToken } from "@/storage/trips";
 import { getQueue } from "./store";
 import { pendingItemsKey } from "./use-pending-items";
 import { pendingKey } from "./use-pending-count";
-import { createUploader } from "./uploader";
+import { createUploader, type RunOptions } from "./uploader";
 
 let uploader: Promise<ReturnType<typeof createUploader>> | null = null;
 
@@ -51,12 +51,20 @@ function getUploader() {
 }
 
 /**
+ * One upload pass; rejects if the queue or the uploader fail. With `deadline` (epoch ms) it stops
+ * between items once the time is up (background tasks have a limited budget).
+ */
+export async function runUploadPass(options?: RunOptions): Promise<void> {
+  await (await getUploader()).run(options);
+}
+
+/**
  * Requests an upload pass. Never throws: if something fails it stays in the queue for the
  * next trigger (opening the app, returning to foreground, sending another photo).
  */
 export async function syncQueue(): Promise<void> {
   try {
-    await (await getUploader()).run();
+    await runUploadPass();
   } catch (e) {
     console.warn("No se pudo subir la cola", e);
   }

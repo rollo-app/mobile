@@ -529,3 +529,63 @@ describe("uploader", () => {
     });
   });
 });
+
+describe("uploader deadline", () => {
+  const A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const C = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
+  it("does not start a new item once the deadline has passed and leaves the rest pending", async () => {
+    happyServer();
+    await queue.enqueue(item({ id: A, takenAt: 1 }));
+    await queue.enqueue(item({ id: B, takenAt: 2 }));
+    await queue.enqueue(item({ id: C, takenAt: 3 }));
+    // Each PUT "takes" 10 s; the deadline allows for one item only.
+    const putFile = deps.putFile;
+    deps.putFile = async (...args) => {
+      now += 10_000;
+      return putFile(...args);
+    };
+
+    await createUploader(deps).run({ deadline: NOW + 15_000 });
+
+    // A finishes at +20 s (two PUTs), past the deadline: B and C never start.
+    expect((await queue.pending()).map((m) => m.id).sort()).toEqual([B, C]);
+    expect(removed).toEqual([A]);
+    expect(restCalls().filter((c) => c.endsWith("/media"))).toHaveLength(1);
+  });
+
+  it("does nothing when the deadline has already passed", async () => {
+    happyServer();
+    await queue.enqueue(item());
+
+    await createUploader(deps).run({ deadline: NOW });
+
+    expect(calls).toEqual([]);
+    expect(await queue.pending()).toHaveLength(1);
+  });
+
+  it("uploads everything when there is no deadline", async () => {
+    happyServer();
+    await queue.enqueue(item({ id: A, takenAt: 1 }));
+    await queue.enqueue(item({ id: B, takenAt: 2 }));
+
+    await createUploader(deps).run();
+
+    expect(await queue.pending()).toEqual([]);
+  });
+
+  it("an item cut by the deadline is picked up by the next run with no leftovers", async () => {
+    happyServer();
+    await queue.enqueue(item({ id: A, takenAt: 1 }));
+    await queue.enqueue(item({ id: B, takenAt: 2 }));
+    const uploader = createUploader(deps);
+
+    await uploader.run({ deadline: NOW });
+    expect(await queue.pending()).toHaveLength(2);
+    await uploader.run();
+
+    expect(await queue.pending()).toEqual([]);
+    expect(removed.sort()).toEqual([A, B]);
+  });
+});
