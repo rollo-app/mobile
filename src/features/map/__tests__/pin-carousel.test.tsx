@@ -32,4 +32,10 @@ describe("PinCarousel", () => {
 
     expect(onIndexChange).toHaveBeenCalledWith(1);
   });
+
+  it("arranca en la tarjeta de `index` (la foto que se abrió desde el Feed)", async () => {
+    await render(<PinCarousel items={[item("a", "Cami"), item("b", "Fede"), item("c", "Nico")]} index={2} onIndexChange={jest.fn()} timeZone={TZ} />);
+
+    expect(screen.getByTestId("pin-carousel").props.initialScrollIndex).toBe(2);
+  });
 });

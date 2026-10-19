@@ -4,7 +4,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { FeedRow } from "@/features/feed/feed-row";
-import { groupByDay, type FeedSection } from "@/features/feed/sections";
+import { groupByDay, newest, type FeedSection } from "@/features/feed/sections";
 import { feedToItems, mergeItems, pendingToItems, type MapItem } from "@/features/map/features";
 import { deleteMedia } from "@/features/trips/actions";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -20,6 +20,8 @@ const Separator = memo(function Separator() {
   return <View style={styles.separator} />;
 });
 
+const PAGE = 30;
+
 const keyExtractor = (item: MapItem) => item.id;
 
 export default function FeedScreen() {
@@ -31,15 +33,20 @@ export default function FeedScreen() {
   const { feed, error, loading, refetch } = useFeed(tripId);
   const pending = usePendingItems(tripId);
   const [refreshing, setRefreshing] = useState(false);
+  const [limit, setLimit] = useState(PAGE);
 
   const timeZone = detail?.trip.timezone ?? "America/Argentina/Buenos_Aires";
   const me = detail?.me;
   const isAdmin = me?.role === "admin";
 
-  const sections = useMemo(() => {
+  const all = useMemo(() => {
     const mine = me ? pendingToItems(pending, me) : [];
-    return groupByDay(mergeItems(feed ? feedToItems(feed.items) : [], mine), timeZone);
-  }, [feed, pending, me, timeZone]);
+    return mergeItems(feed ? feedToItems(feed.items) : [], mine);
+  }, [feed, pending, me]);
+
+  // El server manda todo junto: se muestra de a tandas, lo más nuevo primero, y se suma al llegar al final.
+  const sections = useMemo(() => groupByDay(newest(all, limit), timeZone), [all, limit, timeZone]);
+  const loadMore = useCallback(() => setLimit((n) => (n < all.length ? n + PAGE : n)), [all.length]);
 
   const openOnMap = useCallback(
     (item: MapItem) => router.navigate({ pathname: "/mapa", params: { focus: item.id } }),
@@ -122,6 +129,8 @@ export default function FeedScreen() {
       renderSectionHeader={renderSectionHeader}
       ItemSeparatorComponent={Separator}
       ListEmptyComponent={empty}
+      onEndReached={loadMore}
+      onEndReachedThreshold={0.5}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
       initialNumToRender={12}
       windowSize={7}

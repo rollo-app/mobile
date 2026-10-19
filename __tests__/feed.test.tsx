@@ -162,6 +162,31 @@ describe("Feed", () => {
     group.mockRestore();
   });
 
+  it("muestra de a tandas y carga más al llegar al final de la lista", async () => {
+    const many = Array.from({ length: 70 }, (_, n) => feedItem({ id: `f${n}`, takenAt: 1_800_000_000_000 + n * 60_000 }));
+    mocked.fetchFeed.mockResolvedValue(feed(many));
+    await renderRouter(routes, { initialUrl: "/feed" });
+    await screen.findByTestId("feed-list");
+    // El host no expone las props de la lista: se sube hasta el SectionList.
+    const list = () => {
+      let node: { props: Record<string, any>; parent: any } | null = screen.getByTestId("feed-list");
+      while (node && !node.props.onEndReached) node = node.parent;
+      return node!.props;
+    };
+    const sectionsOf = () => {
+      const p = list();
+      return (p.sections ?? p.data) as { data: unknown[] }[];
+    };
+    const rows = () => sectionsOf().reduce((n, s) => n + s.data.length, 0);
+
+    await waitFor(() => expect(rows()).toBe(30));
+    await act(async () => list().onEndReached());
+    expect(rows()).toBe(60);
+    await act(async () => list().onEndReached());
+    await act(async () => list().onEndReached());
+    expect(rows()).toBe(70);
+  });
+
   describe("admin", () => {
     it("Borrar foto pide confirmación y, si confirma, borra y vuelve a pedir feed y viaje", async () => {
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));

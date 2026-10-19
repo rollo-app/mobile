@@ -31,3 +31,8 @@ export function groupByDay(items: MapItem[], timeZone: string, now: number = Dat
       data: byDay.get(day)!.sort((a, b) => b.takenAt - a.takenAt),
     }));
 }
+
+/** Las `limit` más recientes: el Feed muestra de a tandas y pide más al llegar al final. */
+export function newest(items: MapItem[], limit: number): MapItem[] {
+  return [...items].sort((a, b) => b.takenAt - a.takenAt).slice(0, limit);
+}

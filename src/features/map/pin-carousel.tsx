@@ -51,6 +51,8 @@ export function PinCarousel({
           <PinCard item={item} timeZone={timeZone} />
         </View>
       )}
+      initialScrollIndex={index}
+      getItemLayout={(_, i) => ({ length: cardWidth, offset: step * i, index: i })}
       snapToInterval={step}
       decelerationRate="fast"
       disableIntervalMomentum

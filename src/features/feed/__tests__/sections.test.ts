@@ -1,5 +1,5 @@
 import type { MapItem } from "@/features/map/features";
-import { dayTitle, groupByDay } from "../sections";
+import { dayTitle, groupByDay, newest } from "../sections";
 
 const TZ = "America/Argentina/Buenos_Aires"; // UTC-3
 const NOW = Date.parse("2027-01-14T18:00:00Z"); // jueves 14, 15:00 en el viaje
@@ -53,5 +53,16 @@ describe("groupByDay", () => {
 
   it("sin items no hay secciones", () => {
     expect(groupByDay([], TZ, NOW)).toEqual([]);
+  });
+});
+
+describe("newest", () => {
+  it("se queda con las N más recientes por hora de captura", () => {
+    const items = [item("a", "2027-01-12", 1), item("b", "2027-01-12", 4), item("c", "2027-01-13", 3), item("d", "2027-01-13", 2)];
+    expect(newest(items, 2).map((i) => i.id)).toEqual(["b", "c"]);
+  });
+
+  it("con límite mayor que la cantidad devuelve todo", () => {
+    expect(newest([item("a", "2027-01-12", 1)], 10)).toHaveLength(1);
   });
 });
