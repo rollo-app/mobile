@@ -324,14 +324,42 @@ describe("uploader", () => {
       expect(removed).toEqual([]);
     });
 
-    it("409 (rollo revelado): lo marca fallido y no borra archivos", async () => {
-      routes.push(() => json(409, { error: "El rollo ya se reveló" }));
+    it.each(["El rollo ya se reveló", "El admin borró esta foto"])(
+      "409 al registrar (%s): falla definitiva con el motivo del server y no borra archivos",
+      async (message) => {
+        routes.push(() => json(409, { error: message }));
+        await queue.enqueue(item());
+
+        await createUploader(deps).run();
+        await createUploader(deps).run();
+
+        expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: message })]);
+        expect(calls).toHaveLength(1);
+        expect(removed).toEqual([]);
+      },
+    );
+
+    it("404 al confirmar (el admin la borró): falla 'deleted' sin reintentos", async () => {
+      routes.push((c) => (c.url.endsWith("/complete") ? json(404, { error: "No existe" }) : undefined));
+      happyServer();
       await queue.enqueue(item());
 
       await createUploader(deps).run();
 
-      expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "revealed" })]);
+      expect(await queue.failed()).toEqual([
+        expect.objectContaining({ failedReason: "deleted", attempts: 0, retryAt: null }),
+      ]);
       expect(removed).toEqual([]);
+    });
+
+    it("otros 4xx al confirmar (archivo que no llegó) siguen reintentándose", async () => {
+      routes.push((c) => (c.url.endsWith("/complete") ? json(400, { error: "Falta el archivo" }) : undefined));
+      happyServer();
+      await queue.enqueue(item());
+
+      await createUploader(deps).run();
+
+      expect(await queue.pending()).toEqual([expect.objectContaining({ attempts: 1 })]);
     });
 
     it("un fallido no frena a los demás ítems", async () => {

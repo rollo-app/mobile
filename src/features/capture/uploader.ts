@@ -46,7 +46,10 @@ function classify(error: unknown, phase: Phase): Verdict | null {
   if (status === 0) return { kind: "offline" };
   if (status >= 500) return { kind: "retry" };
   if (status === 429) return { kind: "failed", reason: "quota" };
-  if (status === 409) return { kind: "failed", reason: "revealed" };
+  // El motivo es el mensaje del server ("El rollo ya se reveló", "El admin borró esta foto"…).
+  if (status === 409) return { kind: "failed", reason: error.message };
+  // Confirmar una foto que el admin borró da 404: no hay nada que reintentar.
+  if (phase === "complete" && status === 404) return { kind: "failed", reason: "deleted" };
   // Al confirmar, un 4xx puede ser un archivo que no terminó de llegar: se reintenta.
   if (phase === "complete") return { kind: "retry" };
   return { kind: "failed", reason: `http_${status}` };
