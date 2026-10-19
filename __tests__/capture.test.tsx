@@ -15,6 +15,7 @@ jest.mock("@/features/capture/location", () => ({
   startFix: jest.fn(async () => ({ lat: -49.33, lng: -72.89, accuracyM: 12 })),
 }));
 jest.mock("@/features/capture/store", () => ({ getQueue: jest.fn() }));
+jest.mock("@/features/capture/sync", () => ({ syncQueue: jest.fn(async () => {}) }));
 jest.mock("expo-crypto", () => ({ randomUUID: () => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }));
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(),
@@ -30,6 +31,7 @@ const trips = jest.mocked(actions);
 const picker = jest.mocked(ImagePicker);
 const mediaMock = jest.mocked(media);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
+const { syncQueue } = jest.requireMock("@/features/capture/sync") as { syncQueue: jest.Mock };
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const TZ = "America/Argentina/Buenos_Aires";
@@ -64,6 +66,8 @@ beforeEach(async () => {
   queue = await createQueue(memoryDb());
   getQueue.mockResolvedValue(queue);
   picker.launchCameraAsync.mockReset();
+  syncQueue.mockReset();
+  syncQueue.mockResolvedValue(undefined);
   await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
   trips.fetchTrip.mockResolvedValue(tripDetail(7, 2));
   mediaMock.prepareMedia.mockResolvedValue({
@@ -169,5 +173,21 @@ describe("Captura", () => {
     });
     expect(Math.abs(saved!.takenAt - Date.now())).toBeLessThan(60_000);
     expect(mediaMock.prepareMedia).toHaveBeenCalledWith(photo, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  });
+
+  it("al mandar dispara la subida de la cola, ya con la foto encolada", async () => {
+    picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
+    await openCapture();
+    const send = await screen.findByRole("button", { name: "Mandar al rollo" });
+    syncQueue.mockClear(); // la subida del arranque de la app no cuenta
+    let queuedWhenSyncing = 0;
+    syncQueue.mockImplementation(async () => {
+      queuedWhenSyncing = (await queue.pending()).length;
+    });
+
+    await fireEvent.press(send);
+
+    await waitFor(() => expect(syncQueue).toHaveBeenCalledTimes(1));
+    expect(queuedWhenSyncing).toBe(1);
   });
 });

@@ -11,6 +11,7 @@ import { startFix, type Fix } from "@/features/capture/location";
 import { discard, prepareMedia, videoPoster } from "@/features/capture/media";
 import { localDay, remaining } from "@/features/capture/quota";
 import { getQueue } from "@/features/capture/store";
+import { syncQueue } from "@/features/capture/sync";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Body, Button, ErrorText } from "@/ui/components";
@@ -98,6 +99,7 @@ export default function CaptureScreen() {
         ...prepared,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void syncQueue();
       router.back();
     } catch (e) {
       setState({
