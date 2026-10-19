@@ -2,7 +2,7 @@ import { OfflineManager, type LngLatBounds, type OfflinePackStatus } from "@mapl
 
 export type LngLat = [longitude: number, latitude: number];
 
-/** Caja [oeste, sur, este, norte] que cubre un círculo de `radiusKm` alrededor de `center`. */
+/** Box [west, south, east, north] covering a circle of `radiusKm` around `center`. */
 export function boundsAround([lng, lat]: LngLat, radiusKm: number): LngLatBounds {
   const dLat = radiusKm / 111.32;
   const dLng = radiusKm / (111.32 * Math.cos((lat * Math.PI) / 180));
@@ -10,8 +10,8 @@ export function boundsAround([lng, lat]: LngLat, radiusKm: number): LngLatBounds
 }
 
 /**
- * Baja una zona para usarla sin señal. Resuelve con el estado final (con `completedResourceSize`
- * en bytes) cuando termina; `onProgress` recibe el porcentaje mientras tanto.
+ * Downloads an area for use without signal. Resolves with the final status (with `completedResourceSize`
+ * in bytes) when it finishes; `onProgress` receives the percentage meanwhile.
  */
 export async function downloadRegion(
   mapStyle: string,
@@ -21,7 +21,7 @@ export async function downloadRegion(
   maxZoom: number,
   onProgress?: (status: OfflinePackStatus) => void,
 ): Promise<OfflinePackStatus> {
-  // MapLibre Native corta en un tope de tiles por dispositivo; 40 km a z14 son ~3.500.
+  // MapLibre Native caps tiles per device; 40 km at z14 is ~3,500.
   OfflineManager.setTileCountLimit(50_000);
   return new Promise<OfflinePackStatus>((resolve, reject) => {
     OfflineManager.createPack(

@@ -1,5 +1,5 @@
-// Genera el ícono y el splash de Rollo desde SVG (logo "Revelado": tres círculos que se
-// concentran hacia arriba a la derecha). Uso: npm run icons
+// Generates Rollo's icon and splash from SVG ("Revelado" logo: three circles that
+// concentrate toward the top right). Usage: npm run icons
 import { Resvg } from "@resvg/resvg-js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const assets = join(dirname(fileURLToPath(import.meta.url)), "..", "assets");
 mkdirSync(assets, { recursive: true });
 
-/** Los tres círculos, sobre un cuadrado de 120×120. `o` son las opacidades [grande, medio, chico]. */
+/** The three circles, on a 120×120 square. `o` are the opacities [large, medium, small]. */
 const circles = (fill, o) => `
   <circle cx="60" cy="60" r="34" fill="${fill}" fill-opacity="${o[0]}"/>
   <circle cx="66" cy="54" r="24" fill="${fill}" fill-opacity="${o[1]}"/>
@@ -18,14 +18,14 @@ const circles = (fill, o) => `
 const COBALT = "#3155F5";
 const COBALT_DARK = "#5C7CFF";
 
-/** Ícono de 1024×1024: cuadrado completo, sin esquinas redondeadas (iOS las pone). */
+/** 1024×1024 icon: full square, no rounded corners (iOS adds them). */
 const icon = ({ background, fill, opacities }) => `
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   ${background ? `<rect width="1024" height="1024" fill="${background}"/>` : ""}
   <g transform="translate(512 512) scale(9) translate(-60 -60)">${circles(fill, opacities)}</g>
 </svg>`;
 
-/** Splash: solo el logo, sin recuadro, recortado a los círculos. */
+/** Splash: just the logo, no frame, cropped to the circles. */
 const splash = (fill) => `
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="22 22 76 76">
   ${circles(fill, [0.18, 0.38, 1])}
@@ -50,10 +50,10 @@ const chunk = (type, data) => {
   return out;
 };
 
-/** PNG RGB de 8 bits, sin canal alfa: la App Store rechaza un ícono con transparencia. */
+/** 8-bit RGB PNG, no alpha channel: the App Store rejects an icon with transparency. */
 function opaquePng({ width, height, pixels }) {
   const stride = width * 3;
-  const raw = Buffer.alloc((stride + 1) * height); // cada fila empieza con su filtro (0)
+  const raw = Buffer.alloc((stride + 1) * height); // each row starts with its filter byte (0)
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const from = (y * width + x) * 4;
@@ -75,13 +75,13 @@ function opaquePng({ width, height, pixels }) {
   ]);
 }
 
-/** Los íconos con fondo no llevan transparencia; el tinted y el splash sí (son solo el logo). */
+/** Icons with a background carry no transparency; the tinted one and the splash do (they're just the logo). */
 const opaque = new Set(["icon.png", "icon-dark.png"]);
 
 const files = {
   "icon.png": icon({ background: "#F2F0EB", fill: COBALT, opacities: [0.18, 0.38, 1] }),
   "icon-dark.png": icon({ background: "#0E0F14", fill: COBALT_DARK, opacities: [0.22, 0.45, 1] }),
-  // Tinted: iOS lo tiñe según el fondo de pantalla; va en escala de grises sobre transparente.
+  // Tinted: iOS tints it according to the wallpaper; it's grayscale on transparent.
   "icon-tinted.png": icon({ background: null, fill: "#FFFFFF", opacities: [0.3, 0.6, 1] }),
   "splash-icon.png": splash(COBALT),
   "splash-icon-dark.png": splash(COBALT_DARK),

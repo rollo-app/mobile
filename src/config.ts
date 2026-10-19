@@ -1,8 +1,8 @@
 import Constants from "expo-constants";
 
 /**
- * URL del backend. Para desarrollar contra el Worker local:
- *   EXPO_PUBLIC_API_URL=http://<ip-de-tu-mac>:8787 npm start
+ * Backend URL. To develop against the local Worker:
+ *   EXPO_PUBLIC_API_URL=http://<your-mac-ip>:8787 npm start
  */
 export const API_URL: string =
   process.env.EXPO_PUBLIC_API_URL ??

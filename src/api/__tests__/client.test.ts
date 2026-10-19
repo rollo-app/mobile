@@ -16,7 +16,7 @@ function mockFetch(status: number, body: unknown) {
 const lastRequest = (fetchMock: jest.Mock) => fetchMock.mock.calls.at(-1)![0] as Request;
 
 describe("createApiClient", () => {
-  it("manda el token como Bearer cuando hay uno", async () => {
+  it("sends the token as Bearer when there is one", async () => {
     const fetchMock = mockFetch(200, { revealed: false, revealAt: 1, items: [] });
     const api = createApiClient({ baseUrl: BASE, token: "abc123" });
 
@@ -27,7 +27,7 @@ describe("createApiClient", () => {
     expect(req.headers.get("authorization")).toBe("Bearer abc123");
   });
 
-  it("no manda Authorization si no hay token", async () => {
+  it("does not send Authorization when there is no token", async () => {
     const fetchMock = mockFetch(404, { error: "Código inválido" });
     const api = createApiClient({ baseUrl: BASE });
 
@@ -38,7 +38,7 @@ describe("createApiClient", () => {
 });
 
 describe("unwrap", () => {
-  it("devuelve los datos si la respuesta es exitosa", async () => {
+  it("returns the data if the response is successful", async () => {
     mockFetch(200, { revealed: true, revealAt: 1, items: [] });
     const api = createApiClient({ baseUrl: BASE, token: "t" });
 
@@ -47,7 +47,7 @@ describe("unwrap", () => {
     expect(feed.revealed).toBe(true);
   });
 
-  it("convierte el { error } del server en un ApiError con su mensaje y status", async () => {
+  it("turns the server's { error } into an ApiError with its message and status", async () => {
     mockFetch(404, { error: "Código inválido" });
     const api = createApiClient({ baseUrl: BASE });
 
@@ -57,7 +57,7 @@ describe("unwrap", () => {
     await expect(promise).rejects.toMatchObject({ status: 404, message: "Código inválido" });
   });
 
-  it("si no hay conexión, tira un ApiError claro", async () => {
+  it("with no connection, throws a clear ApiError", async () => {
     globalThis.fetch = jest.fn(async () => {
       throw new TypeError("Network request failed");
     }) as unknown as typeof fetch;
@@ -69,7 +69,7 @@ describe("unwrap", () => {
     });
   });
 
-  it("acepta respuestas sin cuerpo (204)", async () => {
+  it("accepts responses without a body (204)", async () => {
     mockFetch(204, undefined);
     const api = createApiClient({ baseUrl: BASE, token: "t" });
 

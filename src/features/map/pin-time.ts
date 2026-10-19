@@ -1,4 +1,4 @@
-/** Hora relativa de una foto en la zona del viaje: "hoy 13:10", "ayer 21:40", "lun 12 · 13:10". */
+/** Relative time of a photo in the trip's time zone: "hoy 13:10", "ayer 21:40", "lun 12 · 13:10". */
 
 function parts(ms: number, timeZone: string) {
   const out: Record<string, string> = {};

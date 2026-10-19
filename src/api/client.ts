@@ -2,8 +2,8 @@ import createClient, { type Middleware } from "openapi-fetch";
 import type { components, paths } from "./schema";
 
 /**
- * Cliente tipado generado desde el contrato del backend (openapi.json).
- * Si cambia la API: `npm run api:generate` y TypeScript marca lo que hay que ajustar.
+ * Typed client generated from the backend contract (openapi.json).
+ * If the API changes: `npm run api:generate` and TypeScript flags what needs adjusting.
  */
 
 export type Schemas = components["schemas"];
@@ -38,7 +38,7 @@ export type ApiClient = ReturnType<typeof createApiClient>;
 
 type FetchResult<T> = { data?: T; error?: unknown; response: Response };
 
-/** Devuelve `data` o tira un ApiError con el mensaje del server (`{ error }`). */
+/** Returns `data` or throws an ApiError with the server's message (`{ error }`). */
 export async function unwrap<T>(request: Promise<FetchResult<T>>): Promise<T> {
   let result: FetchResult<T>;
   try {

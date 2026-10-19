@@ -5,7 +5,7 @@ import { renameMe } from "@/features/trips/actions";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { Button, ErrorText, Field, Screen } from "@/ui/components";
 
-/** Editar tu nombre en el viaje activo (sheet). */
+/** Edit your name in the active trip (sheet). */
 export default function RenameScreen() {
   const { trip } = useActiveTrip();
   const queryClient = useQueryClient();

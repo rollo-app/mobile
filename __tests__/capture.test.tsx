@@ -83,23 +83,23 @@ beforeEach(async () => {
 });
 
 async function openCapture() {
-  await renderRouter(routes, { initialUrl: "/rollo" });
-  // Sin testRouter.push: ese asserta la ruta y la captura puede volver enseguida.
+  await renderRouter(routes, { initialUrl: "/roll" });
+  // No testRouter.push: it asserts the route and the capture may return right away.
   await act(async () => router.push("/capture"));
 }
 
-describe("Captura", () => {
-  it("abre la cámara del sistema con foto y video, y si cancelás vuelve", async () => {
+describe("Capture", () => {
+  it("opens the system camera with photo and video, and goes back if you cancel", async () => {
     picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
     await openCapture();
 
-    await waitFor(() => expect(screen).toHavePathname("/rollo"));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(picker.launchCameraAsync).toHaveBeenCalledWith(
       expect.objectContaining({ mediaTypes: ["images", "videos"], videoMaxDuration: 15 }),
     );
   });
 
-  it("si no te quedan videos hoy abre la cámara solo para fotos", async () => {
+  it("if you have no videos left today it opens the camera for photos only", async () => {
     trips.fetchTrip.mockResolvedValue(tripDetail(7, 0));
     picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
     await openCapture();
@@ -108,7 +108,7 @@ describe("Captura", () => {
     expect(picker.launchCameraAsync).toHaveBeenCalledWith(expect.objectContaining({ mediaTypes: ["images"] }));
   });
 
-  it("sin fotos ni videos hoy muestra el candado y no abre la cámara", async () => {
+  it("with no photos or videos left today it shows the lock and does not open the camera", async () => {
     trips.fetchTrip.mockResolvedValue(tripDetail(0, 0));
     await openCapture();
 
@@ -116,7 +116,7 @@ describe("Captura", () => {
     expect(picker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
-  it("sin señal calcula el cupo con los datos guardados del viaje", async () => {
+  it("with no signal it computes the quota from the trip's saved data", async () => {
     queryClient.setQueryData(["trip", SUR], tripDetail(0, 0), { updatedAt: Date.now() - 60_000 });
     trips.fetchTrip.mockRejectedValue(new Error("Sin conexión"));
     await openCapture();
@@ -125,7 +125,7 @@ describe("Captura", () => {
     expect(picker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
-  it("lo que está en la cola sin subir también cuenta para el cupo", async () => {
+  it("what is in the queue, not yet uploaded, also counts toward the quota", async () => {
     trips.fetchTrip.mockResolvedValue(tripDetail(1, 0));
     await queue.enqueue({
       id: "ya-sacada",
@@ -141,7 +141,7 @@ describe("Captura", () => {
     expect(await screen.findByText("Se terminó el rollo de hoy")).toBeVisible();
   });
 
-  it("después de sacar muestra el preview para repetir o mandar", async () => {
+  it("after shooting it shows the preview to retake or send", async () => {
     picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
     await openCapture();
 
@@ -150,7 +150,7 @@ describe("Captura", () => {
     expect(screen.getByLabelText("Caption")).toBeVisible();
   });
 
-  it("repetir descarta la foto y vuelve a abrir la cámara", async () => {
+  it("retaking discards the photo and reopens the camera", async () => {
     picker.launchCameraAsync.mockResolvedValueOnce({ canceled: false, assets: [photo] });
     picker.launchCameraAsync.mockResolvedValueOnce({ canceled: true, assets: null });
     await openCapture();
@@ -161,14 +161,14 @@ describe("Captura", () => {
     expect(mediaMock.discard).toHaveBeenCalledWith(photo.uri);
   });
 
-  it("mandar la guarda en la cola con hora, ubicación y caption, y vuelve", async () => {
+  it("sending saves it to the queue with time, location and caption, and goes back", async () => {
     picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
     await openCapture();
 
     await fireEvent.changeText(await screen.findByLabelText("Caption"), "  el viento no perdona ");
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/rollo"));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
     const [saved] = await queue.pending();
     expect(saved).toMatchObject({
       id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -185,11 +185,11 @@ describe("Captura", () => {
     expect(mediaMock.prepareMedia).toHaveBeenCalledWith(photo, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
   });
 
-  it("al mandar dispara la subida de la cola, ya con la foto encolada", async () => {
+  it("sending triggers the queue upload, with the photo already enqueued", async () => {
     picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
     await openCapture();
     const send = await screen.findByRole("button", { name: "Mandar al rollo" });
-    syncQueue.mockClear(); // la subida del arranque de la app no cuenta
+    syncQueue.mockClear(); // the upload at app startup does not count
     let queuedWhenSyncing = 0;
     syncQueue.mockImplementation(async () => {
       queuedWhenSyncing = (await queue.pending()).length;

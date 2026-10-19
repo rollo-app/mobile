@@ -3,7 +3,7 @@ import { buildContactSheet } from "../contact-sheet";
 const f = (takenAt: number, thumbhash: string | null) => ({ takenAt, thumbhash });
 
 describe("buildContactSheet", () => {
-  it("ordena de la más nueva a la más vieja mezclando subidas y pendientes", () => {
+  it("sorts newest to oldest, mixing uploaded and pending", () => {
     const sheet = buildContactSheet({
       feed: [f(10, "a"), f(30, "c")],
       pending: [f(20, "b"), f(40, "d")],
@@ -13,17 +13,17 @@ describe("buildContactSheet", () => {
     expect(sheet.rest).toBe(0);
   });
 
-  it("deja null donde no hay thumbhash", () => {
+  it("leaves null where there is no thumbhash", () => {
     const sheet = buildContactSheet({ feed: [f(2, null), f(1, "a")], pending: [], total: 2 });
     expect(sheet.frames).toEqual([null, "a"]);
   });
 
-  it("completa con null si el total es mayor a lo que se conoce", () => {
+  it("pads with null if the total is greater than what is known", () => {
     const sheet = buildContactSheet({ feed: [f(1, "a")], pending: [], total: 3 });
     expect(sheet.frames).toEqual(["a", null, null]);
   });
 
-  it("limita a 18 cuadros y cuenta el resto", () => {
+  it("limits to 18 frames and counts the rest", () => {
     const feed = Array.from({ length: 25 }, (_, i) => f(i, `h${i}`));
     const sheet = buildContactSheet({ feed, pending: [], total: 25 });
     expect(sheet.frames).toHaveLength(18);
@@ -31,11 +31,11 @@ describe("buildContactSheet", () => {
     expect(sheet.rest).toBe(7);
   });
 
-  it("sin nada en el rollo no hay cuadros", () => {
+  it("with nothing in the roll there are no frames", () => {
     expect(buildContactSheet({ feed: [], pending: [], total: 0 })).toEqual({ frames: [], rest: 0 });
   });
 
-  it("un límite menor al total ignora lo que sobra del feed", () => {
+  it("a limit below the total ignores the feed's excess", () => {
     const sheet = buildContactSheet({ feed: [f(1, "a"), f(2, "b")], pending: [], total: 1 });
     expect(sheet.frames).toEqual(["b"]);
   });

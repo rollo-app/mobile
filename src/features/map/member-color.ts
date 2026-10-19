@@ -1,6 +1,6 @@
 /**
- * Un color por persona, el mismo en el mapa y en el Feed: se deriva del id del miembro sobre una
- * paleta fija de colores del sistema iOS (con contraste suficiente para la inicial en blanco).
+ * One color per person, the same on the map and in the Feed: derived from the member id over a
+ * fixed palette of iOS system colors (with enough contrast for the white initial).
  */
 export const MEMBER_COLORS = [
   "#FF3B30", // red

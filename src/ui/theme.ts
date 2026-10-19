@@ -2,12 +2,12 @@ import { Color } from "expo-router";
 import { DynamicColorIOS, Platform, type ColorValue, type TextStyle } from "react-native";
 
 /**
- * Tokens de diseño. La app usa los colores y la tipografía del sistema (iOS):
- * se adaptan solos a claro/oscuro y a la accesibilidad. La personalidad va en
- * pocos detalles (captions en serif, la hoja de contacto del rollo), no acá.
+ * Design tokens. The app uses the system colors and typography (iOS):
+ * they adapt on their own to light/dark and accessibility. Personality lives in
+ * a few details (serif captions, the roll's contact sheet), not here.
  */
 
-/** El cobalto en hex fijo, para lo que no acepta colores dinámicos (MapLibre, controles de Android). */
+/** Cobalt as fixed hex, for things that don't accept dynamic colors (MapLibre, Android controls). */
 export const tintHex = { light: "#3155F5", dark: "#5C7CFF" } as const;
 
 const pick = (ios: ColorValue, fallback: string): ColorValue => Platform.select({ ios, default: fallback })!;
@@ -21,12 +21,12 @@ export const colors = {
   groupedBackground: pick(Color.ios.systemGroupedBackground, "#F2F2F7"),
   cell: pick(Color.ios.secondarySystemGroupedBackground, "#FFFFFF"),
   fill: pick(Color.ios.tertiarySystemFill, "#7676801F"),
-  /** Cobalto de la marca: acento del sistema. Solo en acciones y en lo seleccionado, nunca de relleno. */
+  /** Brand cobalt: the system accent. Only on actions and selections, never as fill. */
   tint: pick(DynamicColorIOS(tintHex), tintHex.light),
-  /** Texto sobre un fondo cobalto. */
+  /** Text on a cobalt background. */
   onTint: "#FFFFFF",
   danger: pick(Color.ios.systemRed, "#FF3B30"),
-  /** Cuadros del rollo que todavía nadie ve. */
+  /** Roll frames that nobody sees yet. */
   latent: pick(Color.ios.systemGray5, "#E5E5EA"),
 } as const;
 
@@ -34,7 +34,7 @@ export const spacing = { xs: 4, sm: 8, md: 16, lg: 20, xl: 32 } as const;
 
 export const radius = { sm: 10, md: 14, lg: 22, full: 9999 } as const;
 
-/** Rampa de texto de Apple (tamaños de Dynamic Type por defecto). */
+/** Apple's text ramp (default Dynamic Type sizes). */
 export const type = {
   largeTitle: { fontSize: 34, fontWeight: "700" },
   title: { fontSize: 22, fontWeight: "700" },
@@ -44,6 +44,6 @@ export const type = {
   subhead: { fontSize: 15 },
   footnote: { fontSize: 13 },
   caption: { fontSize: 12 },
-  /** Los captions: la voz de la gente, en la serif del sistema (New York). */
+  /** Captions: people's voice, in the system serif (New York). */
   quote: { fontSize: 19, lineHeight: 25, fontFamily: Platform.select({ ios: "ui-serif", default: "serif" }) },
 } as const satisfies Record<string, TextStyle>;

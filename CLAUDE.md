@@ -92,7 +92,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 
 ```
 app/                  rutas (Expo Router): index (bienvenida), create, join, trips (sheet), capture
-app/(tabs)/           NativeTabs: rollo, mapa, camara (placeholder), feed, vos; cada una con su Stack
+app/(tabs)/           NativeTabs: roll, map, camera (placeholder), feed, me; cada una con su Stack
 src/api/              schema.d.ts generado + client.ts
 src/features/capture/ cola offline (SQLite), procesar foto/video + ThumbHash, ubicación, cupo del día
 src/features/trips/   acciones (lo que mockean los tests), useActiveTrip, useTripDetail, TripSwitcher
@@ -109,7 +109,11 @@ __tests__/            tests de pantallas
   ejecutar con **workers en paralelo con Sonnet** (subagentes o sesiones con `model: sonnet`), cada uno
   con una tarea acotada y su brief completo (archivos, qué es "terminado", cómo testear). Opus revisa
   el resultado; no implementa él mismo lo que puede hacer un worker.
-- **TDD siempre:** primero el test (descripciones en español), verlo fallar, código mínimo, refactor.
+- **Idioma:** el código va en **inglés** (identificadores, comentarios, descripciones de tests, nombres de
+  rutas y carpetas). En **español rioplatense** quedan solo los textos que ve el usuario (labels, mensajes,
+  `accessibilityLabel`, títulos de pantalla), los commits y los PRs. Las etiquetas visibles de las tabs
+  ("Rollo", "Mapa", "Cámara", "Feed", "Vos") siguen en español aunque la ruta sea `roll`, `map`, etc.
+- **TDD siempre:** primero el test (descripciones en inglés), verlo fallar, código mínimo, refactor.
   - Lógica (`src/**/__tests__`): `fetch` simulado con `globalThis.fetch = jest.fn(...)`.
   - Pantallas: `renderRouter` de `expo-router/testing-library` con navegación real, mockeando
     `@/features/*/actions`. En Testing Library 14 **`fireEvent` es async**: siempre `await fireEvent...`.

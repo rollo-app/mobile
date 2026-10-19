@@ -30,7 +30,7 @@ export default function CreateScreen() {
         days: dayCount,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
-      router.dismissTo("/rollo");
+      router.dismissTo("/roll");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el viaje");
     } finally {

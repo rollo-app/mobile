@@ -36,7 +36,7 @@ afterEach(() => {
 });
 
 describe("createTrip", () => {
-  it("arranca hoy, dura los días indicados y se revela al terminar", async () => {
+  it("starts today, lasts the given days and is revealed at the end", async () => {
     const fetchMock = mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok" });
 
     await createTrip({ name: "  Viaje al sur ", adminName: " Juani ", days: 10, timezone: "America/Argentina/Buenos_Aires" });
@@ -51,7 +51,7 @@ describe("createTrip", () => {
     });
   });
 
-  it("guarda la sesión con el token de admin", async () => {
+  it("saves the session with the admin token", async () => {
     mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok-admin" });
 
     const created = await createTrip({ name: "Viaje al sur", adminName: "Juani", days: 10, timezone: "UTC" });
@@ -65,7 +65,7 @@ describe("createTrip", () => {
 });
 
 describe("joinTrip", () => {
-  it("normaliza código y nombre antes de mandarlos", async () => {
+  it("normalizes code and name before sending them", async () => {
     const fetchMock = mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok" });
 
     await joinTrip({ code: " hub5ft ", name: " Fede " });
@@ -73,7 +73,7 @@ describe("joinTrip", () => {
     expect(await sentBody(fetchMock)).toEqual({ code: "HUB5FT", name: "Fede" });
   });
 
-  it("guarda la sesión como miembro", async () => {
+  it("saves the session as a member", async () => {
     mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok-fede" });
 
     await joinTrip({ code: "HUB5FT", name: "Fede" });
@@ -82,7 +82,7 @@ describe("joinTrip", () => {
     expect((await listTrips())[0]).toMatchObject({ memberName: "Fede", role: "member" });
   });
 
-  it("si el server rechaza, propaga su mensaje y no guarda nada", async () => {
+  it("if the server rejects, it propagates its message and saves nothing", async () => {
     mockFetch(409, { error: "Ya hay alguien con ese nombre en el viaje" });
 
     await expect(joinTrip({ code: "HUB5FT", name: "Fede" })).rejects.toThrow(
@@ -93,7 +93,7 @@ describe("joinTrip", () => {
 });
 
 describe("fetchTrip", () => {
-  it("usa el token guardado del viaje", async () => {
+  it("uses the trip's saved token", async () => {
     mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok-fede" });
     await joinTrip({ code: "HUB5FT", name: "Fede" });
 
@@ -110,7 +110,7 @@ describe("fetchTrip", () => {
     expect((fetchMock.mock.calls[0]![0] as Request).headers.get("authorization")).toBe("Bearer tok-fede");
   });
 
-  it("falla si no tenés sesión en ese viaje", async () => {
+  it("fails if you have no session on that trip", async () => {
     await expect(fetchTrip("desconocido")).rejects.toThrow("No estás en este viaje");
   });
 });
@@ -127,7 +127,7 @@ describe("renameMe", () => {
       token: "tok",
     });
 
-  it("manda el nombre con el token del viaje y lo guarda en el celular", async () => {
+  it("sends the name with the trip token and saves it on the phone", async () => {
     await save();
     const fetchMock = mockFetch(200, { id: "m1", name: "Juan", role: "admin" });
 
@@ -142,7 +142,7 @@ describe("renameMe", () => {
     expect(await getToken(trip.id)).toBe("tok");
   });
 
-  it("si el server rechaza el nombre tira el error y no cambia nada", async () => {
+  it("if the server rejects the name it throws the error and changes nothing", async () => {
     await save();
     mockFetch(409, { error: "Ya hay alguien con ese nombre en el viaje" });
 
@@ -152,7 +152,7 @@ describe("renameMe", () => {
 });
 
 describe("fetchFeed", () => {
-  it("pide el feed del viaje con el token y devuelve el feed", async () => {
+  it("requests the trip feed with the token and returns it", async () => {
     mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok-fede" });
     await joinTrip({ code: "HUB5FT", name: "Fede" });
 
@@ -166,13 +166,13 @@ describe("fetchFeed", () => {
     expect(req.headers.get("authorization")).toBe("Bearer tok-fede");
   });
 
-  it("falla si no tenés sesión en ese viaje", async () => {
+  it("fails if you have no session on that trip", async () => {
     await expect(fetchFeed("desconocido")).rejects.toThrow("No estás en este viaje");
   });
 });
 
 describe("deleteMedia", () => {
-  it("borra la foto con el token del viaje", async () => {
+  it("deletes the photo with the trip token", async () => {
     mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok-admin" });
     await joinTrip({ code: "HUB5FT", name: "Juani" });
     const fetchMock = jest.fn(async (_req: Request) => new Response(null, { status: 204 }));
@@ -186,7 +186,7 @@ describe("deleteMedia", () => {
     expect(req.headers.get("authorization")).toBe("Bearer tok-admin");
   });
 
-  it("si el server rechaza, tira su mensaje", async () => {
+  it("if the server rejects, it throws its message", async () => {
     mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok" });
     await joinTrip({ code: "HUB5FT", name: "Fede" });
     mockFetch(403, { error: "Solo el admin puede borrar" });
@@ -194,7 +194,7 @@ describe("deleteMedia", () => {
     await expect(deleteMedia(trip.id, "foto-1")).rejects.toThrow("Solo el admin puede borrar");
   });
 
-  it("falla si no tenés sesión en ese viaje", async () => {
+  it("fails if you have no session on that trip", async () => {
     await expect(deleteMedia("desconocido", "foto-1")).rejects.toThrow("No estás en este viaje");
   });
 });

@@ -20,7 +20,7 @@ async function persist({ trip, member, token }: Schemas["TripCreated"]) {
   });
 }
 
-/** Crea un viaje que arranca hoy, dura `days` días y se revela al terminar. */
+/** Creates a trip that starts today, lasts `days` days and is revealed at the end. */
 export async function createTrip(input: {
   name: string;
   adminName: string;
@@ -65,7 +65,7 @@ export async function fetchTrip(tripId: string): Promise<TripDetail> {
   );
 }
 
-/** Todo lo subido al viaje. Antes del revelado trae solo metadata (autor, hora, lugar, thumbhash). */
+/** Everything uploaded to the trip. Before the reveal it only has metadata (author, time, place, thumbhash). */
 export async function fetchFeed(tripId: string): Promise<Schemas["Feed"]> {
   const token = await getToken(tripId);
   if (!token) throw new Error("No estás en este viaje");
@@ -75,7 +75,7 @@ export async function fetchFeed(tripId: string): Promise<Schemas["Feed"]> {
   );
 }
 
-/** Cambia tu nombre en el viaje: primero en el server, y si sale bien también en el celular. */
+/** Changes your name in the trip: first on the server, and if that succeeds also on the phone. */
 export async function renameMe(tripId: string, name: string): Promise<void> {
   const token = await getToken(tripId);
   if (!token) throw new Error("No estás en este viaje");
@@ -89,7 +89,7 @@ export async function renameMe(tripId: string, name: string): Promise<void> {
   await updateMemberName(tripId, member.name);
 }
 
-/** Borra una foto o video del viaje (solo admin, antes del revelado). */
+/** Deletes a photo or video from the trip (admin only, before the reveal). */
 export async function deleteMedia(tripId: string, mediaId: string): Promise<void> {
   const token = await getToken(tripId);
   if (!token) throw new Error("No estás en este viaje");

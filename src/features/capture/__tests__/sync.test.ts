@@ -41,7 +41,7 @@ describe("syncQueue", () => {
     }) as typeof fetch;
   });
 
-  it("sube los archivos con PUT usando expo-file-system, confirma e invalida el viaje", async () => {
+  it("uploads the files with PUT using expo-file-system, confirms and invalidates the trip", async () => {
     const invalidate = jest.spyOn(queryClient, "invalidateQueries");
     const upload = jest.spyOn(File.prototype, "upload");
 

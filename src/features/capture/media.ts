@@ -4,7 +4,7 @@ import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import type { ImagePickerAsset } from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
 
-/** Fotos a resolución de impresión; el thumb es lo que se ve en la galería. */
+/** Photos at print resolution; the thumb is what shows in the gallery. */
 const ORIGINAL_MAX = 4000;
 const THUMB_MAX = 800;
 
@@ -19,10 +19,10 @@ export type PreparedMedia = {
 };
 
 /**
- * Deja lista una captura para la cola: original (foto ≤4000 px JPEG 88 % o el video
- * ya exportado a 1080p por la cámara), thumb de 800 px y su ThumbHash.
- * Todo va a Documents (no al caché, que iOS puede vaciar en días sin señal) y se
- * borra recién cuando el server confirma la subida.
+ * Prepares a capture for the queue: original (photo ≤4000 px JPEG 88 % or the video
+ * already exported at 1080p by the camera), 800 px thumb and its ThumbHash.
+ * Everything goes to Documents (not the cache, which iOS may clear during days without signal) and is
+ * deleted only once the server confirms the upload.
  */
 export async function prepareMedia(asset: ImagePickerAsset, id: string): Promise<PreparedMedia> {
   const dir = new Directory(Paths.document, "pending", id);
@@ -59,7 +59,7 @@ export async function prepareMedia(asset: ImagePickerAsset, id: string): Promise
   };
 }
 
-/** Primer cuadro del video para el preview. */
+/** First frame of the video for the preview. */
 export async function videoPoster(uri: string): Promise<string> {
   return (await VideoThumbnails.getThumbnailAsync(uri, { time: 0 })).uri;
 }
@@ -82,6 +82,6 @@ async function deleteQuietly(uri: string) {
     const file = new File(uri);
     if (file.exists) file.delete();
   } catch {
-    // Archivo temporal: si no se pudo borrar, lo limpia el sistema.
+    // Temp file: if it could not be deleted, the system cleans it up.
   }
 }

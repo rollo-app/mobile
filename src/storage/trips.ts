@@ -1,8 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 
 /**
- * Viajes en los que está el usuario. No hay cuentas: cada viaje tiene su token,
- * guardado en el llavero del celular (SecureStore) y separado de la lista.
+ * Trips the user is in. There are no accounts: each trip has its own token,
+ * stored in the phone's keychain (SecureStore) and kept separate from the list.
  */
 
 export type Role = "admin" | "member";
@@ -36,19 +36,19 @@ async function writeIndex(trips: TripSummary[]) {
   await SecureStore.setItemAsync(INDEX_KEY, JSON.stringify(trips));
 }
 
-/** Guarda (o actualiza) un viaje y lo pone primero en la lista. */
+/** Saves (or updates) a trip and puts it first in the list. */
 export async function saveSession({ token, ...summary }: TripSession): Promise<void> {
   const others = (await readIndex()).filter((t) => t.tripId !== summary.tripId);
   await SecureStore.setItemAsync(tokenKey(summary.tripId), token);
   await writeIndex([{ ...summary, lastOpenedAt: Date.now() }, ...others]);
 }
 
-/** Viajes guardados, el más reciente primero. Nunca incluye tokens. */
+/** Saved trips, most recent first. Never includes tokens. */
 export async function listTrips(): Promise<TripSummary[]> {
   return readIndex();
 }
 
-/** Marca un viaje como abierto: pasa a ser el primero, que es el viaje activo. */
+/** Marks a trip as opened: it becomes the first one, which is the active trip. */
 export async function markOpened(tripId: string): Promise<void> {
   const trips = await readIndex();
   const opened = trips.find((t) => t.tripId === tripId);
@@ -65,7 +65,7 @@ export async function removeTrip(tripId: string): Promise<void> {
   await writeIndex((await readIndex()).filter((t) => t.tripId !== tripId));
 }
 
-/** Cambia tu nombre en un viaje guardado. No toca el token ni el orden de la lista. */
+/** Changes your name in a saved trip. Doesn't touch the token or the list order. */
 export async function updateMemberName(tripId: string, name: string): Promise<void> {
   const trips = await readIndex();
   await writeIndex(trips.map((t) => (t.tripId === tripId ? { ...t, memberName: name } : t)));

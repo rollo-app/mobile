@@ -38,48 +38,48 @@ beforeEach(() => {
   return saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
 });
 
-describe("Datos del viaje compartidos", () => {
-  it("la barra de tabs y Rollo comparten un único pedido", async () => {
+describe("Shared trip data", () => {
+  it("the tab bar and Roll share a single request", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/rollo" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("7 de 10")).toBeVisible();
     expect(mocked.fetchTrip).toHaveBeenCalledTimes(1);
   });
 
-  it("volver a una pantalla dentro de los 30 s no vuelve a pedirlo", async () => {
+  it("going back to a screen within 30 s does not request it again", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/rollo" });
+    await renderRouter(routes, { initialUrl: "/roll" });
     await screen.findByText("7 de 10");
 
-    await act(async () => router.navigate("/vos"));
+    await act(async () => router.navigate("/me"));
     expect(await screen.findByText("HUB5FT")).toBeVisible();
-    await act(async () => router.navigate("/rollo"));
+    await act(async () => router.navigate("/roll"));
     expect(await screen.findByText("7 de 10")).toBeVisible();
 
     expect(mocked.fetchTrip).toHaveBeenCalledTimes(1);
   });
 
-  it("pasados los 30 s, al ganar foco vuelve a pedirlo", async () => {
+  it("after 30 s, regaining focus requests it again", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/rollo" });
+    await renderRouter(routes, { initialUrl: "/roll" });
     await screen.findByText("7 de 10");
-    await act(async () => router.navigate("/vos"));
+    await act(async () => router.navigate("/me"));
     await screen.findByText("HUB5FT");
 
     const key = ["trip", SUR];
     await act(async () => {
       queryClient.setQueryData(key, detail(), { updatedAt: Date.now() - 60_000 });
-      router.navigate("/rollo");
+      router.navigate("/roll");
     });
 
     await waitFor(() => expect(mocked.fetchTrip).toHaveBeenCalledTimes(2));
   });
 
-  it("si falla y no hay cache muestra el error y Reintentar vuelve a pedirlo", async () => {
+  it("if it fails with no cache it shows the error and Reintentar requests it again", async () => {
     mocked.fetchTrip.mockRejectedValueOnce(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/rollo" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("Sin conexión. Probá de nuevo cuando tengas señal.")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
@@ -89,20 +89,20 @@ describe("Datos del viaje compartidos", () => {
     expect(mocked.fetchTrip).toHaveBeenCalledTimes(2);
   });
 
-  it("Vos también ofrece Reintentar cuando no hay datos", async () => {
+  it("Me also offers Reintentar when there is no data", async () => {
     mocked.fetchTrip.mockRejectedValueOnce(new Error("Sin conexión"));
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/vos" });
+    await renderRouter(routes, { initialUrl: "/me" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Reintentar" }));
 
     expect(await screen.findByText("HUB5FT")).toBeVisible();
   });
 
-  it("con datos guardados y sin señal muestra lo guardado, sin error", async () => {
+  it("with saved data and no signal it shows the saved data, no error", async () => {
     queryClient.setQueryData(["trip", SUR], detail(), { updatedAt: Date.now() - 60_000 });
     mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión"));
-    await renderRouter(routes, { initialUrl: "/rollo" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("7 de 10")).toBeVisible();
     await waitFor(() => expect(mocked.fetchTrip).toHaveBeenCalled());

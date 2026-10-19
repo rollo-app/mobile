@@ -4,16 +4,16 @@ import type { NativeSyntheticEvent } from "react-native";
 import type { PinCollection } from "./features";
 
 const UNCLUSTERED: FilterSpecification = ["!", ["has", "point_count"]];
-/** Mayor que el zoom máximo del mapa (MAX_ZOOM): el clustering rige siempre, dos pins nunca quedan encimados. */
+/** Greater than the map's max zoom (MAX_ZOOM): clustering always applies, two pins never overlap. */
 export const CLUSTER_MAX_ZOOM = 18;
 const FONT = ["Noto Sans Bold"];
 
 type PressEvent = NativeSyntheticEvent<{ features: GeoJSON.Feature[] }>;
 
 /**
- * Los pins van como capas nativas sobre una fuente con clustering (nada de markers de React, que
- * no aguantan cientos de fotos): círculo del color de cada autor con su inicial, y clusters
- * oscuros con la cantidad. Las pendientes (tuyas, sin subir) se ven atenuadas.
+ * Pins are native layers over a clustered source (no React markers, which
+ * can't handle hundreds of photos): a circle in each author's color with their initial, and
+ * dark clusters with the count. Pending ones (yours, not uploaded) appear dimmed.
  */
 export function PinLayers({
   data,
@@ -24,7 +24,7 @@ export function PinLayers({
 }: {
   data: PinCollection;
   selectedId: string | null;
-  /** Cobalto (hex) del halo del pin seleccionado. */
+  /** Cobalt (hex) for the selected pin's halo. */
   haloColor: string;
   sourceRef: Ref<GeoJSONSourceRef>;
   onPress: (event: PressEvent) => void;

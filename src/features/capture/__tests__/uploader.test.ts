@@ -96,7 +96,7 @@ beforeEach(async () => {
   };
 });
 
-/** Server feliz: registra con URLs y confirma. */
+/** Happy server: registers with URLs and confirms. */
 function happyServer() {
   routes.push((c) => {
     if (c.method === "POST" && c.url.endsWith(`/trips/${TRIP}/media`)) return registered((c.body as { id: string }).id);
@@ -107,7 +107,7 @@ function happyServer() {
 }
 
 describe("uploader", () => {
-  it("registra, sube original y thumb, confirma y limpia cola y archivos", async () => {
+  it("registers, uploads original and thumb, confirms and cleans up queue and files", async () => {
     happyServer();
     await queue.enqueue(item());
 
@@ -122,7 +122,7 @@ describe("uploader", () => {
     expect(removed).toEqual([item().id]);
   });
 
-  it("avisa cada subida confirmada, con el viaje, después de limpiar la cola", async () => {
+  it("notifies on every confirmed upload, with the trip, after cleaning the queue", async () => {
     happyServer();
     await queue.enqueue(item());
     const uploaded: Array<{ tripId: string; pending: number }> = [];
@@ -135,7 +135,7 @@ describe("uploader", () => {
     expect(uploaded).toEqual([{ tripId: TRIP, pending: 0 }]);
   });
 
-  it("avisa cuando descarta una foto para siempre, con el viaje, después de marcarla fallida", async () => {
+  it("notifies when it permanently discards a photo, with the trip, after marking it failed", async () => {
     routes.push((c) => (c.method === "POST" && c.url.endsWith("/media") ? json(409, { error: "El rollo ya se reveló" }) : undefined));
     await queue.enqueue(item());
     const discarded: Array<{ tripId: string; pending: number }> = [];
@@ -148,7 +148,7 @@ describe("uploader", () => {
     expect(discarded).toEqual([{ tripId: TRIP, pending: 0 }]);
   });
 
-  it("registra con el token del viaje y todos los datos de la captura", async () => {
+  it("registers with the trip token and all the capture data", async () => {
     happyServer();
     await queue.enqueue(item());
 
@@ -172,7 +172,7 @@ describe("uploader", () => {
     expect(calls[1]!.auth).toBe("Bearer tok");
   });
 
-  it("sube los videos como video/mp4", async () => {
+  it("uploads videos as video/mp4", async () => {
     happyServer();
     await queue.enqueue(item({ type: "video", durationS: 9.5, originalUri: "file:///docs/pending/a/original.mp4" }));
 
@@ -181,7 +181,7 @@ describe("uploader", () => {
     expect(puts.map((p) => p.contentType)).toEqual(["video/mp4", "image/jpeg"]);
   });
 
-  it("sube en el orden en que se sacó", async () => {
+  it("uploads in the order they were shot", async () => {
     happyServer();
     await queue.enqueue(item({ id: "b", takenAt: 2000 }));
     await queue.enqueue(item({ id: "a", takenAt: 1000 }));
@@ -194,7 +194,7 @@ describe("uploader", () => {
     ]);
   });
 
-  it("si el server dice que ya estaba subida, salta directo a limpiar", async () => {
+  it("if the server says it was already uploaded, it jumps straight to cleanup", async () => {
     routes.push((c) => json(200, { id: item().id, status: "uploaded" }));
     await queue.enqueue(item());
 
@@ -206,8 +206,8 @@ describe("uploader", () => {
     expect(removed).toEqual([item().id]);
   });
 
-  describe("sin red o server caído", () => {
-    it("sin red deja el ítem, suma un intento y difiere el próximo 1 s", async () => {
+  describe("no network or server down", () => {
+    it("with no network it keeps the item, adds an attempt and defers the next one by 1 s", async () => {
       globalThis.fetch = jest.fn(async () => {
         throw new TypeError("Network request failed");
       }) as typeof fetch;
@@ -219,7 +219,7 @@ describe("uploader", () => {
       expect(removed).toEqual([]);
     });
 
-    it("sin red no sigue golpeando con los demás ítems", async () => {
+    it("with no network it does not keep hitting with the other items", async () => {
       globalThis.fetch = jest.fn(async () => {
         throw new TypeError("Network request failed");
       }) as typeof fetch;
@@ -231,7 +231,7 @@ describe("uploader", () => {
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
-    it("un 5xx al registrar es un intento fallido", async () => {
+    it("a 5xx on register is a failed attempt", async () => {
       routes.push(() => json(503, { error: "caído" }));
       await queue.enqueue(item());
 
@@ -240,7 +240,7 @@ describe("uploader", () => {
       expect(await queue.pending()).toEqual([expect.objectContaining({ attempts: 1, retryAt: NOW + 1000 })]);
     });
 
-    it("un 5xx del PUT es un intento fallido y no confirma", async () => {
+    it("a 5xx on the PUT is a failed attempt and does not confirm", async () => {
       happyServer();
       putStatus = () => 502;
       await queue.enqueue(item());
@@ -252,7 +252,7 @@ describe("uploader", () => {
       expect(removed).toEqual([]);
     });
 
-    it("el PUT sin red (el archivo no llegó a salir) es un intento fallido", async () => {
+    it("the PUT with no network (the file never went out) is a failed attempt", async () => {
       happyServer();
       putStatus = () => new Error("network");
       await queue.enqueue(item());
@@ -262,7 +262,7 @@ describe("uploader", () => {
       expect(await queue.pending()).toEqual([expect.objectContaining({ attempts: 1 })]);
     });
 
-    it("un 5xx al confirmar deja el ítem para reintentar", async () => {
+    it("a 5xx on confirm leaves the item to retry", async () => {
       routes.push((c) => (c.url.endsWith("/complete") ? json(500, { error: "x" }) : undefined));
       happyServer();
       await queue.enqueue(item());
@@ -273,7 +273,7 @@ describe("uploader", () => {
       expect(removed).toEqual([]);
     });
 
-    it("no reintenta un ítem antes de su hora de retry y sí después", async () => {
+    it("does not retry an item before its retry time, and does after", async () => {
       happyServer();
       await queue.enqueue(item());
       await queue.markAttempt(item().id, NOW + 5000);
@@ -286,13 +286,13 @@ describe("uploader", () => {
       expect(await queue.pending()).toEqual([]);
     });
 
-    it("el backoff duplica: 1, 2, 4… hasta 5 minutos", () => {
+    it("backoff doubles: 1, 2, 4… up to 5 minutes", () => {
       expect([1, 2, 3, 4, 8, 9, 10, 20].map(retryDelay)).toEqual([
         1000, 2000, 4000, 8000, 128_000, 256_000, 300_000, 300_000,
       ]);
     });
 
-    it("los reintentos fallidos van subiendo el backoff", async () => {
+    it("failed retries keep raising the backoff", async () => {
       routes.push(() => json(503, { error: "caído" }));
       await queue.enqueue(item());
 
@@ -304,8 +304,8 @@ describe("uploader", () => {
     });
   });
 
-  describe("URL vencida", () => {
-    it("si el PUT da 403, vuelve a registrar y sube a las URLs nuevas", async () => {
+  describe("expired URL", () => {
+    it("if the PUT returns 403, it registers again and uploads to the new URLs", async () => {
       let registers = 0;
       routes.push((c) => {
         if (c.method === "POST" && c.url.endsWith(`/trips/${TRIP}/media`)) {
@@ -324,7 +324,7 @@ describe("uploader", () => {
       expect(await queue.pending()).toEqual([]);
     });
 
-    it("si después de volver a registrar sigue en 403, lo deja para más tarde", async () => {
+    it("if it still returns 403 after registering again, it leaves it for later", async () => {
       happyServer();
       putStatus = () => 403;
       await queue.enqueue(item());
@@ -336,8 +336,8 @@ describe("uploader", () => {
     });
   });
 
-  describe("rechazos del server", () => {
-    it("429 (cupo): lo marca fallido para siempre, no lo reintenta y no borra archivos", async () => {
+  describe("server rejections", () => {
+    it("429 (quota): marks it failed for good, does not retry it and does not delete files", async () => {
       routes.push(() => json(429, { error: "Se terminó el rollo de hoy" }));
       await queue.enqueue(item());
 
@@ -351,7 +351,7 @@ describe("uploader", () => {
     });
 
     it.each(["El rollo ya se reveló", "El admin borró esta foto"])(
-      "409 al registrar (%s): falla definitiva con el motivo del server y no borra archivos",
+      "409 on register (%s): permanent failure with the server's reason and does not delete files",
       async (message) => {
         routes.push(() => json(409, { error: message }));
         await queue.enqueue(item());
@@ -365,7 +365,7 @@ describe("uploader", () => {
       },
     );
 
-    it("404 al confirmar (el admin la borró): falla 'deleted' sin reintentos", async () => {
+    it("404 on confirm (the admin deleted it): fails 'deleted' with no retries", async () => {
       routes.push((c) => (c.url.endsWith("/complete") ? json(404, { error: "No existe" }) : undefined));
       happyServer();
       await queue.enqueue(item());
@@ -378,7 +378,7 @@ describe("uploader", () => {
       expect(removed).toEqual([]);
     });
 
-    it("otros 4xx al confirmar (archivo que no llegó) siguen reintentándose", async () => {
+    it("other 4xx on confirm (file that never arrived) keep being retried", async () => {
       routes.push((c) => (c.url.endsWith("/complete") ? json(400, { error: "Falta el archivo" }) : undefined));
       happyServer();
       await queue.enqueue(item());
@@ -388,7 +388,7 @@ describe("uploader", () => {
       expect(await queue.pending()).toEqual([expect.objectContaining({ attempts: 1 })]);
     });
 
-    it("un fallido no frena a los demás ítems", async () => {
+    it("a failed item does not block the other items", async () => {
       routes.push((c) =>
         c.method === "POST" && (c.body as { id: string } | undefined)?.id === "a" ? json(429, { error: "x" }) : undefined,
       );
@@ -403,7 +403,7 @@ describe("uploader", () => {
       expect(removed).toEqual(["b"]);
     });
 
-    it("sin token del viaje (ya no está en él) lo marca fallido sin tocar la red", async () => {
+    it("with no trip token (no longer in it) it marks it failed without touching the network", async () => {
       await queue.enqueue(item({ tripId: "otro-viaje" }));
 
       await createUploader(deps).run();
@@ -412,7 +412,7 @@ describe("uploader", () => {
       expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "no_token" })]);
     });
 
-    it("otro 4xx al registrar (datos inválidos, token vencido) también es definitivo", async () => {
+    it("another 4xx on register (invalid data, expired token) is also permanent", async () => {
       routes.push(() => json(400, { error: "mal" }));
       await queue.enqueue(item());
 
@@ -422,8 +422,8 @@ describe("uploader", () => {
     });
   });
 
-  describe("ítems que no deben trabar la cola", () => {
-    it("si falta el thumb lo marca missing_file y sube el siguiente igual", async () => {
+  describe("items that must not jam the queue", () => {
+    it("if the thumb is missing it marks missing_file and uploads the next one anyway", async () => {
       happyServer();
       await queue.enqueue(item({ id: "a", takenAt: 1, thumbUri: "file:///docs/pending/a/thumb.jpg" }));
       await queue.enqueue(item({ id: "b", takenAt: 2, originalUri: "file:///b/o.jpg", thumbUri: "file:///b/t.jpg" }));
@@ -437,7 +437,7 @@ describe("uploader", () => {
       expect(calls.some((c) => c.url.includes("/a/") || (c.body as { id?: string } | undefined)?.id === "a")).toBe(false);
     });
 
-    it("si falta el original también", async () => {
+    it("same if the original is missing", async () => {
       happyServer();
       await queue.enqueue(item());
       missing.add(item().originalUri);
@@ -448,7 +448,7 @@ describe("uploader", () => {
       expect(removed).toEqual([]);
     });
 
-    it("un error raro en un ítem le suma un intento y no frena a los demás", async () => {
+    it("an odd error on an item adds an attempt to it and does not block the others", async () => {
       happyServer();
       await queue.enqueue(item({ id: "a", takenAt: 1 }));
       await queue.enqueue(item({ id: "b", takenAt: 2 }));
@@ -474,8 +474,8 @@ describe("uploader", () => {
     });
   });
 
-  describe("un solo uploader a la vez", () => {
-    it("dos run() en simultáneo no suben dos veces el mismo ítem", async () => {
+  describe("only one uploader at a time", () => {
+    it("two simultaneous run() calls do not upload the same item twice", async () => {
       happyServer();
       await queue.enqueue(item());
       const uploader = createUploader(deps);
@@ -485,13 +485,13 @@ describe("uploader", () => {
       expect(calls.filter((c) => c.url.endsWith("/complete"))).toHaveLength(1);
     });
 
-    it("un run() pedido mientras corre otro levanta lo que se encoló en el medio", async () => {
+    it("a run() requested while another is running picks up what was enqueued in between", async () => {
       happyServer();
       await queue.enqueue(item({ id: "a", takenAt: 1 }));
       const uploader = createUploader({
         ...deps,
         putFile: async (...args) => {
-          // Mientras sube la primera, el usuario manda otra foto y se dispara otro run().
+          // While the first uploads, the user sends another photo and another run() fires.
           if (!(await queue.pending()).some((m) => m.id === "b")) {
             await queue.enqueue(item({ id: "b", takenAt: 2 }));
             void uploader.run();
@@ -506,7 +506,7 @@ describe("uploader", () => {
       expect(removed.sort()).toEqual(["a", "b"]);
     });
 
-    it("tras un error inesperado libera el lock", async () => {
+    it("after an unexpected error it releases the lock", async () => {
       happyServer();
       await queue.enqueue(item());
       let fail = true;

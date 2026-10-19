@@ -9,7 +9,7 @@ import { createUploader } from "./uploader";
 
 let uploader: Promise<ReturnType<typeof createUploader>> | null = null;
 
-/** El uploader de la app: uno solo, con la cola real y los archivos de Documents. */
+/** The app's uploader: a single one, with the real queue and the Documents files. */
 function getUploader() {
   uploader ??= getQueue().then((queue) =>
     createUploader({
@@ -30,7 +30,7 @@ function getUploader() {
         const dir = new Directory(Paths.document, "pending", id);
         if (dir.exists) dir.delete();
       },
-      // Después de sacarla de la cola: si no, por un instante cuenta en el server y en la cola.
+      // After removing it from the queue: otherwise for a moment it counts on both the server and the queue.
       onUploaded: async (tripId) => {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["trip", tripId] }),
@@ -51,8 +51,8 @@ function getUploader() {
 }
 
 /**
- * Pide una pasada de subida. Nunca tira: si falla algo queda en la cola para el
- * próximo disparador (abrir la app, volver a primer plano, mandar otra foto).
+ * Requests an upload pass. Never throws: if something fails it stays in the queue for the
+ * next trigger (opening the app, returning to foreground, sending another photo).
  */
 export async function syncQueue(): Promise<void> {
   try {

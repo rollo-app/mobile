@@ -81,17 +81,17 @@ beforeEach(async () => {
   getQueue.mockImplementation(() => Promise.resolve(queue));
 });
 
-describe("Mapa", () => {
-  it("sin fotos con ubicación muestra el mapa con un aviso chico", async () => {
-    await renderRouter(routes, { initialUrl: "/mapa" });
+describe("Map", () => {
+  it("with no photos with a location it shows the map with a small notice", async () => {
+    await renderRouter(routes, { initialUrl: "/map" });
 
     expect(await screen.findByText("Todavía no hay fotos en el mapa")).toBeVisible();
     expect(screen.getByLabelText("mapa")).toBeVisible();
   });
 
-  it("tocar un pin abre la tarjeta con autor, hora y caption; tocar el mapa vacío la cierra", async () => {
+  it("tapping a pin opens the card with author, time and caption; tapping the empty map closes it", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
-    await renderRouter(routes, { initialUrl: "/mapa" });
+    await renderRouter(routes, { initialUrl: "/map" });
 
     await fireEvent.press(await screen.findByLabelText("pin f1"));
     expect(await screen.findByText("el viento no perdona")).toBeVisible();
@@ -102,20 +102,20 @@ describe("Mapa", () => {
     await waitFor(() => expect(screen.queryByText("el viento no perdona")).toBeNull());
   });
 
-  it("suma tus fotos pendientes con ubicación", async () => {
+  it("adds your pending photos with a location", async () => {
     await queue.enqueue(queued());
-    await renderRouter(routes, { initialUrl: "/mapa" });
+    await renderRouter(routes, { initialUrl: "/map" });
 
     await fireEvent.press(await screen.findByLabelText("pin q1"));
     expect(await screen.findByText("Esperando señal")).toBeVisible();
     expect(screen.getByLabelText(/^Juani, /)).toBeVisible();
   });
 
-  it("el filtro Hoy deja solo las fotos del día del viaje", async () => {
+  it("the Hoy filter keeps only the photos from the trip day", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([feedItem({ id: "hoy" }), feedItem({ id: "ayer", day: "2027-01-11" })]),
     );
-    await renderRouter(routes, { initialUrl: "/mapa" });
+    await renderRouter(routes, { initialUrl: "/map" });
     expect(await screen.findByLabelText("pin ayer")).toBeVisible();
 
     await fireEvent.press(screen.getByRole("button", { name: "Hoy" }));
@@ -124,11 +124,11 @@ describe("Mapa", () => {
     expect(screen.queryByLabelText("pin ayer")).toBeNull();
   });
 
-  it("el menú Personas filtra por persona y también deja volver a todos", async () => {
+  it("the Personas menu filters by person and also lets you go back to everyone", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani" } })]),
     );
-    await renderRouter(routes, { initialUrl: "/mapa" });
+    await renderRouter(routes, { initialUrl: "/map" });
     expect(await screen.findByLabelText("pin mia")).toBeVisible();
 
     await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
@@ -139,9 +139,9 @@ describe("Mapa", () => {
     expect(screen.getByLabelText("pin mia")).toBeVisible();
   });
 
-  it("si el pedido falla y no hay cache, avisa chico y deja reintentar sin sacar el mapa", async () => {
+  it("if the request fails with no cache, it shows a small notice and allows retrying without removing the map", async () => {
     mocked.fetchFeed.mockRejectedValueOnce(new Error("Sin conexión"));
-    await renderRouter(routes, { initialUrl: "/mapa" });
+    await renderRouter(routes, { initialUrl: "/map" });
 
     expect(await screen.findByText("Sin conexión")).toBeVisible();
     expect(screen.getByLabelText("mapa")).toBeVisible();
@@ -153,12 +153,12 @@ describe("Mapa", () => {
     expect(screen.queryByText("Sin conexión")).toBeNull();
   });
 
-  it("muestra la atribución de OpenStreetMap como texto fijo", async () => {
-    await renderRouter(routes, { initialUrl: "/mapa" });
+  it("shows the OpenStreetMap attribution as fixed text", async () => {
+    await renderRouter(routes, { initialUrl: "/map" });
     expect(await screen.findByText("© OpenStreetMap · OpenFreeMap")).toBeVisible();
   });
 
-  it("tocar un pin con otras fotos en el mismo lugar abre un carrusel con todas, por hora", async () => {
+  it("tapping a pin with other photos at the same place opens a carousel with all of them, by time", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
         feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", name: "Fede" } }),
@@ -166,7 +166,7 @@ describe("Mapa", () => {
         feedItem({ id: "lejos", lat: -48.5, lng: -72.0, caption: "otra" }),
       ]),
     );
-    await renderRouter(routes, { initialUrl: "/mapa" });
+    await renderRouter(routes, { initialUrl: "/map" });
 
     await fireEvent.press(await screen.findByLabelText("pin tarde"));
 
@@ -175,13 +175,13 @@ describe("Mapa", () => {
     expect(screen.queryByText("otra")).toBeNull();
   });
 
-  it("Ver todas está a mano para volver a encuadrar", async () => {
-    await renderRouter(routes, { initialUrl: "/mapa" });
+  it("Ver todas is at hand to reframe", async () => {
+    await renderRouter(routes, { initialUrl: "/map" });
     await fireEvent.press(await screen.findByRole("button", { name: "Ver todas" }));
     expect(screen.getByLabelText("mapa")).toBeVisible();
   });
 
-  it("un cluster que no se puede abrir con zoom (mismo punto) abre el carrusel con sus hojas", async () => {
+  it("a cluster that cannot be opened by zooming (same point) opens the carousel with its leaves", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
         feedItem({ id: "a", caption: "una", takenAt: 1 }),
@@ -189,7 +189,7 @@ describe("Mapa", () => {
         feedItem({ id: "c", caption: "tres", lat: -48, takenAt: 3 }),
       ]),
     );
-    await renderRouter(routes, { initialUrl: "/mapa" });
+    await renderRouter(routes, { initialUrl: "/map" });
 
     await fireEvent.press(await screen.findByLabelText("cluster"));
 
@@ -199,20 +199,20 @@ describe("Mapa", () => {
     expect(screen.queryByText("tres")).toBeNull();
   });
 
-  it("si llega focus (desde el Feed) abre la tarjeta de esa foto, aunque el filtro la esconda", async () => {
+  it("if focus arrives (from the Feed) it opens that photo's card, even if the filter hides it", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([feedItem({ id: "otra", caption: "otra cosa", lat: -48.5, lng: -72.0 }), feedItem({ id: "ayer", day: "2027-01-11", caption: "la de ayer" })]),
     );
-    await renderRouter(routes, { initialUrl: "/mapa?focus=ayer" });
+    await renderRouter(routes, { initialUrl: "/map?focus=ayer" });
 
     expect(await screen.findByText("la de ayer")).toBeVisible();
     expect(screen.queryByText("otra cosa")).toBeNull();
     expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33], zoom: 15 }));
   });
 
-  it("consume el focus: después de abrirla, el param se limpia", async () => {
+  it("consumes the focus: after opening it, the param is cleared", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
-    await renderRouter(routes, { initialUrl: "/mapa?focus=f1" });
+    await renderRouter(routes, { initialUrl: "/map?focus=f1" });
 
     await screen.findByText("el viento no perdona");
     await waitFor(() => expect(screen).not.toHaveSearchParams({ focus: "f1" }));
