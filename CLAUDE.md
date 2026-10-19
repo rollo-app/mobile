@@ -69,7 +69,9 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 app/                  rutas (Expo Router): index (bienvenida), create, join, trips (sheet), capture
 app/(tabs)/           NativeTabs: rollo, mapa, camara (placeholder), feed, vos; cada una con su Stack
 src/api/              schema.d.ts generado + client.ts
+src/features/capture/ cola offline (SQLite), procesar foto/video + ThumbHash, ubicación, cupo del día
 src/features/trips/   acciones (lo que mockean los tests), useActiveTrip, useTripDetail, TripSwitcher
+src/test/             helpers de tests: rutas de la app y SQLite en memoria (node:sqlite)
 src/storage/          sesiones de viaje en SecureStore (el primero de la lista es el activo)
 src/ui/               theme.ts (colors, spacing, radius, type) y componentes: Screen, Section, Row,
                       Button, Field, Body, Footnote, ErrorText, Loading
@@ -78,6 +80,10 @@ __tests__/            tests de pantallas
 
 ## Cómo trabajamos
 
+- **Modelos (para cuidar el usage):** planear con **Opus** (diseño, decisiones, partir el trabajo) y
+  ejecutar con **workers en paralelo con Sonnet** (subagentes o sesiones con `model: sonnet`), cada uno
+  con una tarea acotada y su brief completo (archivos, qué es "terminado", cómo testear). Opus revisa
+  el resultado; no implementa él mismo lo que puede hacer un worker.
 - **TDD siempre:** primero el test (descripciones en español), verlo fallar, código mínimo, refactor.
   - Lógica (`src/**/__tests__`): `fetch` simulado con `globalThis.fetch = jest.fn(...)`.
   - Pantallas: `renderRouter` de `expo-router/testing-library` con navegación real, mockeando
@@ -92,7 +98,7 @@ __tests__/            tests de pantallas
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 35 tests
+npm test                      # 54 tests
 npm run test:watch
 npm run typecheck
 npx expo run:ios --device     # compila e instala el dev build en el iPhone

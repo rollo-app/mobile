@@ -25,7 +25,23 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
+          "microphonePermission": "Rollo usa el micrófono para el sonido de los videos.",
+          "photosPermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Rollo guarda dónde sacaste cada foto para el mapa del viaje."
+        }
+      ]
     ],
     "scheme": "rollo",
     "experiments": {
