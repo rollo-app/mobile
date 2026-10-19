@@ -7,6 +7,7 @@ import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
 const mocked = jest.mocked(actions);
+const { __camera: camera } = jest.requireMock("@maplibre/maplibre-react-native") as { __camera: { flyTo: jest.Mock } };
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -197,4 +198,24 @@ describe("Mapa", () => {
     expect(screen.getByText("dos")).toBeTruthy();
     expect(screen.queryByText("tres")).toBeNull();
   });
+
+  it("si llega focus (desde el Feed) abre la tarjeta de esa foto, aunque el filtro la esconda", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([feedItem({ id: "otra", caption: "otra cosa", lat: -48.5, lng: -72.0 }), feedItem({ id: "ayer", day: "2027-01-11", caption: "la de ayer" })]),
+    );
+    await renderRouter(routes, { initialUrl: "/mapa?focus=ayer" });
+
+    expect(await screen.findByText("la de ayer")).toBeVisible();
+    expect(screen.queryByText("otra cosa")).toBeNull();
+    expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33], zoom: 15 }));
+  });
+
+  it("consume el focus: después de abrirla, el param se limpia", async () => {
+    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    await renderRouter(routes, { initialUrl: "/mapa?focus=f1" });
+
+    await screen.findByText("el viento no perdona");
+    await waitFor(() => expect(screen).not.toHaveSearchParams({ focus: "f1" }));
+  });
 });
+

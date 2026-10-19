@@ -2,13 +2,13 @@ import { MenuView } from "@expo/ui/community/menu";
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { Camera, Map, UserLocation, type CameraRef, type GeoJSONSourceRef } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
-import { Stack } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePendingItems } from "@/features/capture/use-pending-items";
-import { boundsOf, feedToItems, itemsByTime, mergeItems, toFeatures, type MapItem } from "@/features/map/features";
+import { boundsOf, feedToItems, itemsByTime, mergeItems, pendingToItems, toFeatures, type MapItem } from "@/features/map/features";
 import { canExpandCluster, fitTarget, isTripActive, MAX_ZOOM, photosNear } from "@/features/map/framing";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
 import { PinCarousel } from "@/features/map/pin-carousel";
@@ -30,11 +30,14 @@ const TAB_BAR_GAP = 12;
 // safe area ya la incluye, `Math.max` no cambia nada; si no, esto garantiza que no tape lo de abajo.
 const TAB_BAR_MIN_INSET = 83;
 const USER_ZOOM = 12;
+const FOCUS_ZOOM = 15;
 
 type PressEvent = { nativeEvent: { features: GeoJSON.Feature[] }; stopPropagation?: () => void };
 
 export default function MapScreen() {
   const { trip } = useActiveTrip();
+  const router = useRouter();
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
   const { detail } = useTripDetail(trip?.tripId);
   const { feed, error, refetch } = useFeed(trip?.tripId);
   const pending = usePendingItems(trip?.tripId);
@@ -56,23 +59,7 @@ export default function MapScreen() {
   const styleUri = useMemo(() => writeStyleFile(scheme), [scheme]);
 
   const items = useMemo<MapItem[]>(() => {
-    const me = detail?.me;
-    const mine: MapItem[] = me
-      ? pending.map((m) => ({
-          id: m.id,
-          type: m.type,
-          takenAt: m.takenAt,
-          day: m.day,
-          lat: m.lat,
-          lng: m.lng,
-          caption: m.caption,
-          durationS: m.durationS,
-          thumbhash: m.thumbhash,
-          authorId: me.id,
-          authorName: me.name,
-          pending: true,
-        }))
-      : [];
+    const mine = detail?.me ? pendingToItems(pending, detail.me) : [];
     return mergeItems(feed ? feedToItems(feed.items) : [], mine);
   }, [feed, pending, detail?.me]);
 
@@ -123,6 +110,22 @@ export default function MapScreen() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, hasLocation, tripKnown, all, feed, error, detail, padding]);
+
+  // Llegó desde el Feed con una foto: sin filtros, volar a ella (zoom 15) y abrir su tarjeta. Se
+  // consume el param para que volver a tocar la misma foto después de mover el mapa funcione.
+  useEffect(() => {
+    if (!focus || !mapReady) return;
+    const target = items.find((i) => i.id === focus);
+    if (!target) return;
+    router.setParams({ focus: undefined });
+    if (target.lat === null || target.lng === null) return;
+    framed.current = true;
+    setScope("all");
+    setAuthorId(null);
+    cameraRef.current?.flyTo({ center: [target.lng, target.lat], zoom: FOCUS_ZOOM, duration: 600 });
+    const ids = itemsByTime(items, photosNear(all.features, [target.lng, target.lat], FOCUS_ZOOM).map((f) => f.properties.id)).map((i) => i.id);
+    setSelection({ ids, index: Math.max(0, ids.indexOf(focus)) });
+  }, [focus, mapReady, items, all, router]);
 
   async function centerOnUser(ask: boolean): Promise<boolean> {
     try {

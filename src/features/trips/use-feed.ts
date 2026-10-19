@@ -17,7 +17,9 @@ export function useFeed(tripId: string | undefined) {
   const feed = query.data ?? null;
   return {
     feed,
-    error: feed ? null : query.isError ? (query.error instanceof Error ? query.error.message : "No se pudo cargar el mapa") : null,
+    error: feed ? null : query.isError ? (query.error instanceof Error ? query.error.message : "No se pudo cargar el feed") : null,
+    loading: !feed && query.isPending,
     refetch: query.refetch,
+    isRefetching: query.isRefetching,
   };
 }

@@ -76,16 +76,26 @@ beforeEach(() => {
 jest.mock("@maplibre/maplibre-react-native", () => {
   const React = require("react");
   const { Pressable, View } = require("react-native");
+  const camera = { flyTo: jest.fn(), easeTo: jest.fn(), fitBounds: jest.fn() };
   return {
+    __camera: camera,
     // El mapa deja tocar "el vacío"; la fuente de pins, un botón por pin (así las pantallas se prueban sin nativo).
-    Map: ({ children, onPress }: any) =>
-      React.createElement(
+    Map: ({ children, onPress, onDidFinishLoadingMap }: any) => {
+      React.useEffect(() => {
+        onDidFinishLoadingMap?.();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+      return React.createElement(
         View,
         null,
         React.createElement(Pressable, { accessibilityLabel: "mapa", onPress: () => onPress?.({ nativeEvent: {} }) }),
         children,
-      ),
-    Camera: View,
+      );
+    },
+    Camera: ({ ref }: any) => {
+      React.useImperativeHandle(ref, () => camera);
+      return null;
+    },
     ViewAnnotation: View,
     // Con 2+ fotos suma un "cluster" que no se puede abrir (necesita zoom 19) y cuyas hojas son las dos primeras.
     GeoJSONSource: ({ data, onPress, ref }: any) => {
@@ -155,10 +165,10 @@ jest.mock("@expo/ui/community/menu", () => {
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");
   return {
-    MenuView: ({ actions, onPressAction, children }: any) =>
+    MenuView: ({ actions, onPressAction, children, style }: any) =>
       React.createElement(
         View,
-        null,
+        { style },
         children,
         actions.map((a: { id: string; title: string }) =>
           React.createElement(

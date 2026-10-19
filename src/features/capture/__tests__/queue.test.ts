@@ -149,7 +149,7 @@ describe("countPendingForTrip", () => {
     expect(await queue.countPendingForTrip("vacio")).toBe(0);
   });
 
-  it("pendingForTrip devuelve lo pendiente de ese viaje con ubicación, sin las fallidas", async () => {
+  it("pendingForTrip devuelve lo pendiente de ese viaje (con o sin ubicación), sin las fallidas", async () => {
     const queue = await createQueue(memoryDb());
     await queue.enqueue(item({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1" }));
     await queue.enqueue(item({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2", lat: null, lng: null }));
@@ -159,6 +159,9 @@ describe("countPendingForTrip", () => {
 
     const found = await queue.pendingForTrip(TRIP);
 
-    expect(found.map((m) => m.id)).toEqual(["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1"]);
+    expect(found.map((m) => m.id)).toEqual([
+      "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
+    ]);
   });
 });
