@@ -71,3 +71,19 @@ beforeEach(() => {
     queries: { ...queryClient.getDefaultOptions().queries, retry: false },
   });
 });
+
+// MapLibre es nativo: en los tests el mapa y sus partes son vistas vacías y no hay zonas offline.
+jest.mock("@maplibre/maplibre-react-native", () => {
+  const { View } = require("react-native");
+  return {
+    Map: View,
+    Camera: View,
+    ViewAnnotation: View,
+    OfflineManager: {
+      createPack: jest.fn(),
+      getPacks: jest.fn(async () => []),
+      setTileCountLimit: jest.fn(),
+      deletePack: jest.fn(),
+    },
+  };
+});

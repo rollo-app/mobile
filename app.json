@@ -41,7 +41,8 @@
         {
           "locationWhenInUsePermission": "Rollo guarda dónde sacaste cada foto para el mapa del viaje."
         }
-      ]
+      ],
+      "@maplibre/maplibre-react-native"
     ],
     "scheme": "rollo",
     "experiments": {
