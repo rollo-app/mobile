@@ -1,7 +1,12 @@
-import { StyleSheet } from "react-native";
+import * as Haptics from "expo-haptics";
+import { ActionSheetIOS, StyleSheet } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { MapItem } from "@/features/map/features";
 import { FeedRow } from "../feed-row";
+
+jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(), ImpactFeedbackStyle: { Light: "light" } }));
+const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation(() => {});
+beforeEach(() => sheet.mockClear());
 
 const TZ = "America/Argentina/Buenos_Aires";
 
@@ -71,20 +76,38 @@ describe("FeedRow", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("solo con onDelete (admin) ofrece 'Borrar foto', y lo avisa con el item", async () => {
+  it("el admin mantiene apretada la fila: haptic, action sheet y, si elige Borrar foto, avisa con el item", async () => {
     const onDelete = jest.fn();
-    const { rerender } = await render(<FeedRow item={item()} timeZone={TZ} />);
-    expect(screen.queryByRole("menuitem", { name: "Borrar foto" })).toBeNull();
+    await render(<FeedRow item={item()} timeZone={TZ} onDelete={onDelete} />);
 
-    await rerender(<FeedRow item={item()} timeZone={TZ} onDelete={onDelete} />);
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Borrar foto" }));
+    await fireEvent(screen.getByLabelText(/^Cami, /), "longPress");
 
+    expect(Haptics.impactAsync).toHaveBeenCalledWith("light");
+    expect(sheet).toHaveBeenCalledWith(
+      expect.objectContaining({ options: ["Borrar foto", "Cancelar"], destructiveButtonIndex: 0, cancelButtonIndex: 1 }),
+      expect.any(Function),
+    );
+    expect(onDelete).not.toHaveBeenCalled();
+    sheet.mock.calls[0]![1](0);
     expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: "f1" }));
   });
 
-  it("una pendiente no se puede borrar aunque haya onDelete", async () => {
-    await render(<FeedRow item={item({ pending: true })} timeZone={TZ} onDelete={jest.fn()} />);
-    expect(screen.queryByRole("menuitem", { name: "Borrar foto" })).toBeNull();
+  it("si cancela la action sheet no pasa nada", async () => {
+    const onDelete = jest.fn();
+    await render(<FeedRow item={item()} timeZone={TZ} onDelete={onDelete} />);
+    await fireEvent(screen.getByLabelText(/^Cami, /), "longPress");
+
+    sheet.mock.calls[0]![1](1);
+
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it("sin onDelete (no admin) o con la foto pendiente no hay long press", async () => {
+    const { rerender } = await render(<FeedRow item={item()} timeZone={TZ} onPress={jest.fn()} />);
+    expect(screen.getByLabelText(/^Cami, /).props.onLongPress).toBeUndefined();
+
+    await rerender(<FeedRow item={item({ pending: true })} timeZone={TZ} onPress={jest.fn()} onDelete={jest.fn()} />);
+    expect(screen.getByLabelText(/^Cami, /).props.onLongPress).toBeUndefined();
   });
 
   describe("la miniatura queda siempre en la columna de la derecha", () => {

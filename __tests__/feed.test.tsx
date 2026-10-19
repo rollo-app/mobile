@@ -1,5 +1,5 @@
 import { act } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { ActionSheetIOS, Alert } from "react-native";
 import * as sections from "@/features/feed/sections";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
@@ -77,11 +77,14 @@ const queued = (over: Partial<QueuedMedia> = {}): QueuedMedia => ({
 
 let queue: Queue;
 let alert: jest.SpyInstance;
+const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation(() => {});
+jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(), ImpactFeedbackStyle: { Light: "light" } }));
 
 beforeEach(async () => {
   mocked.fetchTrip.mockResolvedValue(detail());
   mocked.fetchFeed.mockResolvedValue(feed([]));
   mocked.deleteMedia.mockResolvedValue(undefined);
+  sheet.mockClear();
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
   queue = await createQueue(memoryDb());
@@ -195,7 +198,8 @@ describe("Feed", () => {
       mocked.fetchFeed.mockClear();
       mocked.fetchTrip.mockClear();
 
-      await fireEvent.press(screen.getByRole("menuitem", { name: "Borrar foto" }));
+      await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
+      sheet.mock.calls[0]![1](0);
 
       expect(alert).toHaveBeenCalledWith(
         "¿Borrar esta foto?",
@@ -221,29 +225,32 @@ describe("Feed", () => {
       await renderRouter(routes, { initialUrl: "/feed" });
       await screen.findByText("el viento no perdona");
 
-      await fireEvent.press(screen.getByRole("menuitem", { name: "Borrar foto" }));
+      await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
+      sheet.mock.calls[0]![1](0);
       const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
       await act(async () => buttons.find((b) => b.text === "Borrar")!.onPress!());
 
       await waitFor(() => expect(alert).toHaveBeenLastCalledWith("No se pudo borrar", "El viaje ya se reveló"));
     });
 
-    it("una foto pendiente no tiene menú de borrar", async () => {
+    it("una foto pendiente no se puede borrar", async () => {
       await queue.enqueue(queued());
       await renderRouter(routes, { initialUrl: "/feed" });
 
       await screen.findByText("Esperando señal");
-      expect(screen.queryByRole("menuitem", { name: "Borrar foto" })).toBeNull();
+      await fireEvent(screen.getByText("Juani"), "longPress");
+      expect(sheet).not.toHaveBeenCalled();
     });
   });
 
-  it("un miembro que no es admin no ve el menú de borrar", async () => {
+  it("un miembro que no es admin no puede borrar", async () => {
     mocked.fetchTrip.mockResolvedValue(detail("member"));
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
     await renderRouter(routes, { initialUrl: "/feed" });
 
     await screen.findByText("el viento no perdona");
-    expect(screen.queryByRole("menuitem", { name: "Borrar foto" })).toBeNull();
+    await fireEvent(screen.getByText("Fede"), "longPress");
+    expect(sheet).not.toHaveBeenCalled();
   });
 
   it("sin fotos explica que van a aparecer acá", async () => {

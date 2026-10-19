@@ -1,15 +1,13 @@
-import { MenuView } from "@expo/ui/community/menu";
 import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
 import { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { ActionSheetIOS, Pressable, StyleSheet, Text, View } from "react-native";
 import type { MapItem } from "@/features/map/features";
 import { memberColor } from "@/features/map/member-color";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
 const AVATAR = 36;
 const THUMB = 56;
-
-const DELETE_ACTIONS = [{ id: "delete", title: "Borrar foto", attributes: { destructive: true } }];
 
 /** Hora de captura "14:32" en la zona del viaje. */
 export function clockTime(takenAt: number, timeZone: string): string {
@@ -21,7 +19,7 @@ type Props = {
   timeZone: string;
   /** Tocar una fila con ubicación (lleva al mapa). Sin ubicación la fila no es tocable. */
   onPress?: (item: MapItem) => void;
-  /** Solo para el admin: habilita el menú "Borrar foto" al mantener apretada la fila. */
+  /** Solo para el admin: habilita "Borrar foto" (action sheet) al mantener apretada la fila. */
   onDelete?: (item: MapItem) => void;
 };
 
@@ -59,25 +57,32 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
     </View>
   );
 
-  const touchable = located && onPress ? (
+  const canDelete = !!onDelete && !item.pending;
+  if (!(located && onPress) && !canDelete) return content;
+
+  // Mantener apretada abre la action sheet nativa (solo admin). No usamos MenuView: es un host nativo
+  // que toma el tamaño de su contenido y la fila dejaba de ocupar el ancho.
+  function openSheet() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    ActionSheetIOS.showActionSheetWithOptions(
+      { options: ["Borrar foto", "Cancelar"], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
+      (index) => {
+        if (index === 0) onDelete?.(item);
+      },
+    );
+  }
+
+  return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={located && onPress ? "button" : undefined}
       accessibilityLabel={`${item.authorName}, ${when}`}
-      accessibilityHint="Abre la foto en el mapa"
-      onPress={() => onPress(item)}
+      accessibilityHint={located && onPress ? "Abre la foto en el mapa" : undefined}
+      onPress={located && onPress ? () => onPress(item) : undefined}
+      onLongPress={canDelete ? openSheet : undefined}
       style={({ pressed }) => [styles.fill, pressed && { backgroundColor: colors.fill }]}
     >
       {content}
     </Pressable>
-  ) : (
-    content
-  );
-
-  if (!onDelete || item.pending) return touchable;
-  return (
-    <MenuView style={styles.fill} shouldOpenOnLongPress actions={DELETE_ACTIONS} onPressAction={() => onDelete(item)}>
-      {touchable}
-    </MenuView>
   );
 });
 
