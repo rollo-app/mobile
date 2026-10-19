@@ -132,7 +132,14 @@ describe("Tu nombre", () => {
   });
 
   it("al guardar cierra la sheet y Vos muestra el nombre nuevo", async () => {
-    mocked.fetchTrip.mockResolvedValue(detail());
+    const renamed = detail({
+      me: { id: "m1", name: "Juan", role: "admin" },
+      members: [
+        { id: "m1", name: "Juan", role: "admin" },
+        { id: "m2", name: "Fede", role: "member" },
+      ],
+    });
+    mocked.fetchTrip.mockResolvedValueOnce(detail()).mockResolvedValue(renamed);
     mocked.renameMe.mockImplementation((tripId, name) => updateMemberName(tripId, name));
     await renderRouter(routes, { initialUrl: "/vos" });
 
@@ -145,6 +152,9 @@ describe("Tu nombre", () => {
     await waitFor(() => expect(screen).toHavePathname("/vos"));
     expect(mocked.renameMe).toHaveBeenCalledWith(SUR, "Juan");
     expect(await screen.findByRole("button", { name: "Juan, Admin" })).toBeVisible();
+    // la lista de miembros también se actualiza, sin volver a mostrar "cargando"
+    await waitFor(() => expect(screen.getAllByText("Juan")).toHaveLength(2));
+    expect(screen.queryByText("Juani")).toBeNull();
   });
 
   it("si el server lo rechaza muestra el error y deja la sheet abierta", async () => {
