@@ -923,7 +923,9 @@ export interface components {
                  * @example 2027-01-12
                  */
                 date: string;
+                /** @description 0 outside the rollo's dates */
                 photosLeft: number;
+                /** @description 0 outside the rollo's dates */
                 videosLeft: number;
             };
             totalUploaded: number;

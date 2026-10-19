@@ -365,6 +365,22 @@ describe("uploader", () => {
       },
     );
 
+    it.each(["Este rollo todavía no empezó", "Este rollo ya terminó"])(
+      "400 on register (%s): permanent failure with the server's reason and no retry attempt",
+      async (message) => {
+        routes.push(() => json(400, { error: message }));
+        await queue.enqueue(item());
+
+        await createUploader(deps).run();
+        await createUploader(deps).run();
+
+        expect(await queue.pending()).toEqual([]);
+        expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: message, attempts: 0 })]);
+        expect(calls).toHaveLength(1);
+        expect(removed).toEqual([]);
+      },
+    );
+
     it("404 on confirm (the admin deleted it): fails 'deleted' with no retries", async () => {
       routes.push((c) => (c.url.endsWith("/complete") ? json(404, { error: "No existe" }) : undefined));
       happyServer();
@@ -412,13 +428,13 @@ describe("uploader", () => {
       expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "no_token" })]);
     });
 
-    it("another 4xx on register (invalid data, expired token) is also permanent", async () => {
+    it("another 4xx on register (invalid data, expired token) is also permanent, with the server message as reason", async () => {
       routes.push(() => json(400, { error: "mal" }));
       await queue.enqueue(item());
 
       await createUploader(deps).run();
 
-      expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "http_400" })]);
+      expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "mal" })]);
     });
   });
 

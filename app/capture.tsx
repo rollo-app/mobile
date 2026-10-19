@@ -16,6 +16,7 @@ import { syncQueue } from "@/features/capture/sync";
 import { pendingKey } from "@/features/capture/use-pending-count";
 import { pendingItemsKey } from "@/features/capture/use-pending-items";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { formatDate, formatTime, rollPhase } from "@/features/trips/phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Body, Button, ErrorText } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
@@ -25,6 +26,7 @@ type Shot = { asset: ImagePicker.ImagePickerAsset; takenAt: number; poster: stri
 type State =
   | { kind: "waiting" }
   | { kind: "locked" }
+  | { kind: "closed"; title: string; body: string }
   | { kind: "no-permission" }
   | { kind: "preview"; shot: Shot; sending: boolean; error: string | null };
 
@@ -68,6 +70,8 @@ export default function CaptureScreen() {
   useEffect(() => {
     if (!trip || started.current || (!detail && !detailError)) return;
     started.current = true;
+    const closed = detail && closedMessage(detail.trip, Date.now());
+    if (closed) return setState({ kind: "closed", ...closed });
     (async () => {
       const day = localDay(Date.now(), timeZone);
       const pending = await (await getQueue()).countPending(trip.tripId, day);
@@ -130,6 +134,7 @@ export default function CaptureScreen() {
       />
     );
   }
+  if (state.kind === "closed") return <Message symbol="lock.fill" title={state.title} body={state.body} />;
   if (state.kind === "no-permission") {
     return (
       <Message
@@ -153,6 +158,24 @@ export default function CaptureScreen() {
       onSend={() => send(state.shot)}
     />
   );
+}
+
+/** What to show instead of the camera when the roll isn't in its shooting phase; null while it is. */
+function closedMessage(
+  trip: { startsAt: number; endsAt: number; revealAt: number; revealed: boolean; timezone: string },
+  now: number,
+) {
+  const at = (ms: number) => `el ${formatDate(ms, trip.timezone)} a las ${formatTime(ms, trip.timezone)}`;
+  switch (rollPhase(trip, now)) {
+    case "upcoming":
+      return { title: "Este rollo todavía no empezó", body: `Arranca ${at(trip.startsAt)}.` };
+    case "ended":
+      return { title: "Este rollo ya terminó", body: `Se revela ${at(trip.revealAt)}.` };
+    case "revealed":
+      return { title: "Este rollo ya se reveló", body: "Ya no se pueden sacar fotos." };
+    default:
+      return null;
+  }
 }
 
 function mediaTypesFor(left: Left): ImagePicker.MediaType[] {

@@ -50,13 +50,13 @@ function classify(error: unknown, phase: Phase): Verdict | null {
   if (status === 0) return { kind: "offline" };
   if (status >= 500) return { kind: "retry" };
   if (status === 429) return { kind: "failed", reason: "quota" };
-  // The reason is the server's message ("El rollo ya se reveló", "El admin borró esta foto"…).
+  // The reason is the server's message ("El rollo ya se reveló", "Este rollo ya terminó"…).
   if (status === 409) return { kind: "failed", reason: error.message };
   // Confirming a photo the admin deleted returns 404: nothing to retry.
   if (phase === "complete" && status === 404) return { kind: "failed", reason: "deleted" };
   // On confirm, a 4xx may be a file that has not fully arrived: retry.
   if (phase === "complete") return { kind: "retry" };
-  return { kind: "failed", reason: `http_${status}` };
+  return { kind: "failed", reason: error.message || `http_${status}` };
 }
 
 export type RunOptions = {

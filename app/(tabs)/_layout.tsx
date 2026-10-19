@@ -2,19 +2,23 @@ import { router } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { useTodayLeft } from "@/features/capture/use-today-left";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { colors } from "@/ui/theme";
 
 /**
  * Bottom bar, icons only. The center camera isn't a screen: it's
  * `disabled` so tapping it doesn't switch tabs, and it opens capture on top.
- * Shows how many photos you have left today, or a lock if none are left.
+ * Shows how many photos you have left today, or a lock if none are left or the roll isn't active.
  */
 export default function TabsLayout() {
   const { trip } = useActiveTrip();
   const { detail } = useTripDetail(trip?.tripId);
   const left = useTodayLeft(trip?.tripId, detail);
-  const locked = left !== null && left.photos === 0 && left.videos === 0;
+  const phase = useRollPhase(detail);
+  // Outside the shooting phase the camera is closed, whatever the quota says.
+  const closed = phase !== null && phase !== "active";
+  const locked = closed || (left !== null && left.photos === 0 && left.videos === 0);
 
   return (
     <NativeTabs tintColor={colors.tint} minimizeBehavior="onScrollDown">
@@ -28,8 +32,8 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="camera" disabled listeners={{ tabPress: () => router.push("/capture") }}>
         <NativeTabs.Trigger.Icon sf={locked ? "lock.fill" : "camera.fill"} md={locked ? "lock" : "photo_camera"} />
-        <NativeTabs.Trigger.Label hidden>{locked ? "Cámara, sin fotos por hoy" : "Cámara"}</NativeTabs.Trigger.Label>
-        {left !== null && left.photos > 0 && <NativeTabs.Trigger.Badge>{String(left.photos)}</NativeTabs.Trigger.Badge>}
+        <NativeTabs.Trigger.Label hidden>{closed ? "Cámara, rollo cerrado" : locked ? "Cámara, sin fotos por hoy" : "Cámara"}</NativeTabs.Trigger.Label>
+        {!closed && left !== null && left.photos > 0 && <NativeTabs.Trigger.Badge>{String(left.photos)}</NativeTabs.Trigger.Badge>}
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="feed">
         <NativeTabs.Trigger.Icon sf={{ default: "text.bubble", selected: "text.bubble.fill" }} md="chat_bubble" />
