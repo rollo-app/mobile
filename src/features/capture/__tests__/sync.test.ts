@@ -51,5 +51,7 @@ describe("syncQueue", () => {
     expect(upload).toHaveBeenCalledWith("https://r2.test/original", expect.objectContaining({ httpMethod: "PUT" }));
     expect((await (await getQueue()).pending())).toHaveLength(0);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["trip", TRIP] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["feed", TRIP] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["pending-items", TRIP] });
   });
 });

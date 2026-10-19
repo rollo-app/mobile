@@ -14,6 +14,7 @@ import { localDay, remaining } from "@/features/capture/quota";
 import { getQueue } from "@/features/capture/store";
 import { syncQueue } from "@/features/capture/sync";
 import { pendingKey } from "@/features/capture/use-pending-count";
+import { pendingItemsKey } from "@/features/capture/use-pending-items";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Body, Button, ErrorText } from "@/ui/components";
@@ -102,6 +103,7 @@ export default function CaptureScreen() {
         ...prepared,
       });
       void queryClient.invalidateQueries({ queryKey: pendingKey(trip.tripId) });
+      void queryClient.invalidateQueries({ queryKey: pendingItemsKey(trip.tripId) });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       void syncQueue();
       router.back();

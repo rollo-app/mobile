@@ -160,6 +160,15 @@ export async function createQueue(db: QueueDb) {
       await db.runAsync("UPDATE pending_media SET failed_reason = ? WHERE id = ?", reason, id);
     },
 
+    /** Lo pendiente de un viaje que tiene ubicación (para el mapa), sin las fallidas. */
+    async pendingForTrip(tripId: string): Promise<PendingMedia[]> {
+      const rows = await db.getAllAsync<Row>(
+        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY taken_at",
+        tripId,
+      );
+      return rows.map(fromRow);
+    },
+
     /** Todo lo sacado y no subido de un viaje, de cualquier día, sin las fallidas. */
     async countPendingForTrip(tripId: string) {
       const rows = await db.getAllAsync<{ n: number }>(
