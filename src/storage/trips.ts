@@ -64,3 +64,9 @@ export async function removeTrip(tripId: string): Promise<void> {
   await SecureStore.deleteItemAsync(tokenKey(tripId));
   await writeIndex((await readIndex()).filter((t) => t.tripId !== tripId));
 }
+
+/** Cambia tu nombre en un viaje guardado. No toca el token ni el orden de la lista. */
+export async function updateMemberName(tripId: string, name: string): Promise<void> {
+  const trips = await readIndex();
+  await writeIndex(trips.map((t) => (t.tripId === tripId ? { ...t, memberName: name } : t)));
+}

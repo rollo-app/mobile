@@ -21,6 +21,15 @@ export default function RootLayout() {
             sheetGrabberVisible: true,
           }}
         />
+        <Stack.Screen
+          name="rename"
+          options={{
+            title: "Tu nombre",
+            presentation: "formSheet",
+            sheetAllowedDetents: [0.3, 0.5],
+            sheetGrabberVisible: true,
+          }}
+        />
         <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
       </Stack>
     </ThemeProvider>
