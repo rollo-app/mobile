@@ -1,5 +1,5 @@
 import { memberColor } from "../member-color";
-import { boundsOf, itemsByTime, mergeItems, toFeatures, type MapItem } from "../features";
+import { boundsOf, itemsByTime, mergeItems, pendingToItems, toFeatures, type MapItem } from "../features";
 
 const item = (over: Partial<MapItem> = {}): MapItem => ({
   id: "m1",
@@ -96,5 +96,22 @@ describe("itemsByTime", () => {
   it("devuelve solo los ids pedidos, de la más vieja a la más nueva", () => {
     const items = [item({ id: "c", takenAt: 30 }), item({ id: "a", takenAt: 10 }), item({ id: "b", takenAt: 20 }), item({ id: "x", takenAt: 5 })];
     expect(itemsByTime(items, ["c", "a", "b"]).map((i) => i.id)).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("pendingToItems", () => {
+  it("convierte tus fotos de la cola en items pendientes con tu nombre", () => {
+    const queued = {
+      id: "q1", tripId: "t", type: "video" as const, takenAt: 5, day: "2027-01-12", lat: null, lng: null,
+      accuracyM: null, caption: "hola", durationS: 12, width: 1, height: 1, sizeBytes: 1,
+      originalUri: "o", thumbUri: "t", thumbhash: "hash", attempts: 0, retryAt: null,
+    };
+
+    expect(pendingToItems([queued], { id: "m1", name: "Juani" })).toEqual([
+      {
+        id: "q1", type: "video", takenAt: 5, day: "2027-01-12", lat: null, lng: null, caption: "hola",
+        durationS: 12, thumbhash: "hash", authorId: "m1", authorName: "Juani", pending: true,
+      },
+    ]);
   });
 });

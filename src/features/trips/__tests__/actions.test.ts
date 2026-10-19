@@ -1,5 +1,5 @@
 import { getToken, listTrips, saveSession } from "@/storage/trips";
-import { createTrip, fetchFeed, fetchTrip, joinTrip, renameMe } from "../actions";
+import { createTrip, deleteMedia, fetchFeed, fetchTrip, joinTrip, renameMe } from "../actions";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2027, 0, 5, 12, 0);
@@ -168,5 +168,33 @@ describe("fetchFeed", () => {
 
   it("falla si no tenés sesión en ese viaje", async () => {
     await expect(fetchFeed("desconocido")).rejects.toThrow("No estás en este viaje");
+  });
+});
+
+describe("deleteMedia", () => {
+  it("borra la foto con el token del viaje", async () => {
+    mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok-admin" });
+    await joinTrip({ code: "HUB5FT", name: "Juani" });
+    const fetchMock = jest.fn(async (_req: Request) => new Response(null, { status: 204 }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await deleteMedia(trip.id, "foto-1");
+
+    const req = fetchMock.mock.calls[0]![0] as Request;
+    expect(req.method).toBe("DELETE");
+    expect(new URL(req.url).pathname).toBe("/media/foto-1");
+    expect(req.headers.get("authorization")).toBe("Bearer tok-admin");
+  });
+
+  it("si el server rechaza, tira su mensaje", async () => {
+    mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok" });
+    await joinTrip({ code: "HUB5FT", name: "Fede" });
+    mockFetch(403, { error: "Solo el admin puede borrar" });
+
+    await expect(deleteMedia(trip.id, "foto-1")).rejects.toThrow("Solo el admin puede borrar");
+  });
+
+  it("falla si no tenés sesión en ese viaje", async () => {
+    await expect(deleteMedia("desconocido", "foto-1")).rejects.toThrow("No estás en este viaje");
   });
 });

@@ -163,7 +163,7 @@ export async function createQueue(db: QueueDb) {
     /** Lo pendiente de un viaje que tiene ubicación (para el mapa), sin las fallidas. */
     async pendingForTrip(tripId: string): Promise<PendingMedia[]> {
       const rows = await db.getAllAsync<Row>(
-        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL AND lat IS NOT NULL AND lng IS NOT NULL ORDER BY taken_at",
+        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL ORDER BY taken_at",
         tripId,
       );
       return rows.map(fromRow);

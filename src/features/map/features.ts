@@ -1,4 +1,5 @@
 import type { Schemas } from "@/api/client";
+import type { PendingMedia } from "@/features/capture/queue";
 import { memberColor } from "./member-color";
 
 /** Una foto o video en el mapa: del feed del server o tuya de la cola local (pendiente). */
@@ -37,6 +38,24 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
     authorId: i.author.id,
     authorName: i.author.name,
     pending: false,
+  }));
+}
+
+/** Tus fotos sin subir (cola local) como items, con vos de autor. */
+export function pendingToItems(pending: PendingMedia[], me: { id: string; name: string }): MapItem[] {
+  return pending.map((m) => ({
+    id: m.id,
+    type: m.type,
+    takenAt: m.takenAt,
+    day: m.day,
+    lat: m.lat,
+    lng: m.lng,
+    caption: m.caption,
+    durationS: m.durationS,
+    thumbhash: m.thumbhash,
+    authorId: me.id,
+    authorName: me.name,
+    pending: true,
   }));
 }
 

@@ -88,3 +88,13 @@ export async function renameMe(tripId: string, name: string): Promise<void> {
   );
   await updateMemberName(tripId, member.name);
 }
+
+/** Borra una foto o video del viaje (solo admin, antes del revelado). */
+export async function deleteMedia(tripId: string, mediaId: string): Promise<void> {
+  const token = await getToken(tripId);
+  if (!token) throw new Error("No estás en este viaje");
+
+  await unwrap(
+    createApiClient({ baseUrl: API_URL, token }).DELETE("/media/{mediaId}", { params: { path: { mediaId } } }),
+  );
+}
