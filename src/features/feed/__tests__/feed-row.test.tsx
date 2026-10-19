@@ -1,3 +1,4 @@
+import { StyleSheet } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { MapItem } from "@/features/map/features";
 import { FeedRow } from "../feed-row";
@@ -84,5 +85,30 @@ describe("FeedRow", () => {
   it("una pendiente no se puede borrar aunque haya onDelete", async () => {
     await render(<FeedRow item={item({ pending: true })} timeZone={TZ} onDelete={jest.fn()} />);
     expect(screen.queryByRole("menuitem", { name: "Borrar foto" })).toBeNull();
+  });
+
+  describe("la miniatura queda siempre en la columna de la derecha", () => {
+    const stretch = (node: { props: { style?: unknown } }) => StyleSheet.flatten(node.props.style as never)?.alignSelf;
+
+    const variants: [string, Partial<React.ComponentProps<typeof FeedRow>>][] = [
+      ["tocable", { onPress: jest.fn() }],
+      ["no tocable", {}],
+      ["con menú de admin", { onPress: jest.fn(), onDelete: jest.fn() }],
+    ];
+
+    it.each(variants)("fila %s: envoltorios a todo el ancho y miniatura última, de ancho fijo", async (_name, props) => {
+      await render(<FeedRow item={item({ caption: "ibai con netflix" })} timeZone={TZ} {...props} />);
+
+      const row = screen.getByTestId("feed-row");
+      expect(stretch(row)).toBe("stretch");
+      for (let node = row.parent; node && node.parent && (node.type as unknown) !== undefined; node = node.parent) {
+        if (typeof node.type === "string" && node.props.style !== undefined) expect(stretch(node)).toBe("stretch");
+        if (node === screen.root) break;
+      }
+      const children = row.children as { props: { testID?: string } }[];
+      const thumb = children[children.length - 1]!;
+      expect(thumb.props.testID).toBe("feed-thumb");
+      expect(StyleSheet.flatten((thumb.props as { style?: never }).style)?.flexShrink).toBe(0);
+    });
   });
 });

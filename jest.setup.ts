@@ -165,10 +165,10 @@ jest.mock("@expo/ui/community/menu", () => {
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");
   return {
-    MenuView: ({ actions, onPressAction, children }: any) =>
+    MenuView: ({ actions, onPressAction, children, style }: any) =>
       React.createElement(
         View,
-        null,
+        { style },
         children,
         actions.map((a: { id: string; title: string }) =>
           React.createElement(

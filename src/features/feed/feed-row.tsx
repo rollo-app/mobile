@@ -32,7 +32,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
   const located = item.lat !== null && item.lng !== null;
 
   const content = (
-    <View style={styles.row}>
+    <View testID="feed-row" style={styles.row}>
       <View style={[styles.avatar, { backgroundColor: memberColor(item.authorId) }]}>
         <Text style={[type.callout, styles.initial]}>{item.authorName.trim().charAt(0).toUpperCase()}</Text>
       </View>
@@ -65,7 +65,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
       accessibilityLabel={`${item.authorName}, ${when}`}
       accessibilityHint="Abre la foto en el mapa"
       onPress={() => onPress(item)}
-      style={({ pressed }) => pressed && { backgroundColor: colors.fill }}
+      style={({ pressed }) => [styles.fill, pressed && { backgroundColor: colors.fill }]}
     >
       {content}
     </Pressable>
@@ -75,16 +75,18 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
 
   if (!onDelete || item.pending) return touchable;
   return (
-    <MenuView shouldOpenOnLongPress actions={DELETE_ACTIONS} onPressAction={() => onDelete(item)}>
+    <MenuView style={styles.fill} shouldOpenOnLongPress actions={DELETE_ACTIONS} onPressAction={() => onDelete(item)}>
       {touchable}
     </MenuView>
   );
 });
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md },
+  // Todos los envoltorios (Pressable, MenuView) ocupan el ancho: así la miniatura queda siempre a la derecha.
+  fill: { alignSelf: "stretch" },
+  row: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, alignItems: "center", justifyContent: "center" },
   initial: { color: "#FFFFFF", fontWeight: "600" },
   text: { flex: 1, gap: 2 },
-  thumb: { width: THUMB, height: THUMB, borderRadius: radius.sm, borderCurve: "continuous" },
+  thumb: { flexShrink: 0, width: THUMB, height: THUMB, borderRadius: radius.sm, borderCurve: "continuous" },
 });
