@@ -151,4 +151,32 @@ describe("Mapa", () => {
     expect(await screen.findByLabelText("pin f1")).toBeVisible();
     expect(screen.queryByText("Sin conexión")).toBeNull();
   });
+
+  it("muestra la atribución de OpenStreetMap como texto fijo", async () => {
+    await renderRouter(routes, { initialUrl: "/mapa" });
+    expect(await screen.findByText("© OpenStreetMap · OpenFreeMap")).toBeVisible();
+  });
+
+  it("tocar un pin con otras fotos en el mismo lugar abre un carrusel con todas, por hora", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([
+        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", name: "Fede" } }),
+        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", name: "Juani" }, caption: "primera" }),
+        feedItem({ id: "lejos", lat: -48.5, lng: -72.0, caption: "otra" }),
+      ]),
+    );
+    await renderRouter(routes, { initialUrl: "/mapa" });
+
+    await fireEvent.press(await screen.findByLabelText("pin tarde"));
+
+    expect(await screen.findByTestId("pin-carousel")).toBeTruthy();
+    expect(screen.getByText("primera")).toBeTruthy();
+    expect(screen.queryByText("otra")).toBeNull();
+  });
+
+  it("Ver todas está a mano para volver a encuadrar", async () => {
+    await renderRouter(routes, { initialUrl: "/mapa" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver todas" }));
+    expect(screen.getByLabelText("mapa")).toBeVisible();
+  });
 });

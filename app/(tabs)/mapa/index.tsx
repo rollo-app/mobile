@@ -8,10 +8,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePendingItems } from "@/features/capture/use-pending-items";
-import { boundsOf, feedToItems, mergeItems, toFeatures, type MapItem } from "@/features/map/features";
+import { boundsOf, feedToItems, itemsByTime, mergeItems, toFeatures, type MapItem } from "@/features/map/features";
+import { fitTarget, isTripActive, photosNear } from "@/features/map/framing";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
-import { PinCard } from "@/features/map/pin-card";
-import { PinLayers } from "@/features/map/pin-layers";
+import { PinCarousel } from "@/features/map/pin-carousel";
+import { CLUSTER_MAX_ZOOM, PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -25,6 +26,10 @@ silenceTileNetworkErrors();
 const DEFAULT_REGION = { center: [-72.89, -49.33] as [number, number], zoom: 6 };
 const HEADER_HEIGHT = 44;
 const TAB_BAR_GAP = 12;
+// Altura de la barra de tabs nativa (49 pt + indicador de inicio de 34 pt en iPhones con notch). Si el
+// safe area ya la incluye, `Math.max` no cambia nada; si no, esto garantiza que no tape lo de abajo.
+const TAB_BAR_MIN_INSET = 83;
+const USER_ZOOM = 12;
 
 type PressEvent = { nativeEvent: { features: GeoJSON.Feature[] }; stopPropagation?: () => void };
 
@@ -38,13 +43,15 @@ export default function MapScreen() {
 
   const [scope, setScope] = useState<"all" | "today">("all");
   const [authorId, setAuthorId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Las fotos del lugar tocado (ordenadas por hora) y cuál de ellas está a la vista en el carrusel.
+  const [selection, setSelection] = useState<{ ids: string[]; index: number } | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [hasLocation, setHasLocation] = useState(false);
+  const [hasLocation, setHasLocation] = useState<boolean | null>(null);
 
   const cameraRef = useRef<CameraRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
   const framed = useRef(false);
+  const zoomRef = useRef(DEFAULT_REGION.zoom);
 
   const styleUri = useMemo(() => writeStyleFile(scheme), [scheme]);
 
@@ -74,74 +81,100 @@ export default function MapScreen() {
     () => toFeatures(items, { day: scope === "today" ? (detail?.today.date ?? null) : null, authorId }),
     [items, scope, authorId, detail?.today.date],
   );
-  const selected = selectedId ? items.find((i) => i.id === selectedId) ?? null : null;
+  const carousel = useMemo(
+    () => (selection ? itemsByTime(items, selection.ids) : []),
+    [items, selection],
+  );
+  const selectedId = selection ? (carousel[selection.index]?.id ?? null) : null;
   const noPins = shown.features.length === 0;
 
-  // Si lo seleccionado queda afuera de los filtros, la tarjeta se va con el pin.
+  // Si lo tocado queda afuera de los filtros, la tarjeta se va con el pin.
   useEffect(() => {
-    if (selectedId && !shown.features.some((f) => f.properties.id === selectedId)) setSelectedId(null);
-  }, [shown, selectedId]);
+    if (selection && !selection.ids.some((id) => shown.features.some((f) => f.properties.id === id))) setSelection(null);
+  }, [shown, selection]);
 
   useEffect(() => {
-    Location.getForegroundPermissionsAsync().then((p) => setHasLocation(p.granted), () => {});
+    Location.getForegroundPermissionsAsync().then((p) => setHasLocation(p.granted), () => setHasLocation(false));
   }, []);
 
   const padding = useMemo(
-    () => ({ top: insets.top + HEADER_HEIGHT + 64, right: 48, bottom: insets.bottom + 160, left: 48 }),
+    () => ({ top: insets.top + HEADER_HEIGHT + 64, right: 48, bottom: Math.max(insets.bottom, TAB_BAR_MIN_INSET) + 160, left: 48 }),
     [insets.top, insets.bottom],
   );
 
-  // Al entrar: todos los pins a la vista; sin pins, donde estás (si hay permiso); si no, la región del viaje.
-  useEffect(() => {
-    if (!mapReady || framed.current) return;
-    const bounds = boundsOf(all.features);
-    if (bounds) {
-      framed.current = true;
-      if (all.features.length === 1) {
-        cameraRef.current?.easeTo({ center: [bounds[0], bounds[1]], zoom: 13, duration: 0 });
-      } else {
-        cameraRef.current?.fitBounds(bounds, { padding, duration: 0 });
-      }
-    } else if (feed || error) {
-      framed.current = true;
-      void centerOnUser(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, all, feed, error, padding]);
+  function frameAll(features: typeof all.features, duration: number) {
+    const bounds = boundsOf(features);
+    if (!bounds) return;
+    const target = fitTarget(bounds);
+    if (target.kind === "center") cameraRef.current?.easeTo({ center: target.center, zoom: target.zoom, duration });
+    else cameraRef.current?.fitBounds(target.bounds, { padding, duration });
+  }
 
-  async function centerOnUser(ask: boolean) {
+  // Al entrar: con el viaje en curso y permiso de ubicación, donde estás; si no, todos los pins a la
+  // vista; sin pins, la región del viaje por defecto. Espera a saber el permiso y a tener datos.
+  const tripKnown = !!detail || !!error;
+  useEffect(() => {
+    if (!mapReady || framed.current || hasLocation === null || !tripKnown || !(feed || error)) return;
+    framed.current = true;
+    const active = detail ? isTripActive(detail.trip, Date.now()) : false;
+    (async () => {
+      if (active && hasLocation && (await centerOnUser(false))) return;
+      frameAll(all.features, 0);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, hasLocation, tripKnown, all, feed, error, detail, padding]);
+
+  async function centerOnUser(ask: boolean): Promise<boolean> {
     try {
       const permission = ask
         ? await Location.requestForegroundPermissionsAsync()
         : await Location.getForegroundPermissionsAsync();
       setHasLocation(permission.granted);
-      if (!permission.granted) return;
+      if (!permission.granted) return false;
       const position =
         (await Location.getLastKnownPositionAsync()) ??
         (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-      if (position) {
-        cameraRef.current?.flyTo({ center: [position.coords.longitude, position.coords.latitude], zoom: 13, duration: 600 });
-      }
+      if (!position) return false;
+      cameraRef.current?.flyTo({
+        center: [position.coords.longitude, position.coords.latitude],
+        zoom: USER_ZOOM,
+        duration: ask ? 600 : 0,
+      });
+      return true;
     } catch {
-      // Sin ubicación el mapa queda donde está.
+      return false; // Sin ubicación el mapa queda donde está.
     }
   }
 
-  const onPinsPress = useCallback((event: PressEvent) => {
-    const feature = event.nativeEvent.features[0];
-    if (!feature) return;
-    event.stopPropagation?.();
-    const props = feature.properties ?? {};
-    if (props.cluster) {
-      void sourceRef.current?.getClusterExpansionZoom(props.cluster_id).then((zoom) => {
-        const center = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
-        cameraRef.current?.easeTo({ center, zoom, duration: 400 });
-      });
-    } else {
-      setSelectedId(props.id);
-    }
-  }, []);
+  const onPinsPress = useCallback(
+    (event: PressEvent) => {
+      const feature = event.nativeEvent.features[0];
+      if (!feature) return;
+      event.stopPropagation?.();
+      const props = feature.properties ?? {};
+      const center = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+      const select = (ids: string[]) => setSelection({ ids, index: 0 });
 
+      if (!props.cluster) {
+        select(photosNear(shown.features, center, zoomRef.current).map((f) => f.properties.id));
+        return;
+      }
+      void (async () => {
+        const source = sourceRef.current;
+        const expansion = await source?.getClusterExpansionZoom(props.cluster_id);
+        // Un cluster que ya no se puede abrir (fotos en el mismo punto): sus hojas pasan al carrusel.
+        if (expansion === undefined || expansion > CLUSTER_MAX_ZOOM || zoomRef.current >= CLUSTER_MAX_ZOOM) {
+          const leaves = (await source?.getClusterLeaves(props.cluster_id, props.point_count ?? 100, 0)) ?? [];
+          select(leaves.map((l) => l.properties?.id).filter((id): id is string => typeof id === "string"));
+        } else {
+          cameraRef.current?.easeTo({ center, zoom: expansion, duration: 400 });
+        }
+      })();
+    },
+    [shown.features],
+  );
+
+  const barInset = Math.max(insets.bottom, TAB_BAR_MIN_INSET) + TAB_BAR_GAP;
   const members = detail?.members ?? [];
   const authorName = members.find((m) => m.id === authorId)?.name;
   const actions = [
@@ -164,13 +197,15 @@ export default function MapScreen() {
         mapStyle={styleUri}
         logo={false}
         compass={false}
-        attribution
-        attributionPosition={{ bottom: insets.bottom + TAB_BAR_GAP, left: 8 }}
+        attribution={false}
         onDidFinishLoadingMap={() => setMapReady(true)}
-        onPress={() => setSelectedId(null)}
+        onRegionDidChange={(e) => {
+          zoomRef.current = e.nativeEvent.zoom;
+        }}
+        onPress={() => setSelection(null)}
       >
         <Camera ref={cameraRef} initialViewState={DEFAULT_REGION} />
-        {hasLocation && <UserLocation />}
+        {hasLocation === true && <UserLocation />}
         <PinLayers data={shown} selectedId={selectedId} sourceRef={sourceRef} onPress={onPinsPress} />
       </Map>
 
@@ -212,18 +247,39 @@ export default function MapScreen() {
         )}
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Centrar en mi ubicación"
-        onPress={() => void centerOnUser(true)}
-        style={[styles.locate, { top: insets.top + HEADER_HEIGHT + 64 + spacing.sm }]}
-      >
-        <SymbolView name="location.fill" size={17} tintColor={colors.label as string} />
-      </Pressable>
+      <View style={[styles.buttons, { top: insets.top + HEADER_HEIGHT + 64 + spacing.sm }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Ver todas"
+          onPress={() => frameAll(shown.features, 500)}
+          style={styles.round}
+        >
+          <SymbolView name="square.dashed" size={17} tintColor={colors.label as string} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Centrar en mi ubicación"
+          onPress={() => void centerOnUser(true)}
+          style={styles.round}
+        >
+          <SymbolView name="location.fill" size={17} tintColor={colors.label as string} />
+        </Pressable>
+      </View>
 
-      {selected && trip && detail && (
-        <View pointerEvents="box-none" style={[styles.cardWrap, { bottom: insets.bottom + TAB_BAR_GAP + 8 }]}>
-          <PinCard item={selected} timeZone={detail.trip.timezone} />
+      {/* ODbL obliga a mostrar la atribución mientras se ve el mapa: texto fijo, no tocable. */}
+      <Text pointerEvents="none" style={[type.caption, styles.attribution, { bottom: barInset + 2 }]}>
+        © OpenStreetMap · OpenFreeMap
+      </Text>
+
+      {carousel.length > 0 && detail && selection && (
+        <View pointerEvents="box-none" style={[styles.cardWrap, { bottom: barInset + 18 }]}>
+          <PinCarousel
+            key={selection.ids.join()}
+            items={carousel}
+            index={selection.index}
+            onIndexChange={(index) => setSelection({ ...selection, index })}
+            timeZone={detail.trip.timezone}
+          />
         </View>
       )}
     </View>
@@ -252,6 +308,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   noticeText: { color: colors.secondaryLabel },
-  locate: { ...chip, position: "absolute", right: spacing.md, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  cardWrap: { position: "absolute", left: spacing.md, right: spacing.md },
+  buttons: { position: "absolute", right: spacing.md, flexDirection: "row", gap: spacing.sm },
+  round: { ...chip, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  attribution: { position: "absolute", left: spacing.md, color: colors.secondaryLabel },
+  cardWrap: { position: "absolute", left: 0, right: 0 },
 });

@@ -46,6 +46,12 @@ export function mergeItems(feed: MapItem[], pending: MapItem[]): MapItem[] {
   return [...feed, ...pending.filter((i) => !ids.has(i.id))];
 }
 
+/** Los items con esos ids, ordenados por hora de captura (para el carrusel). */
+export function itemsByTime(items: MapItem[], ids: string[]): MapItem[] {
+  const wanted = new Set(ids);
+  return items.filter((i) => wanted.has(i.id)).sort((a, b) => a.takenAt - b.takenAt);
+}
+
 export function toFeatures(items: MapItem[], filters: MapFilters): PinCollection {
   const features: PinFeature[] = [];
   for (const i of items) {

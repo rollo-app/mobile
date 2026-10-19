@@ -4,6 +4,8 @@ import type { NativeSyntheticEvent } from "react-native";
 import type { PinCollection } from "./features";
 
 const UNCLUSTERED: FilterSpecification = ["!", ["has", "point_count"]];
+/** Por encima de este zoom las fotos ya no se agrupan: las que siguen juntas van al carrusel. */
+export const CLUSTER_MAX_ZOOM = 15;
 const FONT = ["Noto Sans Bold"];
 
 type PressEvent = NativeSyntheticEvent<{ features: GeoJSON.Feature[] }>;
@@ -31,7 +33,7 @@ export function PinLayers({
       data={data}
       cluster
       clusterRadius={44}
-      clusterMaxZoom={15}
+      clusterMaxZoom={CLUSTER_MAX_ZOOM}
       onPress={onPress}
     >
       <Layer

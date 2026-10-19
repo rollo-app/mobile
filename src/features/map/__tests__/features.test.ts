@@ -1,5 +1,5 @@
 import { memberColor } from "../member-color";
-import { boundsOf, mergeItems, toFeatures, type MapItem } from "../features";
+import { boundsOf, itemsByTime, mergeItems, toFeatures, type MapItem } from "../features";
 
 const item = (over: Partial<MapItem> = {}): MapItem => ({
   id: "m1",
@@ -89,5 +89,12 @@ describe("boundsOf", () => {
       none,
     );
     expect(boundsOf(features)).toEqual([-72.9, -49.4, -72.8, -49.3]);
+  });
+});
+
+describe("itemsByTime", () => {
+  it("devuelve solo los ids pedidos, de la más vieja a la más nueva", () => {
+    const items = [item({ id: "c", takenAt: 30 }), item({ id: "a", takenAt: 10 }), item({ id: "b", takenAt: 20 }), item({ id: "x", takenAt: 5 })];
+    expect(itemsByTime(items, ["c", "a", "b"]).map((i) => i.id)).toEqual(["a", "b", "c"]);
   });
 });
