@@ -3,6 +3,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testi
 import * as ImagePicker from "expo-image-picker";
 import * as actions from "@/features/trips/actions";
 import * as media from "@/features/capture/media";
+import { queryClient } from "@/api/query-client";
 import { localDay } from "@/features/capture/quota";
 import { createQueue, type Queue } from "@/features/capture/queue";
 import { saveSession } from "@/storage/trips";
@@ -109,6 +110,15 @@ describe("Captura", () => {
 
   it("sin fotos ni videos hoy muestra el candado y no abre la cámara", async () => {
     trips.fetchTrip.mockResolvedValue(tripDetail(0, 0));
+    await openCapture();
+
+    expect(await screen.findByText("Se terminó el rollo de hoy")).toBeVisible();
+    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+  });
+
+  it("sin señal calcula el cupo con los datos guardados del viaje", async () => {
+    queryClient.setQueryData(["trip", SUR], tripDetail(0, 0), { updatedAt: Date.now() - 60_000 });
+    trips.fetchTrip.mockRejectedValue(new Error("Sin conexión"));
     await openCapture();
 
     expect(await screen.findByText("Se terminó el rollo de hoy")).toBeVisible();

@@ -122,6 +122,19 @@ describe("uploader", () => {
     expect(removed).toEqual([item().id]);
   });
 
+  it("avisa cada subida confirmada, con el viaje, después de limpiar la cola", async () => {
+    happyServer();
+    await queue.enqueue(item());
+    const uploaded: Array<{ tripId: string; pending: number }> = [];
+    deps.onUploaded = async (tripId) => {
+      uploaded.push({ tripId, pending: (await queue.pending()).length });
+    };
+
+    await createUploader(deps).run();
+
+    expect(uploaded).toEqual([{ tripId: TRIP, pending: 0 }]);
+  });
+
   it("registra con el token del viaje y todos los datos de la captura", async () => {
     happyServer();
     await queue.enqueue(item());

@@ -111,7 +111,7 @@ __tests__/            tests de pantallas
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 54 tests
+npm test                      # 110 tests
 npm run test:watch
 npm run typecheck
 npx expo run:ios --device     # compila e instala el dev build en el iPhone
