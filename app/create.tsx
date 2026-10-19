@@ -78,8 +78,8 @@ export default function CreateScreen() {
       <Host style={styles.form}>
         <Form>
           <Section>
-            <TextField placeholder="Sur 2027" maxLength={60} onTextChange={setName} />
-            <TextField placeholder="Como te conocen" maxLength={30} onTextChange={setAdminName} />
+            <TextField placeholder="Nombre del rollo" maxLength={60} onTextChange={setName} />
+            <TextField placeholder="Tu nombre" maxLength={30} onTextChange={setAdminName} />
           </Section>
 
           <Section title="Cuándo" footer={endError ? <Text>{endError}</Text> : undefined}>

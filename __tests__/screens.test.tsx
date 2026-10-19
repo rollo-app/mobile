@@ -342,8 +342,8 @@ describe("Create roll", () => {
   const dateOf = (label: string) => Number(screen.getByLabelText(label).props.accessibilityValue.text);
   const changeDate = (label: string, ms: number) => fireEvent(screen.getByLabelText(label), "dateChange", new Date(ms));
   const fillNames = async () => {
-    await fireEvent.changeText(await screen.findByPlaceholderText("Sur 2027"), "Sur 2027");
-    await fireEvent.changeText(screen.getByPlaceholderText("Como te conocen"), "Juani");
+    await fireEvent.changeText(await screen.findByPlaceholderText("Nombre del rollo"), "Sur 2027");
+    await fireEvent.changeText(screen.getByPlaceholderText("Tu nombre"), "Juani");
   };
 
   it("needs the roll name and your name before it can be created", async () => {
@@ -351,9 +351,9 @@ describe("Create roll", () => {
     const button = await screen.findByRole("button", { name: "Crear" });
     expect(button).toBeDisabled();
 
-    await fireEvent.changeText(screen.getByPlaceholderText("Sur 2027"), "Sur 2027");
+    await fireEvent.changeText(screen.getByPlaceholderText("Nombre del rollo"), "Sur 2027");
     expect(button).toBeDisabled();
-    await fireEvent.changeText(screen.getByPlaceholderText("Como te conocen"), "Juani");
+    await fireEvent.changeText(screen.getByPlaceholderText("Tu nombre"), "Juani");
     expect(button).toBeEnabled();
   });
 
