@@ -26,7 +26,14 @@ export type QueuedMedia = {
   thumbhash: string | null;
 };
 
-export type PendingMedia = QueuedMedia & { attempts: number };
+export type PendingMedia = QueuedMedia & {
+  attempts: number;
+  /** No reintentar antes de esta hora (ms): el backoff entre intentos. */
+  retryAt: number | null;
+};
+
+/** Lo que el server rechazó para siempre: se queda en el celular con sus archivos. */
+export type FailedMedia = PendingMedia & { failedReason: string };
 
 /** Lo que usamos de expo-sqlite (en los tests se cumple con node:sqlite). */
 export type QueueDb = {
@@ -53,9 +60,17 @@ const SCHEMA = `
     original_uri TEXT NOT NULL,
     thumb_uri TEXT NOT NULL,
     thumbhash TEXT,
-    attempts INTEGER NOT NULL DEFAULT 0
+    attempts INTEGER NOT NULL DEFAULT 0,
+    retry_at INTEGER,
+    failed_reason TEXT
   );
 `;
+
+/** Columnas agregadas después de la primera versión: se suman a bases ya creadas. */
+const ADDED_COLUMNS = [
+  ["retry_at", "INTEGER"],
+  ["failed_reason", "TEXT"],
+] as const;
 
 type Row = {
   id: string;
@@ -75,6 +90,8 @@ type Row = {
   thumb_uri: string;
   thumbhash: string | null;
   attempts: number;
+  retry_at: number | null;
+  failed_reason: string | null;
 };
 
 const fromRow = (r: Row): PendingMedia => ({
@@ -95,10 +112,15 @@ const fromRow = (r: Row): PendingMedia => ({
   thumbUri: r.thumb_uri,
   thumbhash: r.thumbhash,
   attempts: r.attempts,
+  retryAt: r.retry_at,
 });
 
 export async function createQueue(db: QueueDb) {
   await db.execAsync(SCHEMA);
+  const columns = (await db.getAllAsync<{ name: string }>("PRAGMA table_info(pending_media)")).map((c) => c.name);
+  for (const [name, sqlType] of ADDED_COLUMNS) {
+    if (!columns.includes(name)) await db.execAsync(`ALTER TABLE pending_media ADD COLUMN ${name} ${sqlType}`);
+  }
 
   return {
     async enqueue(m: QueuedMedia) {
@@ -113,14 +135,35 @@ export async function createQueue(db: QueueDb) {
     },
 
     async pending(): Promise<PendingMedia[]> {
-      const rows = await db.getAllAsync<Row>("SELECT * FROM pending_media ORDER BY taken_at");
+      const rows = await db.getAllAsync<Row>("SELECT * FROM pending_media WHERE failed_reason IS NULL ORDER BY taken_at");
       return rows.map(fromRow);
+    },
+
+    async failed(): Promise<FailedMedia[]> {
+      const rows = await db.getAllAsync<Row>(
+        "SELECT * FROM pending_media WHERE failed_reason IS NOT NULL ORDER BY taken_at",
+      );
+      return rows.map((r) => ({ ...fromRow(r), failedReason: r.failed_reason as string }));
+    },
+
+    async remove(id: string) {
+      await db.runAsync("DELETE FROM pending_media WHERE id = ?", id);
+    },
+
+    /** Un intento que no salió: suma al contador y difiere el próximo hasta `retryAt`. */
+    async markAttempt(id: string, retryAt: number) {
+      await db.runAsync("UPDATE pending_media SET attempts = attempts + 1, retry_at = ? WHERE id = ?", retryAt, id);
+    },
+
+    /** El server lo rechazó para siempre (cupo, rollo revelado…): no se reintenta ni se borra. */
+    async markFailed(id: string, reason: string) {
+      await db.runAsync("UPDATE pending_media SET failed_reason = ? WHERE id = ?", reason, id);
     },
 
     /** Lo sacado y no subido de un viaje en un día: se descuenta del cupo que informó el server. */
     async countPending(tripId: string, day: string) {
       const rows = await db.getAllAsync<{ type: MediaType; n: number }>(
-        "SELECT type, COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND day = ? GROUP BY type",
+        "SELECT type, COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND day = ? AND failed_reason IS NULL GROUP BY type",
         tripId,
         day,
       );

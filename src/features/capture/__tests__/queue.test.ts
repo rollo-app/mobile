@@ -29,7 +29,7 @@ describe("cola de subida", () => {
 
     await queue.enqueue(item());
 
-    expect(await queue.pending()).toEqual([{ ...item(), attempts: 0 }]);
+    expect(await queue.pending()).toEqual([{ ...item(), attempts: 0, retryAt: null }]);
   });
 
   it("devuelve lo pendiente en el orden en que se sacó", async () => {
@@ -75,5 +75,63 @@ describe("cola de subida", () => {
     await (await createQueue(db)).enqueue(item());
 
     expect(await (await createQueue(db)).pending()).toHaveLength(1);
+  });
+
+  it("remove saca el ítem de la cola", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "a" }));
+    await queue.enqueue(item({ id: "b" }));
+
+    await queue.remove("a");
+
+    expect((await queue.pending()).map((m) => m.id)).toEqual(["b"]);
+  });
+
+  it("markAttempt suma un intento y guarda cuándo reintentar", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item());
+
+    await queue.markAttempt(item().id, 5000);
+    await queue.markAttempt(item().id, 9000);
+
+    expect((await queue.pending())[0]).toMatchObject({ attempts: 2, retryAt: 9000 });
+  });
+
+  it("markFailed lo saca de lo pendiente y de la cuenta del cupo, pero no lo borra", async () => {
+    const db = memoryDb();
+    const queue = await createQueue(db);
+    await queue.enqueue(item({ id: "a" }));
+    await queue.enqueue(item({ id: "b" }));
+
+    await queue.markFailed("a", "quota");
+
+    expect((await queue.pending()).map((m) => m.id)).toEqual(["b"]);
+    expect(await queue.countPending(TRIP, "2027-01-12")).toEqual({ photos: 1, videos: 0 });
+    expect(await queue.failed()).toEqual([expect.objectContaining({ id: "a", failedReason: "quota" })]);
+  });
+
+  it("un markFailed sobrevive a reabrir la cola", async () => {
+    const db = memoryDb();
+    const queue = await createQueue(db);
+    await queue.enqueue(item());
+    await queue.markFailed(item().id, "revealed");
+
+    expect(await (await createQueue(db)).pending()).toEqual([]);
+  });
+
+  it("migra una base vieja sin las columnas nuevas", async () => {
+    const db = memoryDb();
+    await db.execAsync(`CREATE TABLE pending_media (
+      id TEXT PRIMARY KEY NOT NULL, trip_id TEXT NOT NULL, type TEXT NOT NULL, taken_at INTEGER NOT NULL,
+      day TEXT NOT NULL, lat REAL, lng REAL, accuracy_m REAL, caption TEXT, duration_s REAL, width INTEGER,
+      height INTEGER, size_bytes INTEGER NOT NULL, original_uri TEXT NOT NULL, thumb_uri TEXT NOT NULL,
+      thumbhash TEXT, attempts INTEGER NOT NULL DEFAULT 0);`);
+    await db.runAsync(
+      "INSERT INTO pending_media (id, trip_id, type, taken_at, day, size_bytes, original_uri, thumb_uri) VALUES ('old', 't', 'photo', 1, '2027-01-12', 1, 'o', 't')",
+    );
+
+    const queue = await createQueue(db);
+
+    expect((await queue.pending())[0]).toMatchObject({ id: "old", attempts: 0, retryAt: null });
   });
 });
