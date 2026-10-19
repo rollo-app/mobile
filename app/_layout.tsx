@@ -1,25 +1,28 @@
-import { Stack } from "expo-router";
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useTheme } from "@/ui/theme";
+import { useColorScheme } from "react-native";
 
 export default function RootLayout() {
-  const theme = useTheme();
+  const scheme = useColorScheme();
   return (
-    <>
+    <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <StatusBar style="auto" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: theme.background },
-          headerTintColor: theme.text,
-          headerShadowVisible: false,
-          contentStyle: { backgroundColor: theme.background },
-        }}
-      >
-        <Stack.Screen name="index" options={{ title: "Rollo" }} />
-        <Stack.Screen name="create" options={{ title: "Nuevo viaje" }} />
-        <Stack.Screen name="join" options={{ title: "Unirme" }} />
-        <Stack.Screen name="trip/[id]" options={{ title: "" }} />
+      <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="create" options={{ title: "Abrí un rollo", headerLargeTitle: true }} />
+        <Stack.Screen name="join" options={{ title: "Sumate a un rollo", headerLargeTitle: true }} />
+        <Stack.Screen
+          name="trips"
+          options={{
+            title: "Tus viajes",
+            presentation: "formSheet",
+            sheetAllowedDetents: [0.5, 1],
+            sheetGrabberVisible: true,
+          }}
+        />
+        <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
       </Stack>
-    </>
+    </ThemeProvider>
   );
 }

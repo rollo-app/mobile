@@ -1,73 +1,164 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
-import { saveSession } from "@/storage/trips";
+import { listTrips, saveSession } from "@/storage/trips";
+import TabsLayout from "../app/(tabs)/_layout";
+import CameraTab from "../app/(tabs)/camara";
+import FeedLayout from "../app/(tabs)/feed/_layout";
+import FeedScreen from "../app/(tabs)/feed/index";
+import MapLayout from "../app/(tabs)/mapa/_layout";
+import MapScreen from "../app/(tabs)/mapa/index";
+import RolloLayout from "../app/(tabs)/rollo/_layout";
+import RolloScreen from "../app/(tabs)/rollo/index";
+import VosLayout from "../app/(tabs)/vos/_layout";
+import VosScreen from "../app/(tabs)/vos/index";
+import RootLayout from "../app/_layout";
+import CaptureScreen from "../app/capture";
 import CreateScreen from "../app/create";
-import HomeScreen from "../app/index";
+import IndexScreen from "../app/index";
 import JoinScreen from "../app/join";
-import TripScreen from "../app/trip/[id]";
+import TripsScreen from "../app/trips";
 
 jest.mock("@/features/trips/actions");
 const mocked = jest.mocked(actions);
 
 const routes = {
-  index: HomeScreen,
+  _layout: RootLayout,
+  index: IndexScreen,
   join: JoinScreen,
   create: CreateScreen,
-  "trip/[id]": TripScreen,
+  trips: TripsScreen,
+  capture: CaptureScreen,
+  "(tabs)/_layout": TabsLayout,
+  "(tabs)/rollo/_layout": RolloLayout,
+  "(tabs)/rollo/index": RolloScreen,
+  "(tabs)/mapa/_layout": MapLayout,
+  "(tabs)/mapa/index": MapScreen,
+  "(tabs)/camara": CameraTab,
+  "(tabs)/feed/_layout": FeedLayout,
+  "(tabs)/feed/index": FeedScreen,
+  "(tabs)/vos/_layout": VosLayout,
+  "(tabs)/vos/index": VosScreen,
 };
 
-const TRIP_ID = "11111111-1111-4111-8111-111111111111";
-const trip = {
-  id: TRIP_ID,
+const DAY = 24 * 60 * 60 * 1000;
+const SUR = "11111111-1111-4111-8111-111111111111";
+const BARILOCHE = "33333333-3333-4333-8333-333333333333";
+
+const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
+  id: SUR,
   name: "Viaje al sur",
   joinCode: "HUB5FT",
   timezone: "America/Argentina/Buenos_Aires",
-  startsAt: 1,
-  endsAt: 2,
-  revealAt: 2,
+  startsAt: Date.now() - 2 * DAY,
+  endsAt: Date.now() + 9 * DAY,
+  revealAt: Date.now() + 9 * DAY,
   revealed: false,
   dailyPhotoLimit: 10,
   dailyVideoLimit: 3,
-};
+  ...overrides,
+});
+
+const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail => ({
+  trip: trip(),
+  me: { id: "m1", name: "Juani", role: "admin" },
+  members: [
+    { id: "m1", name: "Juani", role: "admin" },
+    { id: "m2", name: "Fede", role: "member" },
+  ],
+  today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
+  totalUploaded: 12,
+  ...overrides,
+});
+
+const saveTrip = (tripId: string, tripName: string) =>
+  saveSession({ tripId, tripName, joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
 
 describe("Inicio", () => {
-  it("sin viajes invita a crear uno o unirse", async () => {
+  it("sin viajes invita a abrir un rollo o sumarse", async () => {
     await renderRouter(routes, { initialUrl: "/" });
 
-    expect(await screen.findByText("Todavía no estás en ningún viaje")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Crear un viaje" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Unirme con un código" })).toBeVisible();
-  });
-
-  it("lista los viajes guardados y abre uno", async () => {
-    await saveSession({
-      tripId: TRIP_ID,
-      tripName: "Viaje al sur",
-      joinCode: "HUB5FT",
-      memberId: "m1",
-      memberName: "Juani",
-      role: "admin",
-      token: "t",
-    });
-    mocked.fetchTrip.mockResolvedValue({
-      trip,
-      me: { id: "m1", name: "Juani", role: "admin" },
-      members: [],
-      today: { date: "2027-01-05", photosLeft: 10, videosLeft: 3 },
-      totalUploaded: 0,
-    });
-    await renderRouter(routes, { initialUrl: "/" });
-
-    await fireEvent.press(await screen.findByText("Viaje al sur"));
-
-    await waitFor(() => expect(screen).toHavePathname(`/trip/${TRIP_ID}`));
+    expect(await screen.findByRole("button", { name: "Abrí un rollo" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sumate con un código" })).toBeVisible();
   });
 
   it("los botones llevan a crear y unirse", async () => {
     await renderRouter(routes, { initialUrl: "/" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Unirme con un código" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Sumate con un código" }));
     expect(screen).toHavePathname("/join");
+  });
+
+  it("con viajes guardados abre el rollo del último que abriste", async () => {
+    await saveTrip(SUR, "Viaje al sur");
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/" });
+
+    await waitFor(() => expect(screen).toHavePathname("/rollo"));
+    expect(await screen.findByText("7 de 10")).toBeVisible();
+    expect(mocked.fetchTrip).toHaveBeenCalledWith(SUR);
+  });
+});
+
+describe("Rollo", () => {
+  beforeEach(() => saveTrip(SUR, "Viaje al sur"));
+
+  it("muestra cuánto hay en el rollo, lo que te queda hoy y cuándo se revela", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/rollo" });
+
+    expect(await screen.findByLabelText("12 en el rollo")).toBeVisible();
+    expect(screen.getByText("7 de 10")).toBeVisible();
+    expect(screen.getByText("2 de 3")).toBeVisible();
+    expect(screen.getByText("en 9 días")).toBeVisible();
+  });
+
+  it("si falla la carga muestra el error", async () => {
+    mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
+    await renderRouter(routes, { initialUrl: "/rollo" });
+
+    expect(await screen.findByText("Sin conexión. Probá de nuevo cuando tengas señal.")).toBeVisible();
+  });
+});
+
+describe("Vos", () => {
+  beforeEach(() => saveTrip(SUR, "Viaje al sur"));
+
+  it("muestra el código para invitar y los miembros", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/vos" });
+
+    expect(await screen.findByText("HUB5FT")).toBeVisible();
+    expect(screen.getByText("Fede")).toBeVisible();
+  });
+
+  it("desde tus viajes se abre el selector", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/vos" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Tus viajes, 1" }));
+    expect(screen).toHavePathname("/trips");
+  });
+});
+
+describe("Selector de viajes", () => {
+  it("lista tus viajes y al elegir uno pasa a ser el activo", async () => {
+    mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+    await saveTrip(BARILOCHE, "Bariloche");
+    await saveTrip(SUR, "Viaje al sur");
+    await renderRouter(routes, { initialUrl: "/trips" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Bariloche" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/rollo"));
+    expect((await listTrips())[0]!.tripName).toBe("Bariloche");
+  });
+
+  it("tiene accesos para abrir un rollo o sumarse", async () => {
+    await saveTrip(SUR, "Viaje al sur");
+    await renderRouter(routes, { initialUrl: "/trips" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Abrí un rollo" }));
+    expect(screen).toHavePathname("/create");
   });
 });
 
@@ -85,8 +176,11 @@ describe("Unirse", () => {
     expect(button).toBeEnabled();
   });
 
-  it("al unirse va al viaje", async () => {
-    mocked.joinTrip.mockResolvedValue(trip);
+  it("al unirse va al rollo", async () => {
+    mocked.joinTrip.mockImplementation(async () => {
+      await saveTrip(SUR, "Viaje al sur");
+      return trip();
+    });
     mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
     await renderRouter(routes, { initialUrl: "/join" });
 
@@ -94,7 +188,7 @@ describe("Unirse", () => {
     await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Fede");
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
-    await waitFor(() => expect(screen).toHavePathname(`/trip/${TRIP_ID}`));
+    await waitFor(() => expect(screen).toHavePathname("/rollo"));
     expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "hub5ft", name: "Fede" });
   });
 
@@ -125,8 +219,11 @@ describe("Crear viaje", () => {
     expect(button).toBeDisabled();
   });
 
-  it("crea el viaje con la zona horaria del celular y va al viaje", async () => {
-    mocked.createTrip.mockResolvedValue(trip);
+  it("crea el viaje con la zona horaria del celular y va al rollo", async () => {
+    mocked.createTrip.mockImplementation(async () => {
+      await saveTrip(SUR, "Viaje al sur");
+      return trip();
+    });
     mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
     await renderRouter(routes, { initialUrl: "/create" });
 
@@ -135,43 +232,12 @@ describe("Crear viaje", () => {
     await fireEvent.changeText(screen.getByLabelText("Días de viaje"), "10");
     await fireEvent.press(screen.getByRole("button", { name: "Crear viaje" }));
 
-    await waitFor(() => expect(screen).toHavePathname(`/trip/${TRIP_ID}`));
+    await waitFor(() => expect(screen).toHavePathname("/rollo"));
     expect(mocked.createTrip).toHaveBeenCalledWith({
       name: "Viaje al sur",
       adminName: "Juani",
       days: 10,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
-  });
-});
-
-describe("Viaje", () => {
-  it("muestra el código para invitar, los miembros y lo que queda del rollo hoy", async () => {
-    mocked.fetchTrip.mockResolvedValue({
-      trip,
-      me: { id: "m2", name: "Fede", role: "member" },
-      members: [
-        { id: "m1", name: "Juani", role: "admin" },
-        { id: "m2", name: "Fede", role: "member" },
-      ],
-      today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
-      totalUploaded: 12,
-    });
-    await renderRouter(routes, { initialUrl: `/trip/${TRIP_ID}` });
-
-    expect(await screen.findByText("Viaje al sur")).toBeVisible();
-    expect(screen.getByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("Juani")).toBeVisible();
-    expect(screen.getByText("Fede")).toBeVisible();
-    expect(screen.getByText("Hoy te quedan 7 fotos y 2 videos")).toBeVisible();
-    expect(screen.getByText("12 en el rollo")).toBeVisible();
-    expect(mocked.fetchTrip).toHaveBeenCalledWith(TRIP_ID);
-  });
-
-  it("si falla la carga muestra el error", async () => {
-    mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
-    await renderRouter(routes, { initialUrl: `/trip/${TRIP_ID}` });
-
-    expect(await screen.findByText("Sin conexión. Probá de nuevo cuando tengas señal.")).toBeVisible();
   });
 });

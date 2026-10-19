@@ -1,34 +1,40 @@
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
-import { listTrips, type TripSummary } from "@/storage/trips";
-import { Body, Button, Card, Screen, Title } from "@/ui/components";
+import { Redirect, router } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { Button } from "@/ui/components";
+import { colors, spacing, type } from "@/ui/theme";
 
-export default function HomeScreen() {
-  const [trips, setTrips] = useState<TripSummary[] | null>(null);
+export default function IndexScreen() {
+  const { trip, loaded } = useActiveTrip();
+  const insets = useSafeAreaInsets();
 
-  useFocusEffect(
-    useCallback(() => {
-      listTrips().then(setTrips);
-    }, []),
-  );
+  if (!loaded) return null;
+  if (trip) return <Redirect href="/rollo" />;
 
   return (
-    <Screen>
-      <Title>Tus rollos</Title>
-
-      {trips?.length === 0 && (
-        <Body muted>Todavía no estás en ningún viaje</Body>
-      )}
-
-      {trips?.map((trip) => (
-        <Card key={trip.tripId} label={trip.tripName} onPress={() => router.push(`/trip/${trip.tripId}`)}>
-          <Body>{trip.tripName}</Body>
-          <Body muted>{trip.role === "admin" ? "Lo creaste vos" : `Entraste como ${trip.memberName}`}</Body>
-        </Card>
-      ))}
-
-      <Button label="Crear un viaje" onPress={() => router.push("/create")} />
-      <Button label="Unirme con un código" variant="secondary" onPress={() => router.push("/join")} />
-    </Screen>
+    <View style={[styles.screen, { paddingTop: insets.top + spacing.xl * 2, paddingBottom: insets.bottom + spacing.lg }]}>
+      <View style={styles.copy}>
+        <Text style={[type.largeTitle, { color: colors.label }]}>Rollo</Text>
+        <Text style={[type.body, { color: colors.secondaryLabel }]}>
+          Cada uno saca fotos durante el viaje y nadie las ve hasta el revelado, cuando termina.
+        </Text>
+      </View>
+      <View style={styles.actions}>
+        <Button label="Abrí un rollo" onPress={() => router.push("/create")} />
+        <Button label="Sumate con un código" variant="secondary" onPress={() => router.push("/join")} />
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    justifyContent: "space-between",
+    padding: spacing.lg,
+    backgroundColor: colors.background,
+  },
+  copy: { gap: spacing.sm },
+  actions: { gap: spacing.sm },
+});

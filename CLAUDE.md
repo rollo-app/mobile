@@ -5,8 +5,9 @@ La UI de la app también va en rioplatense con voseo ("Sumate", "Abrí un rollo"
 
 ## Qué es Rollo
 
-App iOS para fotos y videos de viaje en grupo. Cada uno saca fotos durante el viaje y **nadie ve nada
-—ni siquiera lo propio— hasta el revelado al final**, como un rollo de fotos. Pensada para un viaje con
+App iOS para fotos y videos de viaje en grupo. Cada uno saca fotos durante el viaje y **una vez
+mandadas nadie las ve —ni siquiera las propias— hasta el revelado al terminar el viaje**, como un rollo
+de fotos. Es un MVP de red social. Pensada para un viaje con
 amigos al sur de Argentina en **enero de 2027** (mucho tramo sin señal) y para armar fotolibros después.
 
 Decisiones de producto:
@@ -22,12 +23,37 @@ Decisiones de producto:
 - **Offline first:** al disparar se guardan foto, hora (UTC + zona) y GPS. Pedir ubicación apenas se
   abre la cámara; sin fix, usar la última conocida y guardar su precisión. Cola local en SQLite, subida
   en segundo plano cuando hay señal, **UUID generado en el celular** (reintentar es seguro).
-- **Antes del revelado** no se ve ninguna foto. Para que den ganas de abrir la app: **mapa en vivo**
-  con pins (autor y hora, sin imagen), **feed de epígrafes** y contador del rollo.
+- **Captura:** cámara nativa con selector foto/video (máx. 15 s); si no quedan videos hoy, abre solo en
+  foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + epígrafe opcional. Una vez
+  mandada no se puede repetir ni ver.
+- **Antes del revelado** no se ve ninguna foto, solo su **ThumbHash** (colores difusos, lo genera el
+  celular y el server lo devuelve en el feed). Para que den ganas de abrir la app: **mapa en vivo** con
+  pins (autor y hora), **feed** y la hoja de contacto del rollo. Se muestra solo el total del grupo.
+- **Varios viajes por persona**, se puede volver a ver uno viejo. El **viaje activo** es el último que
+  abriste; se cambia con el selector del header (sheet "Tus viajes"). Las fechas del viaje van con
+  **inicio y fin** (no "cantidad de días").
 - **Modo viaje:** una notificación por día a un horario random distinto para cada uno, con un
   disparador opcional. Ese "momento" es foto principal + selfie, con cámara propia
   (`react-native-vision-camera` o `expo-camera`); la selfie chica (~1080 px).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
+  La ceremonia del revelado será una presentación (a definir).
+- **A futuro (no para enero):** cuentas, amigos y feeds públicos de viajes. No cerrarle la puerta: la
+  tab "Vos" será el perfil y los miembros por viaje se podrán vincular a una cuenta.
+
+## Navegación y diseño
+
+- **Barra de abajo nativa** (`NativeTabs` de `expo-router/native-tabs`, liquid glass en iOS 26), **solo
+  íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Feed · Vos. La cámara es un trigger
+  `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación
+  · Días · Vos.
+- Rollo = tablero (hoja de contacto, cupo de hoy, revelado). La actividad ("Cami sacó una foto · 14:32",
+  con la hora de captura) vive solo en el Feed.
+- **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
+  se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
+  cards por todos lados, bordes de wireframe ni fuentes descargadas: se ve hecho con IA. La
+  personalidad va en pocos detalles: los epígrafes en la serif del sistema (New York), la hoja de
+  contacto del rollo, la animación de "mandar al rollo". Antes de diseñar una pantalla, repasar las 20
+  "native slop tells" de la skill `expo-design-system`.
 
 El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 
@@ -40,11 +66,13 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`.
 
 ```
-app/                  rutas (Expo Router): index, create, join, trip/[id]
+app/                  rutas (Expo Router): index (bienvenida), create, join, trips (sheet), capture
+app/(tabs)/           NativeTabs: rollo, mapa, camara (placeholder), feed, vos; cada una con su Stack
 src/api/              schema.d.ts generado + client.ts
-src/features/trips/   acciones (crear, unirse, cargar) — lo que mockean los tests de pantallas
-src/storage/          sesiones de viaje en SecureStore
-src/ui/               tema (claro/oscuro, acento naranja) y componentes: Screen, Title, Body, Button, Field, Card
+src/features/trips/   acciones (lo que mockean los tests), useActiveTrip, useTripDetail, TripSwitcher
+src/storage/          sesiones de viaje en SecureStore (el primero de la lista es el activo)
+src/ui/               theme.ts (colors, spacing, radius, type) y componentes: Screen, Section, Row,
+                      Button, Field, Body, Footnote, ErrorText, Loading
 __tests__/            tests de pantallas
 ```
 
@@ -64,7 +92,7 @@ __tests__/            tests de pantallas
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 29 tests
+npm test                      # 35 tests
 npm run test:watch
 npm run typecheck
 npx expo run:ios --device     # compila e instala el dev build en el iPhone
@@ -91,8 +119,9 @@ EXPO_PUBLIC_API_URL=http://$(ipconfig getifaddr en0):8787 npx expo start --clear
 
 ## Estado y plan (octubre 2026)
 
-Hecho: crear viaje, unirse con código, lista de viajes, detalle (código para compartir, miembros, cupo
-del día), cliente tipado, CI. Corre en el iPhone con dev build contra el backend local.
+Hecho: crear viaje, unirse con código, cliente tipado, CI. Navegación con tabs nativas, selector de
+viajes, Rollo (hoja de contacto, cupo, revelado) y Vos (código, miembros). Mapa y Feed son pantallas
+vacías por ahora. Corre en el iPhone con dev build contra el backend local.
 
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):
 

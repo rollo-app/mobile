@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { joinTrip } from "@/features/trips/actions";
-import { Body, Button, ErrorText, Field, Screen, Title } from "@/ui/components";
+import { Button, ErrorText, Field, Footnote, Screen } from "@/ui/components";
 
 export default function JoinScreen() {
   const [code, setCode] = useState("");
@@ -15,8 +15,8 @@ export default function JoinScreen() {
     setError(null);
     setLoading(true);
     try {
-      const trip = await joinTrip({ code, name });
-      router.replace(`/trip/${trip.id}`);
+      await joinTrip({ code, name });
+      router.dismissTo("/rollo");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo entrar al viaje");
     } finally {
@@ -25,9 +25,8 @@ export default function JoinScreen() {
   }
 
   return (
-    <Screen>
-      <Title>Sumate a un rollo</Title>
-      <Body muted>Pedile el código a quien creó el viaje.</Body>
+    <Screen grouped>
+      <Footnote>Pedile el código a quien creó el viaje.</Footnote>
 
       <Field
         label="Código del viaje"

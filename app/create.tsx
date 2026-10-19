@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { createTrip } from "@/features/trips/actions";
-import { Body, Button, ErrorText, Field, Screen, Title } from "@/ui/components";
+import { Button, ErrorText, Field, Footnote, Screen } from "@/ui/components";
 
 const MAX_DAYS = 60;
 
@@ -24,13 +24,13 @@ export default function CreateScreen() {
     setError(null);
     setLoading(true);
     try {
-      const trip = await createTrip({
+      await createTrip({
         name,
         adminName,
         days: dayCount,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
-      router.replace(`/trip/${trip.id}`);
+      router.dismissTo("/rollo");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el viaje");
     } finally {
@@ -39,9 +39,8 @@ export default function CreateScreen() {
   }
 
   return (
-    <Screen>
-      <Title>Abrí un rollo</Title>
-      <Body muted>Arranca hoy y se revela cuando termina el viaje.</Body>
+    <Screen grouped>
+      <Footnote>Arranca hoy y se revela cuando termina el viaje.</Footnote>
 
       <Field label="Nombre del viaje" value={name} onChangeText={setName} maxLength={60} placeholder="Viaje al sur" />
       <Field label="Tu nombre" value={adminName} onChangeText={setAdminName} maxLength={30} placeholder="Como te conocen" />

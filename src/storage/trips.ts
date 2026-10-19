@@ -48,6 +48,14 @@ export async function listTrips(): Promise<TripSummary[]> {
   return readIndex();
 }
 
+/** Marca un viaje como abierto: pasa a ser el primero, que es el viaje activo. */
+export async function markOpened(tripId: string): Promise<void> {
+  const trips = await readIndex();
+  const opened = trips.find((t) => t.tripId === tripId);
+  if (!opened) return;
+  await writeIndex([{ ...opened, lastOpenedAt: Date.now() }, ...trips.filter((t) => t !== opened)]);
+}
+
 export async function getToken(tripId: string): Promise<string | null> {
   return SecureStore.getItemAsync(tokenKey(tripId));
 }
