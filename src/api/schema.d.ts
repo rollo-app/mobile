@@ -759,8 +759,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Borrar una foto propia (antes del revelado)
-         * @description Borra los archivos y devuelve el cupo del día.
+         * Borrar una foto o video del viaje (admin, antes del revelado)
+         * @description Una vez mandada, una foto no se puede borrar ni repetir. La excepción es el admin, por si alguien manda algo que no corresponde: puede borrar cualquier foto del viaje antes del revelado. Se borran los archivos pero **no se devuelve el cupo** a nadie, y el id no se puede volver a registrar.
          */
         delete: {
             parameters: {
@@ -782,6 +782,15 @@ export interface paths {
                 };
                 /** @description Falta el token o es inválido */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Sin permiso */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
