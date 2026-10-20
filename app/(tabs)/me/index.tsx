@@ -7,6 +7,7 @@ import { UploadStatusSection } from "@/features/capture/upload-status-section";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
 import { OfflineMapRow } from "@/features/map/offline-map-row";
 import { Avatar } from "@/features/profile/avatar";
+import { formatHandle } from "@/features/profile/username";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
@@ -52,6 +53,7 @@ export default function MeScreen() {
           {/* The color is the membership id when we have it, so it matches the feed and the map. */}
           <Avatar id={detail?.me.id ?? me.id} name={me.name} avatarUrl={me.avatarUrl} size={72} />
           <Text style={[type.title, { color: colors.label }]}>{me.name}</Text>
+          {me.username && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{formatHandle(me.username)}</Text>}
           <Text selectable style={[type.subhead, { color: colors.secondaryLabel }]}>
             {me.email}
           </Text>
@@ -88,6 +90,7 @@ export default function MeScreen() {
                 key={m.id}
                 leading={<Avatar id={m.id} name={m.name} avatarUrl={m.avatarUrl} size={40} />}
                 label={m.name}
+                detail={m.username ? formatHandle(m.username) : undefined}
                 value={m.role === "admin" ? "Admin" : undefined}
               />
             ))}

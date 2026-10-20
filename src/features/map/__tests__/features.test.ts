@@ -111,7 +111,7 @@ describe("pendingToItems", () => {
     expect(pendingToItems([queued], { id: "m1", name: "Juani" })).toEqual([
       {
         id: "q1", type: "video", takenAt: 5, day: "2027-01-12", lat: null, lng: null, caption: "hola",
-        durationS: 12, thumbhash: "hash", authorId: "m1", authorName: "Juani", authorAvatarUrl: null, pending: true,
+        durationS: 12, thumbhash: "hash", authorId: "m1", authorName: "Juani", authorUsername: null, authorAvatarUrl: null, pending: true,
       },
     ]);
   });

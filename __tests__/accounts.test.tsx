@@ -31,10 +31,10 @@ const tripDetail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", avatarUrl: null, role: "admin" },
+  me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
   members: [
-    { id: "m1", userId: "u1", name: "Juani", avatarUrl: null, role: "admin" },
-    { id: "m2", userId: "u2", name: "Fede", avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" },
+    { id: "m2", userId: "u2", name: "Fede", username: "fede.s", avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -81,7 +81,8 @@ describe("Login", () => {
   it("email → code → complete profile → the app", async () => {
     const calls = mockApi({
       "POST /auth/email/start": json(204),
-      "POST /auth/email/verify": json(200, { token: "tok", user: { ...USER, name: null }, isNew: true }),
+      "POST /auth/email/verify": json(200, { token: "tok", user: { ...USER, name: null, username: null }, isNew: true }),
+      "GET /usernames/juani": json(200, { available: true, username: "juani" }),
       "PATCH /me": json(200, USER),
     });
     await renderRouter(routes, { initialUrl: "/" });
@@ -101,10 +102,12 @@ describe("Login", () => {
     expect(await getSessionToken()).toBe("tok");
     expect(screen.getByRole("button", { name: "Listo" })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Juani");
+    expect(screen.getByLabelText("Nombre de usuario").props.value).toBe("juani");
+    expect(await screen.findByText("Disponible")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(calls).toEqual(["POST /auth/email/start", "POST /auth/email/verify", "PATCH /me"]);
+    expect(calls).toEqual(["POST /auth/email/start", "POST /auth/email/verify", "GET /usernames/juani", "PATCH /me"]);
   });
 
   it("a returning user with a name goes straight into the app", async () => {
@@ -119,6 +122,21 @@ describe("Login", () => {
     await fireEvent.changeText(await screen.findByLabelText("Código"), "123456");
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("a user with a name but no username still has to pick one", async () => {
+    mockApi({
+      "POST /auth/email/start": json(204),
+      "POST /auth/email/verify": json(200, { token: "tok", user: { ...USER, username: null }, isNew: true }),
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "123456");
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    expect(screen.getByLabelText("Tu nombre").props.value).toBe("Juani");
   });
 
   it("shows the server's error inline on the email step and keeps what was typed", async () => {
@@ -249,6 +267,79 @@ describe("Edit profile", () => {
     expect(await screen.findAllByText("Juan")).not.toHaveLength(0);
   });
 
+  describe("username", () => {
+    const type = async (value: string) => fireEvent.changeText(await screen.findByLabelText("Nombre de usuario"), value);
+
+    it("is prefilled with the current one, with the @ outside the field, and needs no check", async () => {
+      const calls = mockApi({});
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      const input = await screen.findByLabelText("Nombre de usuario");
+      expect(input.props.value).toBe("juani");
+      expect(input.props.autoCapitalize).toBe("none");
+      expect(input.props.autoCorrect).toBe(false);
+      expect(screen.getByText("@")).toBeVisible();
+      expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
+      expect(calls).toEqual([]);
+    });
+
+    it("checks availability after a pause, shows it, and saves name and username", async () => {
+      const calls = mockApi({
+        "GET /usernames/juani.f": json(200, { available: true, username: "juani.f" }),
+        "PATCH /me": json(200, { ...USER, username: "juani.f" }),
+      });
+      await renderRouter(routes, { initialUrl: "/me" });
+      await fireEvent.press(await screen.findByRole("button", { name: "Editar perfil" }));
+
+      await type("@Juani.F");
+      expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+      expect(await screen.findByText("Disponible")).toBeVisible();
+      expect(calls).toEqual(["GET /usernames/juani.f"]);
+      await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
+
+      await waitFor(() => expect(screen).toHavePathname("/me"));
+      expect(calls).toEqual(["GET /usernames/juani.f", "PATCH /me"]);
+      expect(await screen.findByText("@juani.f")).toBeVisible();
+    });
+
+    it("says it is taken and blocks saving", async () => {
+      mockApi({ "GET /usernames/cami": json(200, { available: false, username: "cami" }) });
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await type("cami");
+
+      expect(await screen.findByText("Ese nombre de usuario ya está en uso.")).toBeVisible();
+      expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+    });
+
+    it("shows the invalid message right away, without asking the server", async () => {
+      const calls = mockApi({});
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await type("a!");
+
+      expect(await screen.findByText(/letras, números, punto y guion bajo/)).toBeVisible();
+      expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+      expect(calls).toEqual([]);
+    });
+
+    it("a 409 on save is shown inline and keeps what was typed", async () => {
+      mockApi({
+        "GET /usernames/cami": json(200, { available: true, username: "cami" }),
+        "PATCH /me": json(409, { error: "Ese nombre de usuario ya está en uso." }),
+      });
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await type("cami");
+      await screen.findByText("Disponible");
+      await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
+
+      expect(await screen.findByText("Ese nombre de usuario ya está en uso.")).toBeVisible();
+      expect(screen.getByLabelText("Nombre de usuario").props.value).toBe("cami");
+      expect(screen).toHavePathname("/edit-profile");
+    });
+  });
+
   it("can't save an empty name", async () => {
     await renderRouter(routes, { initialUrl: "/edit-profile" });
 
@@ -344,6 +435,17 @@ describe("Edit profile", () => {
   });
 });
 
+describe("Perfil", () => {
+  beforeEach(() => signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] }));
+
+  it("shows your handle under your name and the members' under theirs", async () => {
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    expect(await screen.findByText("@fede.s")).toBeVisible();
+    expect(screen.getAllByText("@juani")).toHaveLength(2);
+  });
+});
+
 describe("Join", () => {
   beforeEach(() => signInAs({ trips: [] }));
 
@@ -362,5 +464,15 @@ describe("Join", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     expect(await screen.findByText("Completá tu nombre en el perfil")).toBeVisible();
+  });
+
+  it("shows the server's message when the profile has no username", async () => {
+    mocked.joinTrip.mockRejectedValue(new Error("Elegí tu nombre de usuario en el perfil"));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "HUB5FT");
+    await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
+
+    expect(await screen.findByText("Elegí tu nombre de usuario en el perfil")).toBeVisible();
   });
 });

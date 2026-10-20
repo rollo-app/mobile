@@ -241,7 +241,7 @@ export interface paths {
         head?: never;
         /**
          * Edit your profile
-         * @description The name is shown in every rollo you are part of. It does not have to be unique.
+         * @description Send name and/or username. The name is shown in every rollo you are part of and does not have to be unique. The username must be unique (case-insensitive); setting your own current one is a no-op. 409 if someone else has it.
          */
         patch: {
             parameters: {
@@ -276,6 +276,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -491,6 +500,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/usernames/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check if a username is available
+         * @description Normalizes the username (optional @, lowercase) and says whether nobody else has it. Your own current username counts as available. 400 if it breaks the format rules. For checking while typing.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Availability */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UsernameAvailability"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips": {
         parameters: {
             query?: never;
@@ -502,7 +570,7 @@ export interface paths {
         put?: never;
         /**
          * Create a trip
-         * @description Whoever creates it becomes the admin. The profile must have a name. Returns the invite code.
+         * @description Whoever creates it becomes the admin. The profile must have a name and a username. Returns the invite code.
          */
         post: {
             parameters: {
@@ -572,7 +640,7 @@ export interface paths {
         put?: never;
         /**
          * Join a trip
-         * @description With the invite code. The profile must have a name. Idempotent: 201 when newly joined, 200 when already an active member. Someone removed by the admin gets 403.
+         * @description With the invite code. The profile must have a name and a username. Idempotent: 201 when newly joined, 200 when already an active member. Someone removed by the admin gets 403.
          */
         post: {
             parameters: {
@@ -1293,7 +1361,7 @@ export interface components {
             /** @description Session token (Bearer). Valid for 365 days; store it on the phone */
             token: string;
             user: components["schemas"]["User"];
-            /** @description true while the user has no name yet: show the profile step */
+            /** @description true while the profile is incomplete (no name or no username): show the profile step */
             isNew: boolean;
         };
         User: {
@@ -1303,6 +1371,11 @@ export interface components {
             email: string;
             /** @description null until the profile is completed */
             name: string | null;
+            /**
+             * @description Unique handle, lowercase, without the @ (the app shows it as @username); null until chosen
+             * @example juanifraga
+             */
+            username: string | null;
             /** @description Path (the app prefixes the API base URL), e.g. /avatars/<userId>/<version>.jpg; null if none */
             avatarUrl: string | null;
         };
@@ -1317,7 +1390,12 @@ export interface components {
         };
         UpdateProfileRequest: {
             /** @example Juani */
-            name: string;
+            name?: string;
+            /**
+             * @description Optional leading @, trimmed and lowercased. a-z 0-9 . _ (3 to 30), no leading/trailing dot, no ".."
+             * @example juanifraga
+             */
+            username?: string;
         };
         AvatarUpload: {
             /**
@@ -1357,6 +1435,12 @@ export interface components {
         };
         /** @enum {string} */
         Role: "admin" | "member";
+        UsernameAvailability: {
+            /** @description true if nobody else has it (also true if it is yours) */
+            available: boolean;
+            /** @description The normalized username that was checked */
+            username: string;
+        };
         TripCreated: {
             trip: components["schemas"]["Trip"];
             member: components["schemas"]["Member"];
@@ -1402,6 +1486,11 @@ export interface components {
             userId: string;
             /** @example Fede */
             name: string;
+            /**
+             * @description Unique handle without the @
+             * @example fede
+             */
+            username: string | null;
             avatarUrl: string | null;
             role: components["schemas"]["Role"];
         };
@@ -1543,6 +1632,7 @@ export interface components {
                 /** Format: uuid */
                 id: string;
                 name: string;
+                username: string | null;
                 avatarUrl: string | null;
             };
             /** @description Only after the reveal */

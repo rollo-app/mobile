@@ -30,10 +30,10 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role },
-    { id: "m2", userId: "u-m2", name: "Fede", avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -49,7 +49,7 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   caption: "el viento no perdona",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede", avatarUrl: null },
+  author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
   ...over,
 });
 
@@ -107,6 +107,21 @@ describe("Feed", () => {
     await screen.findByText("tarde");
     const texts = screen.getAllByText(/^(Martes 12|Lunes 11|tarde|temprano|ayer vieja)$/).map((n) => n.props.children);
     expect(texts).toEqual(["Martes 12", "tarde", "temprano", "Lunes 11", "ayer vieja"]);
+  });
+
+  it("names the author by handle, falling back to the name when there is none", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([
+        feedItem({ id: "a", caption: null, author: { id: "m2", name: "Fede", username: "fede.s", avatarUrl: null } }),
+        feedItem({ id: "b", caption: null, author: { id: "m3", name: "Cami", username: null, avatarUrl: null } }),
+      ]),
+    );
+    await renderRouter(routes, { initialUrl: "/feed" });
+
+    const rows = await screen.findAllByTestId("feed-row");
+    expect(within(rows[0]!).getByText("@fede.s")).toBeVisible();
+    expect(within(rows[0]!).queryByText("Fede")).toBeNull();
+    expect(within(rows[1]!).getByText("Cami")).toBeVisible();
   });
 
   it("your unuploaded photos go in their day with 'Esperando señal'", async () => {

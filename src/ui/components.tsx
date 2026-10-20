@@ -80,16 +80,28 @@ export function Button({
   );
 }
 
-export function Field({ label, ...props }: { label: string } & TextInputProps) {
+export function Field({ label, prefix, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
   return (
     <View style={styles.field}>
       <Text style={[type.footnote, styles.footnote]}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        placeholderTextColor={colors.tertiaryLabel}
-        style={[type.body, styles.input]}
-        {...props}
-      />
+      {prefix ? (
+        <View style={[styles.input, styles.prefixed]}>
+          <Text style={[type.body, { color: colors.secondaryLabel }]}>{prefix}</Text>
+          <TextInput
+            accessibilityLabel={label}
+            placeholderTextColor={colors.tertiaryLabel}
+            style={[type.body, styles.prefixedInput]}
+            {...props}
+          />
+        </View>
+      ) : (
+        <TextInput
+          accessibilityLabel={label}
+          placeholderTextColor={colors.tertiaryLabel}
+          style={[type.body, styles.input]}
+          {...props}
+        />
+      )}
     </View>
   );
 }
@@ -121,7 +133,10 @@ export function Row({
   loading,
   tone,
   leading,
+  detail,
 }: {
+  /** Secondary text under the label (a handle). */
+  detail?: string;
   /** Something before the label (an avatar). */
   leading?: ReactNode;
   label: string;
@@ -136,7 +151,14 @@ export function Row({
   const content = (
     <>
       {leading}
-      <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }]}>{label}</Text>
+      {detail !== undefined ? (
+        <View style={styles.rowLabel}>
+          <Text style={[type.body, { color: colors.label }]}>{label}</Text>
+          <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{detail}</Text>
+        </View>
+      ) : (
+        <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }]}>{label}</Text>
+      )}
       {value !== undefined && (
         <View style={styles.rowValueBox}>
           <Text selectable style={[type.body, styles.rowValue]}>
@@ -188,6 +210,8 @@ const styles = StyleSheet.create({
     color: colors.label,
     backgroundColor: colors.cell,
   },
+  prefixed: { flexDirection: "row", alignItems: "center" },
+  prefixedInput: { flex: 1, minHeight: 50, color: colors.label },
   section: { gap: spacing.sm },
   sectionTitle: { color: colors.label, paddingHorizontal: spacing.xs },
   group: { backgroundColor: colors.cell, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden" },

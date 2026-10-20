@@ -32,10 +32,10 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
-    { id: "m2", userId: "u-m2", name: "Fede", avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -51,7 +51,7 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   caption: "el viento no perdona",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede", avatarUrl: null },
+  author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
   ...over,
 });
 
@@ -141,7 +141,7 @@ describe("Map", () => {
 
   it("the Personas menu filters by person and also lets you go back to everyone", async () => {
     mocked.fetchFeed.mockResolvedValue(
-      feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani", avatarUrl: null } })]),
+      feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani", username: null, avatarUrl: null } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
     expect(await screen.findByLabelText("pin mia")).toBeVisible();
@@ -176,8 +176,8 @@ describe("Map", () => {
   it("tapping a pin with other photos at the same place opens a carousel with all of them, by time", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
-        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", name: "Fede", avatarUrl: null } }),
-        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", name: "Juani", avatarUrl: null }, caption: "primera" }),
+        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", name: "Fede", username: null, avatarUrl: null } }),
+        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", name: "Juani", username: null, avatarUrl: null }, caption: "primera" }),
         feedItem({ id: "lejos", lat: -48.5, lng: -72.0, caption: "otra" }),
       ]),
     );

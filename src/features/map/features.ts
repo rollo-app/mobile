@@ -17,6 +17,7 @@ export type MapItem = {
   thumbPath?: string | null;
   authorId: string;
   authorName: string;
+  authorUsername?: string | null;
   authorAvatarUrl: string | null;
   pending: boolean;
 };
@@ -41,13 +42,14 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
     thumbPath: i.files?.thumb ?? null,
     authorId: i.author.id,
     authorName: i.author.name,
+    authorUsername: i.author.username,
     authorAvatarUrl: i.author.avatarUrl,
     pending: false,
   }));
 }
 
 /** Your not-yet-uploaded photos (local queue) as items, with you as author. */
-export function pendingToItems(pending: PendingMedia[], me: { id: string; name: string; avatarUrl?: string | null }): MapItem[] {
+export function pendingToItems(pending: PendingMedia[], me: { id: string; name: string; username?: string | null; avatarUrl?: string | null }): MapItem[] {
   return pending.map((m) => ({
     id: m.id,
     type: m.type,
@@ -60,6 +62,7 @@ export function pendingToItems(pending: PendingMedia[], me: { id: string; name: 
     thumbhash: m.thumbhash,
     authorId: me.id,
     authorName: me.name,
+    authorUsername: me.username ?? null,
     authorAvatarUrl: me.avatarUrl ?? null,
     pending: true,
   }));

@@ -33,10 +33,10 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
 
 const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail => ({
   trip: trip(),
-  me: { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
-    { id: "m2", userId: "u-m2", name: "Fede", avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 12,
@@ -131,8 +131,8 @@ describe("Roll", () => {
       revealed: false,
       revealAt: Date.now() + 9 * DAY,
       items: [
-        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", name: "Fede", avatarUrl: null } },
-        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", name: "Fede", avatarUrl: null } },
+        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", name: "Fede", username: null, avatarUrl: null } },
+        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", name: "Fede", username: null, avatarUrl: null } },
       ],
     });
     await renderRouter(routes, { initialUrl: "/roll" });

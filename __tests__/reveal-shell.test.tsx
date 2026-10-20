@@ -29,8 +29,8 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     dailyVideoLimit: 3,
     ...over,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
-  members: [{ id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" }],
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+  members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
 });
@@ -66,7 +66,7 @@ describe("revealed roll", () => {
       items: [
         {
           id: "a", type: "photo", takenAt: Date.now() - DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
-          thumbhash: null, durationS: null, author: { id: "m1", name: "Juani", avatarUrl: null },
+          thumbhash: null, durationS: null, author: { id: "m1", name: "Juani", username: null, avatarUrl: null },
           files: { thumb: "/m/a/thumb", original: "/m/a/original" },
         },
       ],

@@ -4,20 +4,26 @@ import { ActionSheetIOS, ActivityIndicator, Pressable, StyleSheet, Text, View } 
 import { meKey, type User } from "@/features/auth/actions";
 import { Button, ErrorText, Field } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
-import { updateName } from "./actions";
+import { updateProfile } from "./actions";
 import { Avatar } from "./avatar";
 import { useAvatarUpload } from "./use-avatar-upload";
+import { USERNAME_TAKEN, useUsernameStatus } from "./use-username-status";
+import { normalizeUsername, suggestUsername } from "./username";
 
-/** Photo (optional) and name (required): used to complete the profile and to edit it. */
+/** Photo (optional), name and username (required): used to complete the profile and to edit it. */
 export function ProfileForm({ user, submitLabel, onSaved }: { user: User; submitLabel: string; onSaved: () => void }) {
   const queryClient = useQueryClient();
   const avatar = useAvatarUpload();
   const [name, setName] = useState(user.name ?? "");
+  const [username, setUsername] = useState(user.username ?? suggestUsername(user.email));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const trimmed = name.trim();
-  const valid = trimmed.length > 0 && !avatar.uploading;
+  const normalized = normalizeUsername(username);
+  const status = useUsernameStatus(username, user.username);
+  const statusOk = status.kind === "unchanged" || status.kind === "available" || status.kind === "unknown";
+  const valid = trimmed.length > 0 && statusOk && !avatar.uploading;
 
   function choosePhoto() {
     ActionSheetIOS.showActionSheetWithOptions(
@@ -33,9 +39,13 @@ export function ProfileForm({ user, submitLabel, onSaved }: { user: User; submit
     setError(null);
     setSaving(true);
     try {
-      if (trimmed !== user.name) {
-        const updated = await updateName(trimmed);
-        queryClient.setQueryData(meKey, (current: User | undefined) => ({ ...(current ?? updated), name: updated.name }));
+      if (trimmed !== user.name || normalized !== user.username) {
+        const updated = await updateProfile({ name: trimmed, username: normalized });
+        queryClient.setQueryData(meKey, (current: User | undefined) => ({
+          ...(current ?? updated),
+          name: updated.name,
+          username: updated.username,
+        }));
         void queryClient.invalidateQueries({ queryKey: ["trip"] });
         void queryClient.invalidateQueries({ queryKey: ["feed"] });
       }
@@ -81,6 +91,29 @@ export function ProfileForm({ user, submitLabel, onSaved }: { user: User; submit
         autoComplete="name"
       />
 
+      <View style={styles.usernameBlock}>
+        <Field
+          label="Nombre de usuario"
+          prefix="@"
+          value={username}
+          onChangeText={(value) => {
+            setUsername(value);
+            setError(null);
+          }}
+          maxLength={31}
+          placeholder="usuario"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="username-new"
+          textContentType="username"
+          keyboardType="ascii-capable"
+        />
+        {status.kind === "invalid" && <ErrorText>{status.message}</ErrorText>}
+        {status.kind === "taken" && <ErrorText>{USERNAME_TAKEN}</ErrorText>}
+        {status.kind === "checking" && <Text style={[type.footnote, styles.status]}>Revisando…</Text>}
+        {status.kind === "available" && <Text style={[type.footnote, styles.status]}>Disponible</Text>}
+      </View>
+
       {error && <ErrorText>{error}</ErrorText>}
 
       <Button label={submitLabel} onPress={save} disabled={!valid} loading={saving} />
@@ -101,5 +134,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.4)",
   },
+  usernameBlock: { gap: spacing.xs },
+  status: { color: colors.secondaryLabel, paddingHorizontal: spacing.md },
   photoError: { gap: spacing.sm },
 });

@@ -3,11 +3,18 @@ import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { ApiError, unwrap } from "@/api/client";
 import { authedClient } from "@/features/auth/session";
 import type { User } from "@/features/auth/actions";
+import { normalizeUsername } from "./username";
 
 const AVATAR_MAX = 512;
 
-export async function updateName(name: string): Promise<User> {
-  return unwrap((await authedClient()).PATCH("/me", { body: { name: name.trim() } }));
+export async function updateProfile({ name, username }: { name: string; username: string }): Promise<User> {
+  return unwrap((await authedClient()).PATCH("/me", { body: { name: name.trim(), username: normalizeUsername(username) } }));
+}
+
+/** Is this username free? (Your own counts as available.) The server normalizes it. */
+export async function checkUsername(username: string): Promise<{ available: boolean; username: string }> {
+  const api = await authedClient();
+  return unwrap(api.GET("/usernames/{username}", { params: { path: { username: normalizeUsername(username) } } }));
 }
 
 /** The square the picker cropped, at most 512 px, as a JPEG (the server accepts up to 2 MB). */

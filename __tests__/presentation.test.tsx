@@ -30,16 +30,16 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
-    { id: "m2", userId: "u-m2", name: "Fede", avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-14", photosLeft: 0, videosLeft: 0 },
   totalUploaded: 3,
 });
 
-const item = (id: string, iso: string, author: { id: string; name: string; avatarUrl: string | null }, caption: string | null): actions.Feed["items"][number] => ({
+const item = (id: string, iso: string, author: { id: string; name: string; username?: string | null; avatarUrl: string | null }, caption: string | null): actions.Feed["items"][number] => ({
   id,
   type: "photo",
   takenAt: Date.parse(iso),
@@ -49,7 +49,7 @@ const item = (id: string, iso: string, author: { id: string; name: string; avata
   caption,
   durationS: null,
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
-  author,
+  author: { username: null, ...author },
   files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
 });
 

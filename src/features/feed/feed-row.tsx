@@ -4,6 +4,7 @@ import { memo } from "react";
 import { ActionSheetIOS, Pressable, StyleSheet, Text, View } from "react-native";
 import type { MapItem } from "@/features/map/features";
 import { Avatar } from "@/features/profile/avatar";
+import { formatHandle } from "@/features/profile/username";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
 const THUMB = 56;
@@ -24,6 +25,7 @@ type Props = {
 
 /** A native Feed row: who, when, the caption (or what they took) and the blurred photo. */
 export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete }: Props) {
+  const who = item.authorUsername ? formatHandle(item.authorUsername) : item.authorName;
   const when = clockTime(item.takenAt, timeZone);
   const generic = item.type === "video" ? `sacó un video · ${Math.round(item.durationS ?? 0)} s` : "sacó una foto";
   const located = item.lat !== null && item.lng !== null;
@@ -33,7 +35,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
       <Avatar id={item.authorId} name={item.authorName} avatarUrl={item.authorAvatarUrl} size={40} />
       <View style={styles.text}>
         <Text numberOfLines={1} style={[type.footnote, { color: colors.secondaryLabel }]}>
-          <Text style={{ fontWeight: "600", color: colors.label }}>{item.authorName}</Text>
+          <Text style={{ fontWeight: "600", color: colors.label }}>{who}</Text>
           {" · "}
           <Text>{when}</Text>
         </Text>
@@ -72,7 +74,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
   return (
     <Pressable
       accessibilityRole={located && onPress ? "button" : undefined}
-      accessibilityLabel={`${item.authorName}, ${when}`}
+      accessibilityLabel={`${who}, ${when}`}
       accessibilityHint={located && onPress ? "Abre la foto en el mapa" : undefined}
       onPress={located && onPress ? () => onPress(item) : undefined}
       onLongPress={canDelete ? openSheet : undefined}

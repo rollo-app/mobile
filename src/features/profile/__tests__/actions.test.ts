@@ -1,13 +1,13 @@
 import { File } from "expo-file-system";
 import { setSessionToken } from "@/storage/session";
-import { updateName, uploadAvatar } from "../actions";
+import { checkUsername, updateProfile, uploadAvatar } from "../actions";
 
 jest.mock("expo-image-manipulator", () => {
   const ctx = { resize: jest.fn(), renderAsync: jest.fn(async () => ({ saveAsync: jest.fn(async () => ({ uri: "file:///cache/avatar.jpg", width: 512, height: 512 })) })) };
   return { ImageManipulator: { manipulate: jest.fn(() => ctx), __ctx: ctx }, SaveFormat: { JPEG: "jpeg" } };
 });
 
-const user = { id: "u1", email: "a@b.c", name: "Juani", avatarUrl: "/avatars/u1/a.jpg" };
+const user = { id: "u1", email: "a@b.c", name: "Juani", username: "juani", avatarUrl: "/avatars/u1/a.jpg" };
 
 type Route = [RegExp, number, unknown?];
 function mockApi(routes: Route[]) {
@@ -21,17 +21,31 @@ function mockApi(routes: Route[]) {
 
 beforeEach(() => setSessionToken("tok"));
 
-describe("updateName", () => {
-  it("sends the trimmed name and returns the user", async () => {
+describe("updateProfile", () => {
+  it("sends the trimmed name and the normalized username and returns the user", async () => {
     const fetchMock = mockApi([[/^PATCH \/me$/, 200, user]]);
 
-    expect(await updateName("  Juani ")).toEqual(user);
-    expect(await (fetchMock.mock.calls[0]![0] as Request).json()).toEqual({ name: "Juani" });
+    expect(await updateProfile({ name: "  Juani ", username: " @Juani " })).toEqual(user);
+    expect(await (fetchMock.mock.calls[0]![0] as Request).json()).toEqual({ name: "Juani", username: "juani" });
   });
 
   it("propagates the server's message", async () => {
-    mockApi([[/^PATCH \/me$/, 400, { error: "El nombre no puede estar vacío" }]]);
-    await expect(updateName("x")).rejects.toThrow("El nombre no puede estar vacío");
+    mockApi([[/^PATCH \/me$/, 409, { error: "Ese nombre de usuario ya está en uso." }]]);
+    await expect(updateProfile({ name: "x", username: "taken" })).rejects.toThrow("Ese nombre de usuario ya está en uso.");
+  });
+});
+
+describe("checkUsername", () => {
+  it("asks the server and returns the availability", async () => {
+    const fetchMock = mockApi([[/^GET \/usernames\/juani$/, 200, { available: true, username: "juani" }]]);
+
+    expect(await checkUsername("@Juani")).toEqual({ available: true, username: "juani" });
+    expect(new URL((fetchMock.mock.calls[0]![0] as Request).url).pathname).toBe("/usernames/juani");
+  });
+
+  it("propagates the invalid message", async () => {
+    mockApi([[/^GET \/usernames\//, 400, { error: "El nombre de usuario puede tener letras, números, punto y guion bajo (3 a 30)." }]]);
+    await expect(checkUsername("ab")).rejects.toThrow(/letras, números/);
   });
 });
 

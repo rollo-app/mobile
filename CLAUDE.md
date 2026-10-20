@@ -15,7 +15,8 @@ Decisiones de producto:
 - **Solo iOS** en la primera versión. **Con cuentas:** login con **email + código de 6 dígitos** (sin
   contraseña), obligatorio al abrir la app (`app/(auth)/`: email → código → "Completá tu perfil" si es nueva o
   no tiene nombre). El perfil es **nombre + foto** (`GET/PATCH /me`, foto con `expo-image-picker` 1:1 →
-  512 px JPEG → `POST /me/avatar` → PUT → complete; sin foto, círculo con la inicial y `memberColor`). Crear rollo
+  512 px JPEG → `POST /me/avatar` → PUT → complete; sin foto, círculo con la inicial y `memberColor`). Además tiene un **nombre de usuario único** (`@usuario`, `PATCH /me`): se pide en "Completá tu perfil" junto al nombre
+  (sugerido desde el email, con chequeo de disponibilidad) y se muestra en Perfil, miembros y Feed. Crear rollo
   o unirse es solo con el código de 6 (`POST /trips/join`; el server pide nombre en el perfil). **La sesión es un
   único token en SecureStore (`rollo.session`)** que usan todas las llamadas; un `401` en cualquiera cierra la
   sesión local y vuelve al login (`setUnauthorizedHandler` en `src/api/client.ts`). Los rollos salen de
@@ -178,7 +179,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 554 tests
+npm test                      # 585 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

@@ -1,6 +1,6 @@
 import { gateFor } from "../gate";
 
-const user = (name: string | null) => ({ id: "u1", email: "a@b.c", name, avatarUrl: null });
+const user = (name: string | null, username: string | null = "juani") => ({ id: "u1", email: "a@b.c", name, username, avatarUrl: null });
 
 describe("gateFor", () => {
   it("waits while the session is being read", () => {
@@ -22,6 +22,10 @@ describe("gateFor", () => {
   it("asks to complete the profile when there is no name", () => {
     expect(gateFor({ session: "in", me: user(null), meFailed: false })).toBe("profile");
     expect(gateFor({ session: "in", me: user("  "), meFailed: false })).toBe("profile");
+  });
+
+  it("asks to complete the profile when there is a name but no username", () => {
+    expect(gateFor({ session: "in", me: user("Juani", null), meFailed: false })).toBe("profile");
   });
 
   it("opens the app when signed in with a name", () => {

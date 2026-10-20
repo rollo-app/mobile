@@ -17,5 +17,5 @@ export function gateFor({
   if (session === "loading") return "loading";
   if (session === "out") return "login";
   if (!me) return meFailed ? "error" : "loading";
-  return me.name?.trim() ? "app" : "profile";
+  return me.name?.trim() && me.username ? "app" : "profile";
 }
