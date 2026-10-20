@@ -15,8 +15,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
-import { TripSwitcher } from "@/features/trips/trip-switcher";
-import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
@@ -89,7 +87,6 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { photos, token, error, loading, refetch } = useRevealedPhotos(tripId);
-  const { trip } = useActiveTrip();
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name);
 
@@ -252,7 +249,8 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
 
   return (
     <View style={styles.fill}>
-      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.tripName} /> }} />}
+      {/* Large title that collapses with the list (contentInsetAdjustmentBehavior), like Photos. Switching rolls lives in Vos. */}
+      <Stack.Screen options={{ title: "Galería", headerLargeTitle: true }} />
       {toolbar}
       {body}
       {(bar || selecting) && (

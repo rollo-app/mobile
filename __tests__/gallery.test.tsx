@@ -126,13 +126,13 @@ describe("Gallery", () => {
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
   });
 
-  it("the header shows the trip switcher, not the route name", async () => {
+  it("the header title is Galería, not the route name", async () => {
     mocked.fetchFeed.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
-    expect(await screen.findByText("Viaje al sur")).toBeVisible();
-    expect(screen.queryByText("gallery")).toBeNull();
     expect(screen.queryByText("index")).toBeNull();
+    expect(screen.queryByText("gallery")).toBeNull();
+    expect(screen.queryByLabelText(/cambiar de rollo/)).toBeNull();
   });
 
   it("the ⋯ menu offers the filter and saving everything", async () => {
