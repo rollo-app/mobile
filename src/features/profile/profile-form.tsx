@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionSheetIOS, ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { meKey, type User } from "@/features/auth/actions";
-import { Button, ErrorText, Field } from "@/ui/components";
+import { Button, ErrorText, Field, Row, Section } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { updateProfile } from "./actions";
 import { Avatar } from "./avatar";
@@ -15,13 +15,13 @@ export function ProfileForm({
   user,
   submitLabel,
   onSaved,
-  colorId = user.id,
+  showEmail = false,
 }: {
   user: User;
   submitLabel: string;
   onSaved: () => void;
-  /** Id the placeholder color comes from (Perfil uses the member of the active roll). */
-  colorId?: string;
+  /** Read-only email row at the top (editing, not completing). */
+  showEmail?: boolean;
 }) {
   const queryClient = useQueryClient();
   const avatar = useAvatarUpload();
@@ -77,7 +77,7 @@ export function ProfileForm({
         disabled={avatar.uploading}
         style={({ pressed }) => [styles.photo, { opacity: pressed ? 0.6 : 1 }]}
       >
-        <Avatar id={colorId} name={trimmed || user.name} avatarUrl={user.avatarUrl} size={72} localUri={avatar.localUri} />
+        <Avatar id={user.id} name={trimmed || user.name} avatarUrl={user.avatarUrl} size={72} localUri={avatar.localUri} />
         {avatar.uploading && (
           <View style={styles.spinner}>
             <ActivityIndicator color="#FFFFFF" />
@@ -90,6 +90,12 @@ export function ProfileForm({
           <ErrorText>{avatar.error}</ErrorText>
           {avatar.localUri && <Button label="Reintentar" variant="secondary" onPress={() => void avatar.retry()} />}
         </View>
+      )}
+
+      {showEmail && (
+        <Section footer="Es lo que hace única tu cuenta.">
+          <Row label="Email" value={user.email} />
+        </Section>
       )}
 
       <Field
