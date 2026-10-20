@@ -8,9 +8,12 @@ import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/capture/sync", () => ({ syncQueue: jest.fn(async () => {}) }));
+jest.mock("expo-network", () => ({
+  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
+  getNetworkStateAsync: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })),
+}));
 const mocked = jest.mocked(actions);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
-const { syncQueue } = jest.requireMock("@/features/capture/sync") as { syncQueue: jest.Mock };
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const DAY = 24 * 60 * 60 * 1000;
@@ -58,7 +61,6 @@ describe("Me · Subidas", () => {
   let queue: Queue;
 
   beforeEach(async () => {
-    syncQueue.mockClear();
     await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
     mocked.fetchTrip.mockResolvedValue(detail());
     queue = await createQueue(memoryDb());
@@ -80,33 +82,17 @@ describe("Me · Subidas", () => {
     await renderRouter(routes, { initialUrl: "/me" });
 
     expect(await screen.findByText("1 foto y 1 video esperando señal")).toBeVisible();
-    expect(screen.getByText(/No cierres la app desde el selector de apps/)).toBeVisible();
+    expect(screen.getByText(/Se suben solas apenas hay conexión/)).toBeVisible();
     expect(screen.getByText(/Próximo intento en 2 min/)).toBeVisible();
   });
 
-  it("'Subir ahora' runs a sync pass", async () => {
+  it("there is no manual upload button: uploads happen on their own", async () => {
     await queue.enqueue(queued("a"));
     await renderRouter(routes, { initialUrl: "/me" });
-    const button = await screen.findByRole("button", { name: "Subir ahora" });
-    // The app's own triggers (mount, focus) may have synced already: count from here.
-    syncQueue.mockClear();
 
-    await fireEvent.press(button);
-
-    await waitFor(() => expect(syncQueue).toHaveBeenCalledTimes(1));
-  });
-
-  it("when the pass uploads everything the section goes away", async () => {
-    await queue.enqueue(queued("a"));
-    await renderRouter(routes, { initialUrl: "/me" });
-    const button = await screen.findByRole("button", { name: "Subir ahora" });
-    syncQueue.mockImplementationOnce(async () => {
-      await queue.remove("a");
-    });
-
-    await fireEvent.press(button);
-
-    await waitFor(() => expect(screen.queryByText(/esperando señal/)).toBeNull());
+    expect(await screen.findByText("1 foto esperando señal")).toBeVisible();
+    expect(screen.queryByText("Subir ahora")).toBeNull();
+    expect(screen.getByText(/Se suben solas apenas hay conexión\./)).toBeVisible();
   });
 
   it("failed photos show their reason in plain language", async () => {
