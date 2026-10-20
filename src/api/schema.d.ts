@@ -4,6 +4,493 @@
  */
 
 export interface paths {
+    "/auth/email/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a login code by email
+         * @description Sends a 6-digit code (valid 10 minutes, 5 attempts). A new request invalidates the previous codes. Rate limited per email and per IP. Works for new and existing users alike.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailStartRequest"];
+                };
+            };
+            responses: {
+                /** @description Code sent */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Upstream service failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange the emailed code for a session token
+         * @description Creates the user on the first successful verification. `isNew` is true while the user has no name.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailVerifyRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthSession"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign out (deletes the current session) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Signed out */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your profile */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Your profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Delete your account
+         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your avatar, sessions and pending login codes are deleted too. The same email can sign up again later as a brand-new user.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Account deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Edit your profile
+         * @description The name is shown in every rollo you are part of. It does not have to be unique.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description Profile updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a URL to upload your avatar
+         * @description Returns a signed URL to PUT a JPEG straight to R2. Then call POST /me/avatar/complete. Each call generates a new random file name, so the avatar URL changes when you replace it.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Upload URL */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AvatarUpload"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/avatar/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm your avatar upload
+         * @description Checks that the file is in R2, is a JPEG (verified by its magic bytes) and is at most 2 MB, makes it your avatar and deletes the previous one. Otherwise the upload is discarded and the response is a 400.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Profile with the new avatar */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/trips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your rollos
+         * @description Rollos you are an active member of, most recent start first.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Your rollos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyTrips"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/avatars/{userId}/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a user's avatar
+         * @description Public (no token) so it can be used directly as an image URL. Only the user's current avatar is served; file names are random, so older or guessed ones return 404.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                    file: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Avatar */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips": {
         parameters: {
             query?: never;
@@ -15,7 +502,7 @@ export interface paths {
         put?: never;
         /**
          * Create a trip
-         * @description Whoever creates it becomes the admin. Returns the invite code and the admin token.
+         * @description Whoever creates it becomes the admin. The profile must have a name. Returns the invite code.
          */
         post: {
             parameters: {
@@ -48,6 +535,24 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -67,7 +572,7 @@ export interface paths {
         put?: never;
         /**
          * Join a trip
-         * @description With the code and a name. The name is unique per trip (case-insensitive).
+         * @description With the invite code. The profile must have a name. Idempotent: 201 when newly joined, 200 when already an active member. Someone removed by the admin gets 403.
          */
         post: {
             parameters: {
@@ -82,6 +587,15 @@ export interface paths {
                 };
             };
             responses: {
+                /** @description Already a member */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TripCreated"];
+                    };
+                };
                 /** @description Joined the trip */
                 201: {
                     headers: {
@@ -93,6 +607,24 @@ export interface paths {
                 };
                 /** @description Invalid data */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -157,7 +689,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripDetail"];
                     };
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -216,7 +748,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -268,7 +800,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripResponse"];
                     };
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -294,87 +826,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/trips/{tripId}/members/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Change your name in the trip
-         * @description Same rules as when joining: unique per trip, case-insensitive.
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    tripId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["UpdateMeRequest"];
-                };
-            };
-            responses: {
-                /** @description Name updated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Member"];
-                    };
-                };
-                /** @description Invalid data */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Missing or invalid token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Conflict with the current state */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
     "/trips/{tripId}/members/{memberId}": {
         parameters: {
             query?: never;
@@ -387,7 +838,7 @@ export interface paths {
         post?: never;
         /**
          * Remove someone from the trip (admin)
-         * @description Their token stops working and their name is freed. Their photos stay in the roll.
+         * @description They lose access to the rollo and cannot rejoin. Their photos stay in the roll.
          */
         delete: {
             parameters: {
@@ -417,7 +868,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -506,7 +957,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -533,7 +984,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Daily limit reached */
+                /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -592,7 +1043,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -649,7 +1100,7 @@ export interface paths {
                         "application/json": components["schemas"]["Feed"];
                     };
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -711,7 +1162,7 @@ export interface paths {
                         "video/mp4": string;
                     };
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -780,7 +1231,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Missing or invalid token */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -827,11 +1278,88 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Error: {
+            /** @example Código inválido */
+            error: string;
+        };
+        EmailStartRequest: {
+            /**
+             * @description Trimmed and lowercased
+             * @example juani@example.com
+             */
+            email: string;
+        };
+        AuthSession: {
+            /** @description Session token (Bearer). Valid for 365 days; store it on the phone */
+            token: string;
+            user: components["schemas"]["User"];
+            /** @description true while the user has no name yet: show the profile step */
+            isNew: boolean;
+        };
+        User: {
+            /** Format: uuid */
+            id: string;
+            /** @example juani@example.com */
+            email: string;
+            /** @description null until the profile is completed */
+            name: string | null;
+            /** @description Path (the app prefixes the API base URL), e.g. /avatars/<userId>/<version>.jpg; null if none */
+            avatarUrl: string | null;
+        };
+        EmailVerifyRequest: {
+            /**
+             * @description Trimmed and lowercased
+             * @example juani@example.com
+             */
+            email: string;
+            /** @example 123456 */
+            code: string;
+        };
+        UpdateProfileRequest: {
+            /** @example Juani */
+            name: string;
+        };
+        AvatarUpload: {
+            /**
+             * Format: uri
+             * @description PUT of the JPEG avatar (square, ~512px)
+             */
+            upload: string;
+            /** @description Seconds the URL stays valid */
+            expiresIn: number;
+        };
+        MyTrips: {
+            trips: components["schemas"]["TripSummary"][];
+        };
+        TripSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            joinCode: string;
+            /**
+             * @description Trip start
+             * @example 1767225600000
+             */
+            startsAt: number;
+            /**
+             * @description Trip end
+             * @example 1767225600000
+             */
+            endsAt: number;
+            /**
+             * @description Automatic reveal
+             * @example 1767225600000
+             */
+            revealAt: number;
+            revealed: boolean;
+            role: components["schemas"]["Role"];
+            totalUploaded: number;
+        };
+        /** @enum {string} */
+        Role: "admin" | "member";
         TripCreated: {
             trip: components["schemas"]["Trip"];
             member: components["schemas"]["Member"];
-            /** @description Store it on the phone: it is only returned once */
-            token: string;
         };
         Trip: {
             /** Format: uuid */
@@ -865,23 +1393,21 @@ export interface components {
             dailyVideoLimit: number;
         };
         Member: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Membership id (the one used by DELETE members and FeedItem.author)
+             */
             id: string;
+            /** Format: uuid */
+            userId: string;
             /** @example Fede */
             name: string;
+            avatarUrl: string | null;
             role: components["schemas"]["Role"];
-        };
-        /** @enum {string} */
-        Role: "admin" | "member";
-        Error: {
-            /** @example Código inválido */
-            error: string;
         };
         CreateTripRequest: {
             /** @example Viaje al sur */
             name: string;
-            /** @example Juani */
-            adminName: string;
             /**
              * @description IANA time zone of the destination
              * @example America/Argentina/Buenos_Aires
@@ -910,8 +1436,6 @@ export interface components {
         JoinTripRequest: {
             /** @example HUB5FT */
             code: string;
-            /** @example Juani */
-            name: string;
         };
         TripDetail: {
             trip: components["schemas"]["Trip"];
@@ -941,10 +1465,6 @@ export interface components {
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
-        };
-        UpdateMeRequest: {
-            /** @example Juani */
-            name: string;
         };
         MediaRegistered: {
             /** Format: uuid */
@@ -1018,10 +1538,12 @@ export interface components {
             /** @description ThumbHash in base64. Always returned, also before the reveal, on purpose: it only encodes blurry colors (~25 bytes), the photo cannot be reconstructed from it. */
             thumbhash: string | null;
             durationS: number | null;
+            /** @description `id` is the author's membership id */
             author: {
                 /** Format: uuid */
                 id: string;
                 name: string;
+                avatarUrl: string | null;
             };
             /** @description Only after the reveal */
             width?: number | null;
