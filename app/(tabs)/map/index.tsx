@@ -16,6 +16,7 @@ import { UserLocationDot } from "@/features/map/user-location-dot";
 import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { resolveTap } from "@/features/map/tap";
+import { rollPhase } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRevealedPhotos } from "@/features/media/revealed";
@@ -52,7 +53,11 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
-  const [scope, setScope] = useState<"all" | "today">("all");
+  const [pickedScope, setScope] = useState<"all" | "today">("all");
+  // Once the roll has ended there is no "today" anymore: only "Todo" applies.
+  const phase = detail ? rollPhase(detail.trip, Date.now()) : null;
+  const hasToday = phase !== "ended" && phase !== "revealed";
+  const scope = hasToday ? pickedScope : "all";
   const [authorId, setAuthorId] = useState<string | null>(null);
   // Photos at the tapped place or cluster and which of them is showing in the carousel.
   // `clusterId` keeps the tapped cluster highlighted while its photos are swiped.
@@ -237,13 +242,17 @@ export default function MapScreen() {
 
       <View pointerEvents="box-none" style={[styles.controls, { top: insets.top + HEADER_HEIGHT + spacing.sm }]}>
         <View style={styles.row}>
-          <SegmentedControl
-            style={styles.segmented}
-            values={["Todo", "Hoy"]}
-            tintColor={tintHex[scheme]}
-            selectedIndex={scope === "all" ? 0 : 1}
-            onValueChange={(v) => setScope(v === "Hoy" ? "today" : "all")}
-          />
+          {hasToday ? (
+            <SegmentedControl
+              style={styles.segmented}
+              values={["Todo", "Hoy"]}
+              tintColor={tintHex[scheme]}
+              selectedIndex={scope === "all" ? 0 : 1}
+              onValueChange={(v) => setScope(v === "Hoy" ? "today" : "all")}
+            />
+          ) : (
+            <View style={styles.segmented} />
+          )}
           <MenuView
             title="Personas"
             actions={actions}

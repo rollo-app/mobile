@@ -129,6 +129,14 @@ describe("Map", () => {
     expect(screen.queryByLabelText("pin ayer")).toBeNull();
   });
 
+  it("once the roll is revealed there is no Hoy filter, only Personas", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
+    await renderRouter(routes, { initialUrl: "/map" });
+
+    expect(await screen.findByText("Personas")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Hoy" })).toBeNull();
+  });
+
   it("the Personas menu filters by person and also lets you go back to everyone", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani" } })]),
