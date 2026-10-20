@@ -82,10 +82,16 @@ jest.mock("@maplibre/maplibre-react-native", () => {
   const React = require("react");
   const { Pressable, View } = require("react-native");
   const camera = { flyTo: jest.fn(), easeTo: jest.fn(), fitBounds: jest.fn() };
+  const getClusterLeaves = jest.fn();
+  const mapProps: { current: any } = { current: null };
   return {
     __camera: camera,
+    __getClusterLeaves: getClusterLeaves,
+    __mapProps: mapProps,
     // The map lets you tap "the void"; the pin source renders a button per pin (so screens can be tested without native).
-    Map: ({ children, onPress, onDidFinishLoadingMap }: any) => {
+    Map: (props: any) => {
+      const { children, onPress, onDidFinishLoadingMap } = props;
+      mapProps.current = props;
       React.useEffect(() => {
         onDidFinishLoadingMap?.();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,12 +108,12 @@ jest.mock("@maplibre/maplibre-react-native", () => {
       return null;
     },
     ViewAnnotation: View,
-    // With 2+ photos it adds a "cluster" that can't be opened (needs zoom 19) and whose leaves are the first two.
+    // With 2+ photos it adds a "cluster" whose leaves are the first two.
     GeoJSONSource: ({ data, onPress, ref }: any) => {
       React.useImperativeHandle(ref, () => ({
-        getClusterExpansionZoom: async () => 19,
-        getClusterLeaves: async () => data.features.slice(0, 2),
+        getClusterLeaves,
       }));
+      getClusterLeaves.mockImplementation(async () => data.features.slice(0, 2));
       const cluster = {
         type: "Feature",
         geometry: data.features[0]?.geometry,
