@@ -153,6 +153,30 @@ describe("Gallery", () => {
     expect(screen.getByLabelText("Más opciones")).toBeTruthy();
   });
 
+  it("Seleccionar todo selects every visible photo and toggles to Deseleccionar todo", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByRole("button", { name: "Seleccionar todo" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar todo" }));
+    expect(screen.getByRole("button", { name: "Guardar (3)" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Seleccionar todo" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Deseleccionar todo" }));
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Seleccionar todo" })).toBeVisible();
+  });
+
+  it("Seleccionar todo respects the person filter", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar todo" }));
+    expect(screen.getByRole("button", { name: "Guardar (2)" })).toBeVisible();
+  });
+
   it("Seleccionar becomes Cancelar while selecting", async () => {
     mocked.fetchFeed.mockResolvedValue(two());
     await open();
