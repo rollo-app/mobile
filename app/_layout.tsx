@@ -6,11 +6,13 @@ import { useColorScheme } from "react-native";
 import { CACHE_MAX_AGE, connectAppState, persister, queryClient } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
 import { useRevealTap } from "@/features/notifications/use-reveal-tap";
+import { useOfflineMapSync } from "@/features/map/use-offline-map-sync";
 import { useSyncTriggers } from "@/features/capture/use-sync-triggers";
 
 export default function RootLayout() {
   const scheme = useColorScheme();
   useSyncTriggers();
+  useOfflineMapSync();
   useRevealTap();
   useEffect(() => connectAppState(), []);
   return (
@@ -37,6 +39,15 @@ export default function RootLayout() {
               title: "Tu nombre",
               presentation: "formSheet",
               sheetAllowedDetents: [0.3, 0.5],
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
+            name="offline-maps"
+            options={{
+              title: "Mapa sin señal",
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.5, 1],
               sheetGrabberVisible: true,
             }}
           />

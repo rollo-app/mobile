@@ -144,9 +144,19 @@ jest.mock("@maplibre/maplibre-react-native", () => {
       getPacks: jest.fn(async () => []),
       setTileCountLimit: jest.fn(),
       deletePack: jest.fn(),
+      clearAmbientCache: jest.fn(),
+      addListener: jest.fn(async () => {}),
+      removeListener: jest.fn(),
     },
   };
 });
+
+// Network state is native: in tests the phone has no connection (so nothing tries to download maps).
+jest.mock("expo-network", () => ({
+  NetworkStateType: { NONE: "NONE", UNKNOWN: "UNKNOWN", WIFI: "WIFI", CELLULAR: "CELLULAR" },
+  getNetworkStateAsync: jest.fn(async () => ({ type: "NONE", isConnected: false, isInternetReachable: false })),
+  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
 
 // The map style is written to Documents (expo-file-system, native): in tests it's a fixed path.
 jest.mock("@/features/map/style-file", () => ({
@@ -328,8 +338,3 @@ jest.mock("expo-video", () => {
   return { useVideoPlayer: jest.fn(() => ({ loop: false })), VideoView: View };
 });
 
-// expo-network is native: online, and no events.
-jest.mock("expo-network", () => ({
-  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
-  getNetworkStateAsync: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })),
-}));

@@ -1,0 +1,38 @@
+import { OfflineManager } from "@maplibre/maplibre-react-native";
+import { renderRouter, screen, fireEvent, waitFor } from "expo-router/testing-library";
+import { Alert, type AlertButton } from "react-native";
+import { saveSession } from "@/storage/trips";
+import { routes } from "@/test/routes";
+
+const pack = {
+  id: "p1",
+  metadata: { name: "rollo:t1:detail:-49.33,-72.89", center: [-72.89, -49.33], radiusKm: 40, expiresAt: Date.now() + 1e9 },
+  status: async () => ({ id: "p1", state: "complete", percentage: 100, completedResourceSize: 5 * 1024 * 1024 }),
+};
+
+describe("offline map screens", () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await saveSession({ tripId: "t1", tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "tok" });
+    jest.mocked(OfflineManager.getPacks).mockResolvedValue([pack] as never);
+  });
+
+  it("shows the state in Vos and opens the zones", async () => {
+    await renderRouter(routes, { initialUrl: "/me" });
+    await fireEvent.press(await screen.findByLabelText("Mapa sin señal, Listo · 1 zona · 5 MB"));
+    expect(screen).toHavePathname("/offline-maps");
+    expect(await screen.findByText("Viaje al sur · Detallada")).toBeTruthy();
+  });
+
+  it("asks for confirmation before deleting the maps", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await renderRouter(routes, { initialUrl: "/offline-maps" });
+    await fireEvent.press(await screen.findByLabelText("Borrar mapas sin señal"));
+
+    expect(OfflineManager.deletePack).not.toHaveBeenCalled();
+    const buttons = alert.mock.calls[0]![2] as AlertButton[];
+    await buttons.find((b) => b.style === "destructive")!.onPress!();
+    await waitFor(() => expect(OfflineManager.clearAmbientCache).toHaveBeenCalled());
+    expect(OfflineManager.deletePack).toHaveBeenCalledWith("p1");
+  });
+});
