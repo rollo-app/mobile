@@ -28,11 +28,26 @@ export function formatMegabytes(bytes: number): string {
   return `${Math.round(mb)} MB`;
 }
 
-export type SaveContext = { token: string; albumName: string; baseUrl?: string };
+export type SaveContext = {
+  token: string;
+  albumName: string;
+  baseUrl?: string;
+};
 
 /**
- * Saves originals into the roll's album in Photos. Downloads run in parallel; creating the album
- * (or finding it) is serialized so concurrent saves don't create it twice.
+ * Full access to the library: iOS requires it to find or create albums (`Album.get`/`Album.create`),
+ * while adding assets only needs add-only permission. False means "save to Recents instead".
+ */
+export async function requestAlbumAccess(): Promise<boolean> {
+  const permission = await requestPermissionsAsync(false);
+  return permission.granted && (permission as { accessPrivileges?: string }).accessPrivileges === "all";
+}
+
+/**
+ * Saves originals to Photos. By default they go to Recents (add-only permission, no album);
+ * with `{ album: true }` they go into the roll's album, which needs `requestAlbumAccess()` first.
+ * Downloads run in parallel; creating the album (or finding it) is serialized so concurrent saves
+ * don't create it twice.
  */
 export function createSaver({ token, albumName, baseUrl = API_URL }: SaveContext) {
   let album: Album | null = null;
@@ -49,7 +64,10 @@ export function createSaver({ token, albumName, baseUrl = API_URL }: SaveContext
     await task;
   }
 
-  return async function save(photo: RevealedPhoto): Promise<void> {
+  return async function save(
+    photo: RevealedPhoto,
+    { album: inAlbum = false }: { album?: boolean } = {},
+  ): Promise<void> {
     const permission = await requestPermissionsAsync(true);
     if (!permission.granted) throw new PermissionDeniedError(permission.canAskAgain);
     const extension = photo.type === "video" ? "mp4" : "jpg";
@@ -58,7 +76,8 @@ export function createSaver({ token, albumName, baseUrl = API_URL }: SaveContext
       const file = await File.downloadFileAsync(`${baseUrl}${photo.originalPath}`, target, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      await addToAlbum(file.uri);
+      if (inAlbum) await addToAlbum(file.uri);
+      else await Asset.create(file.uri);
     } finally {
       try {
         target.delete();
@@ -69,7 +88,11 @@ export function createSaver({ token, albumName, baseUrl = API_URL }: SaveContext
   };
 }
 
-export type DownloadResult = { saved: number; failed: RevealedPhoto[]; cancelled: boolean };
+export type DownloadResult = {
+  saved: number;
+  failed: RevealedPhoto[];
+  cancelled: boolean;
+};
 
 /**
  * Runs `save` over all photos, 3 at a time. Each one gets a second try; the ones that still fail
@@ -78,7 +101,13 @@ export type DownloadResult = { saved: number; failed: RevealedPhoto[]; cancelled
 export async function downloadAll(
   photos: RevealedPhoto[],
   save: (photo: RevealedPhoto) => Promise<void>,
-  { signal, onProgress }: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void },
+  {
+    signal,
+    onProgress,
+  }: {
+    signal?: AbortSignal;
+    onProgress?: (done: number, total: number) => void;
+  },
 ): Promise<DownloadResult> {
   let next = 0;
   let done = 0;
@@ -109,5 +138,9 @@ export async function downloadAll(
 
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, photos.length) }, worker));
   if (denied) throw denied;
-  return { saved, failed, cancelled: !!signal?.aborted && done < photos.length };
+  return {
+    saved,
+    failed,
+    cancelled: !!signal?.aborted && done < photos.length,
+  };
 }

@@ -1,4 +1,3 @@
-import { MenuView } from "@expo/ui/community/menu";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
@@ -15,14 +14,20 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { memberColor } from "@/features/map/member-color";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { authorsOf, chunkRows, filterByAuthor, groupByDay } from "./group";
 import { PermissionNotice } from "./permission-notice";
-import { downloadAll, estimateBytes, formatMegabytes, PermissionDeniedError } from "./save";
+import {
+  albumTitle,
+  downloadAll,
+  estimateBytes,
+  formatMegabytes,
+  PermissionDeniedError,
+  requestAlbumAccess,
+} from "./save";
 import { useSaver } from "./use-saver";
 
 const COLUMNS = 3;
@@ -30,10 +35,18 @@ const GAP = 2;
 
 type Bar =
   | { kind: "progress"; done: number; total: number }
-  | { kind: "result"; saved: number; failed: RevealedPhoto[]; cancelled: boolean }
+  | {
+      kind: "result";
+      saved: number;
+      failed: RevealedPhoto[];
+      cancelled: boolean;
+      album: boolean;
+      recents: boolean;
+    }
   | { kind: "denied" };
 
-const formatDuration = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
+const formatDuration = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
 
 const Cell = memo(function Cell({
   photo,
@@ -71,11 +84,21 @@ const Cell = memo(function Cell({
       {photo.type === "video" && (
         <View style={styles.video}>
           <SymbolView name="play.fill" size={10} tintColor="#FFFFFF" />
-          {photo.durationS !== null && <Text style={[type.caption, styles.videoText]}>{formatDuration(photo.durationS)}</Text>}
+          {photo.durationS !== null && (
+            <Text style={[type.caption, styles.videoText]}>{formatDuration(photo.durationS)}</Text>
+          )}
         </View>
       )}
       {selecting && (
-        <View style={[styles.check, selected && { backgroundColor: colors.tint, borderColor: colors.tint }]}>
+        <View
+          style={[
+            styles.check,
+            selected && {
+              backgroundColor: colors.tint,
+              borderColor: colors.tint,
+            },
+          ]}
+        >
           {selected && <SymbolView name="checkmark" size={12} weight="bold" tintColor={colors.onTint as string} />}
         </View>
       )}
@@ -102,7 +125,11 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
   const authors = useMemo(() => authorsOf(photos), [photos]);
   const shown = useMemo(() => filterByAuthor(photos, authorId), [photos, authorId]);
   const sections = useMemo(
-    () => groupByDay(shown).map((s) => ({ title: s.title, data: chunkRows(s.photos, COLUMNS) })),
+    () =>
+      groupByDay(shown).map((s) => ({
+        title: s.title,
+        data: chunkRows(s.photos, COLUMNS),
+      })),
     [shown],
   );
   const author = authors.find((a) => a.id === authorId);
@@ -116,29 +143,44 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
           return next;
         });
       } else {
-        router.push({ pathname: "/photo/[id]", params: { id: photo.id, tripId } });
+        router.push({
+          pathname: "/photo/[id]",
+          params: { id: photo.id, tripId },
+        });
       }
     },
     [selecting, router, tripId],
   );
+
+  const allSelected = shown.length > 0 && shown.every((p) => selected.has(p.id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(shown.map((p) => p.id)));
 
   function stopSelecting() {
     setSelecting(false);
     setSelected(new Set());
   }
 
-  async function run(list: RevealedPhoto[]) {
+  /** `album`: put them in the roll's album; `recents`: the album was wanted but iOS access was limited. */
+  async function run(list: RevealedPhoto[], { album = false, recents = false } = {}) {
     if (!saver || list.length === 0) return;
     const controller = new AbortController();
     abort.current = controller;
     setBar({ kind: "progress", done: 0, total: list.length });
     try {
-      const result = await downloadAll(list, saver, {
+      const result = await downloadAll(list, (photo) => saver(photo, { album }), {
         signal: controller.signal,
         onProgress: (done, total) => setBar({ kind: "progress", done, total }),
       });
-      setBar({ kind: "result", saved: result.saved, failed: result.failed, cancelled: result.cancelled });
-      if (result.saved > 0 && result.failed.length === 0) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setBar({
+        kind: "result",
+        saved: result.saved,
+        failed: result.failed,
+        cancelled: result.cancelled,
+        album,
+        recents,
+      });
+      if (result.saved > 0 && result.failed.length === 0)
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       stopSelecting();
     } catch (e) {
       if (e instanceof PermissionDeniedError) setBar({ kind: "denied" });
@@ -148,30 +190,63 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
     }
   }
 
+  async function saveAll() {
+    // Only "Guardar todo" uses the album, and iOS wants full library access to create it.
+    const album = await requestAlbumAccess();
+    await run(photos, { album, recents: !album });
+  }
+
   function confirmSaveAll() {
     Alert.alert(
       `Guardar ${photos.length} ${photos.length === 1 ? "foto" : "fotos"} en Fotos`,
-      `Ocupa ~${formatMegabytes(estimateBytes(photos))}. Conviene Wi-Fi.`,
-      [{ text: "Cancelar", style: "cancel" }, { text: "Guardar", onPress: () => void run(photos) }],
+      `Ocupa ~${formatMegabytes(estimateBytes(photos))}. Conviene Wi-Fi.\n\nPara crear el álbum «${albumTitle(detail?.trip.name ?? "")}» iOS pide acceso a tus fotos.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Guardar", onPress: () => void saveAll() },
+      ],
     );
   }
 
   const busy = bar?.kind === "progress";
-  const headerRight = () =>
-    selecting ? (
-      <Pressable accessibilityRole="button" accessibilityLabel="Cancelar selección" onPress={stopSelecting}>
-        <Text style={[type.body, styles.action]}>Cancelar</Text>
-      </Pressable>
-    ) : (
-      <View style={styles.headerActions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Seleccionar" disabled={busy || photos.length === 0} onPress={() => setSelecting(true)}>
-          <Text style={[type.body, styles.action, (busy || photos.length === 0) && styles.disabled]}>Seleccionar</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Guardar todo" disabled={busy || !saver || photos.length === 0} onPress={confirmSaveAll}>
-          <Text style={[type.body, styles.action, (busy || !saver || photos.length === 0) && styles.disabled]}>Guardar todo</Text>
-        </Pressable>
-      </View>
-    );
+  const canSaveAll = !busy && !!saver && photos.length > 0;
+
+  const toolbar = (
+    <>
+      {selecting && (
+        <Stack.Toolbar placement="left">
+          <Stack.Toolbar.Button onPress={toggleAll}>
+            {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
+          </Stack.Toolbar.Button>
+        </Stack.Toolbar>
+      )}
+      <Stack.Toolbar placement="right">
+        {/* Direct children only: the header drops Fragments, which is how both buttons once vanished. */}
+        {selecting && <Stack.Toolbar.Button onPress={stopSelecting}>Cancelar</Stack.Toolbar.Button>}
+        {!selecting && (
+          <Stack.Toolbar.Button disabled={busy || photos.length === 0} onPress={() => setSelecting(true)}>
+            Seleccionar
+          </Stack.Toolbar.Button>
+        )}
+        {!selecting && (
+          <Stack.Toolbar.Menu icon="ellipsis.circle" accessibilityLabel="Más opciones">
+            <Stack.Toolbar.Menu title="Filtrar por persona" icon="person.2">
+              <Stack.Toolbar.MenuAction isOn={authorId === null} onPress={() => setAuthorId(null)}>
+                Todos
+              </Stack.Toolbar.MenuAction>
+              {authors.map((a) => (
+                <Stack.Toolbar.MenuAction key={a.id} isOn={authorId === a.id} onPress={() => setAuthorId(a.id)}>
+                  {a.name}
+                </Stack.Toolbar.MenuAction>
+              ))}
+            </Stack.Toolbar.Menu>
+            <Stack.Toolbar.MenuAction icon="square.and.arrow.down" disabled={!canSaveAll} onPress={confirmSaveAll}>
+              Guardar todo en Fotos
+            </Stack.Toolbar.MenuAction>
+          </Stack.Toolbar.Menu>
+        )}
+      </Stack.Toolbar>
+    </>
+  );
 
   let body;
   if (loading) body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
@@ -198,6 +273,21 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
         extraData={[selecting, selected, token]}
+        ListHeaderComponent={
+          author ? (
+            <View style={styles.filter}>
+              <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${author.name}`}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Quitar filtro"
+                hitSlop={10}
+                onPress={() => setAuthorId(null)}
+              >
+                <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
+              </Pressable>
+            </View>
+          ) : undefined
+        }
         renderSectionHeader={({ section }) => (
           <Text accessibilityRole="header" style={[type.headline, styles.header]}>
             {section.title}
@@ -219,42 +309,34 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
           </View>
         )}
         ListEmptyComponent={
-          <Text style={[type.body, styles.empty]}>{author ? `${author.name} no sacó fotos` : "Este rollo no tiene fotos"}</Text>
+          <Text style={[type.body, styles.empty]}>
+            {author ? `${author.name} no sacó fotos` : "Este rollo no tiene fotos"}
+          </Text>
         }
       />
     );
 
+  // No wrapping View: the list must be the screen's first child for the native header to find it as the
+  // main scroll view (large title collapses, edge effect). Stack.Screen and Toolbar render nothing.
   return (
-    <View style={styles.fill}>
-      <Stack.Screen options={{ headerRight }} />
-      {photos.length > 0 && (
-        <View style={styles.filter}>
-          <MenuView
-            title="Personas"
-            actions={[
-              { id: "all", title: "Todos", state: authorId === null ? ("on" as const) : ("off" as const) },
-              ...authors.map((a) => ({ id: a.id, title: a.name, state: authorId === a.id ? ("on" as const) : ("off" as const) })),
-            ]}
-            onPressAction={({ nativeEvent }) => setAuthorId(nativeEvent.event === "all" ? null : nativeEvent.event)}
-          >
-            <View style={styles.pill}>
-              {author && <View style={[styles.dot, { backgroundColor: memberColor(author.id) }]} />}
-              <SymbolView name="person.2" size={15} tintColor={(author ? colors.tint : colors.label) as string} />
-              <Text style={[type.subhead, { color: author ? colors.tint : colors.label }]} numberOfLines={1}>
-                {author?.name ?? "Personas"}
-              </Text>
-            </View>
-          </MenuView>
-        </View>
-      )}
+    <>
       {body}
+      {/* Large title that collapses with the list (contentInsetAdjustmentBehavior), like Photos. Switching rolls lives in Vos. */}
+      <Stack.Screen options={{ title: "Galería", headerLargeTitle: true }} />
+      {toolbar}
       {(bar || selecting) && (
         <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
           {bar?.kind === "progress" ? (
             <>
               <View style={styles.barRow}>
-                <Text style={[type.subhead, { color: colors.label }]}>{`Guardando ${Math.min(bar.done + 1, bar.total)} de ${bar.total}`}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="Cancelar descarga" onPress={() => abort.current?.abort()}>
+                <Text
+                  style={[type.subhead, { color: colors.label }]}
+                >{`Guardando ${Math.min(bar.done + 1, bar.total)} de ${bar.total}`}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar descarga"
+                  onPress={() => abort.current?.abort()}
+                >
                   <Text style={[type.subhead, styles.action]}>Cancelar</Text>
                 </Pressable>
               </View>
@@ -268,11 +350,18 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
             </View>
           ) : bar?.kind === "result" ? (
             <View style={styles.barRow}>
-              <Text style={[type.subhead, { color: colors.label, flex: 1 }]}>
-                {resultText(bar)}
-              </Text>
+              <Text style={[type.subhead, { color: colors.label, flex: 1 }]}>{resultText(bar)}</Text>
               {bar.failed.length > 0 && (
-                <Pressable accessibilityRole="button" accessibilityLabel="Reintentar" onPress={() => void run(bar.failed)}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Reintentar"
+                  onPress={() =>
+                    void run(bar.failed, {
+                      album: bar.album,
+                      recents: bar.recents,
+                    })
+                  }
+                >
                   <Text style={[type.subhead, styles.action]}>Reintentar</Text>
                 </Pressable>
               )}
@@ -289,7 +378,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
           )}
         </View>
       )}
-    </View>
+    </>
   );
 }
 
@@ -297,31 +386,53 @@ function resultText(bar: Extract<Bar, { kind: "result" }>) {
   const noun = (n: number) => `${n} ${n === 1 ? "foto" : "fotos"}`;
   if (bar.failed.length > 0) return `Se guardaron ${bar.saved}. No se pudieron guardar ${noun(bar.failed.length)}.`;
   if (bar.cancelled) return `Se guardaron ${noun(bar.saved)} antes de cancelar.`;
+  if (bar.recents) return `Se guardaron ${noun(bar.saved)} en Recientes`;
+  if (bar.recents) return `Se guardaron ${noun(bar.saved)} en Recientes`;
   return `Guardadas ${bar.saved} ✓`;
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.background },
-  filter: { flexDirection: "row", paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  pill: {
+  filter: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.fill,
+    paddingTop: spacing.sm,
   },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  header: { color: colors.label, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
+  header: {
+    color: colors.label,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
   row: { flexDirection: "row", gap: GAP, marginBottom: GAP },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, padding: spacing.lg },
-  empty: { color: colors.secondaryLabel, textAlign: "center", padding: spacing.xl },
-  headerActions: { flexDirection: "row", gap: spacing.md },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.md,
+    padding: spacing.lg,
+  },
+  empty: {
+    color: colors.secondaryLabel,
+    textAlign: "center",
+    padding: spacing.xl,
+  },
   action: { color: colors.tint },
-  disabled: { opacity: 0.35 },
-  video: { position: "absolute", left: 4, bottom: 4, flexDirection: "row", alignItems: "center", gap: 3 },
-  videoText: { color: "#FFFFFF", fontVariant: ["tabular-nums"], textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 2 },
+  video: {
+    position: "absolute",
+    left: 4,
+    bottom: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  videoText: {
+    color: "#FFFFFF",
+    fontVariant: ["tabular-nums"],
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowRadius: 2,
+  },
   check: {
     position: "absolute",
     right: 5,
@@ -346,7 +457,17 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.separator,
   },
-  barRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
-  track: { height: 4, borderRadius: 2, backgroundColor: colors.fill, overflow: "hidden" },
+  barRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  track: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.fill,
+    overflow: "hidden",
+  },
   fillBar: { height: 4, backgroundColor: colors.label },
 });

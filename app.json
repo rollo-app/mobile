@@ -45,7 +45,7 @@
         {
           "cameraPermission": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
           "microphonePermission": "Rollo usa el micrófono para el sonido de los videos.",
-          "photosPermission": false
+          "photosPermission": "Rollo usa el acceso a tus fotos solo para crear el álbum del rollo cuando guardás todo."
         }
       ],
       [
@@ -75,7 +75,7 @@
         "expo-media-library",
         {
           "savePhotosPermission": "Rollo guarda en tu carrete las fotos y videos del rollo que elijas.",
-          "photosPermission": false
+          "photosPermission": "Rollo usa el acceso a tus fotos solo para crear el álbum del rollo cuando guardás todo."
         }
       ]
     ],

@@ -1,6 +1,7 @@
 import { act } from "@testing-library/react-native";
 import { Alert, Linking } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import { requestPermissionsAsync } from "expo-media-library";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { PermissionDeniedError } from "@/features/gallery/save";
 import * as actions from "@/features/trips/actions";
@@ -14,9 +15,13 @@ jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success" },
 }));
 const mockSaveOne = jest.fn();
+const mockSaveOpts = jest.fn();
 jest.mock("@/features/gallery/save", () => ({
   ...jest.requireActual("@/features/gallery/save"),
-  createSaver: jest.fn(() => (photo: unknown) => mockSaveOne(photo)),
+  createSaver: jest.fn(() => (photo: unknown, opts?: unknown) => {
+    mockSaveOpts(opts);
+    return mockSaveOne(photo);
+  }),
 }));
 const mocked = jest.mocked(actions);
 const { __camera: camera } = jest.requireMock("@maplibre/maplibre-react-native") as { __camera: { flyTo: jest.Mock } };
@@ -63,18 +68,35 @@ const item = (id: string, over: Partial<actions.Feed["items"][number]> = {}): ac
   ...over,
 });
 
-const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: true, revealAt: Date.now() - DAY, items });
+const feed = (items: actions.Feed["items"]): actions.Feed => ({
+  revealed: true,
+  revealAt: Date.now() - DAY,
+  items,
+});
 
-const galleryRoutes = { ...routes, gallery: () => <GalleryScreen tripId={SUR} /> };
+const galleryRoutes = {
+  ...routes,
+  gallery: () => <GalleryScreen tripId={SUR} />,
+};
 let alert: jest.SpyInstance;
 
 beforeEach(async () => {
+  mockSaveOpts.mockReset();
+  jest.mocked(requestPermissionsAsync).mockClear();
   mockSaveOne.mockReset().mockResolvedValue(undefined);
   mocked.fetchTrip.mockResolvedValue(detail());
   mocked.fetchFeed.mockResolvedValue(feed([]));
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   await markPresentationSeen(SUR); // the first-open presentation would cover these screens
-  await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
+  await saveSession({
+    tripId: SUR,
+    tripName: "Viaje al sur",
+    joinCode: "HUB5FT",
+    memberId: "m1",
+    memberName: "Juani",
+    role: "admin",
+    token: "t",
+  });
 });
 afterEach(() => alert.mockRestore());
 
@@ -86,8 +108,17 @@ const open = () => renderRouter(galleryRoutes, { initialUrl: "/gallery" });
 const two = () =>
   feed([
     item("a", { takenAt: Date.parse("2027-01-12T15:00:00Z") }),
-    item("b", { takenAt: Date.parse("2027-01-12T16:00:00Z"), author: { id: "m1", name: "Juani" }, caption: "el glaciar" }),
-    item("c", { day: "2027-01-13", takenAt: Date.parse("2027-01-13T16:00:00Z"), type: "video", durationS: 12 }),
+    item("b", {
+      takenAt: Date.parse("2027-01-12T16:00:00Z"),
+      author: { id: "m1", name: "Juani" },
+      caption: "el glaciar",
+    }),
+    item("c", {
+      day: "2027-01-13",
+      takenAt: Date.parse("2027-01-13T16:00:00Z"),
+      type: "video",
+      durationS: 12,
+    }),
   ]);
 
 describe("Gallery", () => {
@@ -104,11 +135,87 @@ describe("Gallery", () => {
     mocked.fetchFeed.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByText("Solo Juani")).toBeNull();
     await fireEvent.press(screen.getByRole("menuitem", { name: "Juani" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(1);
     expect(screen.queryByText("Miércoles 13 de enero")).toBeNull();
+    expect(screen.getByText("Solo Juani")).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Juani" }).props.accessibilityState).toMatchObject({ checked: true });
     await fireEvent.press(screen.getByRole("menuitem", { name: "Todos" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+    expect(screen.queryByText("Solo Juani")).toBeNull();
+  });
+
+  it("the ✕ on the active filter goes back to everyone", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
+    expect(screen.getByText("Solo Fede")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Quitar filtro" }));
+    expect(screen.queryByText("Solo Fede")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("the header title is Galería, not the route name", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByText("index")).toBeNull();
+    expect(screen.queryByText("gallery")).toBeNull();
+    expect(screen.queryByLabelText(/cambiar de rollo/)).toBeNull();
+  });
+
+  it("the ⋯ menu offers the filter and saving everything", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.getByLabelText("Filtrar por persona")).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Todos" }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Guardar todo" })).toBeNull();
+  });
+
+  it("has Seleccionar and the ⋯ menu together in the header toolbar", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.getByRole("button", { name: "Seleccionar" })).toBeVisible();
+    expect(screen.getByLabelText("Más opciones")).toBeTruthy();
+  });
+
+  it("Seleccionar todo selects every visible photo and toggles to Deseleccionar todo", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByRole("button", { name: "Seleccionar todo" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar todo" }));
+    expect(screen.getByRole("button", { name: "Guardar (3)" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Seleccionar todo" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Deseleccionar todo" }));
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Seleccionar todo" })).toBeVisible();
+  });
+
+  it("Seleccionar todo respects the person filter", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar todo" }));
+    expect(screen.getByRole("button", { name: "Guardar (2)" })).toBeVisible();
+  });
+
+  it("Seleccionar becomes Cancelar while selecting", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.getByRole("button", { name: "Seleccionar" })).toBeVisible();
   });
 
   it("shows an empty state", async () => {
@@ -152,13 +259,59 @@ describe("Gallery", () => {
     mocked.fetchFeed.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
-    await fireEvent.press(screen.getByRole("button", { name: "Guardar todo" }));
-    expect(alert).toHaveBeenCalledWith("Guardar 3 fotos en Fotos", expect.stringMatching(/^Ocupa ~\d+ MB\. Conviene Wi-Fi\.$/), expect.any(Array));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
+    expect(alert).toHaveBeenCalledWith(
+      "Guardar 3 fotos en Fotos",
+      expect.stringMatching(
+        /^Ocupa ~\d+ MB\. Conviene Wi-Fi\.\n\nPara crear el álbum «Rollo · Viaje al sur» iOS pide acceso a tus fotos\.$/,
+      ),
+      expect.any(Array),
+    );
     expect(mockSaveOne).not.toHaveBeenCalled();
 
     await confirmSave();
     await waitFor(() => expect(mockSaveOne).toHaveBeenCalledTimes(3));
     expect(await screen.findByText("Guardadas 3 ✓")).toBeVisible();
+  });
+
+  it("Guardar todo asks for full access and saves into the album when granted", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
+    await confirmSave();
+    await waitFor(() => expect(mockSaveOne).toHaveBeenCalledTimes(3));
+    expect(requestPermissionsAsync).toHaveBeenCalledWith(false);
+    expect(mockSaveOpts).toHaveBeenCalledWith({ album: true });
+    expect(await screen.findByText("Guardadas 3 ✓")).toBeVisible();
+  });
+
+  it("Guardar todo without full access saves to Recientes and says so", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    jest.mocked(requestPermissionsAsync).mockResolvedValueOnce({
+      granted: true,
+      canAskAgain: true,
+      accessPrivileges: "limited",
+    } as never);
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
+    await confirmSave();
+    await waitFor(() => expect(mockSaveOne).toHaveBeenCalledTimes(3));
+    expect(mockSaveOpts).toHaveBeenCalledWith({ album: false });
+    expect(await screen.findByText("Se guardaron 3 fotos en Recientes")).toBeVisible();
+  });
+
+  it("saving a selection never uses the album", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar todo" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Guardar (3)" }));
+    await waitFor(() => expect(mockSaveOne).toHaveBeenCalledTimes(3));
+    expect(requestPermissionsAsync).not.toHaveBeenCalledWith(false);
+    expect(mockSaveOpts).not.toHaveBeenCalledWith({ album: true });
   });
 
   it("reports how many could not be saved", async () => {
@@ -168,7 +321,7 @@ describe("Gallery", () => {
     });
     await open();
     await screen.findByText("Martes 12 de enero");
-    await fireEvent.press(screen.getByRole("button", { name: "Guardar todo" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
     await confirmSave();
     expect(await screen.findByText("Se guardaron 2. No se pudieron guardar 1 foto.")).toBeVisible();
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeVisible();
@@ -180,7 +333,7 @@ describe("Gallery", () => {
     const settings = jest.spyOn(Linking, "openSettings").mockResolvedValue();
     await open();
     await screen.findByText("Martes 12 de enero");
-    await fireEvent.press(screen.getByRole("button", { name: "Guardar todo" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
     await confirmSave();
     await fireEvent.press(await screen.findByRole("button", { name: "Abrir Ajustes" }));
     expect(settings).toHaveBeenCalled();
@@ -213,7 +366,9 @@ describe("Photo viewer", () => {
     await openViewer("b");
     await fireEvent.press(await screen.findByRole("button", { name: "Ver en el mapa" }));
     await waitFor(() => expect(screen).toHavePathname("/map"));
-    await waitFor(() => expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33] })));
+    await waitFor(() =>
+      expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33] })),
+    );
   });
 
   it("hides Ver en el mapa for a photo without location", async () => {
