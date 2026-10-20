@@ -1,5 +1,6 @@
 import { Album, Asset, requestPermissionsAsync } from "expo-media-library";
 import { File } from "expo-file-system";
+import { embedMetadataIfMissing } from "@/features/exif/embed";
 import type { RevealedPhoto } from "@/features/media/revealed";
 import {
   PermissionDeniedError,
@@ -10,6 +11,8 @@ import {
   estimateBytes,
   formatMegabytes,
 } from "../save";
+
+jest.mock("@/features/exif/embed", () => ({ embedMetadataIfMissing: jest.fn(async () => true) }));
 
 const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => ({
   id,
@@ -32,6 +35,7 @@ const ctx = {
   token: "tok",
   albumName: "Rollo · Sur",
   baseUrl: "https://api.test",
+  timeZone: "America/Argentina/Buenos_Aires",
 };
 
 beforeEach(() => {
@@ -64,6 +68,33 @@ describe("createSaver", () => {
     expect(Album.get).not.toHaveBeenCalled();
     expect(Album.create).not.toHaveBeenCalled();
     expect((File as any).deleted).toBe(1);
+  });
+
+  it("fills in missing metadata from the feed data before adding a photo to Photos", async () => {
+    const order: string[] = [];
+    (embedMetadataIfMissing as jest.Mock).mockImplementationOnce(async () => void order.push("embed"));
+    (Asset.create as jest.Mock).mockImplementationOnce(async () => void order.push("create"));
+    const withData = { ...photo("a"), takenAt: 1_800_000_000_000, lat: -50.3, lng: -72.2, caption: "Viento", author: { id: "m1", name: "Cami" } };
+    await createSaver(ctx)(withData);
+    expect(embedMetadataIfMissing).toHaveBeenCalledWith(expect.anything(), {
+      takenAt: 1_800_000_000_000,
+      timeZone: "America/Argentina/Buenos_Aires",
+      location: { lat: -50.3, lng: -72.2, accuracyM: null },
+      caption: "Viento",
+      author: "Cami",
+    });
+    expect(order).toEqual(["embed", "create"]);
+  });
+
+  it("passes no location when the photo has none", async () => {
+    await createSaver(ctx)(photo("a"));
+    expect(embedMetadataIfMissing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ location: null }));
+  });
+
+  it("leaves videos untouched", async () => {
+    await createSaver(ctx)(photo("v", "video"));
+    expect(embedMetadataIfMissing).not.toHaveBeenCalled();
+    expect(Asset.create).toHaveBeenCalledTimes(1);
   });
 
   it("downloads the original with the bearer token and creates the album the first time", async () => {

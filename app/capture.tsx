@@ -93,7 +93,15 @@ export default function CaptureScreen() {
     setState({ kind: "preview", shot, sending: true, error: null });
     try {
       const id = Crypto.randomUUID();
-      const [location, prepared] = await Promise.all([fix.current, prepareMedia(shot.asset, id)]);
+      // The EXIF written into the photo needs the fix, so prepare after it (it has its own timeout).
+      const location = await fix.current;
+      const prepared = await prepareMedia(shot.asset, id, {
+        takenAt: shot.takenAt,
+        timeZone,
+        location,
+        caption: caption.trim() || null,
+        author: trip.memberName,
+      });
       await (await getQueue()).enqueue({
         id,
         tripId: trip.tripId,

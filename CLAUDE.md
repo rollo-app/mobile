@@ -19,6 +19,8 @@ Decisiones de producto:
   del caché local.
 - **Fotos a resolución completa** (~4000 px, JPEG 85–90 %, para imprimir) + **thumbnail ~800 px** que
   genera el celular. **Videos de hasta 15 s**, comprimidos a 1080p en el celular.
+- **Metadatos:** al mandar, la foto lleva EXIF (fecha/hora local del rollo con offset, GPS, `Software: Rollo`) y XMP
+  con caption y autor en Unicode (`piexifjs`, JS puro). Al guardar en Fotos se inyectan si el original no tiene fecha.
 - **Límite diario** de fotos y videos por persona (lo aplica el server).
 - **Offline first:** al disparar se guardan foto, hora (UTC + zona) y GPS. Pedir ubicación apenas se
   abre la cámara; sin fix, usar la última conocida y guardar su precisión. Cola local en SQLite, subida
@@ -117,7 +119,7 @@ src/
                           __tests__/      tests de esa lógica, al lado del código
                         Dominios: trips (el rollo: sesión activa, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
-                        (grilla, visor, descargas), presentation, reveal, notifications, roll (tablero).
+                        (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications, roll (tablero).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, Button,
                         Field, Body, Footnote, ErrorText, Loading
   api/                  cliente generado del contrato (schema.d.ts NO se edita a mano) + client.ts
