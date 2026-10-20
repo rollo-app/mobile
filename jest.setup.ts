@@ -28,13 +28,18 @@ jest.mock("@/features/capture/store", () => {
 jest.mock("expo-file-system", () => {
   class File {
     constructor(..._parts: unknown[]) {}
+    uri = "file:///cache/tmp";
     get exists() {
       return true;
     }
     async upload(_url: string, _options?: unknown) {
       return { status: 200, body: "" };
     }
-    delete() {}
+    delete() {
+      (File as any).deleted += 1;
+    }
+    static deleted = 0;
+    static downloadFileAsync = jest.fn(async (_url: string, destination: unknown, _options?: unknown) => destination);
   }
   class Directory {
     constructor(..._parts: unknown[]) {}
@@ -272,3 +277,20 @@ jest.mock("expo-background-task", () => ({
   Toolbar.View = ({ children }: any) => React.createElement(View, null, children);
   Object.defineProperty(Stack, "Toolbar", { value: Toolbar, configurable: true });
 }
+
+// Saving to Photos is native (expo-media-library): in tests the permission is granted and the album doesn't exist.
+jest.mock("expo-media-library", () => ({
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+  Asset: { create: jest.fn(async () => ({ id: "asset" })) },
+  Album: { get: jest.fn(async () => null), create: jest.fn(async () => ({ id: "album" })) },
+}));
+
+beforeEach(() => {
+  (require("expo-file-system").File as { deleted: number }).deleted = 0;
+});
+
+// expo-video is native: in tests the player is an empty object and the view an empty View.
+jest.mock("expo-video", () => {
+  const { View } = require("react-native");
+  return { useVideoPlayer: jest.fn(() => ({ loop: false })), VideoView: View };
+});
