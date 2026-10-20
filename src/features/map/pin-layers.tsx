@@ -18,12 +18,15 @@ type PressEvent = NativeSyntheticEvent<{ features: GeoJSON.Feature[] }>;
 export function PinLayers({
   data,
   selectedId,
+  selectedClusterId,
   haloColor,
   sourceRef,
   onPress,
 }: {
   data: PinCollection;
   selectedId: string | null;
+  /** Tapped cluster, highlighted while its photos are in the carousel. */
+  selectedClusterId: number | null;
   /** Cobalt (hex) for the selected pin's halo. */
   haloColor: string;
   sourceRef: Ref<GeoJSONSourceRef>;
@@ -48,6 +51,17 @@ export function PinLayers({
           "circle-radius": ["step", ["get", "point_count"], 18, 10, 22, 50, 26],
           "circle-stroke-width": 2,
           "circle-stroke-color": "#FFFFFF",
+        }}
+      />
+      <Layer
+        id="pins-cluster-selected"
+        type="circle"
+        filter={["all", ["has", "point_count"], ["==", ["get", "cluster_id"], selectedClusterId ?? -1]]}
+        paint={{
+          "circle-color": "#1C1C1E",
+          "circle-radius": ["step", ["get", "point_count"], 23, 10, 27, 50, 31],
+          "circle-stroke-width": 3,
+          "circle-stroke-color": haloColor,
         }}
       />
       <Layer

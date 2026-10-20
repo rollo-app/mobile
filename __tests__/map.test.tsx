@@ -1,4 +1,4 @@
-import { Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
@@ -8,7 +8,11 @@ import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
 const mocked = jest.mocked(actions);
-const { __camera: camera } = jest.requireMock("@maplibre/maplibre-react-native") as { __camera: { flyTo: jest.Mock } };
+const { __camera: camera, __getClusterLeaves: getClusterLeaves, __mapProps: mapProps } = jest.requireMock("@maplibre/maplibre-react-native") as {
+  __camera: { flyTo: jest.Mock; easeTo: jest.Mock };
+  __getClusterLeaves: jest.Mock;
+  __mapProps: { current: Record<string, any> };
+};
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -125,6 +129,14 @@ describe("Map", () => {
     expect(screen.queryByLabelText("pin ayer")).toBeNull();
   });
 
+  it("once the roll is revealed there is no Hoy filter, only Personas", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
+    await renderRouter(routes, { initialUrl: "/map" });
+
+    expect(await screen.findByText("Personas")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Hoy" })).toBeNull();
+  });
+
   it("the Personas menu filters by person and also lets you go back to everyone", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani" } })]),
@@ -182,22 +194,68 @@ describe("Map", () => {
     expect(screen.getByLabelText("mapa")).toBeVisible();
   });
 
-  it("a cluster that cannot be opened by zooming (same point) opens the carousel with its leaves", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+  describe("tapping a cluster", () => {
+    const clusterFeed = () =>
       feed([
         feedItem({ id: "a", caption: "una", takenAt: 1 }),
         feedItem({ id: "b", caption: "dos", takenAt: 2 }),
         feedItem({ id: "c", caption: "tres", lat: -48, takenAt: 3 }),
-      ]),
-    );
+      ]);
+
+    it("opens the carousel with all its photos instead of zooming", async () => {
+      mocked.fetchFeed.mockResolvedValue(clusterFeed());
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await fireEvent.press(await screen.findByLabelText("cluster"));
+
+      expect(await screen.findByTestId("pin-carousel")).toBeTruthy();
+      expect(screen.getByText("una")).toBeTruthy();
+      expect(screen.getByText("dos")).toBeTruthy();
+      expect(screen.queryByText("tres")).toBeNull();
+      expect(getClusterLeaves).toHaveBeenCalledWith(1, 500, 0);
+    });
+
+    it("only recenters the camera, keeping the zoom and leaving room for the carousel", async () => {
+      mocked.fetchFeed.mockResolvedValue(clusterFeed());
+      await renderRouter(routes, { initialUrl: "/map" });
+      camera.easeTo.mockClear();
+
+      await fireEvent.press(await screen.findByLabelText("cluster"));
+      await screen.findByTestId("pin-carousel");
+
+      expect(camera.easeTo).toHaveBeenCalledTimes(1);
+      const options = camera.easeTo.mock.calls[0]![0];
+      expect(options.center).toEqual([-72.89, -49.33]);
+      expect(options).not.toHaveProperty("zoom");
+      expect(options.padding.bottom).toBeGreaterThan(120);
+    });
+
+    it("tapping the empty map closes the carousel and gives the padding back", async () => {
+      mocked.fetchFeed.mockResolvedValue(clusterFeed());
+      await renderRouter(routes, { initialUrl: "/map" });
+      await fireEvent.press(await screen.findByLabelText("cluster"));
+      await screen.findByTestId("pin-carousel");
+      camera.easeTo.mockClear();
+
+      await fireEvent.press(screen.getByLabelText("mapa"));
+
+      await waitFor(() => expect(screen.queryByTestId("pin-carousel")).toBeNull());
+      expect(camera.easeTo).toHaveBeenCalledWith(expect.objectContaining({ padding: expect.objectContaining({ bottom: 0 }) }));
+    });
+  });
+
+  it("shows the native compass at the top right, below the Ver todas and location buttons", async () => {
     await renderRouter(routes, { initialUrl: "/map" });
+    await screen.findByLabelText("mapa");
 
-    await fireEvent.press(await screen.findByLabelText("cluster"));
-
-    expect(await screen.findByTestId("pin-carousel")).toBeTruthy();
-    expect(screen.getByText("una")).toBeTruthy();
-    expect(screen.getByText("dos")).toBeTruthy();
-    expect(screen.queryByText("tres")).toBeNull();
+    const props = mapProps.current;
+    expect(props.compass).toBe(true);
+    expect(props.compassHiddenFacingNorth).not.toBe(false);
+    expect(props.compassPosition).toEqual({ top: expect.any(Number), right: 16 });
+    let node = screen.getByRole("button", { name: "Ver todas" }).parent;
+    while (node && typeof StyleSheet.flatten(node.props.style)?.top !== "number") node = node.parent;
+    const buttonsTop = StyleSheet.flatten(node!.props.style).top as number;
+    expect(props.compassPosition.top).toBeGreaterThanOrEqual(buttonsTop + 40);
   });
 
   it("if focus arrives (from the Feed) it opens that photo's card, even if the filter hides it", async () => {

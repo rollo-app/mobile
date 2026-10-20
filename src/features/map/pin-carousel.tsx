@@ -6,6 +6,8 @@ import { PinCard } from "./pin-card";
 const GAP = spacing.sm;
 /** How much of the next card peeks out, so it's clear it swipes. */
 const PEEK = 28;
+/** Height of a card (88 pt thumbnail + padding): the map leaves this much room below the cluster it centers. */
+export const CAROUSEL_HEIGHT = 88 + 2 * spacing.md;
 
 /**
  * The photos of one spot, oldest to newest, in cards that swipe one by
