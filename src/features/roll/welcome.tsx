@@ -1,6 +1,5 @@
 import { router } from "expo-router";
-import { useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useMe } from "@/features/auth/use-me";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
@@ -11,25 +10,11 @@ import { colors, spacing, type } from "@/ui/theme";
 /** The Rollo tab for someone who is in no roll yet: who they are and the two ways in. */
 export function Welcome() {
   const { me } = useMe();
-  const { error, refetch } = useActiveTrip();
-  const [refreshing, setRefreshing] = useState(false);
+  const { error } = useActiveTrip();
 
-  async function refresh() {
-    setRefreshing(true);
-    try {
-      await refetch();
-    } finally {
-      setRefreshing(false);
-    }
-  }
-
+  // Fixed content, not a scroll view: there's nothing to scroll and the header inset would add empty space.
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
-    >
+    <View style={styles.content}>
       {me && (
         <View style={styles.who}>
           <Avatar id={me.id} name={me.name} avatarUrl={me.avatarUrl} size={72} />
@@ -48,13 +33,12 @@ export function Welcome() {
         <Button label="Empezar un nuevo rollo" onPress={() => router.push("/create")} />
         <Button label="Sumarme con un código" variant="secondary" onPress={() => router.push("/join")} />
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { backgroundColor: colors.background },
-  content: { flexGrow: 1, justifyContent: "center", gap: spacing.xl, padding: spacing.lg },
+  content: { flex: 1, justifyContent: "center", gap: spacing.xl, padding: spacing.lg, backgroundColor: colors.background },
   who: { alignItems: "center", gap: spacing.xs },
   copy: { gap: spacing.sm, alignItems: "center" },
   center: { textAlign: "center" },
