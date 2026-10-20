@@ -146,6 +146,20 @@ export async function createQueue(db: QueueDb) {
       return rows.map((r) => ({ ...fromRow(r), failedReason: r.failed_reason as string }));
     },
 
+    /** A trip's failed items, in shooting order (for the upload status). */
+    async failedForTrip(tripId: string): Promise<FailedMedia[]> {
+      const rows = await db.getAllAsync<Row>(
+        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NOT NULL ORDER BY taken_at",
+        tripId,
+      );
+      return rows.map((r) => ({ ...fromRow(r), failedReason: r.failed_reason as string }));
+    },
+
+    /** The user gives up on a failed item. Only failed rows: a pending one is never lost by mistake. */
+    async discard(id: string) {
+      await db.runAsync("DELETE FROM pending_media WHERE id = ? AND failed_reason IS NOT NULL", id);
+    },
+
     async remove(id: string) {
       await db.runAsync("DELETE FROM pending_media WHERE id = ?", id);
     },

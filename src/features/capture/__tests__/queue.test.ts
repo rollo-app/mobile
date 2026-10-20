@@ -165,3 +165,44 @@ describe("countPendingForTrip", () => {
     ]);
   });
 });
+
+describe("failedForTrip and discard", () => {
+  it("failedForTrip returns only that trip's failed items, with their reason, in shooting order", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "a", takenAt: 2000 }));
+    await queue.enqueue(item({ id: "b", takenAt: 1000 }));
+    await queue.enqueue(item({ id: "c", takenAt: 3000 }));
+    await queue.enqueue(item({ id: "d", tripId: "otro" }));
+    await queue.markFailed("a", "Este rollo ya terminó");
+    await queue.markFailed("b", "missing_file");
+    await queue.markFailed("d", "deleted");
+
+    const failed = await queue.failedForTrip(TRIP);
+
+    expect(failed.map((m) => [m.id, m.failedReason])).toEqual([
+      ["b", "missing_file"],
+      ["a", "Este rollo ya terminó"],
+    ]);
+  });
+
+  it("discard deletes a failed item and leaves the rest", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "a" }));
+    await queue.enqueue(item({ id: "b" }));
+    await queue.markFailed("a", "deleted");
+
+    await queue.discard("a");
+
+    expect(await queue.failed()).toEqual([]);
+    expect((await queue.pending()).map((m) => m.id)).toEqual(["b"]);
+  });
+
+  it("discard never deletes a pending item", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "a" }));
+
+    await queue.discard("a");
+
+    expect((await queue.pending()).map((m) => m.id)).toEqual(["a"]);
+  });
+});

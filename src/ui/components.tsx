@@ -113,10 +113,26 @@ export function Section({ title, footer, children }: { title?: string; footer?: 
   );
 }
 
-export function Row({ label, value, note, onPress }: { label: string; value?: string; note?: string; onPress?: () => void }) {
+export function Row({
+  label,
+  value,
+  note,
+  onPress,
+  loading,
+  tone,
+}: {
+  label: string;
+  value?: string;
+  note?: string;
+  onPress?: () => void;
+  /** Spinner in place of the chevron (an action running). */
+  loading?: boolean;
+  /** "danger" colors the label red, for destructive actions. */
+  tone?: "danger";
+}) {
   const content = (
     <>
-      <Text style={[type.body, styles.rowLabel]}>{label}</Text>
+      <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }]}>{label}</Text>
       {value !== undefined && (
         <View style={styles.rowValueBox}>
           <Text selectable style={[type.body, styles.rowValue]}>
@@ -125,10 +141,14 @@ export function Row({ label, value, note, onPress }: { label: string; value?: st
           {note !== undefined && <Text style={[type.footnote, styles.rowNote]}>{note}</Text>}
         </View>
       )}
-      {onPress && <SymbolView name="chevron.right" size={14} weight="semibold" tintColor={colors.tertiaryLabel as string} />}
+      {loading ? (
+        <ActivityIndicator />
+      ) : (
+        onPress && <SymbolView name="chevron.right" size={14} weight="semibold" tintColor={colors.tertiaryLabel as string} />
+      )}
     </>
   );
-  if (!onPress) return <View style={styles.row}>{content}</View>;
+  if (!onPress) return <View style={styles.row} accessibilityState={loading ? { busy: true } : undefined}>{content}</View>;
   return (
     <Pressable
       accessibilityRole="button"
