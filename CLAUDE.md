@@ -97,19 +97,47 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
   a mano) + `openapi-fetch`. `unwrap()` convierte el `{ error }` del server en `ApiError`.
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`.
 
+## Estructura del código
+
 ```
-app/                  rutas (Expo Router): index (bienvenida), create, join, trips (sheet), capture
-app/(tabs)/           NativeTabs: roll, map, camera (placeholder), feed, me; cada una con su Stack
-src/api/              schema.d.ts generado + client.ts
-src/features/capture/ cola offline (SQLite), procesar foto/video + ThumbHash, ubicación, cupo del día
-src/features/gallery/ galería agrupada por día, visor (`app/photo/[id]`) y descargas a Fotos (`save.ts`, cola de 3 en paralelo)
-src/features/trips/   acciones (lo que mockean los tests), useActiveTrip, useTripDetail, TripSwitcher
-src/test/             helpers de tests: rutas de la app y SQLite en memoria (node:sqlite)
-src/storage/          sesiones de rollo (trip) en SecureStore (el primero de la lista es el activo)
-src/ui/               theme.ts (colors, spacing, radius, type) y componentes: Screen, Section, Row,
-                      Button, Field, Body, Footnote, ErrorText, Loading
-__tests__/            tests de pantallas
+app/                    Solo rutas (Expo Router). Pantallas finas: arman hooks y componentes de features.
+  (tabs)/               NativeTabs: roll, map, camera (abre /capture o /presentation), feed, me; cada una con su Stack
+  photo/[id].tsx        visor de una foto revelada; presentation.tsx, capture.tsx, create.tsx, join.tsx...
+src/
+  features/<dominio>/   Todo lo de un dominio, junto:
+                          actions.ts      llamadas a la API (es lo que mockean los tests de pantalla)
+                          use-*.ts        hooks (datos con TanStack Query, estado)
+                          *.ts            lógica pura, testeable sin React
+                          *.tsx           componentes propios del dominio
+                          __tests__/      tests de esa lógica, al lado del código
+                        Dominios: trips (el rollo: sesión activa, detalle, etapas), capture (cámara, cola
+                        offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
+                        (grilla, visor, descargas), presentation, reveal, notifications, roll (tablero).
+  ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, Button,
+                        Field, Body, Footnote, ErrorText, Loading
+  api/                  cliente generado del contrato (schema.d.ts NO se edita a mano) + client.ts
+  storage/              lo que se guarda en el celular (SecureStore). Sus claves NO se renombran
+  test/                 helpers de tests: rutas de la app (routes.ts) y SQLite en memoria
+__tests__/              tests de pantallas con navegación real (renderRouter)
 ```
+
+Reglas:
+
+- **`app/` solo rutea.** Una pantalla no llama a la API ni tiene lógica de negocio: usa hooks y componentes
+  de `src/features`. Si una pantalla crece, lo que crece se va a su feature.
+- **Una feature por dominio, y una feature no mete mano en otra.** Puede importar lo público de otra
+  (hooks, tipos, funciones), pero si dos features necesitan la misma pieza, esa pieza se sube a un módulo
+  propio (como `media` para galería y presentación) en vez de copiarla o de tocar la otra feature.
+- **Componentes compartidos:** un componente vive en su feature hasta que lo usan dos o más features;
+  recién ahí pasa a `src/ui/` (que solo tiene primitivas visuales, sin datos ni API).
+- **Lógica pura aparte y testeada**: cálculos, formatos, agrupaciones y máquinas de estado van en `*.ts`
+  sin React, con tests en `__tests__/` de la misma feature.
+- **Nombres:** archivos en kebab-case y en inglés; hooks `use-*.ts`; un componente por archivo cuando es
+  público. El dominio en el código se llama `trip` (como en la API) aunque en la UI sea "rollo".
+- **Rutas nuevas** se registran en `app/_layout.tsx` (presentación, sheet, modal) y en `src/test/routes.ts`.
+- **Datos persistidos en el celular** (claves de SecureStore, base SQLite y sus columnas, key del cache de
+  TanStack Query, carpetas `Documents/pending/` y `Documents/map/`): no se renombran, porque rompería los
+  datos de quien ya tiene la app.
 
 ## Cómo trabajamos
 
@@ -135,7 +163,7 @@ __tests__/            tests de pantallas
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 110 tests
+npm test                      # 357 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -146,11 +174,16 @@ npm start                     # día a día, con el dev build ya instalado
 **Contra el backend local** (todavía no está deployado):
 
 ```bash
-# en ../backend
-npm run dev -- --ip 0.0.0.0
+# en ../backend (dev:lan hace que las URLs de subida apunten a la IP de la Mac)
+npm run dev:lan
 # acá
-EXPO_PUBLIC_API_URL=http://$(ipconfig getifaddr en0):8787 npx expo start --clear
+EXPO_PUBLIC_API_URL=http://$(ipconfig getifaddr en0):8787 ./node_modules/.bin/expo start --dev-client --clear
 ```
+
+Si compilar falla:
+- `pod install` con error de encoding: correr con `LANG=en_US.UTF-8`.
+- MapLibre no baja su binario ("invalid archive" / "already exists"): `cd ios && xcodebuild -resolvePackageDependencies -workspace Rollo.xcworkspace -scheme Rollo` y volver a compilar.
+- Después de cambiar de rama o instalar paquetes con Metro abierto, reiniciar Metro con `--clear` (si no, MapLibre se registra dos veces).
 
 Para entrar a un rollo revelado del seed: Vos → Desarrollo → Entrar con token (el ID y el token los imprime `npm run seed` o se consultan en la D1 local).
 
@@ -165,9 +198,15 @@ Para entrar a un rollo revelado del seed: Vos → Desarrollo → Entrar con toke
 
 ## Estado y plan (octubre 2026)
 
-Hecho: crear rollo (configurable), unirse con código, cliente tipado, CI. Navegación con tabs nativas, selector de
-rollos, Rollo (hoja de contacto, cupo, revelado) y Vos (código, miembros). Mapa y Feed son pantallas
-vacías por ahora. Corre en el iPhone con dev build contra el backend local.
+Hecho: crear rollo configurable (fechas, cupos, revelado), unirse con código, etapas del rollo, cámara con
+preview, cola offline con subida en segundo plano, cache persistente, Mapa (pins agrupados, carrusel, filtros),
+Feed, identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa · Presentación · Vos, presentación
+(enfoque + historias), galería con visor y descargas a Fotos, y aviso local del revelado. Corre en el iPhone
+con dev build contra el backend local.
+
+Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Vos,
+recuperación de acceso sin cuentas, mapa offline automático, export ordenado por día, deploy del backend,
+TestFlight y la prueba real.
 
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):
 
