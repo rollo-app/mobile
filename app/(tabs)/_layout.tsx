@@ -3,6 +3,7 @@ import { NativeTabs } from "expo-router/native-tabs";
 import { useEffect } from "react";
 import { useTodayLeft } from "@/features/capture/use-today-left";
 import { scheduleRevealNotification } from "@/features/notifications/reveal";
+import { useTabAvatar } from "@/features/profile/use-tab-avatar";
 import { useFirstPresentation } from "@/features/reveal/use-first-presentation";
 import { tabsFor } from "@/features/trips/tabs";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -22,6 +23,7 @@ export default function TabsLayout() {
   const left = useTodayLeft(trip?.id, detail);
   const phase = useRollPhase(detail);
   const tabs = tabsFor(phase, left);
+  const avatar = useTabAvatar();
 
   // The phone knows when the reveal happens: it's announced with a local notification.
   const info = detail?.trip;
@@ -52,7 +54,12 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label hidden>Feed</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="me">
-        <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="account_circle" />
+        {avatar ? (
+          // `src` and `sf` can't be mixed (sf wins on iOS), so the photo is a separate element.
+          <NativeTabs.Trigger.Icon src={avatar} renderingMode="original" md="account_circle" />
+        ) : (
+          <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="account_circle" />
+        )}
         <NativeTabs.Trigger.Label hidden>Perfil</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
