@@ -37,12 +37,12 @@ Decisiones de producto:
   Con la app cerrada o suspendida sube `expo-background-task` (tarea `rollo-upload`, BGProcessingTask de iOS: solo
   con red, cuándo corre lo decide el sistema, ~25 s por pasada con corte limpio entre ítems); los PUT usan sesión
   de URLSession en background. Si se mata la app a mano, iOS no la despierta hasta que se vuelva a abrir.
-  En dev, la fila "Probar subida en segundo plano" de Perfil la dispara.
+  En dev, la fila "Probar subida en segundo plano" de Perfil (sección Desarrollo) la dispara.
 - **Mapa sin señal automático** (`src/features/map/offline-*.ts`): al abrir la app y al volver a primer plano baja solo
   una zona amplia (300 km, z5–10) y otra detallada (40 km, z10–14) alrededor de la ubicación y de los lugares donde
   sacó fotos el grupo (grilla de 30 km), desde 3 días antes del inicio hasta el fin del rollo (antes del inicio, solo
   con Wi‑Fi; tope ~400 MB). Los packs usan el mismo `file://` de estilo que el MapView, se nombran
-  `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Perfil → "Mapa sin señal".
+  `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Rollo (tablero, abajo) → "Mapa sin señal".
 - **Captura:** cámara nativa con selector foto/video (máx. 15 s); si no quedan videos hoy, abre solo en
   foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + caption opcional. Una vez
   mandada no se puede repetir ni ver.
@@ -69,8 +69,12 @@ Decisiones de producto:
   íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Feed · Perfil. La cámara es un trigger
   `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación
   · Días · Perfil.
-- Rollo = tablero (hoja de contacto, cupo de hoy, revelado). La actividad ("Cami sacó una foto · 14:32",
-  con la hora de captura) vive solo en el Feed.
+- Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
+  miembros y "Mapa sin señal"): todo lo del rollo activo vive acá. Revelado, la tab es la galería y esos datos
+  (invitar, miembros, subidas) salen del botón "Sobre el rollo" del header (sheet `roll-info`). La actividad
+  ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed.
+- Perfil = solo la cuenta: foto, nombre y @usuario, "Editar perfil" (ahí se ve el email, de solo lectura),
+  "Desarrollo" (solo dev) y "Cerrar sesión" / "Borrar cuenta". No carga datos de ningún rollo.
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
   cards por todos lados, bordes de wireframe ni fuentes descargadas: se ve hecho con IA. La
@@ -97,7 +101,7 @@ Decisiones de producto:
   - **Error al cargar una pantalla:** estado de error en la pantalla con botón "Reintentar"; si hay datos
     viejos, se mantienen.
   - **Procesos de fondo (subida de fotos):** nunca toasts ni alertas. Estado persistente: ícono de nube en
-    Rollo si hay pendientes y en Perfil "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
+    Rollo si hay pendientes y en el tablero de Rollo (sección de subidas, y "Sobre el rollo" una vez revelado) "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
   - **Alerta nativa** (`Alert`) solo para algo grave e irreversible (por ej. el rollo se reveló con fotos
     tuyas sin subir) o para confirmar una acción destructiva (borrar como admin).
   - Si un momento puntual necesita una confirmación fugaz, usar `burnt` (HUD nativo tipo AirPods), no un
@@ -220,7 +224,7 @@ Feed, identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa �
 (enfoque + historias), galería con visor y descargas a Fotos, y aviso local del revelado. Corre en el iPhone
 con dev build contra el backend local.
 
-Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Perfil,
+Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Rollo,
 los pins del mapa con la foto del autor (hoy siguen con inicial y color: son capas nativas), la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día, deploy del backend,
 TestFlight y la prueba real.
 
