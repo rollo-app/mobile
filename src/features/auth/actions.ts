@@ -9,7 +9,7 @@ export const meKey = ["me"] as const;
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-/** Sends the 6-digit code to the email. */
+/** Sends the 6-character code to the email. */
 export async function startEmailLogin(email: string): Promise<void> {
   await unwrap(createApiClient({ baseUrl: API_URL }).POST("/auth/email/start", { body: { email: normalizeEmail(email) } }));
 }
