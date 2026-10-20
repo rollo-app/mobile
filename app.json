@@ -10,7 +10,9 @@
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "es",
-        "CFBundleLocalizations": ["es"]
+        "CFBundleLocalizations": [
+          "es"
+        ]
       },
       "bundleIdentifier": "com.juanifraga.rollo",
       "icon": {
@@ -33,6 +35,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./plugins/without-push-entitlement",
       "expo-router",
       "expo-secure-store",
       "expo-sqlite",
