@@ -275,6 +275,15 @@ jest.mock("expo-background-task", () => ({
       React.createElement(Text, null, children),
     );
   Toolbar.View = ({ children }: any) => React.createElement(View, null, children);
+  // Menus render open, so tests can press their actions directly.
+  Toolbar.Menu = ({ children, title, accessibilityLabel }: any) =>
+    React.createElement(View, { accessibilityLabel: accessibilityLabel ?? title }, children);
+  Toolbar.MenuAction = ({ children, onPress, isOn, disabled }: any) =>
+    React.createElement(
+      Pressable,
+      { accessibilityRole: "menuitem", accessibilityLabel: children, accessibilityState: { checked: !!isOn, disabled: !!disabled }, disabled, onPress },
+      React.createElement(Text, null, children),
+    );
   Object.defineProperty(Stack, "Toolbar", { value: Toolbar, configurable: true });
 }
 

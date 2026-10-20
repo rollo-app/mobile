@@ -104,11 +104,55 @@ describe("Gallery", () => {
     mocked.fetchFeed.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByText("Solo Juani")).toBeNull();
     await fireEvent.press(screen.getByRole("menuitem", { name: "Juani" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(1);
     expect(screen.queryByText("Miércoles 13 de enero")).toBeNull();
+    expect(screen.getByText("Solo Juani")).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Juani" }).props.accessibilityState).toMatchObject({ checked: true });
     await fireEvent.press(screen.getByRole("menuitem", { name: "Todos" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+    expect(screen.queryByText("Solo Juani")).toBeNull();
+  });
+
+  it("the ✕ on the active filter goes back to everyone", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
+    expect(screen.getByText("Solo Fede")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Quitar filtro" }));
+    expect(screen.queryByText("Solo Fede")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("the header shows the trip switcher, not the route name", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(await screen.findByText("Viaje al sur")).toBeVisible();
+    expect(screen.queryByText("gallery")).toBeNull();
+    expect(screen.queryByText("index")).toBeNull();
+  });
+
+  it("the ⋯ menu offers the filter and saving everything", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.getByLabelText("Filtrar por persona")).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Todos" }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Guardar todo" })).toBeNull();
+  });
+
+  it("Seleccionar becomes Cancelar while selecting", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.getByRole("button", { name: "Seleccionar" })).toBeVisible();
   });
 
   it("shows an empty state", async () => {
@@ -152,7 +196,7 @@ describe("Gallery", () => {
     mocked.fetchFeed.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
-    await fireEvent.press(screen.getByRole("button", { name: "Guardar todo" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
     expect(alert).toHaveBeenCalledWith("Guardar 3 fotos en Fotos", expect.stringMatching(/^Ocupa ~\d+ MB\. Conviene Wi-Fi\.$/), expect.any(Array));
     expect(mockSaveOne).not.toHaveBeenCalled();
 
@@ -168,7 +212,7 @@ describe("Gallery", () => {
     });
     await open();
     await screen.findByText("Martes 12 de enero");
-    await fireEvent.press(screen.getByRole("button", { name: "Guardar todo" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
     await confirmSave();
     expect(await screen.findByText("Se guardaron 2. No se pudieron guardar 1 foto.")).toBeVisible();
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeVisible();
@@ -180,7 +224,7 @@ describe("Gallery", () => {
     const settings = jest.spyOn(Linking, "openSettings").mockResolvedValue();
     await open();
     await screen.findByText("Martes 12 de enero");
-    await fireEvent.press(screen.getByRole("button", { name: "Guardar todo" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
     await confirmSave();
     await fireEvent.press(await screen.findByRole("button", { name: "Abrir Ajustes" }));
     expect(settings).toHaveBeenCalled();

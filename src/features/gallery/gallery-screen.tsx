@@ -1,4 +1,3 @@
-import { MenuView } from "@expo/ui/community/menu";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
@@ -15,8 +14,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { memberColor } from "@/features/map/member-color";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
+import { TripSwitcher } from "@/features/trips/trip-switcher";
+import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
@@ -89,6 +89,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { photos, token, error, loading, refetch } = useRevealedPhotos(tripId);
+  const { trip } = useActiveTrip();
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name);
 
@@ -157,21 +158,36 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
   }
 
   const busy = bar?.kind === "progress";
-  const headerRight = () =>
-    selecting ? (
-      <Pressable accessibilityRole="button" accessibilityLabel="Cancelar selección" onPress={stopSelecting}>
-        <Text style={[type.body, styles.action]}>Cancelar</Text>
-      </Pressable>
-    ) : (
-      <View style={styles.headerActions}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Seleccionar" disabled={busy || photos.length === 0} onPress={() => setSelecting(true)}>
-          <Text style={[type.body, styles.action, (busy || photos.length === 0) && styles.disabled]}>Seleccionar</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Guardar todo" disabled={busy || !saver || photos.length === 0} onPress={confirmSaveAll}>
-          <Text style={[type.body, styles.action, (busy || !saver || photos.length === 0) && styles.disabled]}>Guardar todo</Text>
-        </Pressable>
-      </View>
-    );
+  const canSaveAll = !busy && !!saver && photos.length > 0;
+
+  const toolbar = (
+    <Stack.Toolbar placement="right">
+      {selecting ? (
+        <Stack.Toolbar.Button onPress={stopSelecting}>Cancelar</Stack.Toolbar.Button>
+      ) : (
+        <>
+          <Stack.Toolbar.Button disabled={busy || photos.length === 0} onPress={() => setSelecting(true)}>
+            Seleccionar
+          </Stack.Toolbar.Button>
+          <Stack.Toolbar.Menu icon="ellipsis.circle" accessibilityLabel="Más opciones">
+            <Stack.Toolbar.Menu title="Filtrar por persona" icon="person.2">
+              <Stack.Toolbar.MenuAction isOn={authorId === null} onPress={() => setAuthorId(null)}>
+                Todos
+              </Stack.Toolbar.MenuAction>
+              {authors.map((a) => (
+                <Stack.Toolbar.MenuAction key={a.id} isOn={authorId === a.id} onPress={() => setAuthorId(a.id)}>
+                  {a.name}
+                </Stack.Toolbar.MenuAction>
+              ))}
+            </Stack.Toolbar.Menu>
+            <Stack.Toolbar.MenuAction icon="square.and.arrow.down" disabled={!canSaveAll} onPress={confirmSaveAll}>
+              Guardar todo en Fotos
+            </Stack.Toolbar.MenuAction>
+          </Stack.Toolbar.Menu>
+        </>
+      )}
+    </Stack.Toolbar>
+  );
 
   let body;
   if (loading) body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
@@ -198,6 +214,16 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
         extraData={[selecting, selected, token]}
+        ListHeaderComponent={
+          author ? (
+            <View style={styles.filter}>
+              <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${author.name}`}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Quitar filtro" hitSlop={10} onPress={() => setAuthorId(null)}>
+                <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
+              </Pressable>
+            </View>
+          ) : undefined
+        }
         renderSectionHeader={({ section }) => (
           <Text accessibilityRole="header" style={[type.headline, styles.header]}>
             {section.title}
@@ -226,27 +252,8 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
 
   return (
     <View style={styles.fill}>
-      <Stack.Screen options={{ headerRight }} />
-      {photos.length > 0 && (
-        <View style={styles.filter}>
-          <MenuView
-            title="Personas"
-            actions={[
-              { id: "all", title: "Todos", state: authorId === null ? ("on" as const) : ("off" as const) },
-              ...authors.map((a) => ({ id: a.id, title: a.name, state: authorId === a.id ? ("on" as const) : ("off" as const) })),
-            ]}
-            onPressAction={({ nativeEvent }) => setAuthorId(nativeEvent.event === "all" ? null : nativeEvent.event)}
-          >
-            <View style={styles.pill}>
-              {author && <View style={[styles.dot, { backgroundColor: memberColor(author.id) }]} />}
-              <SymbolView name="person.2" size={15} tintColor={(author ? colors.tint : colors.label) as string} />
-              <Text style={[type.subhead, { color: author ? colors.tint : colors.label }]} numberOfLines={1}>
-                {author?.name ?? "Personas"}
-              </Text>
-            </View>
-          </MenuView>
-        </View>
-      )}
+      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.tripName} /> }} />}
+      {toolbar}
       {body}
       {(bar || selecting) && (
         <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
@@ -302,24 +309,12 @@ function resultText(bar: Extract<Bar, { kind: "result" }>) {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.background },
-  filter: { flexDirection: "row", paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.fill,
-  },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  filter: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   header: { color: colors.label, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
   row: { flexDirection: "row", gap: GAP, marginBottom: GAP },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, padding: spacing.lg },
   empty: { color: colors.secondaryLabel, textAlign: "center", padding: spacing.xl },
-  headerActions: { flexDirection: "row", gap: spacing.md },
   action: { color: colors.tint },
-  disabled: { opacity: 0.35 },
   video: { position: "absolute", left: 4, bottom: 4, flexDirection: "row", alignItems: "center", gap: 3 },
   videoText: { color: "#FFFFFF", fontVariant: ["tabular-nums"], textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 2 },
   check: {
