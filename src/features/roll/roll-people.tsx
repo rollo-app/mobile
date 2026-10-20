@@ -1,0 +1,32 @@
+import { Share } from "react-native";
+import { Avatar } from "@/features/profile/avatar";
+import { formatHandle } from "@/features/profile/username";
+import type { TripDetail } from "@/features/trips/actions";
+import { Row, Section } from "@/ui/components";
+
+/** The invite (code and share) and the members of a roll. */
+export function RollPeople({ detail }: { detail: TripDetail }) {
+  const share = () =>
+    Share.share({ message: `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}` });
+
+  return (
+    <>
+      <Section title="Invitar" footer="Con este código se suman al rollo.">
+        <Row label="Código" value={detail.trip.joinCode} />
+        <Row label="Compartir invitación" onPress={() => void share()} />
+      </Section>
+
+      <Section title={`En el rollo · ${detail.members.length}`}>
+        {detail.members.map((m) => (
+          <Row
+            key={m.id}
+            leading={<Avatar id={m.id} name={m.name} avatarUrl={m.avatarUrl} size={40} />}
+            label={m.name}
+            detail={m.username ? formatHandle(m.username) : undefined}
+            value={m.role === "admin" ? "Admin" : undefined}
+          />
+        ))}
+      </Section>
+    </>
+  );
+}

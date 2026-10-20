@@ -1,8 +1,25 @@
 import { OfflineManager } from "@maplibre/maplibre-react-native";
 import { renderRouter, screen, fireEvent, waitFor } from "expo-router/testing-library";
 import { Alert, type AlertButton } from "react-native";
+import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
+
+jest.mock("@/features/trips/actions");
+
+const DAY = 24 * 60 * 60 * 1000;
+const member = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const };
+const detail = (): actions.TripDetail => ({
+  trip: {
+    id: "t1", name: "Viaje al sur", joinCode: "HUB5FT", timezone: "America/Argentina/Buenos_Aires",
+    startsAt: Date.now() - DAY, endsAt: Date.now() + DAY, revealAt: Date.now() + DAY, revealed: false,
+    dailyPhotoLimit: 10, dailyVideoLimit: 3,
+  },
+  me: member,
+  members: [member],
+  today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
+  totalUploaded: 1,
+});
 
 const pack = {
   id: "p1",
@@ -13,12 +30,13 @@ const pack = {
 describe("offline map screens", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
+    jest.mocked(actions.fetchTrip).mockResolvedValue(detail());
     await signInAs({ trips: [tripSummary("t1", "Viaje al sur", { role: "admin" })] });
     jest.mocked(OfflineManager.getPacks).mockResolvedValue([pack] as never);
   });
 
-  it("shows the state in Vos and opens the zones", async () => {
-    await renderRouter(routes, { initialUrl: "/me" });
+  it("shows the state in Rollo and opens the zones", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
     await fireEvent.press(await screen.findByLabelText("Mapa sin señal, Listo · 1 zona · 5 MB"));
     expect(screen).toHavePathname("/offline-maps");
     expect(await screen.findByText("Viaje al sur · Detallada")).toBeTruthy();

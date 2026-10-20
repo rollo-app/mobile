@@ -57,7 +57,7 @@ const queued = (id: string, overrides: Partial<QueuedMedia> = {}): QueuedMedia =
   ...overrides,
 });
 
-describe("Me · Subidas", () => {
+describe("Roll · Subidas", () => {
   let queue: Queue;
 
   beforeEach(async () => {
@@ -68,7 +68,7 @@ describe("Me · Subidas", () => {
   });
 
   it("with nothing pending or failed the section is not there", async () => {
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("HUB5FT")).toBeVisible();
     expect(screen.queryByText(/esperando señal/)).toBeNull();
@@ -79,7 +79,7 @@ describe("Me · Subidas", () => {
     await queue.enqueue(queued("a"));
     await queue.enqueue(queued("b", { type: "video" }));
     await queue.markAttempt("a", Date.now() + 2 * 60_000 - 1000);
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("1 foto y 1 video esperando señal")).toBeVisible();
     expect(screen.getByText(/Se suben solas apenas hay conexión/)).toBeVisible();
@@ -88,7 +88,7 @@ describe("Me · Subidas", () => {
 
   it("there is no manual upload button: uploads happen on their own", async () => {
     await queue.enqueue(queued("a"));
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("1 foto esperando señal")).toBeVisible();
     expect(screen.queryByText("Subir ahora")).toBeNull();
@@ -102,7 +102,7 @@ describe("Me · Subidas", () => {
     await queue.markFailed("a", "Este rollo ya terminó");
     await queue.markFailed("b", "missing_file");
     await queue.markFailed("c", "deleted");
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("Este rollo ya terminó")).toBeVisible();
     expect(screen.getByText("El archivo ya no está en el celular")).toBeVisible();
@@ -114,7 +114,7 @@ describe("Me · Subidas", () => {
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await queue.enqueue(queued("a"));
     await queue.markFailed("a", "no_token");
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Descartar" }));
 

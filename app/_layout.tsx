@@ -79,6 +79,15 @@ function RootStack() {
             }}
           />
           <Stack.Screen
+            name="roll-info"
+            options={{
+              title: "Sobre el rollo",
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.6, 1],
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="offline-maps"
             options={{
               title: "Mapa sin señal",
