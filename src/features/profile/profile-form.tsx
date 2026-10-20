@@ -11,7 +11,18 @@ import { USERNAME_TAKEN, useUsernameStatus } from "./use-username-status";
 import { normalizeUsername, suggestUsername } from "./username";
 
 /** Photo (optional), name and username (required): used to complete the profile and to edit it. */
-export function ProfileForm({ user, submitLabel, onSaved }: { user: User; submitLabel: string; onSaved: () => void }) {
+export function ProfileForm({
+  user,
+  submitLabel,
+  onSaved,
+  colorId = user.id,
+}: {
+  user: User;
+  submitLabel: string;
+  onSaved: () => void;
+  /** Id the placeholder color comes from (Perfil uses the member of the active roll). */
+  colorId?: string;
+}) {
   const queryClient = useQueryClient();
   const avatar = useAvatarUpload();
   const [name, setName] = useState(user.name ?? "");
@@ -66,7 +77,7 @@ export function ProfileForm({ user, submitLabel, onSaved }: { user: User; submit
         disabled={avatar.uploading}
         style={({ pressed }) => [styles.photo, { opacity: pressed ? 0.6 : 1 }]}
       >
-        <Avatar id={user.id} name={trimmed || user.name} avatarUrl={user.avatarUrl} size={72} localUri={avatar.localUri} />
+        <Avatar id={colorId} name={trimmed || user.name} avatarUrl={user.avatarUrl} size={72} localUri={avatar.localUri} />
         {avatar.uploading && (
           <View style={styles.spinner}>
             <ActivityIndicator color="#FFFFFF" />
