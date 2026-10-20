@@ -327,3 +327,9 @@ jest.mock("expo-video", () => {
   const { View } = require("react-native");
   return { useVideoPlayer: jest.fn(() => ({ loop: false })), VideoView: View };
 });
+
+// expo-network is native: online, and no events.
+jest.mock("expo-network", () => ({
+  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
+  getNetworkStateAsync: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })),
+}));

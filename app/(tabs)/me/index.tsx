@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { Share } from "react-native";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
+import { UploadStatusSection } from "@/features/capture/upload-status-section";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
@@ -46,6 +47,13 @@ export default function MeScreen() {
             ))}
           </Section>
         </>
+      )}
+
+      {trip && (
+        <UploadStatusSection
+          tripId={trip.tripId}
+          timeZone={detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone}
+        />
       )}
 
       <Section>

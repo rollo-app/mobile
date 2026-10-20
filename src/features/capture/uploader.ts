@@ -65,6 +65,11 @@ export type RunOptions = {
    * items, never in the middle of one, so nothing is left half done. What remains stays pending.
    */
   deadline?: number;
+  /**
+   * Retry items still waiting out their backoff. For when the network comes back: the backoff
+   * existed because there was no network.
+   */
+  ignoreBackoff?: boolean;
 };
 
 export function createUploader(deps: UploaderDeps) {
@@ -72,6 +77,7 @@ export function createUploader(deps: UploaderDeps) {
   let running: Promise<void> | null = null;
   let again = false;
   let deadline: number | undefined;
+  let ignoreBackoff = false;
 
   async function putAll(m: PendingMedia, urls: { original: string; thumb: string }) {
     const files = [
@@ -140,7 +146,9 @@ export function createUploader(deps: UploaderDeps) {
   }
 
   async function pass() {
-    const due = (await deps.queue.pending()).filter((m) => m.retryAt === null || m.retryAt <= now());
+    const skipBackoff = ignoreBackoff;
+    ignoreBackoff = false;
+    const due = (await deps.queue.pending()).filter((m) => skipBackoff || m.retryAt === null || m.retryAt <= now());
     for (const m of due) {
       if (deadline !== undefined && now() >= deadline) return;
       try {
@@ -189,6 +197,7 @@ export function createUploader(deps: UploaderDeps) {
      * The deadline only applies to the run that starts the loop.
      */
     run(options: RunOptions = {}): Promise<void> {
+      if (options.ignoreBackoff) ignoreBackoff = true;
       if (running) {
         again = true;
         return running;
