@@ -53,15 +53,26 @@ describe("revealed roll", () => {
     await markPresentationSeen(SUR);
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    expect(await screen.findByText("Galería")).toBeVisible();
+    expect(await screen.findByText("Este rollo no tiene fotos")).toBeVisible();
     expect(screen.queryByText("Fechas")).toBeNull();
   });
 
   it("opens the presentation automatically the first time, and only once", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchFeed.mockResolvedValue({
+      revealed: true,
+      revealAt: Date.now() - DAY,
+      items: [
+        {
+          id: "a", type: "photo", takenAt: Date.now() - DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
+          thumbhash: null, durationS: null, author: { id: "m1", name: "Juani" },
+          files: { thumb: "/m/a/thumb", original: "/m/a/original" },
+        },
+      ],
+    });
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    expect(await screen.findByText("Presentación")).toBeVisible();
+    expect(await screen.findByTestId("story-surface")).toBeTruthy();
     expect(screen).toHavePathname("/presentation");
     expect(await hasSeenPresentation(SUR)).toBe(true);
   });
@@ -71,7 +82,7 @@ describe("revealed roll", () => {
     await markPresentationSeen(SUR);
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    await screen.findByText("Galería");
+    await screen.findByText("Este rollo no tiene fotos");
     expect(screen).toHavePathname("/roll");
   });
 

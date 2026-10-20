@@ -4,6 +4,7 @@ import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/te
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { PermissionDeniedError } from "@/features/gallery/save";
 import * as actions from "@/features/trips/actions";
+import { markPresentationSeen } from "@/storage/presentation";
 import { saveSession } from "@/storage/trips";
 import { routes } from "@/test/routes";
 
@@ -72,6 +73,7 @@ beforeEach(async () => {
   mocked.fetchTrip.mockResolvedValue(detail());
   mocked.fetchFeed.mockResolvedValue(feed([]));
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  await markPresentationSeen(SUR); // the first-open presentation would cover these screens
   await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
 });
 afterEach(() => alert.mockRestore());
