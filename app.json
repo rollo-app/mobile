@@ -65,7 +65,15 @@
           }
         }
       ],
-      "expo-background-task"
+      "expo-background-task",
+      "expo-video",
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Rollo guarda en tu carrete las fotos y videos del rollo que elijas.",
+          "photosPermission": false
+        }
+      ]
     ],
     "scheme": "rollo",
     "experiments": {

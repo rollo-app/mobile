@@ -48,6 +48,10 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          <Stack.Screen
+            name="photo/[id]"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
+          />
         </Stack>
       </ThemeProvider>
     </PersistQueryClientProvider>
