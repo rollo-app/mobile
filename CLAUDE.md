@@ -102,6 +102,7 @@ app/                  rutas (Expo Router): index (bienvenida), create, join, tri
 app/(tabs)/           NativeTabs: roll, map, camera (placeholder), feed, me; cada una con su Stack
 src/api/              schema.d.ts generado + client.ts
 src/features/capture/ cola offline (SQLite), procesar foto/video + ThumbHash, ubicación, cupo del día
+src/features/gallery/ galería agrupada por día, visor (`app/photo/[id]`) y descargas a Fotos (`save.ts`, cola de 3 en paralelo)
 src/features/trips/   acciones (lo que mockean los tests), useActiveTrip, useTripDetail, TripSwitcher
 src/test/             helpers de tests: rutas de la app y SQLite en memoria (node:sqlite)
 src/storage/          sesiones de rollo (trip) en SecureStore (el primero de la lista es el activo)

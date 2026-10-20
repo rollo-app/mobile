@@ -57,6 +57,10 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: "#000" },
             }}
           />
+          <Stack.Screen
+            name="photo/[id]"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
+          />
         </Stack>
       </ThemeProvider>
     </PersistQueryClientProvider>
