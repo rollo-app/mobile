@@ -307,7 +307,7 @@ jest.mock("expo-notifications", () => ({
 
 // Saving to Photos is native (expo-media-library): in tests the permission is granted and the album doesn't exist.
 jest.mock("expo-media-library", () => ({
-  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true, accessPrivileges: "all" })),
   Asset: { create: jest.fn(async () => ({ id: "asset" })) },
   Album: { get: jest.fn(async () => null), create: jest.fn(async () => ({ id: "album" })) },
 }));

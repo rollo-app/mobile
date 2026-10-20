@@ -6,6 +6,7 @@ import {
   albumTitle,
   createSaver,
   downloadAll,
+  requestAlbumAccess,
   estimateBytes,
   formatMegabytes,
 } from "../save";
@@ -27,11 +28,18 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   originalPath: `/trips/t/media/${id}/original`,
 });
 
-const ctx = { token: "tok", albumName: "Rollo · Sur", baseUrl: "https://api.test" };
+const ctx = {
+  token: "tok",
+  albumName: "Rollo · Sur",
+  baseUrl: "https://api.test",
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
-  (requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true, canAskAgain: true });
+  (requestPermissionsAsync as jest.Mock).mockResolvedValue({
+    granted: true,
+    canAskAgain: true,
+  });
   (Album.get as jest.Mock).mockResolvedValue(null);
 });
 
@@ -48,9 +56,19 @@ describe("album title and estimate", () => {
 });
 
 describe("createSaver", () => {
-  it("downloads the original with the bearer token and creates the album the first time", async () => {
+  it("saves one by one without touching the album (add-only permission is enough)", async () => {
     const save = createSaver(ctx);
     await save(photo("a"));
+    expect(requestPermissionsAsync).toHaveBeenCalledWith(true);
+    expect(Asset.create).toHaveBeenCalledWith(expect.any(String));
+    expect(Album.get).not.toHaveBeenCalled();
+    expect(Album.create).not.toHaveBeenCalled();
+    expect((File as any).deleted).toBe(1);
+  });
+
+  it("downloads the original with the bearer token and creates the album the first time", async () => {
+    const save = createSaver(ctx);
+    await save(photo("a"), { album: true });
     expect(File.downloadFileAsync).toHaveBeenCalledWith(
       "https://api.test/trips/t/media/a/original",
       expect.anything(),
@@ -64,8 +82,8 @@ describe("createSaver", () => {
     const album = { id: "al" };
     (Album.get as jest.Mock).mockResolvedValue(album);
     const save = createSaver(ctx);
-    await save(photo("a"));
-    await save(photo("b"));
+    await save(photo("a"), { album: true });
+    await save(photo("b"), { album: true });
     expect(Album.create).not.toHaveBeenCalled();
     expect(Asset.create).toHaveBeenCalledTimes(2);
     expect(Asset.create).toHaveBeenCalledWith(expect.any(String), album);
@@ -74,22 +92,56 @@ describe("createSaver", () => {
 
   it("creates the album only once for parallel saves", async () => {
     const save = createSaver(ctx);
-    await Promise.all([save(photo("a")), save(photo("b")), save(photo("c"))]);
+    await Promise.all([
+      save(photo("a"), { album: true }),
+      save(photo("b"), { album: true }),
+      save(photo("c"), { album: true }),
+    ]);
     expect(Album.create).toHaveBeenCalledTimes(1);
     expect(Asset.create).toHaveBeenCalledTimes(3);
   });
 
   it("throws PermissionDeniedError when the user said no", async () => {
-    (requestPermissionsAsync as jest.Mock).mockResolvedValue({ granted: false, canAskAgain: false });
-    await expect(createSaver(ctx)(photo("a"))).rejects.toBeInstanceOf(PermissionDeniedError);
+    (requestPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: false,
+      canAskAgain: false,
+    });
+    await expect(createSaver(ctx)(photo("a"), { album: true })).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(File.downloadFileAsync).not.toHaveBeenCalled();
   });
 
   it("removes the temp file even if saving fails", async () => {
     (Album.get as jest.Mock).mockResolvedValue({ id: "al" });
     (Asset.create as jest.Mock).mockRejectedValueOnce(new Error("disk"));
-    await expect(createSaver(ctx)(photo("a"))).rejects.toThrow("disk");
+    await expect(createSaver(ctx)(photo("a"), { album: true })).rejects.toThrow("disk");
     expect((File as any).deleted).toBe(1);
+  });
+});
+
+describe("requestAlbumAccess", () => {
+  it("asks for full access and is true only when iOS grants all of it", async () => {
+    (requestPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: true,
+      canAskAgain: true,
+      accessPrivileges: "all",
+    });
+    expect(await requestAlbumAccess()).toBe(true);
+    expect(requestPermissionsAsync).toHaveBeenCalledWith(false);
+  });
+
+  it("is false with limited access or when denied", async () => {
+    (requestPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: true,
+      canAskAgain: true,
+      accessPrivileges: "limited",
+    });
+    expect(await requestAlbumAccess()).toBe(false);
+    (requestPermissionsAsync as jest.Mock).mockResolvedValue({
+      granted: false,
+      canAskAgain: false,
+      accessPrivileges: "none",
+    });
+    expect(await requestAlbumAccess()).toBe(false);
   });
 });
 
@@ -106,7 +158,9 @@ describe("downloadAll", () => {
       running--;
     });
     const progress: number[] = [];
-    const result = await downloadAll(photos, save, { onProgress: (done) => progress.push(done) });
+    const result = await downloadAll(photos, save, {
+      onProgress: (done) => progress.push(done),
+    });
     expect(peak).toBe(3);
     expect(result).toEqual({ saved: 10, failed: [], cancelled: false });
     expect(progress[progress.length - 1]).toBe(10);
@@ -131,7 +185,9 @@ describe("downloadAll", () => {
     const save = jest.fn(async () => {
       if (save.mock.calls.length === 3) controller.abort();
     });
-    const result = await downloadAll(photos, save, { signal: controller.signal });
+    const result = await downloadAll(photos, save, {
+      signal: controller.signal,
+    });
     expect(result.cancelled).toBe(true);
     expect(save.mock.calls.length).toBeLessThan(10);
     expect(result.saved).toBe(save.mock.calls.length);

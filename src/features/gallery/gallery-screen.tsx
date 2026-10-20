@@ -14,21 +14,19 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  mediaSource,
-  useRevealedPhotos,
-  type RevealedPhoto,
-} from "@/features/media/revealed";
+import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { authorsOf, chunkRows, filterByAuthor, groupByDay } from "./group";
 import { PermissionNotice } from "./permission-notice";
 import {
+  albumTitle,
   downloadAll,
   estimateBytes,
   formatMegabytes,
   PermissionDeniedError,
+  requestAlbumAccess,
 } from "./save";
 import { useSaver } from "./use-saver";
 
@@ -42,6 +40,8 @@ type Bar =
       saved: number;
       failed: RevealedPhoto[];
       cancelled: boolean;
+      album: boolean;
+      recents: boolean;
     }
   | { kind: "denied" };
 
@@ -74,9 +74,7 @@ const Cell = memo(function Cell({
       {token && (
         <Image
           source={mediaSource(photo.thumbPath, token)}
-          placeholder={
-            photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined
-          }
+          placeholder={photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined}
           transition={120}
           contentFit="cover"
           recyclingKey={photo.id}
@@ -87,9 +85,7 @@ const Cell = memo(function Cell({
         <View style={styles.video}>
           <SymbolView name="play.fill" size={10} tintColor="#FFFFFF" />
           {photo.durationS !== null && (
-            <Text style={[type.caption, styles.videoText]}>
-              {formatDuration(photo.durationS)}
-            </Text>
+            <Text style={[type.caption, styles.videoText]}>{formatDuration(photo.durationS)}</Text>
           )}
         </View>
       )}
@@ -103,14 +99,7 @@ const Cell = memo(function Cell({
             },
           ]}
         >
-          {selected && (
-            <SymbolView
-              name="checkmark"
-              size={12}
-              weight="bold"
-              tintColor={colors.onTint as string}
-            />
-          )}
+          {selected && <SymbolView name="checkmark" size={12} weight="bold" tintColor={colors.onTint as string} />}
         </View>
       )}
     </Pressable>
@@ -134,10 +123,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
 
   const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
   const authors = useMemo(() => authorsOf(photos), [photos]);
-  const shown = useMemo(
-    () => filterByAuthor(photos, authorId),
-    [photos, authorId],
-  );
+  const shown = useMemo(() => filterByAuthor(photos, authorId), [photos, authorId]);
   const sections = useMemo(
     () =>
       groupByDay(shown).map((s) => ({
@@ -166,23 +152,22 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
     [selecting, router, tripId],
   );
 
-  const allSelected =
-    shown.length > 0 && shown.every((p) => selected.has(p.id));
-  const toggleAll = () =>
-    setSelected(allSelected ? new Set() : new Set(shown.map((p) => p.id)));
+  const allSelected = shown.length > 0 && shown.every((p) => selected.has(p.id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(shown.map((p) => p.id)));
 
   function stopSelecting() {
     setSelecting(false);
     setSelected(new Set());
   }
 
-  async function run(list: RevealedPhoto[]) {
+  /** `album`: put them in the roll's album; `recents`: the album was wanted but iOS access was limited. */
+  async function run(list: RevealedPhoto[], { album = false, recents = false } = {}) {
     if (!saver || list.length === 0) return;
     const controller = new AbortController();
     abort.current = controller;
     setBar({ kind: "progress", done: 0, total: list.length });
     try {
-      const result = await downloadAll(list, saver, {
+      const result = await downloadAll(list, (photo) => saver(photo, { album }), {
         signal: controller.signal,
         onProgress: (done, total) => setBar({ kind: "progress", done, total }),
       });
@@ -191,11 +176,11 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
         saved: result.saved,
         failed: result.failed,
         cancelled: result.cancelled,
+        album,
+        recents,
       });
       if (result.saved > 0 && result.failed.length === 0)
-        void Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       stopSelecting();
     } catch (e) {
       if (e instanceof PermissionDeniedError) setBar({ kind: "denied" });
@@ -205,13 +190,19 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
     }
   }
 
+  async function saveAll() {
+    // Only "Guardar todo" uses the album, and iOS wants full library access to create it.
+    const album = await requestAlbumAccess();
+    await run(photos, { album, recents: !album });
+  }
+
   function confirmSaveAll() {
     Alert.alert(
       `Guardar ${photos.length} ${photos.length === 1 ? "foto" : "fotos"} en Fotos`,
-      `Ocupa ~${formatMegabytes(estimateBytes(photos))}. Conviene Wi-Fi.`,
+      `Ocupa ~${formatMegabytes(estimateBytes(photos))}. Conviene Wi-Fi.\n\nPara crear el álbum «${albumTitle(detail?.trip.name ?? "")}» iOS pide acceso a tus fotos.`,
       [
         { text: "Cancelar", style: "cancel" },
-        { text: "Guardar", onPress: () => void run(photos) },
+        { text: "Guardar", onPress: () => void saveAll() },
       ],
     );
   }
@@ -230,46 +221,25 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
       )}
       <Stack.Toolbar placement="right">
         {/* Direct children only: the header drops Fragments, which is how both buttons once vanished. */}
-        {selecting && (
-          <Stack.Toolbar.Button onPress={stopSelecting}>
-            Cancelar
-          </Stack.Toolbar.Button>
-        )}
+        {selecting && <Stack.Toolbar.Button onPress={stopSelecting}>Cancelar</Stack.Toolbar.Button>}
         {!selecting && (
-          <Stack.Toolbar.Button
-            disabled={busy || photos.length === 0}
-            onPress={() => setSelecting(true)}
-          >
+          <Stack.Toolbar.Button disabled={busy || photos.length === 0} onPress={() => setSelecting(true)}>
             Seleccionar
           </Stack.Toolbar.Button>
         )}
         {!selecting && (
-          <Stack.Toolbar.Menu
-            icon="ellipsis.circle"
-            accessibilityLabel="Más opciones"
-          >
+          <Stack.Toolbar.Menu icon="ellipsis.circle" accessibilityLabel="Más opciones">
             <Stack.Toolbar.Menu title="Filtrar por persona" icon="person.2">
-              <Stack.Toolbar.MenuAction
-                isOn={authorId === null}
-                onPress={() => setAuthorId(null)}
-              >
+              <Stack.Toolbar.MenuAction isOn={authorId === null} onPress={() => setAuthorId(null)}>
                 Todos
               </Stack.Toolbar.MenuAction>
               {authors.map((a) => (
-                <Stack.Toolbar.MenuAction
-                  key={a.id}
-                  isOn={authorId === a.id}
-                  onPress={() => setAuthorId(a.id)}
-                >
+                <Stack.Toolbar.MenuAction key={a.id} isOn={authorId === a.id} onPress={() => setAuthorId(a.id)}>
                   {a.name}
                 </Stack.Toolbar.MenuAction>
               ))}
             </Stack.Toolbar.Menu>
-            <Stack.Toolbar.MenuAction
-              icon="square.and.arrow.down"
-              disabled={!canSaveAll}
-              onPress={confirmSaveAll}
-            >
+            <Stack.Toolbar.MenuAction icon="square.and.arrow.down" disabled={!canSaveAll} onPress={confirmSaveAll}>
               Guardar todo en Fotos
             </Stack.Toolbar.MenuAction>
           </Stack.Toolbar.Menu>
@@ -284,19 +254,13 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
     body = (
       <View style={styles.center}>
         <ErrorText>{error}</ErrorText>
-        <Button
-          label="Reintentar"
-          variant="secondary"
-          onPress={() => void refetch()}
-        />
+        <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
       </View>
     );
   else if (photos.length === 0)
     body = (
       <View style={styles.center}>
-        <Text style={[type.body, { color: colors.secondaryLabel }]}>
-          Este rollo no tiene fotos
-        </Text>
+        <Text style={[type.body, { color: colors.secondaryLabel }]}>Este rollo no tiene fotos</Text>
       </View>
     );
   else
@@ -312,29 +276,20 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
         ListHeaderComponent={
           author ? (
             <View style={styles.filter}>
-              <Text
-                style={[type.subhead, { color: colors.secondaryLabel }]}
-              >{`Solo ${author.name}`}</Text>
+              <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${author.name}`}</Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Quitar filtro"
                 hitSlop={10}
                 onPress={() => setAuthorId(null)}
               >
-                <SymbolView
-                  name="xmark.circle.fill"
-                  size={18}
-                  tintColor={colors.tint as string}
-                />
+                <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
               </Pressable>
             </View>
           ) : undefined
         }
         renderSectionHeader={({ section }) => (
-          <Text
-            accessibilityRole="header"
-            style={[type.headline, styles.header]}
-          >
+          <Text accessibilityRole="header" style={[type.headline, styles.header]}>
             {section.title}
           </Text>
         )}
@@ -355,9 +310,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
         )}
         ListEmptyComponent={
           <Text style={[type.body, styles.empty]}>
-            {author
-              ? `${author.name} no sacó fotos`
-              : "Este rollo no tiene fotos"}
+            {author ? `${author.name} no sacó fotos` : "Este rollo no tiene fotos"}
           </Text>
         }
       />
@@ -372,9 +325,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
       <Stack.Screen options={{ title: "Galería", headerLargeTitle: true }} />
       {toolbar}
       {(bar || selecting) && (
-        <View
-          style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}
-        >
+        <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
           {bar?.kind === "progress" ? (
             <>
               <View style={styles.barRow}>
@@ -390,12 +341,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
                 </Pressable>
               </View>
               <View style={styles.track}>
-                <View
-                  style={[
-                    styles.fillBar,
-                    { width: `${(bar.done / bar.total) * 100}%` },
-                  ]}
-                />
+                <View style={[styles.fillBar, { width: `${(bar.done / bar.total) * 100}%` }]} />
               </View>
             </>
           ) : bar?.kind === "denied" ? (
@@ -404,31 +350,28 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
             </View>
           ) : bar?.kind === "result" ? (
             <View style={styles.barRow}>
-              <Text style={[type.subhead, { color: colors.label, flex: 1 }]}>
-                {resultText(bar)}
-              </Text>
+              <Text style={[type.subhead, { color: colors.label, flex: 1 }]}>{resultText(bar)}</Text>
               {bar.failed.length > 0 && (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Reintentar"
-                  onPress={() => void run(bar.failed)}
+                  onPress={() =>
+                    void run(bar.failed, {
+                      album: bar.album,
+                      recents: bar.recents,
+                    })
+                  }
                 >
                   <Text style={[type.subhead, styles.action]}>Reintentar</Text>
                 </Pressable>
               )}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Listo"
-                onPress={() => setBar(null)}
-              >
+              <Pressable accessibilityRole="button" accessibilityLabel="Listo" onPress={() => setBar(null)}>
                 <Text style={[type.subhead, styles.action]}>Listo</Text>
               </Pressable>
             </View>
           ) : (
             <Button
-              label={
-                selected.size > 0 ? `Guardar (${selected.size})` : "Guardar"
-              }
+              label={selected.size > 0 ? `Guardar (${selected.size})` : "Guardar"}
               disabled={selected.size === 0 || !saver}
               onPress={() => void run(photos.filter((p) => selected.has(p.id)))}
             />
@@ -441,10 +384,10 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
 
 function resultText(bar: Extract<Bar, { kind: "result" }>) {
   const noun = (n: number) => `${n} ${n === 1 ? "foto" : "fotos"}`;
-  if (bar.failed.length > 0)
-    return `Se guardaron ${bar.saved}. No se pudieron guardar ${noun(bar.failed.length)}.`;
-  if (bar.cancelled)
-    return `Se guardaron ${noun(bar.saved)} antes de cancelar.`;
+  if (bar.failed.length > 0) return `Se guardaron ${bar.saved}. No se pudieron guardar ${noun(bar.failed.length)}.`;
+  if (bar.cancelled) return `Se guardaron ${noun(bar.saved)} antes de cancelar.`;
+  if (bar.recents) return `Se guardaron ${noun(bar.saved)} en Recientes`;
+  if (bar.recents) return `Se guardaron ${noun(bar.saved)} en Recientes`;
   return `Guardadas ${bar.saved} ✓`;
 }
 
