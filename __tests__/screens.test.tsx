@@ -51,14 +51,14 @@ describe("Home", () => {
     await renderRouter(routes, { initialUrl: "/" });
 
     expect(await screen.findByRole("button", { name: "Empezar un nuevo rollo" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Sumate con un código" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sumarme con un código" })).toBeVisible();
   });
 
   it("the buttons lead to create and join", async () => {
     await signInAs({ trips: [] });
     await renderRouter(routes, { initialUrl: "/" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Sumate con un código" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Sumarme con un código" }));
     expect(screen).toHavePathname("/join");
   });
 
@@ -312,12 +312,12 @@ describe("Join roll header", () => {
 
   it("cancels from the header and goes back", async () => {
     await renderRouter(routes, { initialUrl: "/" });
-    await fireEvent.press(await screen.findByRole("button", { name: "Sumate con un código" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Sumarme con un código" }));
     expect(screen).toHavePathname("/join");
 
     await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
 
-    expect(screen).toHavePathname("/");
+    expect(screen).toHavePathname("/roll");
   });
 });
 
@@ -429,7 +429,7 @@ describe("Create roll", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
 
-    expect(screen).toHavePathname("/");
+    expect(screen).toHavePathname("/roll");
   });
 
   it("shows the server error without losing what was typed", async () => {

@@ -5,6 +5,7 @@ import { useTodayLeft } from "@/features/capture/use-today-left";
 import { scheduleRevealNotification } from "@/features/notifications/reveal";
 import { useTabAvatar } from "@/features/profile/use-tab-avatar";
 import { useFirstPresentation } from "@/features/reveal/use-first-presentation";
+import { hasNoTrips } from "@/features/trips/active";
 import { tabsFor } from "@/features/trips/tabs";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
@@ -18,11 +19,11 @@ import { colors } from "@/ui/theme";
  * After the reveal the same five tabs become Galería, Mapa, Presentación, (Feed hidden) and Perfil.
  */
 export default function TabsLayout() {
-  const { trip } = useActiveTrip();
+  const { trip, loaded } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const left = useTodayLeft(trip?.id, detail);
   const phase = useRollPhase(detail);
-  const tabs = tabsFor(phase, left);
+  const tabs = tabsFor(phase, left, !hasNoTrips(loaded, trip));
   const avatar = useTabAvatar();
 
   // The phone knows when the reveal happens: it's announced with a local notification.
@@ -43,7 +44,7 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf={{ default: "map", selected: "map.fill" }} md="map" />
         <NativeTabs.Trigger.Label hidden>Mapa</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="camera" disabled listeners={{ tabPress: () => router.push(tabs.camera.target) }}>
+      <NativeTabs.Trigger name="camera" disabled listeners={{ tabPress: () => (tabs.camera.target === "/roll" ? router.navigate("/roll") : router.push(tabs.camera.target)) }}>
         <NativeTabs.Trigger.Icon sf={tabs.camera.sf} md={tabs.camera.md} />
         <NativeTabs.Trigger.Label hidden>{tabs.camera.label}</NativeTabs.Trigger.Label>
         {tabs.camera.badge !== null && <NativeTabs.Trigger.Badge>{tabs.camera.badge}</NativeTabs.Trigger.Badge>}

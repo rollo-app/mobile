@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { getActiveTripId } from "@/storage/active-trip";
 import { fetchMyTrips } from "./actions";
 import { pickActiveTrip } from "./active";
@@ -26,11 +26,16 @@ export function useActiveTrip() {
     }, []),
   );
 
+  // A failed query goes back to "pending" while it retries: once the list has settled it stays loaded,
+  // otherwise screens that swap on `loaded` would remount, retry again and loop.
+  const settled = useRef(false);
+  if (!query.isPending) settled.current = true;
+
   const trips = query.data?.trips ?? [];
   return {
     trip: pickActiveTrip(trips, activeId.id),
     trips,
-    loaded: activeId.read && !query.isPending,
+    loaded: activeId.read && settled.current,
     error: !query.data && query.isError ? (query.error instanceof Error ? query.error.message : "No se pudieron cargar tus rollos") : null,
     refetch: query.refetch,
   };

@@ -1,4 +1,4 @@
-import { pickActiveTrip, type TripSummary } from "../active";
+import { hasNoTrips, pickActiveTrip, type TripSummary } from "../active";
 
 const trip = (id: string): TripSummary => ({
   id,
@@ -29,5 +29,13 @@ describe("pickActiveTrip", () => {
 
   it("is null without trips", () => {
     expect(pickActiveTrip([], "a")).toBeNull();
+  });
+});
+
+describe("hasNoTrips", () => {
+  it("is true only once the list has loaded and no trip came out of it", () => {
+    expect(hasNoTrips(true, null)).toBe(true);
+    expect(hasNoTrips(false, null)).toBe(false);
+    expect(hasNoTrips(true, trip("a"))).toBe(false);
   });
 });

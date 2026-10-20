@@ -6,6 +6,8 @@ import { usePendingItems } from "@/features/capture/use-pending-items";
 import { FeedRow } from "@/features/feed/feed-row";
 import { groupByDay, newest, type FeedSection } from "@/features/feed/sections";
 import { feedToItems, mergeItems, pendingToItems, type MapItem } from "@/features/map/features";
+import { NoRollYet } from "@/features/roll/no-roll-yet";
+import { hasNoTrips } from "@/features/trips/active";
 import { deleteMedia } from "@/features/trips/actions";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { feedKey, useFeed } from "@/features/trips/use-feed";
@@ -25,6 +27,12 @@ const PAGE = 30;
 const keyExtractor = (item: MapItem) => item.id;
 
 export default function FeedScreen() {
+  const { trip, loaded } = useActiveTrip();
+  if (hasNoTrips(loaded, trip)) return <NoRollYet />;
+  return <FeedList />;
+}
+
+function FeedList() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { trip } = useActiveTrip();
