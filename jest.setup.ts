@@ -257,6 +257,7 @@ jest.mock("@expo/ui/swift-ui", () => {
 jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   tag: (tag: string) => ({ tag }),
   pickerStyle: (style: string) => ({ style }),
+  foregroundStyle: (style: unknown) => ({ foregroundStyle: style }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).

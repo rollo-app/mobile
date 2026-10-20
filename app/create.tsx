@@ -1,5 +1,5 @@
 import { DatePicker, Form, Host, Picker, Section, Stepper, Text, TextField } from "@expo/ui/swift-ui";
-import { pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
+import { foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -8,8 +8,7 @@ import { requestRevealPermission } from "@/features/notifications/reveal";
 import { createTrip } from "@/features/trips/actions";
 import { canCreate, defaultStart } from "@/features/trips/create-form";
 import { myTripsKey } from "@/features/trips/use-active-trip";
-import { ErrorText } from "@/ui/components";
-import { colors, spacing } from "@/ui/theme";
+import { colors } from "@/ui/theme";
 
 const HOUR = 60 * 60 * 1000;
 const DATE_TIME = ["date", "hourAndMinute"] as const;
@@ -79,14 +78,10 @@ export default function CreateScreen() {
           </Stack.Toolbar.Button>
         )}
       </Stack.Toolbar>
-      {error && (
-        <View style={styles.error}>
-          <ErrorText>{error}</ErrorText>
-        </View>
-      )}
       <Host style={styles.form}>
         <Form>
-          <Section>
+          {/* The server's message goes under the name, inside the form: above it, the transparent header covers it. */}
+          <Section footer={error ? <Text modifiers={[foregroundStyle("red")]}>{error}</Text> : undefined}>
             <TextField placeholder="Nombre del rollo" maxLength={60} onTextChange={setName} />
           </Section>
 
@@ -138,5 +133,4 @@ export default function CreateScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.groupedBackground },
   form: { flex: 1 },
-  error: { padding: spacing.lg },
 });
