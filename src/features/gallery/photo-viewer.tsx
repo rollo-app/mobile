@@ -81,7 +81,7 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
   const tripId = tripParam ?? trip?.tripId;
   const { photos, token, loading } = useRevealedPhotos(tripId);
   const { detail } = useTripDetail(tripId);
-  const saver = useSaver(token, detail?.trip.name);
+  const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
 
   const startIndex = useRef<number | null>(null);
   if (startIndex.current === null && photos.length > 0) startIndex.current = Math.max(0, photos.findIndex((p) => p.id === id));

@@ -3,6 +3,8 @@ import { Image } from "expo-image";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import type { ImagePickerAsset } from "expo-image-picker";
 import * as VideoThumbnails from "expo-video-thumbnails";
+import type { ExifInput } from "@/features/exif/build-exif";
+import { embedMetadata } from "@/features/exif/embed";
 
 /** Photos at print resolution; the thumb is what shows in the gallery. */
 const ORIGINAL_MAX = 4000;
@@ -21,10 +23,12 @@ export type PreparedMedia = {
 /**
  * Prepares a capture for the queue: original (photo ≤4000 px JPEG 88 % or the video
  * already exported at 1080p by the camera), 800 px thumb and its ThumbHash.
+ * Resizing re-encodes the JPEG and drops its EXIF, so photos get theirs written back from `metadata`
+ * (time in the roll's zone, GPS, caption, author). Videos are moved as the camera exported them.
  * Everything goes to Documents (not the cache, which iOS may clear during days without signal) and is
  * deleted only once the server confirms the upload.
  */
-export async function prepareMedia(asset: ImagePickerAsset, id: string): Promise<PreparedMedia> {
+export async function prepareMedia(asset: ImagePickerAsset, id: string, metadata: ExifInput): Promise<PreparedMedia> {
   const dir = new Directory(Paths.document, "pending", id);
   dir.create({ intermediates: true, idempotent: true });
 
@@ -44,6 +48,8 @@ export async function prepareMedia(asset: ImagePickerAsset, id: string): Promise
     const saved = await saveResized(asset.uri, asset.width, asset.height, ORIGINAL_MAX, 0.88, original);
     width = saved.width;
     height = saved.height;
+    // Best effort: a photo without metadata is still worth sending.
+    await embedMetadata(original, metadata).catch(() => {});
     await saveResized(original.uri, saved.width, saved.height, THUMB_MAX, 0.8, thumb);
     await deleteQuietly(asset.uri);
   }

@@ -3,6 +3,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testi
 import * as ImagePicker from "expo-image-picker";
 import * as actions from "@/features/trips/actions";
 import * as media from "@/features/capture/media";
+import { startFix } from "@/features/capture/location";
 import { queryClient } from "@/api/query-client";
 import { localDay } from "@/features/capture/quota";
 import { createQueue, type Queue } from "@/features/capture/queue";
@@ -215,7 +216,32 @@ describe("Capture", () => {
       thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
     });
     expect(Math.abs(saved!.takenAt - Date.now())).toBeLessThan(60_000);
-    expect(mediaMock.prepareMedia).toHaveBeenCalledWith(photo, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    expect(mediaMock.prepareMedia).toHaveBeenCalledWith(photo, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", {
+      takenAt: saved!.takenAt,
+      timeZone: TZ,
+      location: { lat: -49.33, lng: -72.89, accuracyM: 12 },
+      caption: "el viento no perdona",
+      author: "Juani",
+    });
+  });
+
+  it("waits for the location before preparing the photo, since the EXIF needs it", async () => {
+    let resolveFix: (fix: { lat: number; lng: number; accuracyM: number }) => void = () => {};
+    jest.mocked(startFix).mockReturnValueOnce(new Promise((resolve) => (resolveFix = resolve)));
+    picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
+    await openCapture();
+    const send = await screen.findByRole("button", { name: "Mandar al rollo" });
+    mediaMock.prepareMedia.mockClear();
+    let pressed: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      pressed = fireEvent.press(send); // send() waits for the fix: don't await it yet
+    });
+    expect(mediaMock.prepareMedia).not.toHaveBeenCalled();
+
+    await act(async () => resolveFix({ lat: 1, lng: 2, accuracyM: 3 }));
+    await pressed;
+    await waitFor(() => expect(mediaMock.prepareMedia).toHaveBeenCalled());
+    expect(mediaMock.prepareMedia.mock.calls[0]![2].location).toEqual({ lat: 1, lng: 2, accuracyM: 3 });
   });
 
   it("sending triggers the queue upload, with the photo already enqueued", async () => {

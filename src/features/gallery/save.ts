@@ -1,6 +1,7 @@
 import { File, Paths } from "expo-file-system";
 import { Album, Asset, requestPermissionsAsync } from "expo-media-library";
 import { API_URL } from "@/config";
+import { embedMetadataIfMissing } from "@/features/exif/embed";
 import type { RevealedPhoto } from "@/features/media/revealed";
 
 const CONCURRENCY = 3;
@@ -31,6 +32,8 @@ export function formatMegabytes(bytes: number): string {
 export type SaveContext = {
   token: string;
   albumName: string;
+  /** The roll's IANA zone, for the local time written into photos that arrive without EXIF. */
+  timeZone?: string;
   baseUrl?: string;
 };
 
@@ -49,7 +52,12 @@ export async function requestAlbumAccess(): Promise<boolean> {
  * Downloads run in parallel; creating the album (or finding it) is serialized so concurrent saves
  * don't create it twice.
  */
-export function createSaver({ token, albumName, baseUrl = API_URL }: SaveContext) {
+export function createSaver({
+  token,
+  albumName,
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+  baseUrl = API_URL,
+}: SaveContext) {
   let album: Album | null = null;
   let lock: Promise<unknown> = Promise.resolve();
 
@@ -76,6 +84,17 @@ export function createSaver({ token, albumName, baseUrl = API_URL }: SaveContext
       const file = await File.downloadFileAsync(`${baseUrl}${photo.originalPath}`, target, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // Photos uploaded before Rollo wrote EXIF (and the seed) arrive without a date: without it
+      // they would sort by download time. Videos keep the creation date of the file the camera exported.
+      if (photo.type === "photo") {
+        await embedMetadataIfMissing(file, {
+          takenAt: photo.takenAt,
+          timeZone,
+          location: photo.lat != null && photo.lng != null ? { lat: photo.lat, lng: photo.lng, accuracyM: null } : null,
+          caption: photo.caption,
+          author: photo.author.name,
+        });
+      }
       if (inAlbum) await addToAlbum(file.uri);
       else await Asset.create(file.uri);
     } finally {

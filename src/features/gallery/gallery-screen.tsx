@@ -113,7 +113,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
   const { width } = useWindowDimensions();
   const { photos, token, error, loading, refetch } = useRevealedPhotos(tripId);
   const { detail } = useTripDetail(tripId);
-  const saver = useSaver(token, detail?.trip.name);
+  const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
 
   const [authorId, setAuthorId] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
