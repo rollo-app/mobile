@@ -9,7 +9,7 @@ import { Button, Row, Screen, Section } from "@/ui/components";
 export default function OfflineMapsScreen() {
   const { state, packs, reload } = useOfflineMap();
   const { trips } = useActiveTrip();
-  const nameOf = (tripId: string) => trips.find((t) => t.tripId === tripId)?.tripName ?? "Rollo";
+  const nameOf = (tripId: string) => trips.find((t) => t.id === tripId)?.name ?? "Rollo";
 
   const confirmDelete = () =>
     Alert.alert("¿Borrar los mapas sin señal?", "Se vuelven a bajar solos mientras dure el rollo y haya conexión.", [

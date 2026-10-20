@@ -19,18 +19,18 @@ const COLUMNS = 6;
 /** After the reveal the Rollo tab is the gallery; before, the board. */
 export default function RollScreen() {
   const { trip } = useActiveTrip();
-  const { detail } = useTripDetail(trip?.tripId);
+  const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
-  if (trip && phase === "revealed") return <GalleryScreen tripId={trip.tripId} />;
+  if (trip && phase === "revealed") return <GalleryScreen tripId={trip.id} />;
   return <RollBoard />;
 }
 
 function RollBoard() {
   const { trip } = useActiveTrip();
-  const { detail, error, refetch, isRefetching } = useTripDetail(trip?.tripId);
-  const pending = usePendingCount(trip?.tripId);
-  const { feed } = useFeed(trip?.tripId);
-  const pendingItems = usePendingItems(trip?.tripId);
+  const { detail, error, refetch, isRefetching } = useTripDetail(trip?.id);
+  const pending = usePendingCount(trip?.id);
+  const { feed } = useFeed(trip?.id);
+  const pendingItems = usePendingItems(trip?.id);
   const phase = useRollPhase(detail);
   // Your queued photos are already in the roll, even if they haven't been uploaded yet.
   const total = (detail?.totalUploaded ?? 0) + pending;
@@ -44,7 +44,7 @@ function RollBoard() {
 
   return (
     <Screen grouped>
-      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.tripName} /> }} />}
+      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.name} /> }} />}
       {error ? (
         <>
           <ErrorText>{error}</ErrorText>

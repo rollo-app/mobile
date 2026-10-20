@@ -81,7 +81,7 @@ beforeEach(async () => {
   deps = {
     queue,
     apiUrl: API,
-    getToken: async (tripId) => (tripId === TRIP ? "tok" : null),
+    getToken: async () => "tok",
     putFile: async (uri, url, contentType) => {
       puts.push({ uri, url, contentType });
       const status = putStatus(url);
@@ -443,13 +443,26 @@ describe("uploader", () => {
       expect(removed).toEqual(["b"]);
     });
 
-    it("with no trip token (no longer in it) it marks it failed without touching the network", async () => {
-      await queue.enqueue(item({ tripId: "otro-viaje" }));
+    it("signed out it doesn't touch the network or the queue", async () => {
+      await queue.enqueue(item());
+
+      await createUploader({ ...deps, getToken: async () => null }).run();
+
+      expect(calls).toEqual([]);
+      expect(await queue.pending()).toHaveLength(1);
+      expect(await queue.failed()).toEqual([]);
+    });
+
+    it("a 401 (session rejected) stops the pass and keeps the photos in the queue", async () => {
+      routes.push(() => json(401, { error: "Sesión inválida, volvé a entrar" }));
+      await queue.enqueue(item({ id: "a", takenAt: 1 }));
+      await queue.enqueue(item({ id: "b", takenAt: 2 }));
 
       await createUploader(deps).run();
 
-      expect(calls).toEqual([]);
-      expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "no_token" })]);
+      expect(calls).toHaveLength(1);
+      expect(await queue.failed()).toEqual([]);
+      expect(await queue.pending()).toHaveLength(2);
     });
 
     it("another 4xx on register (invalid data, expired token) is also permanent, with the server message as reason", async () => {
@@ -496,12 +509,12 @@ describe("uploader", () => {
       let first = true;
       const uploader = createUploader({
         ...deps,
-        getToken: async (tripId) => {
+        getToken: async () => {
           if (first) {
             first = false;
             throw new TypeError("raro");
           }
-          return deps.getToken(tripId);
+          return deps.getToken();
         },
       });
 

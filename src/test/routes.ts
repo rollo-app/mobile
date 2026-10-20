@@ -1,4 +1,8 @@
 // All the app's routes, for renderRouter with real navigation.
+import AuthLayout from "../../app/(auth)/_layout";
+import CodeScreen from "../../app/(auth)/code";
+import EmailScreen from "../../app/(auth)/email";
+import CompleteProfileScreen from "../../app/(auth)/profile";
 import TabsLayout from "../../app/(tabs)/_layout";
 import CameraTab from "../../app/(tabs)/camera";
 import FeedLayout from "../../app/(tabs)/feed/_layout";
@@ -12,13 +16,12 @@ import MeScreen from "../../app/(tabs)/me/index";
 import RootLayout from "../../app/_layout";
 import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
-import DevTokenScreen from "../../app/dev-token";
+import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
 import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
 import PhotoRoute from "../../app/photo/[id]";
-import RenameScreen from "../../app/rename";
 import TripsScreen from "../../app/trips";
 
 
@@ -28,12 +31,15 @@ export const routes = {
   join: JoinScreen,
   create: CreateScreen,
   trips: TripsScreen,
-  rename: RenameScreen,
-  "dev-token": DevTokenScreen,
+  "edit-profile": EditProfileScreen,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
   presentation: PresentationScreen,
   "photo/[id]": PhotoRoute,
+  "(auth)/_layout": AuthLayout,
+  "(auth)/email": EmailScreen,
+  "(auth)/code": CodeScreen,
+  "(auth)/profile": CompleteProfileScreen,
   "(tabs)/_layout": TabsLayout,
   "(tabs)/roll/_layout": RollLayout,
   "(tabs)/roll/index": RollScreen,

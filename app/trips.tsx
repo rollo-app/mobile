@@ -3,7 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { Fragment } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
-import { markOpened } from "@/storage/trips";
+import { setActiveTripId } from "@/storage/active-trip";
 import { Button, Screen } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
@@ -12,7 +12,7 @@ export default function TripsScreen() {
   const { trip: active, trips } = useActiveTrip();
 
   async function select(tripId: string) {
-    await markOpened(tripId);
+    await setActiveTripId(tripId);
     router.dismissTo("/roll");
   }
 
@@ -20,22 +20,22 @@ export default function TripsScreen() {
     <Screen grouped>
       <View style={styles.group}>
         {trips.map((t, i) => (
-          <Fragment key={t.tripId}>
+          <Fragment key={t.id}>
             {i > 0 && <View style={styles.separator} />}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t.tripName}
-              accessibilityState={{ selected: t.tripId === active?.tripId }}
-              onPress={() => select(t.tripId)}
+              accessibilityLabel={t.name}
+              accessibilityState={{ selected: t.id === active?.id }}
+              onPress={() => select(t.id)}
               style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.fill }]}
             >
               <View style={styles.text}>
-                <Text style={[type.body, { color: colors.label }]}>{t.tripName}</Text>
+                <Text style={[type.body, { color: colors.label }]}>{t.name}</Text>
                 <Text style={[type.footnote, { color: colors.secondaryLabel }]}>
-                  {t.role === "admin" ? "Lo creaste vos" : `Entraste como ${t.memberName}`}
+                  {t.role === "admin" ? "Lo creaste vos" : "Entraste con un código"}
                 </Text>
               </View>
-              {t.tripId === active?.tripId && (
+              {t.id === active?.id && (
                 <SymbolView name="checkmark" size={16} weight="semibold" tintColor={colors.tint as string} />
               )}
             </Pressable>

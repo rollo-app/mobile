@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { memberColor } from "@/features/map/member-color";
+import { Avatar } from "@/features/profile/avatar";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
 import { formatTime } from "@/features/trips/phase";
 import { spacing, type } from "@/ui/theme";
@@ -55,7 +55,7 @@ export function Slide({
       )}
       <View style={styles.caption} pointerEvents="none">
         <View style={styles.author}>
-          <View style={[styles.dot, { backgroundColor: memberColor(photo.author.id) }]} />
+          <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
           <Text style={styles.name}>{photo.author.name}</Text>
           <Text style={styles.time}>{formatTime(photo.takenAt, timeZone)}</Text>
         </View>
@@ -107,7 +107,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
   author: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  dot: { width: 10, height: 10, borderRadius: 5 },
   name: { ...type.headline, color: "#fff" },
   time: { ...type.subhead, color: "rgba(255,255,255,0.7)" },
   quote: { ...type.quote, color: "#fff" },

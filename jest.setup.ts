@@ -77,6 +77,11 @@ beforeEach(() => {
   });
 });
 
+// Its gc timers (7 days) would keep Jest from exiting.
+afterEach(() => {
+  (require("@/api/query-client") as typeof import("@/api/query-client")).queryClient.clear();
+});
+
 // MapLibre is native: in tests the map and its parts are empty views and there are no offline regions.
 jest.mock("@maplibre/maplibre-react-native", () => {
   const React = require("react");

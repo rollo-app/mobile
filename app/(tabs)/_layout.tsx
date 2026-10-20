@@ -18,8 +18,8 @@ import { colors } from "@/ui/theme";
  */
 export default function TabsLayout() {
   const { trip } = useActiveTrip();
-  const { detail } = useTripDetail(trip?.tripId);
-  const left = useTodayLeft(trip?.tripId, detail);
+  const { detail } = useTripDetail(trip?.id);
+  const left = useTodayLeft(trip?.id, detail);
   const phase = useRollPhase(detail);
   const tabs = tabsFor(phase, left);
 
@@ -29,7 +29,7 @@ export default function TabsLayout() {
     if (info) void scheduleRevealNotification(info);
   }, [info?.id, info?.name, info?.revealAt, info?.revealed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useFirstPresentation(trip?.tripId, phase === "revealed");
+  useFirstPresentation(trip?.id, phase === "revealed");
 
   return (
     <NativeTabs tintColor={colors.tint} minimizeBehavior="onScrollDown">

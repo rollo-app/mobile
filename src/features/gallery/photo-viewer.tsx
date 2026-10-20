@@ -7,7 +7,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { memberColor } from "@/features/map/member-color";
+import { Avatar } from "@/features/profile/avatar";
 import { formatPinTime } from "@/features/map/pin-time";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -78,7 +78,7 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { trip } = useActiveTrip();
-  const tripId = tripParam ?? trip?.tripId;
+  const tripId = tripParam ?? trip?.id;
   const { photos, token, loading } = useRevealedPhotos(tripId);
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
@@ -145,7 +145,7 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
           {photo && (
             <View pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.md }]}>
               <View style={styles.authorRow}>
-                <View style={[styles.dot, { backgroundColor: memberColor(photo.author.id) }]} />
+                <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
                 <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
                 <Text style={[type.subhead, styles.dim]}>{formatPinTime(photo.takenAt, timeZone)}</Text>
               </View>
@@ -211,7 +211,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
   },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  dot: { width: 10, height: 10, borderRadius: 5 },
   white: { color: "#FFFFFF" },
   dim: { color: "rgba(255,255,255,0.7)" },
   actions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },

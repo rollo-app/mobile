@@ -2,11 +2,11 @@ import { Redirect, router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
-import { Button } from "@/ui/components";
+import { Button, ErrorText } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 
 export default function IndexScreen() {
-  const { trip, loaded } = useActiveTrip();
+  const { trip, loaded, error, refetch } = useActiveTrip();
   const insets = useSafeAreaInsets();
 
   if (!loaded) return null;
@@ -21,6 +21,8 @@ export default function IndexScreen() {
         </Text>
       </View>
       <View style={styles.actions}>
+        {error && <ErrorText>{error}</ErrorText>}
+        {error && <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />}
         <Button label="Empezar un nuevo rollo" onPress={() => router.push("/create")} />
         <Button label="Sumate con un código" variant="secondary" onPress={() => router.push("/join")} />
       </View>

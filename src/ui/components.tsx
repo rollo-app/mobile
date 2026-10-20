@@ -120,7 +120,10 @@ export function Row({
   onPress,
   loading,
   tone,
+  leading,
 }: {
+  /** Something before the label (an avatar). */
+  leading?: ReactNode;
   label: string;
   value?: string;
   note?: string;
@@ -132,6 +135,7 @@ export function Row({
 }) {
   const content = (
     <>
+      {leading}
       <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }]}>{label}</Text>
       {value !== undefined && (
         <View style={styles.rowValueBox}>

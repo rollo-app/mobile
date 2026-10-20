@@ -46,10 +46,10 @@ export default function MapScreen() {
   const { trip } = useActiveTrip();
   const router = useRouter();
   const { focus } = useLocalSearchParams<{ focus?: string }>();
-  const { detail } = useTripDetail(trip?.tripId);
-  const { feed, error, refetch } = useFeed(trip?.tripId);
-  const pending = usePendingItems(trip?.tripId);
-  const { token } = useRevealedPhotos(trip?.tripId);
+  const { detail } = useTripDetail(trip?.id);
+  const { feed, error, refetch } = useFeed(trip?.id);
+  const pending = usePendingItems(trip?.id);
+  const { token } = useRevealedPhotos(trip?.id);
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
@@ -214,7 +214,7 @@ export default function MapScreen() {
         options={{
           headerTransparent: true,
           headerShadowVisible: false,
-          ...(trip ? { headerTitle: () => <TripSwitcher name={trip.tripName} /> } : {}),
+          ...(trip ? { headerTitle: () => <TripSwitcher name={trip.name} /> } : {}),
         }}
       />
       <Map

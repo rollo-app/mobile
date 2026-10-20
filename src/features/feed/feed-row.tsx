@@ -3,10 +3,9 @@ import * as Haptics from "expo-haptics";
 import { memo } from "react";
 import { ActionSheetIOS, Pressable, StyleSheet, Text, View } from "react-native";
 import type { MapItem } from "@/features/map/features";
-import { memberColor } from "@/features/map/member-color";
+import { Avatar } from "@/features/profile/avatar";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
-const AVATAR = 36;
 const THUMB = 56;
 
 /** Capture time "14:32" in the trip's time zone. */
@@ -31,9 +30,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
 
   const content = (
     <View testID="feed-row" style={styles.row}>
-      <View style={[styles.avatar, { backgroundColor: memberColor(item.authorId) }]}>
-        <Text style={[type.callout, styles.initial]}>{item.authorName.trim().charAt(0).toUpperCase()}</Text>
-      </View>
+      <Avatar id={item.authorId} name={item.authorName} avatarUrl={item.authorAvatarUrl} size={40} />
       <View style={styles.text}>
         <Text numberOfLines={1} style={[type.footnote, { color: colors.secondaryLabel }]}>
           <Text style={{ fontWeight: "600", color: colors.label }}>{item.authorName}</Text>
@@ -90,8 +87,6 @@ const styles = StyleSheet.create({
   // All wrappers (Pressable, MenuView) fill the width: so the thumbnail always stays on the right.
   fill: { alignSelf: "stretch" },
   row: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md },
-  avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, alignItems: "center", justifyContent: "center" },
-  initial: { color: "#FFFFFF", fontWeight: "600" },
   text: { flex: 1, gap: 2 },
   thumb: { flexShrink: 0, width: THUMB, height: THUMB, borderRadius: radius.sm, borderCurve: "continuous" },
 });

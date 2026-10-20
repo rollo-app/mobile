@@ -1,11 +1,13 @@
 import { DatePicker, Form, Host, Picker, Section, Stepper, Text, TextField } from "@expo/ui/swift-ui";
 import { pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { requestRevealPermission } from "@/features/notifications/reveal";
 import { createTrip } from "@/features/trips/actions";
 import { canCreate, defaultStart } from "@/features/trips/create-form";
+import { myTripsKey } from "@/features/trips/use-active-trip";
 import { ErrorText } from "@/ui/components";
 import { colors, spacing } from "@/ui/theme";
 
@@ -17,9 +19,9 @@ const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : 
 type RevealMode = "end" | "custom";
 
 export default function CreateScreen() {
+  const queryClient = useQueryClient();
   const initialStart = useMemo(() => defaultStart(Date.now()), []);
   const [name, setName] = useState("");
-  const [adminName, setAdminName] = useState("");
   const [startsAt, setStartsAt] = useState(initialStart);
   const [endsAt, setEndsAt] = useState(initialStart + 72 * HOUR);
   const [revealMode, setRevealMode] = useState<RevealMode>("end");
@@ -31,7 +33,7 @@ export default function CreateScreen() {
 
   // With "Al terminar" the reveal follows the end on its own.
   const revealAt = revealMode === "end" ? endsAt : customReveal;
-  const valid = canCreate(name, adminName);
+  const valid = canCreate(name);
 
   function chooseReveal(mode: RevealMode) {
     if (mode === "custom") setCustomReveal(endsAt + 12 * HOUR);
@@ -44,7 +46,6 @@ export default function CreateScreen() {
     try {
       await createTrip({
         name,
-        adminName,
         startsAt,
         endsAt,
         revealAt,
@@ -52,6 +53,7 @@ export default function CreateScreen() {
         dailyVideoLimit: videos,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
+      await queryClient.invalidateQueries({ queryKey: myTripsKey });
       router.dismissTo("/roll");
       void requestRevealPermission();
     } catch (e) {
@@ -86,7 +88,6 @@ export default function CreateScreen() {
         <Form>
           <Section>
             <TextField placeholder="Nombre del rollo" maxLength={60} onTextChange={setName} />
-            <TextField placeholder="Tu nombre" maxLength={30} onTextChange={setAdminName} />
           </Section>
 
           <Section title="Cuándo">

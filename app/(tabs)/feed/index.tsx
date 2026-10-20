@@ -28,7 +28,7 @@ export default function FeedScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { trip } = useActiveTrip();
-  const tripId = trip?.tripId;
+  const tripId = trip?.id;
   const { detail } = useTripDetail(tripId);
   const { feed, error, loading, refetch } = useFeed(tripId);
   const pending = usePendingItems(tripId);
@@ -57,7 +57,7 @@ export default function FeedScreen() {
     async (item: MapItem) => {
       if (!tripId) return;
       try {
-        await deleteMedia(tripId, item.id);
+        await deleteMedia(item.id);
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: feedKey(tripId) }),
           queryClient.invalidateQueries({ queryKey: tripKey(tripId) }),
