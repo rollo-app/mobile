@@ -13,7 +13,7 @@ export type OfflineMapState = {
 
 const NB_HYPHEN = "‑";
 
-/** The line shown in "Vos". */
+/** The line shown in "Perfil". */
 export function describeOfflineMap(s: OfflineMapState): string {
   if (s.running) return s.percent === null ? "Bajando…" : `Bajando… ${Math.round(s.percent)} %`;
   if (s.zones > 0 && s.incomplete === 0) {

@@ -13,7 +13,7 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   width: null,
   height: null,
   thumbhash: null,
-  author: { id: authorId, name: authorId },
+  author: { id: authorId, name: authorId, avatarUrl: null },
   thumbPath: `/t/${id}`,
   originalPath: `/o/${id}`,
 });

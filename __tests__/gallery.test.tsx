@@ -6,7 +6,7 @@ import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { PermissionDeniedError } from "@/features/gallery/save";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
-import { saveSession } from "@/storage/trips";
+import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
@@ -42,10 +42,10 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", name: "Juani", role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
   members: [
-    { id: "m1", name: "Juani", role: "admin" },
-    { id: "m2", name: "Fede", role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
+    { id: "m2", userId: "u-m2", name: "Fede", avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -61,7 +61,7 @@ const item = (id: string, over: Partial<actions.Feed["items"][number]> = {}): ac
   caption: null,
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede" },
+  author: { id: "m2", name: "Fede", avatarUrl: null },
   width: 4000,
   height: 3000,
   files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
@@ -88,15 +88,7 @@ beforeEach(async () => {
   mocked.fetchFeed.mockResolvedValue(feed([]));
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   await markPresentationSeen(SUR); // the first-open presentation would cover these screens
-  await saveSession({
-    tripId: SUR,
-    tripName: "Viaje al sur",
-    joinCode: "HUB5FT",
-    memberId: "m1",
-    memberName: "Juani",
-    role: "admin",
-    token: "t",
-  });
+  await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
 });
 afterEach(() => alert.mockRestore());
 
@@ -110,7 +102,7 @@ const two = () =>
     item("a", { takenAt: Date.parse("2027-01-12T15:00:00Z") }),
     item("b", {
       takenAt: Date.parse("2027-01-12T16:00:00Z"),
-      author: { id: "m1", name: "Juani" },
+      author: { id: "m1", name: "Juani", avatarUrl: null },
       caption: "el glaciar",
     }),
     item("c", {

@@ -2,7 +2,8 @@ import { StyleSheet, Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
-import { saveSession } from "@/storage/trips";
+import { markPresentationSeen } from "@/storage/presentation";
+import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -31,10 +32,10 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", name: "Juani", role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
   members: [
-    { id: "m1", name: "Juani", role: "admin" },
-    { id: "m2", name: "Fede", role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
+    { id: "m2", userId: "u-m2", name: "Fede", avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -50,7 +51,7 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   caption: "el viento no perdona",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede" },
+  author: { id: "m2", name: "Fede", avatarUrl: null },
   ...over,
 });
 
@@ -81,7 +82,8 @@ let queue: Queue;
 beforeEach(async () => {
   mocked.fetchTrip.mockResolvedValue(detail());
   mocked.fetchFeed.mockResolvedValue(feed([]));
-  await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
+  await markPresentationSeen(SUR); // the first-open presentation would cover the revealed map
+  await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
   queue = await createQueue(memoryDb());
   getQueue.mockImplementation(() => Promise.resolve(queue));
 });
@@ -139,7 +141,7 @@ describe("Map", () => {
 
   it("the Personas menu filters by person and also lets you go back to everyone", async () => {
     mocked.fetchFeed.mockResolvedValue(
-      feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani" } })]),
+      feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani", avatarUrl: null } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
     expect(await screen.findByLabelText("pin mia")).toBeVisible();
@@ -174,8 +176,8 @@ describe("Map", () => {
   it("tapping a pin with other photos at the same place opens a carousel with all of them, by time", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
-        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", name: "Fede" } }),
-        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", name: "Juani" }, caption: "primera" }),
+        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", name: "Fede", avatarUrl: null } }),
+        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", name: "Juani", avatarUrl: null }, caption: "primera" }),
         feedItem({ id: "lejos", lat: -48.5, lng: -72.0, caption: "otra" }),
       ]),
     );

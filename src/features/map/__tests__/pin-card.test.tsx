@@ -18,6 +18,7 @@ const item = (over: Partial<MapItem> = {}): MapItem => ({
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   authorId: "a1",
   authorName: "Cami",
+  authorAvatarUrl: null,
   pending: false,
   ...over,
 });

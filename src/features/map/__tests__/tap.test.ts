@@ -3,7 +3,7 @@ import { CLUSTER_LEAF_LIMIT, resolveTap } from "../tap";
 
 const item = (id: string, lng: number, lat: number): MapItem => ({
   id, type: "photo", takenAt: 1, day: "d", lat, lng, caption: null, durationS: null, thumbhash: null,
-  authorId: "a", authorName: "A", pending: false,
+  authorId: "a", authorName: "A", authorAvatarUrl: null, pending: false,
 });
 const { features } = toFeatures([item("a", -72.9, -49.3), item("b", -72.9, -49.3), item("far", -72.0, -48.0)], { day: null, authorId: null });
 const [a, b, far] = features as [(typeof features)[number], (typeof features)[number], (typeof features)[number]];

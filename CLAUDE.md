@@ -12,8 +12,16 @@ amigos al sur de Argentina en **enero de 2027** (mucho tramo sin señal) y para 
 
 Decisiones de producto:
 
-- **Solo iOS** en la primera versión. **Sin cuentas:** crear rollo o unirse con código de 6 + nombre;
-  el token de cada rollo va al llavero (SecureStore).
+- **Solo iOS** en la primera versión. **Con cuentas:** login con **email + código de 6 dígitos** (sin
+  contraseña), obligatorio al abrir la app (`app/(auth)/`: email → código → "Completá tu perfil" si es nueva o
+  no tiene nombre). El perfil es **nombre + foto** (`GET/PATCH /me`, foto con `expo-image-picker` 1:1 →
+  512 px JPEG → `POST /me/avatar` → PUT → complete; sin foto, círculo con la inicial y `memberColor`). Crear rollo
+  o unirse es solo con el código de 6 (`POST /trips/join`; el server pide nombre en el perfil). **La sesión es un
+  único token en SecureStore (`rollo.session`)** que usan todas las llamadas; un `401` en cualquiera cierra la
+  sesión local y vuelve al login (`setUnauthorizedHandler` en `src/api/client.ts`). Los rollos salen de
+  `GET /me/trips` (cache de TanStack Query); el rollo activo es el último que abriste y solo se guarda su id
+  (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Perfil; cerrar sesión **no** borra la
+  cola de fotos pendientes.
 - **Cámara nativa del sistema** (`expo-image-picker` → `launchCameraAsync`), no una cámara propia:
   funciona mejor, sobre todo en video. Lo que se saca **no queda en el carrete**: se sube y se borra
   del caché local.
@@ -51,15 +59,15 @@ Decisiones de producto:
   (`react-native-vision-camera` o `expo-camera`); la selfie chica (~1080 px).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
   La ceremonia del revelado será una presentación (a definir).
-- **A futuro (no para enero):** cuentas, amigos y feeds públicos de rollos. No cerrarle la puerta: la
-  tab "Perfil" será el perfil completo y los miembros por rollo se podrán vincular a una cuenta.
+- **A futuro (no para enero):** amigos y feeds públicos de rollos. No cerrarle la puerta: la tab "Perfil" será
+  el perfil completo.
 
 ## Navegación y diseño
 
 - **Barra de abajo nativa** (`NativeTabs` de `expo-router/native-tabs`, liquid glass en iOS 26), **solo
-  íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Feed · Vos. La cámara es un trigger
+  íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Feed · Perfil. La cámara es un trigger
   `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación
-  · Días · Vos.
+  · Días · Perfil.
 - Rollo = tablero (hoja de contacto, cupo de hoy, revelado). La actividad ("Cami sacó una foto · 14:32",
   con la hora de captura) vive solo en el Feed.
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
@@ -117,7 +125,7 @@ src/
                           *.ts            lógica pura, testeable sin React
                           *.tsx           componentes propios del dominio
                           __tests__/      tests de esa lógica, al lado del código
-                        Dominios: trips (el rollo: sesión activa, detalle, etapas), capture (cámara, cola
+                        Dominios: auth (sesión, login, gate), profile (nombre, foto, `Avatar`), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
                         (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications, roll (tablero).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, Button,
@@ -170,7 +178,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 410 tests
+npm test                      # 554 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -192,7 +200,7 @@ Si compilar falla:
 - MapLibre no baja su binario ("invalid archive" / "already exists"): `cd ios && xcodebuild -resolvePackageDependencies -workspace Rollo.xcworkspace -scheme Rollo` y volver a compilar.
 - Después de cambiar de rama o instalar paquetes con Metro abierto, reiniciar Metro con `--clear` (si no, MapLibre se registra dos veces).
 
-Para entrar a un rollo revelado del seed: Perfil → Desarrollo → Entrar con token (el ID y el token los imprime `npm run seed` o se consultan en la D1 local).
+Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en los 7 rollos de prueba, incluido Bariloche revelado); el código de 6 dígitos aparece en la consola de `npm run dev:lan` del backend.
 
 ## Apple
 
@@ -207,12 +215,12 @@ Para entrar a un rollo revelado del seed: Perfil → Desarrollo → Entrar con t
 
 Hecho: crear rollo configurable (fechas, cupos, revelado), unirse con código, etapas del rollo, cámara con
 preview, cola offline con subida en segundo plano, cache persistente, Mapa (pins agrupados, carrusel, filtros),
-Feed, identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa · Presentación · Vos, presentación
+Feed, identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa · Presentación · Perfil, cuentas (email + código, perfil con foto), presentación
 (enfoque + historias), galería con visor y descargas a Fotos, y aviso local del revelado. Corre en el iPhone
 con dev build contra el backend local.
 
-Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Vos,
-recuperación de acceso sin cuentas, mapa offline automático, export ordenado por día, deploy del backend,
+Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Perfil,
+los pins del mapa con la foto del autor (hoy siguen con inicial y color: son capas nativas), la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día, deploy del backend,
 TestFlight y la prueba real.
 
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):

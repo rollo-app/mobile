@@ -3,7 +3,7 @@ import * as Location from "expo-location";
 import * as Network from "expo-network";
 import { queryClient } from "@/api/query-client";
 import { fetchFeed, fetchTrip } from "@/features/trips/actions";
-import { saveSession } from "@/storage/trips";
+import { signInAs, tripSummary } from "@/test/account";
 import { buildMapStyle } from "../style";
 import { getOfflineSyncState, scheduleOfflineSync, syncOfflineMaps } from "../offline-sync";
 
@@ -59,7 +59,7 @@ beforeEach(async () => {
   queryClient.clear();
   jest.clearAllMocks();
 
-  await saveSession({ tripId: "t1", tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "tok" });
+  await signInAs({ trips: [tripSummary("t1", "Viaje al sur", { role: "admin" })] });
   setTrip("t1");
   jest.mocked(fetchFeed).mockResolvedValue({ items: [] } as never);
   network("WIFI");
@@ -149,7 +149,7 @@ describe("syncOfflineMaps", () => {
   });
 
   it("keeps the ambient cache while another roll is current", async () => {
-    await saveSession({ tripId: "t2", tripName: "Otro", joinCode: "ABC123", memberId: "m2", memberName: "Juani", role: "member", token: "tok2" });
+    await signInAs({ trips: [tripSummary("t2", "Otro", { role: "member" })] });
     jest.mocked(fetchTrip).mockImplementation(async (id) => ({
       trip: id === "t2" ? { id, startsAt: START, endsAt: END, revealed: false } : { id, startsAt: NOW - 30 * DAY, endsAt: NOW - 8 * DAY, revealed: true },
     }) as never);

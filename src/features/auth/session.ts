@@ -20,10 +20,24 @@ export function subscribeSession(listener: Listener): () => void {
 
 const notify = (token: string | null) => listeners.forEach((l) => l(token));
 
-export const getSession = getSessionToken;
+/** Last token we know of (`undefined` until the keychain is read), so late-mounting screens start with the right answer. */
+let known: string | null | undefined;
+
+export const knownSession = () => known;
+
+/** For tests: forget what was read, as a fresh launch would. */
+export const resetKnownSession = () => {
+  known = undefined;
+};
+
+export async function getSession(): Promise<string | null> {
+  known = await getSessionToken();
+  return known;
+}
 
 export async function signIn(token: string): Promise<void> {
   await setSessionToken(token);
+  known = token;
   notify(token);
 }
 
@@ -32,6 +46,7 @@ export async function signOut(): Promise<void> {
   await clearSessionToken();
   await clearActiveTripId();
   queryClient.clear();
+  known = null;
   notify(null);
 }
 

@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { queryClient } from "@/api/query-client";
 import * as actions from "@/features/trips/actions";
-import { saveSession } from "@/storage/trips";
+import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
@@ -24,10 +24,10 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", name: "Juani", role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
   members: [
-    { id: "m1", name: "Juani", role: "admin" },
-    { id: "m2", name: "Fede", role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", avatarUrl: null, role: "admin" },
+    { id: "m2", userId: "u-m2", name: "Fede", avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 12,
@@ -35,7 +35,8 @@ const detail = (): actions.TripDetail => ({
 
 beforeEach(() => {
   mocked.fetchTrip.mockReset();
-  return saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
+  mocked.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 9 * 24 * 60 * 60 * 1000, items: [] });
+  return signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
 });
 
 describe("Shared trip data", () => {
@@ -81,8 +82,9 @@ describe("Shared trip data", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    expect(await screen.findByText("Sin conexión. Probá de nuevo cuando tengas señal.")).toBeVisible();
-    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+    // Several tabs are mounted at once, and each shows the shared error.
+    expect((await screen.findAllByText("Sin conexión. Probá de nuevo cuando tengas señal."))[0]).toBeVisible();
+    await fireEvent.press(screen.getAllByRole("button", { name: "Reintentar" })[0]!);
 
     expect(await screen.findByText("7 de 10")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
@@ -94,7 +96,7 @@ describe("Shared trip data", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/me" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Reintentar" }));
+    await fireEvent.press((await screen.findAllByRole("button", { name: "Reintentar" }))[0]!);
 
     expect(await screen.findByText("HUB5FT")).toBeVisible();
   });

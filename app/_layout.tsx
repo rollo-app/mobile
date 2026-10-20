@@ -51,11 +51,12 @@ function RootStack() {
 
   return (
     <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
+      {/* Always available: "/" sends each state to its place, so any unmatched link ends up here too. */}
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Protected guard={gate === "app"}>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create" options={{ title: "Nuevo rollo", presentation: "modal" }} />
           <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />

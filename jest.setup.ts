@@ -77,6 +77,10 @@ beforeEach(() => {
   });
 });
 
+beforeEach(() => {
+  (require("@/features/auth/session") as typeof import("@/features/auth/session")).resetKnownSession();
+});
+
 // Its gc timers (7 days) would keep Jest from exiting.
 afterEach(() => {
   (require("@/api/query-client") as typeof import("@/api/query-client")).queryClient.clear();

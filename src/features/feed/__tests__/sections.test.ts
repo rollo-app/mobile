@@ -16,6 +16,7 @@ const item = (id: string, day: string, takenAt: number): MapItem => ({
   thumbhash: null,
   authorId: "m1",
   authorName: "Juani",
+  authorAvatarUrl: null,
   pending: false,
 });
 

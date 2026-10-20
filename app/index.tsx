@@ -1,11 +1,22 @@
 import { Redirect, router } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { gateFor } from "@/features/auth/gate";
+import { useMe } from "@/features/auth/use-me";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { Button, ErrorText } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 
 export default function IndexScreen() {
+  const { session, me, failed } = useMe();
+  const gate = gateFor({ session, me, meFailed: failed });
+  if (gate === "login") return <Redirect href="/email" />;
+  if (gate === "profile") return <Redirect href="/profile" />;
+  if (gate !== "app") return null;
+  return <Home />;
+}
+
+function Home() {
   const { trip, loaded, error, refetch } = useActiveTrip();
   const insets = useSafeAreaInsets();
 

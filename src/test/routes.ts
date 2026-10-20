@@ -19,6 +19,7 @@ import CreateScreen from "../../app/create";
 import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
+import NotFound from "../../app/+not-found";
 import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
 import PhotoRoute from "../../app/photo/[id]";
@@ -28,6 +29,7 @@ import TripsScreen from "../../app/trips";
 export const routes = {
   _layout: RootLayout,
   index: IndexScreen,
+  "+not-found": NotFound,
   join: JoinScreen,
   create: CreateScreen,
   trips: TripsScreen,

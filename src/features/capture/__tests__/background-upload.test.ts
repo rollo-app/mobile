@@ -1,6 +1,6 @@
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
-import { saveSession } from "@/storage/trips";
+import { setSessionToken } from "@/storage/session";
 import * as sync from "../sync";
 import {
   BACKGROUND_BUDGET_MS,
@@ -9,16 +9,6 @@ import {
   triggerBackgroundUploadForTesting,
   UPLOAD_TASK,
 } from "../background-upload";
-
-const session = {
-  tripId: "11111111-1111-4111-8111-111111111111",
-  tripName: "Viaje al sur",
-  joinCode: "HUB5FT",
-  memberId: "m1",
-  memberName: "Juani",
-  role: "admin" as const,
-  token: "tok",
-};
 
 describe("background upload task", () => {
   afterEach(() => jest.restoreAllMocks());
@@ -51,14 +41,14 @@ describe("background upload task", () => {
 describe("registerBackgroundUpload", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("does nothing without saved trips", async () => {
+  it("does nothing when signed out", async () => {
     await registerBackgroundUpload();
 
     expect(BackgroundTask.registerTaskAsync).not.toHaveBeenCalled();
   });
 
-  it("registers the task with a 15 minute minimum interval when there are trips", async () => {
-    await saveSession(session);
+  it("registers the task with a 15 minute minimum interval when signed in", async () => {
+    await setSessionToken("tok");
 
     await registerBackgroundUpload();
 
@@ -66,7 +56,7 @@ describe("registerBackgroundUpload", () => {
   });
 
   it("does not register when background tasks are restricted", async () => {
-    await saveSession(session);
+    await setSessionToken("tok");
     jest.mocked(BackgroundTask.getStatusAsync).mockResolvedValueOnce(BackgroundTask.BackgroundTaskStatus.Restricted);
 
     await registerBackgroundUpload();
@@ -75,7 +65,7 @@ describe("registerBackgroundUpload", () => {
   });
 
   it("never throws if registering fails", async () => {
-    await saveSession(session);
+    await setSessionToken("tok");
     jest.spyOn(console, "warn").mockImplementation(() => {});
     jest.mocked(BackgroundTask.registerTaskAsync).mockRejectedValueOnce(new Error("denied"));
 

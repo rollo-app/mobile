@@ -1,5 +1,5 @@
 import { File } from "expo-file-system";
-import { saveSession } from "@/storage/trips";
+import { signInAs, tripSummary } from "@/test/account";
 import { queryClient } from "@/api/query-client";
 import { memoryDb } from "@/test/sqlite-memory";
 import { createQueue } from "../queue";
@@ -14,7 +14,7 @@ const json = (status: number, body: unknown) =>
 
 describe("syncQueue", () => {
   beforeEach(async () => {
-    await saveSession({ tripId: TRIP, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "tok" });
+    await signInAs({ trips: [tripSummary(TRIP, "Viaje al sur", { role: "admin" })] });
     const queue = await createQueue(memoryDb());
     jest.mocked(getQueue).mockResolvedValue(queue);
     await queue.enqueue({

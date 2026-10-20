@@ -16,7 +16,7 @@ const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto =>
   width: null,
   height: null,
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
-  author: { id: "m1", name: "Cami" },
+  author: { id: "m1", name: "Cami", avatarUrl: null },
   thumbPath: "/t",
   originalPath: "/o",
   ...over,
@@ -69,10 +69,10 @@ describe("buildStory", () => {
   it("computes the stats and who took the most photos", () => {
     const steps = buildStory(
       [
-        photo("2027-01-12T15:00:00Z", { author: { id: "m1", name: "Cami" } }),
-        photo("2027-01-12T16:00:00Z", { author: { id: "m2", name: "Fede" } }),
-        photo("2027-01-13T16:00:00Z", { author: { id: "m2", name: "Fede" } }),
-        photo("2027-01-13T17:00:00Z", { type: "video", durationS: 8, author: { id: "m1", name: "Cami" } }),
+        photo("2027-01-12T15:00:00Z", { author: { id: "m1", name: "Cami", avatarUrl: null } }),
+        photo("2027-01-12T16:00:00Z", { author: { id: "m2", name: "Fede", avatarUrl: null } }),
+        photo("2027-01-13T16:00:00Z", { author: { id: "m2", name: "Fede", avatarUrl: null } }),
+        photo("2027-01-13T17:00:00Z", { type: "video", durationS: 8, author: { id: "m1", name: "Cami", avatarUrl: null } }),
       ],
       TZ,
     );
@@ -91,8 +91,8 @@ describe("buildStory", () => {
   it("breaks a tie for top photographer in favour of whoever shot first", () => {
     const steps = buildStory(
       [
-        photo("2027-01-12T15:00:00Z", { author: { id: "m2", name: "Fede" } }),
-        photo("2027-01-12T16:00:00Z", { author: { id: "m1", name: "Cami" } }),
+        photo("2027-01-12T15:00:00Z", { author: { id: "m2", name: "Fede", avatarUrl: null } }),
+        photo("2027-01-12T16:00:00Z", { author: { id: "m1", name: "Cami", avatarUrl: null } }),
       ],
       TZ,
     );
