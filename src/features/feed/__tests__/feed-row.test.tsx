@@ -22,6 +22,7 @@ const item = (over: Partial<MapItem> = {}): MapItem => ({
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   authorId: "m2",
   authorName: "Cami",
+  authorAvatarUrl: null,
   pending: false,
   ...over,
 });
@@ -30,7 +31,7 @@ describe("FeedRow", () => {
   it("shows the initial, the name with the trip time and 'sacó una foto' if there is no caption", async () => {
     await render(<FeedRow item={item()} timeZone={TZ} />);
 
-    expect(screen.getByText("C")).toBeTruthy();
+    expect(screen.getByText("C", { includeHiddenElements: true })).toBeTruthy();
     expect(screen.getByText("Cami")).toBeTruthy();
     expect(screen.getByText("14:32")).toBeTruthy();
     expect(screen.getByText("sacó una foto")).toBeTruthy();

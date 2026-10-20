@@ -77,6 +77,15 @@ beforeEach(() => {
   });
 });
 
+beforeEach(() => {
+  (require("@/features/auth/session") as typeof import("@/features/auth/session")).resetKnownSession();
+});
+
+// Its gc timers (7 days) would keep Jest from exiting.
+afterEach(() => {
+  (require("@/api/query-client") as typeof import("@/api/query-client")).queryClient.clear();
+});
+
 // MapLibre is native: in tests the map and its parts are empty views and there are no offline regions.
 jest.mock("@maplibre/maplibre-react-native", () => {
   const React = require("react");
@@ -248,6 +257,7 @@ jest.mock("@expo/ui/swift-ui", () => {
 jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   tag: (tag: string) => ({ tag }),
   pickerStyle: (style: string) => ({ style }),
+  foregroundStyle: (style: unknown) => ({ foregroundStyle: style }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).

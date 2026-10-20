@@ -11,8 +11,8 @@ import { spacing, type } from "@/ui/theme";
 export default function PresentationScreen() {
   const router = useRouter();
   const { trip } = useActiveTrip();
-  const { detail } = useTripDetail(trip?.tripId);
-  const { photos, token, error, loading, refetch } = useRevealedPhotos(trip?.tripId);
+  const { detail } = useTripDetail(trip?.id);
+  const { photos, token, error, loading, refetch } = useRevealedPhotos(trip?.id);
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
   if (detail && token && photos.length > 0) {

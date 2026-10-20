@@ -5,7 +5,7 @@ import type { MapItem } from "../features";
 const TZ = "America/Argentina/Buenos_Aires";
 const item = (id: string, authorName: string): MapItem => ({
   id, type: "photo", takenAt: Date.parse("2027-01-14T16:10:00Z"), day: "2027-01-14", lat: 0, lng: 0,
-  caption: null, durationS: null, thumbhash: null, authorId: id, authorName, pending: false,
+  caption: null, durationS: null, thumbhash: null, authorId: id, authorName, authorAvatarUrl: null, pending: false,
 });
 
 describe("PinCarousel", () => {

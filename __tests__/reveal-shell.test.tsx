@@ -1,9 +1,10 @@
 import * as Notifications from "expo-notifications";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { Text } from "react-native";
 import * as actions from "@/features/trips/actions";
 import { hasSeenPresentation, markPresentationSeen } from "@/storage/presentation";
-import { listTrips, saveSession } from "@/storage/trips";
+import { getActiveTripId } from "@/storage/active-trip";
+import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
@@ -28,14 +29,14 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     dailyVideoLimit: 3,
     ...over,
   },
-  me: { id: "m1", name: "Juani", role: "admin" },
-  members: [{ id: "m1", name: "Juani", role: "admin" }],
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+  members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
 });
 
-const session = (tripId = SUR) =>
-  saveSession({ tripId, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
+const session = (active = SUR) =>
+  signInAs({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(OTRO, "Bariloche")], active });
 
 const testRoutes = { ...routes, "photo/[id]": () => <Text>Foto</Text> };
 
@@ -65,7 +66,7 @@ describe("revealed roll", () => {
       items: [
         {
           id: "a", type: "photo", takenAt: Date.now() - DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
-          thumbhash: null, durationS: null, author: { id: "m1", name: "Juani" },
+          thumbhash: null, durationS: null, author: { id: "m1", name: "Juani", username: null, avatarUrl: null },
           files: { thumb: "/m/a/thumb", original: "/m/a/original" },
         },
       ],
@@ -113,7 +114,6 @@ describe("reveal notification", () => {
   });
 
   it("tapping it makes that roll the active one and goes to the gallery", async () => {
-    await session(OTRO);
     await session(SUR); // SUR is active; the notification is for OTRO
     mocked.fetchTrip.mockResolvedValue(detail());
     await markPresentationSeen(OTRO);
@@ -122,7 +122,9 @@ describe("reveal notification", () => {
     } as never);
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    await waitFor(async () => expect((await listTrips())[0]!.tripId).toBe(OTRO));
+    await waitFor(async () => expect(await getActiveTripId()).toBe(OTRO));
+    // The tap handler navigates after saving the id; let it finish so it can't leak into the next test.
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
   });
 });
@@ -133,8 +135,9 @@ describe("permission", () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
     await renderRouter(testRoutes, { initialUrl: "/join" });
 
-    await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "HUB5FT");
-    await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Juani");
+    await screen.findByLabelText("Código del rollo");
+    await fireEvent.changeText(screen.getByLabelText("Código del rollo"), "HUB5FT");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Unirme" })).toBeEnabled());
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalled());

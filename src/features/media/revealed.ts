@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Schemas } from "@/api/client";
 import { API_URL } from "@/config";
+import { getSession } from "@/features/auth/session";
 import { useFeed } from "@/features/trips/use-feed";
-import { getToken } from "@/storage/trips";
 
 /** A photo or video of a revealed roll, with the paths to download it. */
 export type RevealedPhoto = {
@@ -17,7 +17,7 @@ export type RevealedPhoto = {
   width: number | null;
   height: number | null;
   thumbhash: string | null;
-  author: { id: string; name: string };
+  author: Schemas["FeedItem"]["author"];
   thumbPath: string;
   originalPath: string;
 };
@@ -50,7 +50,7 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
     .sort((a, b) => a.takenAt - b.takenAt);
 }
 
-/** Image source for a media path: the API serves files with the same Bearer token as the rest. */
+/** Image source for a media path: the API serves files with the same Bearer token as the rest (the session's). */
 export function mediaSource(path: string, token: string, baseUrl: string = API_URL) {
   return { uri: `${baseUrl}${path}`, headers: { Authorization: `Bearer ${token}` } };
 }
@@ -66,7 +66,7 @@ export function useRevealedPhotos(tripId: string | undefined) {
   useEffect(() => {
     let active = true;
     setToken(null);
-    if (tripId) getToken(tripId).then((t) => active && setToken(t));
+    if (tripId) getSession().then((t) => active && setToken(t));
     return () => {
       active = false;
     };

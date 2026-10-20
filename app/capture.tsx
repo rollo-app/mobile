@@ -39,7 +39,7 @@ const MAX_VIDEO_S = 15;
 export default function CaptureScreen() {
   const queryClient = useQueryClient();
   const { trip } = useActiveTrip();
-  const { detail, error: detailError } = useTripDetail(trip?.tripId);
+  const { detail, error: detailError } = useTripDetail(trip?.id);
   const [state, setState] = useState<State>({ kind: "waiting" });
   const [caption, setCaption] = useState("");
   const started = useRef(false);
@@ -74,7 +74,7 @@ export default function CaptureScreen() {
     if (closed) return setState({ kind: "closed", ...closed });
     (async () => {
       const day = localDay(Date.now(), timeZone);
-      const pending = await (await getQueue()).countPending(trip.tripId, day);
+      const pending = await (await getQueue()).countPending(trip.id, day);
       left.current = remaining(detail?.today ?? null, day, pending);
       if (left.current && left.current.photos === 0 && left.current.videos === 0) return setState({ kind: "locked" });
       await openCamera();
@@ -100,11 +100,11 @@ export default function CaptureScreen() {
         timeZone,
         location,
         caption: caption.trim() || null,
-        author: trip.memberName,
+        author: detail?.me.name ?? "",
       });
       await (await getQueue()).enqueue({
         id,
-        tripId: trip.tripId,
+        tripId: trip.id,
         type: shot.asset.type === "video" ? "video" : "photo",
         takenAt: shot.takenAt,
         day: localDay(shot.takenAt, timeZone),
@@ -114,8 +114,8 @@ export default function CaptureScreen() {
         caption: caption.trim() || null,
         ...prepared,
       });
-      void queryClient.invalidateQueries({ queryKey: pendingKey(trip.tripId) });
-      void queryClient.invalidateQueries({ queryKey: pendingItemsKey(trip.tripId) });
+      void queryClient.invalidateQueries({ queryKey: pendingKey(trip.id) });
+      void queryClient.invalidateQueries({ queryKey: pendingItemsKey(trip.id) });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       void syncQueue();
       router.back();

@@ -1,5 +1,6 @@
-import { getToken, listTrips, saveSession } from "@/storage/trips";
-import { createTrip, deleteMedia, fetchFeed, fetchTrip, joinTrip, joinWithToken, renameMe } from "../actions";
+import { getActiveTripId } from "@/storage/active-trip";
+import { setSessionToken } from "@/storage/session";
+import { createTrip, deleteMedia, fetchFeed, fetchMyTrips, fetchTrip, joinTrip } from "../actions";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2027, 0, 5, 12, 0);
@@ -16,43 +17,56 @@ const trip = {
   dailyPhotoLimit: 10,
   dailyVideoLimit: 3,
 };
+const member = { id: "m1", userId: "u1", name: "Juani", avatarUrl: null, role: "admin" };
 
-function mockFetch(status: number, body: unknown) {
+function mockFetch(status: number, body?: unknown) {
   const fetchMock = jest.fn(async (_req: Request) =>
-    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }),
+    new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { "content-type": "application/json" } }),
   );
   globalThis.fetch = fetchMock as unknown as typeof fetch;
   return fetchMock;
 }
 
-const sentBody = async (fetchMock: jest.Mock) => (fetchMock.mock.calls.at(-1)![0] as Request).json();
+const lastReq = (fetchMock: jest.Mock) => fetchMock.mock.calls.at(-1)![0] as Request;
+const sentBody = async (fetchMock: jest.Mock) => lastReq(fetchMock).json();
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.useFakeTimers({ now: NOW, doNotFake: ["nextTick", "setImmediate", "queueMicrotask"] });
+  await setSessionToken("session-tok");
 });
 
 afterEach(() => {
   jest.useRealTimers();
 });
 
-describe("createTrip", () => {
-  it("sends the configured dates and limits as they are", async () => {
-    const fetchMock = mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok" });
+describe("fetchMyTrips", () => {
+  it("requests /me/trips with the session token", async () => {
+    const fetchMock = mockFetch(200, { trips: [] });
 
-    await createTrip({
-      name: "  Sur 2027 ",
-      adminName: " Juani ",
-      startsAt: NOW,
-      endsAt: NOW + 10 * DAY,
-      revealAt: NOW + 11 * DAY,
-      dailyPhotoLimit: 20,
-      dailyVideoLimit: 0,
-      timezone: "America/Argentina/Buenos_Aires",
-    });
+    expect(await fetchMyTrips()).toEqual({ trips: [] });
+    expect(new URL(lastReq(fetchMock).url).pathname).toBe("/me/trips");
+    expect(lastReq(fetchMock).headers.get("authorization")).toBe("Bearer session-tok");
+  });
+});
+
+describe("createTrip", () => {
+  const input = {
+    name: "  Sur 2027 ",
+    startsAt: NOW,
+    endsAt: NOW + 10 * DAY,
+    revealAt: NOW + 11 * DAY,
+    dailyPhotoLimit: 20,
+    dailyVideoLimit: 0,
+    timezone: "America/Argentina/Buenos_Aires",
+  };
+
+  it("sends the configured dates and limits as they are, with no admin name", async () => {
+    const fetchMock = mockFetch(201, { trip, member });
+
+    await createTrip(input);
 
     expect(await sentBody(fetchMock)).toEqual({
       name: "Sur 2027",
-      adminName: "Juani",
       timezone: "America/Argentina/Buenos_Aires",
       startsAt: NOW,
       endsAt: NOW + 10 * DAY,
@@ -62,198 +76,89 @@ describe("createTrip", () => {
     });
   });
 
-  it("saves the session with the admin token", async () => {
-    mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok-admin" });
+  it("makes the new trip the active one", async () => {
+    mockFetch(201, { trip, member });
 
-    const created = await createTrip({
-      name: "Viaje al sur",
-      adminName: "Juani",
-      startsAt: NOW,
-      endsAt: NOW + 10 * DAY,
-      revealAt: NOW + 10 * DAY,
-      dailyPhotoLimit: 10,
-      dailyVideoLimit: 3,
-      timezone: "UTC",
-    });
+    const created = await createTrip(input);
 
     expect(created.id).toBe(trip.id);
-    expect(await getToken(trip.id)).toBe("tok-admin");
-    expect(await listTrips()).toEqual([
-      expect.objectContaining({ tripId: trip.id, joinCode: "HUB5FT", memberName: "Juani", role: "admin" }),
-    ]);
+    expect(await getActiveTripId()).toBe(trip.id);
+  });
+
+  it("if the server rejects, it propagates its message and keeps the active trip", async () => {
+    mockFetch(400, { error: "El fin debe ser posterior al inicio" });
+
+    await expect(createTrip(input)).rejects.toThrow("El fin debe ser posterior al inicio");
+    expect(await getActiveTripId()).toBeNull();
   });
 });
 
 describe("joinTrip", () => {
-  it("normalizes code and name before sending them", async () => {
-    const fetchMock = mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok" });
+  it("sends only the normalized code", async () => {
+    const fetchMock = mockFetch(201, { trip, member });
 
-    await joinTrip({ code: " hub5ft ", name: " Fede " });
+    await joinTrip({ code: " hub5ft " });
 
-    expect(await sentBody(fetchMock)).toEqual({ code: "HUB5FT", name: "Fede" });
+    expect(await sentBody(fetchMock)).toEqual({ code: "HUB5FT" });
   });
 
-  it("saves the session as a member", async () => {
-    mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok-fede" });
+  it("makes the trip active, also when you were already a member (200)", async () => {
+    mockFetch(200, { trip, member });
 
-    await joinTrip({ code: "HUB5FT", name: "Fede" });
+    await joinTrip({ code: "HUB5FT" });
 
-    expect(await getToken(trip.id)).toBe("tok-fede");
-    expect((await listTrips())[0]).toMatchObject({ memberName: "Fede", role: "member" });
+    expect(await getActiveTripId()).toBe(trip.id);
   });
 
-  it("if the server rejects, it propagates its message and saves nothing", async () => {
-    mockFetch(409, { error: "Ya hay alguien con ese nombre en el viaje" });
+  it("shows the server's message when the profile has no name yet", async () => {
+    mockFetch(409, { error: "Completá tu nombre en el perfil" });
 
-    await expect(joinTrip({ code: "HUB5FT", name: "Fede" })).rejects.toThrow(
-      "Ya hay alguien con ese nombre en el viaje",
-    );
-    expect(await listTrips()).toEqual([]);
+    await expect(joinTrip({ code: "HUB5FT" })).rejects.toThrow("Completá tu nombre en el perfil");
+    expect(await getActiveTripId()).toBeNull();
   });
 });
 
 describe("fetchTrip", () => {
-  it("uses the trip's saved token", async () => {
-    mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok-fede" });
-    await joinTrip({ code: "HUB5FT", name: "Fede" });
-
+  it("uses the session token", async () => {
     const fetchMock = mockFetch(200, {
       trip,
-      me: { id: "m2", name: "Fede", role: "member" },
+      me: member,
       members: [],
       today: { date: "2027-01-05", photosLeft: 10, videosLeft: 3 },
       totalUploaded: 0,
     });
+
     const detail = await fetchTrip(trip.id);
 
     expect(detail.today.photosLeft).toBe(10);
-    expect((fetchMock.mock.calls[0]![0] as Request).headers.get("authorization")).toBe("Bearer tok-fede");
-  });
-
-  it("fails if you have no session on that trip", async () => {
-    await expect(fetchTrip("desconocido")).rejects.toThrow("No estás en este rollo");
-  });
-});
-
-describe("renameMe", () => {
-  const save = () =>
-    saveSession({
-      tripId: trip.id,
-      tripName: trip.name,
-      joinCode: trip.joinCode,
-      memberId: "m1",
-      memberName: "Juani",
-      role: "admin",
-      token: "tok",
-    });
-
-  it("sends the name with the trip token and saves it on the phone", async () => {
-    await save();
-    const fetchMock = mockFetch(200, { id: "m1", name: "Juan", role: "admin" });
-
-    await renameMe(trip.id, "  Juan ");
-
-    const req = fetchMock.mock.calls[0]![0] as Request;
-    expect(req.method).toBe("PATCH");
-    expect(new URL(req.url).pathname).toBe(`/trips/${trip.id}/members/me`);
-    expect(req.headers.get("authorization")).toBe("Bearer tok");
-    expect(await sentBody(fetchMock)).toEqual({ name: "Juan" });
-    expect((await listTrips())[0]!.memberName).toBe("Juan");
-    expect(await getToken(trip.id)).toBe("tok");
-  });
-
-  it("if the server rejects the name it throws the error and changes nothing", async () => {
-    await save();
-    mockFetch(409, { error: "Ya hay alguien con ese nombre en el viaje" });
-
-    await expect(renameMe(trip.id, "Fede")).rejects.toThrow("Ya hay alguien con ese nombre en el viaje");
-    expect((await listTrips())[0]!.memberName).toBe("Juani");
+    expect(lastReq(fetchMock).headers.get("authorization")).toBe("Bearer session-tok");
   });
 });
 
 describe("fetchFeed", () => {
-  it("requests the trip feed with the token and returns it", async () => {
-    mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok-fede" });
-    await joinTrip({ code: "HUB5FT", name: "Fede" });
-
+  it("requests the trip feed and returns it", async () => {
     const feed = { revealed: false, revealAt: NOW, items: [] };
     const fetchMock = mockFetch(200, feed);
-    const result = await fetchFeed(trip.id);
 
-    expect(result).toEqual(feed);
-    const req = fetchMock.mock.calls[0]![0] as Request;
-    expect(new URL(req.url).pathname).toBe(`/trips/${trip.id}/feed`);
-    expect(req.headers.get("authorization")).toBe("Bearer tok-fede");
-  });
-
-  it("fails if you have no session on that trip", async () => {
-    await expect(fetchFeed("desconocido")).rejects.toThrow("No estás en este rollo");
+    expect(await fetchFeed(trip.id)).toEqual(feed);
+    expect(new URL(lastReq(fetchMock).url).pathname).toBe(`/trips/${trip.id}/feed`);
+    expect(lastReq(fetchMock).headers.get("authorization")).toBe("Bearer session-tok");
   });
 });
 
 describe("deleteMedia", () => {
-  it("deletes the photo with the trip token", async () => {
-    mockFetch(201, { trip, member: { id: "m1", name: "Juani", role: "admin" }, token: "tok-admin" });
-    await joinTrip({ code: "HUB5FT", name: "Juani" });
-    const fetchMock = jest.fn(async (_req: Request) => new Response(null, { status: 204 }));
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+  it("deletes the photo", async () => {
+    const fetchMock = mockFetch(204);
 
-    await deleteMedia(trip.id, "foto-1");
+    await deleteMedia("foto-1");
 
-    const req = fetchMock.mock.calls[0]![0] as Request;
-    expect(req.method).toBe("DELETE");
-    expect(new URL(req.url).pathname).toBe("/media/foto-1");
-    expect(req.headers.get("authorization")).toBe("Bearer tok-admin");
+    expect(lastReq(fetchMock).method).toBe("DELETE");
+    expect(new URL(lastReq(fetchMock).url).pathname).toBe("/media/foto-1");
   });
 
   it("if the server rejects, it throws its message", async () => {
-    mockFetch(201, { trip, member: { id: "m2", name: "Fede", role: "member" }, token: "tok" });
-    await joinTrip({ code: "HUB5FT", name: "Fede" });
     mockFetch(403, { error: "Solo el admin puede borrar" });
 
-    await expect(deleteMedia(trip.id, "foto-1")).rejects.toThrow("Solo el admin puede borrar");
-  });
-
-  it("fails if you have no session on that trip", async () => {
-    await expect(deleteMedia("desconocido", "foto-1")).rejects.toThrow("No estás en este rollo");
-  });
-});
-
-describe("joinWithToken", () => {
-  const detail = {
-    trip,
-    me: { id: "m9", name: "Vos (prueba)", role: "member" },
-    members: [{ id: "m9", name: "Vos (prueba)", role: "member" }],
-    today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
-    totalUploaded: 0,
-  };
-
-  it("fetches the trip with that token and saves the session", async () => {
-    const fetchMock = mockFetch(200, detail);
-
-    const joined = await joinWithToken(trip.id, "tok-dev");
-
-    const req = fetchMock.mock.calls.at(-1)![0] as Request;
-    expect(req.url).toContain(`/trips/${trip.id}`);
-    expect(req.headers.get("authorization")).toBe("Bearer tok-dev");
-    expect(joined.id).toBe(trip.id);
-    expect(await getToken(trip.id)).toBe("tok-dev");
-    expect(await listTrips()).toEqual([
-      expect.objectContaining({
-        tripId: trip.id,
-        tripName: trip.name,
-        joinCode: trip.joinCode,
-        memberId: "m9",
-        memberName: "Vos (prueba)",
-        role: "member",
-      }),
-    ]);
-  });
-
-  it("throws the server error and saves nothing when the token is invalid", async () => {
-    mockFetch(401, { error: "Falta el token o es inválido" });
-
-    await expect(joinWithToken(trip.id, "mal")).rejects.toThrow("Falta el token o es inválido");
-    expect(await getToken(trip.id)).toBeNull();
+    await expect(deleteMedia("foto-1")).rejects.toThrow("Solo el admin puede borrar");
   });
 });

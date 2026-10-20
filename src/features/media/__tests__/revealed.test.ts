@@ -13,7 +13,7 @@ const item = (overrides: Partial<FeedItem> = {}): FeedItem => ({
   caption: null,
   durationS: null,
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
-  author: { id: "m1", name: "Cami" },
+  author: { id: "m1", name: "Cami", username: null, avatarUrl: null },
   width: 4000,
   height: 3000,
   files: { thumb: "/trips/t/media/a/thumb", original: "/trips/t/media/a/original" },

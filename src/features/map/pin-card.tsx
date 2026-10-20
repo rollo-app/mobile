@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { mediaSource } from "@/features/media/revealed";
+import { Avatar } from "@/features/profile/avatar";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import type { MapItem } from "./features";
 import { formatPinTime } from "./pin-time";
@@ -47,9 +48,12 @@ export function PinCard({
         <View testID="pin-thumb-empty" style={[styles.thumb, { backgroundColor: colors.latent }]} />
       )}
       <View style={styles.text}>
-        <Text numberOfLines={1} style={[type.headline, { color: colors.label }]}>
-          {item.authorName}
-        </Text>
+        <View style={styles.author}>
+          <Avatar id={item.authorId} name={item.authorName} avatarUrl={item.authorAvatarUrl} size={40} />
+          <Text numberOfLines={1} style={[type.headline, styles.authorName, { color: colors.label }]}>
+            {item.authorName}
+          </Text>
+        </View>
         <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{meta ? `${when} · ${meta}` : when}</Text>
         {item.caption ? (
           <Text numberOfLines={2} style={[type.quote, { color: colors.label }]}>
@@ -72,6 +76,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
   },
+  author: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  authorName: { flexShrink: 1 },
   thumb: { width: 88, height: 88, borderRadius: radius.md, borderCurve: "continuous" },
   text: { flex: 1, gap: 2, justifyContent: "center" },
 });

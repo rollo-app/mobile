@@ -14,12 +14,12 @@ describe("defaultStart", () => {
 });
 
 describe("canCreate", () => {
-  it("accepts both names filled in", () => {
-    expect(canCreate("Sur 2027", "Juani")).toBe(true);
+  it("accepts a name", () => {
+    expect(canCreate("Sur 2027")).toBe(true);
   });
 
-  it("requires both names, ignoring blanks", () => {
-    expect(canCreate("  ", "Juani")).toBe(false);
-    expect(canCreate("Sur 2027", "")).toBe(false);
+  it("requires a name, ignoring blanks", () => {
+    expect(canCreate("  ")).toBe(false);
+    expect(canCreate("")).toBe(false);
   });
 });

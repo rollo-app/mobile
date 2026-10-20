@@ -1,10 +1,10 @@
 import { act } from "@testing-library/react-native";
 import { ActionSheetIOS, Alert } from "react-native";
 import * as sections from "@/features/feed/sections";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
-import { saveSession } from "@/storage/trips";
+import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -30,10 +30,10 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", name: "Juani", role },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role },
   members: [
-    { id: "m1", name: "Juani", role },
-    { id: "m2", name: "Fede", role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -49,7 +49,7 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   caption: "el viento no perdona",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede" },
+  author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
   ...over,
 });
 
@@ -86,7 +86,7 @@ beforeEach(async () => {
   mocked.deleteMedia.mockResolvedValue(undefined);
   sheet.mockClear();
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
-  await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
+  await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
   queue = await createQueue(memoryDb());
   getQueue.mockImplementation(() => Promise.resolve(queue));
 });
@@ -109,12 +109,27 @@ describe("Feed", () => {
     expect(texts).toEqual(["Martes 12", "tarde", "temprano", "Lunes 11", "ayer vieja"]);
   });
 
+  it("names the author by handle, falling back to the name when there is none", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([
+        feedItem({ id: "a", caption: null, author: { id: "m2", name: "Fede", username: "fede.s", avatarUrl: null } }),
+        feedItem({ id: "b", caption: null, author: { id: "m3", name: "Cami", username: null, avatarUrl: null } }),
+      ]),
+    );
+    await renderRouter(routes, { initialUrl: "/feed" });
+
+    const rows = await screen.findAllByTestId("feed-row");
+    expect(within(rows[0]!).getByText("@fede.s")).toBeVisible();
+    expect(within(rows[0]!).queryByText("Fede")).toBeNull();
+    expect(within(rows[1]!).getByText("Cami")).toBeVisible();
+  });
+
   it("your unuploaded photos go in their day with 'Esperando señal'", async () => {
     await queue.enqueue(queued());
     await renderRouter(routes, { initialUrl: "/feed" });
 
     expect(await screen.findByText("Esperando señal")).toBeVisible();
-    expect(screen.getByText("Juani")).toBeVisible();
+    expect(within(screen.getByTestId("feed-row")).getByText("Juani")).toBeVisible();
     expect(screen.getByText("Martes 12")).toBeVisible();
   });
 
@@ -214,7 +229,7 @@ describe("Feed", () => {
       const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
       await act(async () => buttons.find((b) => b.text === "Borrar")!.onPress!());
 
-      expect(mocked.deleteMedia).toHaveBeenCalledWith(SUR, "f1");
+      expect(mocked.deleteMedia).toHaveBeenCalledWith("f1");
       await waitFor(() => expect(mocked.fetchFeed).toHaveBeenCalled());
       await waitFor(() => expect(mocked.fetchTrip).toHaveBeenCalled());
     });
@@ -238,7 +253,7 @@ describe("Feed", () => {
       await renderRouter(routes, { initialUrl: "/feed" });
 
       await screen.findByText("Esperando señal");
-      await fireEvent(screen.getByText("Juani"), "longPress");
+      await fireEvent(within(screen.getByTestId("feed-row")).getByText("Juani"), "longPress");
       expect(sheet).not.toHaveBeenCalled();
     });
   });
@@ -249,7 +264,7 @@ describe("Feed", () => {
     await renderRouter(routes, { initialUrl: "/feed" });
 
     await screen.findByText("el viento no perdona");
-    await fireEvent(screen.getByText("Fede"), "longPress");
+    await fireEvent(within(screen.getByTestId("feed-row")).getByText("Fede"), "longPress");
     expect(sheet).not.toHaveBeenCalled();
   });
 
@@ -270,9 +285,9 @@ describe("Feed", () => {
     mocked.fetchFeed.mockRejectedValueOnce(new Error("Sin conexión"));
     await renderRouter(routes, { initialUrl: "/feed" });
 
-    expect(await screen.findByText("Sin conexión")).toBeVisible();
+    expect((await screen.findAllByText("Sin conexión"))[0]).toBeVisible();
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
-    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+    await fireEvent.press(screen.getAllByRole("button", { name: "Reintentar" }).at(-1)!);
 
     expect(await screen.findByText("el viento no perdona")).toBeVisible();
     expect(screen.queryByText("Sin conexión")).toBeNull();

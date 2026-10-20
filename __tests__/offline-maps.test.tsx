@@ -1,7 +1,7 @@
 import { OfflineManager } from "@maplibre/maplibre-react-native";
 import { renderRouter, screen, fireEvent, waitFor } from "expo-router/testing-library";
 import { Alert, type AlertButton } from "react-native";
-import { saveSession } from "@/storage/trips";
+import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 const pack = {
@@ -13,7 +13,7 @@ const pack = {
 describe("offline map screens", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
-    await saveSession({ tripId: "t1", tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "tok" });
+    await signInAs({ trips: [tripSummary("t1", "Viaje al sur", { role: "admin" })] });
     jest.mocked(OfflineManager.getPacks).mockResolvedValue([pack] as never);
   });
 

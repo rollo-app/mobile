@@ -4,7 +4,8 @@ import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
-import { listTrips, saveSession, updateMemberName } from "@/storage/trips";
+import { getActiveTripId } from "@/storage/active-trip";
+import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -32,21 +33,21 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
 
 const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail => ({
   trip: trip(),
-  me: { id: "m1", name: "Juani", role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
   members: [
-    { id: "m1", name: "Juani", role: "admin" },
-    { id: "m2", name: "Fede", role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 12,
   ...overrides,
 });
 
-const saveTrip = (tripId: string, tripName: string) =>
-  saveSession({ tripId, tripName, joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
+const saveTrip = (tripId: string, tripName: string) => signInAs({ trips: [tripSummary(tripId, tripName)] });
 
 describe("Home", () => {
   it("with no trips it invites you to start a roll or join", async () => {
+    await signInAs({ trips: [] });
     await renderRouter(routes, { initialUrl: "/" });
 
     expect(await screen.findByRole("button", { name: "Empezar un nuevo rollo" })).toBeVisible();
@@ -54,6 +55,7 @@ describe("Home", () => {
   });
 
   it("the buttons lead to create and join", async () => {
+    await signInAs({ trips: [] });
     await renderRouter(routes, { initialUrl: "/" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Sumate con un código" }));
@@ -129,8 +131,8 @@ describe("Roll", () => {
       revealed: false,
       revealAt: Date.now() + 9 * DAY,
       items: [
-        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", name: "Fede" } },
-        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", name: "Fede" } },
+        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", name: "Fede", username: null, avatarUrl: null } },
+        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", name: "Fede", username: null, avatarUrl: null } },
       ],
     });
     await renderRouter(routes, { initialUrl: "/roll" });
@@ -145,7 +147,7 @@ describe("Roll", () => {
     mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    expect(await screen.findByText("Sin conexión. Probá de nuevo cuando tengas señal.")).toBeVisible();
+    expect((await screen.findAllByText("Sin conexión. Probá de nuevo cuando tengas señal."))[0]).toBeVisible();
   });
 });
 
@@ -207,12 +209,21 @@ describe("Roll with unuploaded photos", () => {
 describe("Me", () => {
   beforeEach(() => saveTrip(SUR, "Viaje al sur"));
 
+  it("shows the profile header, the active trip and an Editar perfil row", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    expect(await screen.findByText("juani@rollo.test")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Editar perfil" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Viaje al sur, Admin" })).toBeVisible();
+  });
+
   it("shows the invite code and the members", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/me" });
 
     expect(await screen.findByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("Fede")).toBeVisible();
+    expect(screen.getAllByText("Fede")[0]).toBeVisible();
   });
 
   it("from your trips the picker opens", async () => {
@@ -233,127 +244,16 @@ describe("Me", () => {
   });
 });
 
-// The row and the screen only exist under __DEV__ (the screen redirects to "/" otherwise); jest runs with __DEV__ = true.
-describe("Enter with token (dev)", () => {
-  beforeEach(() => saveTrip(SUR, "Viaje al sur"));
-
-  it("from Me the sheet opens", async () => {
-    mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/me" });
-
-    await fireEvent.press(await screen.findByRole("button", { name: "Entrar con token" }));
-
-    expect(screen).toHavePathname("/dev-token");
-  });
-
-  it("entering makes that trip the active one and goes to the roll", async () => {
-    mocked.fetchTrip.mockResolvedValue(detail());
-    mocked.joinWithToken.mockImplementation(async (tripId) => {
-      await saveTrip(tripId, "Bariloche 2025 (revelado)");
-      return trip({ id: tripId, name: "Bariloche 2025 (revelado)" });
-    });
-    await renderRouter(routes, { initialUrl: "/dev-token" });
-
-    await fireEvent.changeText(await screen.findByLabelText("ID del rollo"), BARILOCHE);
-    await fireEvent.changeText(screen.getByLabelText("Token"), "tok-dev");
-    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
-
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(mocked.joinWithToken).toHaveBeenCalledWith(BARILOCHE, "tok-dev");
-    expect((await listTrips())[0]?.tripId).toBe(BARILOCHE);
-  });
-
-  it("shows the error inline and keeps what was typed", async () => {
-    mocked.joinWithToken.mockRejectedValue(new Error("Falta el token o es inválido"));
-    await renderRouter(routes, { initialUrl: "/dev-token" });
-
-    await fireEvent.changeText(await screen.findByLabelText("ID del rollo"), BARILOCHE);
-    await fireEvent.changeText(screen.getByLabelText("Token"), "mal");
-    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
-
-    expect(await screen.findByText("Falta el token o es inválido")).toBeVisible();
-    expect(screen).toHavePathname("/dev-token");
-    expect(screen.getByLabelText("Token").props.value).toBe("mal");
-  });
-});
-
-describe("Your name", () => {
-  beforeEach(() => saveTrip(SUR, "Viaje al sur"));
-
-  it("from Me the sheet opens with your current name", async () => {
-    mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/me" });
-
-    await fireEvent.press(await screen.findByRole("button", { name: "Juani, Admin" }));
-
-    expect(screen).toHavePathname("/rename");
-    expect(screen.getByLabelText("Tu nombre").props.value).toBe("Juani");
-  });
-
-  it("the Guardar button stays disabled if the name is empty or unchanged", async () => {
-    await renderRouter(routes, { initialUrl: "/rename" });
-    const input = await screen.findByLabelText("Tu nombre");
-    await waitFor(() => expect(input.props.value).toBe("Juani"));
-
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
-    await fireEvent.changeText(input, "   ");
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
-    await fireEvent.changeText(input, "Juan");
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
-  });
-
-  it("on save it closes the sheet and Me shows the new name", async () => {
-    const renamed = detail({
-      me: { id: "m1", name: "Juan", role: "admin" },
-      members: [
-        { id: "m1", name: "Juan", role: "admin" },
-        { id: "m2", name: "Fede", role: "member" },
-      ],
-    });
-    mocked.fetchTrip.mockResolvedValueOnce(detail()).mockResolvedValue(renamed);
-    mocked.renameMe.mockImplementation((tripId, name) => updateMemberName(tripId, name));
-    await renderRouter(routes, { initialUrl: "/me" });
-
-    await fireEvent.press(await screen.findByRole("button", { name: "Juani, Admin" }));
-    const input = await screen.findByLabelText("Tu nombre");
-    await waitFor(() => expect(input.props.value).toBe("Juani"));
-    await fireEvent.changeText(input, "Juan");
-    await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
-
-    await waitFor(() => expect(screen).toHavePathname("/me"));
-    expect(mocked.renameMe).toHaveBeenCalledWith(SUR, "Juan");
-    expect(await screen.findByRole("button", { name: "Juan, Admin" })).toBeVisible();
-    // the member list also updates, without showing "loading" again
-    await waitFor(() => expect(screen.getAllByText("Juan")).toHaveLength(2));
-    expect(screen.queryByText("Juani")).toBeNull();
-  });
-
-  it("if the server rejects it, it shows the error and leaves the sheet open", async () => {
-    mocked.renameMe.mockRejectedValue(new Error("Ya hay alguien con ese nombre en el viaje"));
-    await renderRouter(routes, { initialUrl: "/rename" });
-    const input = await screen.findByLabelText("Tu nombre");
-    await waitFor(() => expect(input.props.value).toBe("Juani"));
-
-    await fireEvent.changeText(input, "Fede");
-    await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
-
-    expect(await screen.findByText("Ya hay alguien con ese nombre en el viaje")).toBeVisible();
-    expect(screen).toHavePathname("/rename");
-    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
-  });
-});
-
 describe("Trip picker", () => {
   it("lists your trips and choosing one makes it the active one", async () => {
     mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
-    await saveTrip(BARILOCHE, "Bariloche");
-    await saveTrip(SUR, "Viaje al sur");
+    await signInAs({ trips: [tripSummary(BARILOCHE, "Bariloche"), tripSummary(SUR, "Viaje al sur")], active: SUR });
     await renderRouter(routes, { initialUrl: "/trips" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Bariloche" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect((await listTrips())[0]!.tripName).toBe("Bariloche");
+    expect(await getActiveTripId()).toBe(BARILOCHE);
   });
 
   it("has shortcuts to start a roll or join", async () => {
@@ -366,13 +266,14 @@ describe("Trip picker", () => {
 });
 
 describe("Join", () => {
-  it("the button stays disabled until there is a 6-character code and a name", async () => {
+  beforeEach(() => signInAs({ trips: [] }));
+
+  it("the button stays disabled until there is a 6-character code", async () => {
     await renderRouter(routes, { initialUrl: "/join" });
     const button = await screen.findByRole("button", { name: "Unirme" });
 
     expect(button).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText("Código del rollo"), "hub5f");
-    await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Fede");
     expect(button).toBeDisabled();
 
     await fireEvent.changeText(screen.getByLabelText("Código del rollo"), "hub5ft");
@@ -388,11 +289,10 @@ describe("Join", () => {
     await renderRouter(routes, { initialUrl: "/join" });
 
     await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "hub5ft");
-    await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Fede");
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "hub5ft", name: "Fede" });
+    expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "hub5ft" });
   });
 
   it("shows the server error", async () => {
@@ -400,7 +300,6 @@ describe("Join", () => {
     await renderRouter(routes, { initialUrl: "/join" });
 
     await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "ZZZZZZ");
-    await fireEvent.changeText(screen.getByLabelText("Tu nombre"), "Fede");
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     expect(await screen.findByText("Código inválido")).toBeVisible();
@@ -409,6 +308,8 @@ describe("Join", () => {
 });
 
 describe("Join roll header", () => {
+  beforeEach(() => signInAs({ trips: [] }));
+
   it("cancels from the header and goes back", async () => {
     await renderRouter(routes, { initialUrl: "/" });
     await fireEvent.press(await screen.findByRole("button", { name: "Sumate con un código" }));
@@ -421,23 +322,22 @@ describe("Join roll header", () => {
 });
 
 describe("Create roll", () => {
+  beforeEach(() => signInAs({ trips: [] }));
+
   const HOUR = 60 * 60 * 1000;
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const dateOf = (label: string) => Number(screen.getByLabelText(label).props.accessibilityValue.text);
   const changeDate = (label: string, ms: number) => fireEvent(screen.getByLabelText(label), "dateChange", new Date(ms));
   const fillNames = async () => {
     await fireEvent.changeText(await screen.findByPlaceholderText("Nombre del rollo"), "Sur 2027");
-    await fireEvent.changeText(screen.getByPlaceholderText("Tu nombre"), "Juani");
   };
 
-  it("needs the roll name and your name before it can be created", async () => {
+  it("needs the roll name before it can be created", async () => {
     await renderRouter(routes, { initialUrl: "/create" });
     const button = await screen.findByRole("button", { name: "Crear" });
     expect(button).toBeDisabled();
 
     await fireEvent.changeText(screen.getByPlaceholderText("Nombre del rollo"), "Sur 2027");
-    expect(button).toBeDisabled();
-    await fireEvent.changeText(screen.getByPlaceholderText("Tu nombre"), "Juani");
     expect(button).toBeEnabled();
   });
 
@@ -475,7 +375,6 @@ describe("Create roll", () => {
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(mocked.createTrip).toHaveBeenCalledWith({
       name: "Sur 2027",
-      adminName: "Juani",
       startsAt: start,
       endsAt: start + 5 * 24 * HOUR,
       revealAt: start + 5 * 24 * HOUR,

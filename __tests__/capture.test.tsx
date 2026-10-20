@@ -7,7 +7,7 @@ import { startFix } from "@/features/capture/location";
 import { queryClient } from "@/api/query-client";
 import { localDay } from "@/features/capture/quota";
 import { createQueue, type Queue } from "@/features/capture/queue";
-import { saveSession } from "@/storage/trips";
+import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -55,7 +55,7 @@ function tripDetail(photosLeft: number, videosLeft: number): actions.TripDetail 
       dailyPhotoLimit: 10,
       dailyVideoLimit: 3,
     },
-    me: { id: "m1", name: "Juani", role: "admin" },
+    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
     members: [],
     today: { date: localDay(Date.now(), TZ), photosLeft, videosLeft },
     totalUploaded: 0,
@@ -70,7 +70,7 @@ beforeEach(async () => {
   picker.launchCameraAsync.mockReset();
   syncQueue.mockReset();
   syncQueue.mockResolvedValue(undefined);
-  await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
+  await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
   trips.fetchTrip.mockResolvedValue(tripDetail(7, 2));
   mediaMock.prepareMedia.mockResolvedValue({
     originalUri: "file:///docs/pending/a/original.jpg",

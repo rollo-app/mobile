@@ -3,10 +3,11 @@ import * as Location from "expo-location";
 import * as Network from "expo-network";
 import { Appearance } from "react-native";
 import { queryClient } from "@/api/query-client";
-import { fetchFeed, fetchTrip } from "@/features/trips/actions";
+import { fetchFeed, fetchMyTrips, fetchTrip } from "@/features/trips/actions";
+import { myTripsKey } from "@/features/trips/use-active-trip";
 import { feedKey } from "@/features/trips/use-feed";
 import { tripKey } from "@/features/trips/use-trip-detail";
-import { listTrips } from "@/storage/trips";
+import { getSessionToken } from "@/storage/session";
 import { downloadRegion, resumeRegion, type LngLat } from "./offline";
 import {
   inDownloadWindow,
@@ -119,8 +120,12 @@ export async function readOfflineSummary() {
 
 async function run(): Promise<void> {
   const now = Date.now();
-  const saved = await listTrips();
+  // Without a session there are no trips; and if we can't tell which ones you're in (no signal and nothing cached), better not to touch the packs.
+  if (!(await getSessionToken())) return;
   const net = await readConnection();
+  const mine = await cachedOrFetched(myTripsKey, fetchMyTrips, net.connected);
+  if (!mine) return;
+  const saved = mine.trips.map((t) => ({ tripId: t.id }));
   const known = await loadTrips(saved.map((t) => t.tripId), net.connected);
   const endsAtByTrip = new Map(known.map((k) => [k.trip.tripId, k.trip.endsAt]));
 

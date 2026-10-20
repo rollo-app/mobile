@@ -1,23 +1,26 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator } from "react-native";
 import { requestRevealPermission } from "@/features/notifications/reveal";
 import { joinTrip } from "@/features/trips/actions";
+import { myTripsKey } from "@/features/trips/use-active-trip";
 import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
 
 export default function JoinScreen() {
+  const queryClient = useQueryClient();
   const [code, setCode] = useState("");
-  const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const valid = code.trim().length === 6 && name.trim().length > 0;
+  const valid = code.trim().length === 6;
 
   async function submit() {
     setError(null);
     setLoading(true);
     try {
-      await joinTrip({ code, name });
+      await joinTrip({ code });
+      await queryClient.invalidateQueries({ queryKey: myTripsKey });
       router.dismissTo("/roll");
       void requestRevealPermission();
     } catch (e) {
@@ -54,7 +57,6 @@ export default function JoinScreen() {
         maxLength={6}
         placeholder="HUB5FT"
       />
-      <Field label="Tu nombre" value={name} onChangeText={setName} maxLength={30} placeholder="Como te conocen" />
 
       {error && <ErrorText>{error}</ErrorText>}
     </Screen>

@@ -10,7 +10,8 @@ import type { PendingMedia, Queue } from "./queue";
 export type UploaderDeps = {
   queue: Pick<Queue, "pending" | "remove" | "markAttempt" | "markFailed">;
   apiUrl: string;
-  getToken: (tripId: string) => Promise<string | null>;
+  /** The session token (null if signed out). */
+  getToken: () => Promise<string | null>;
   /** PUT of the file to the signed URL; returns the status. Rejects if there is no network. */
   putFile: (uri: string, url: string, contentType: string) => Promise<number>;
   /** Whether the local file still exists. */
@@ -48,6 +49,8 @@ function classify(error: unknown, phase: Phase): Verdict | null {
   if (!(error instanceof ApiError)) return null;
   const { status } = error;
   if (status === 0) return { kind: "offline" };
+  // The session was rejected: the 401 handler is already signing out; keep the queue for the next login.
+  if (status === 401) return { kind: "offline" };
   if (status >= 500) return { kind: "retry" };
   if (status === 429) return { kind: "failed", reason: "quota" };
   // The reason is the server's message ("El rollo ya se reveló", "Este rollo ya terminó"…).
@@ -152,11 +155,9 @@ export function createUploader(deps: UploaderDeps) {
     for (const m of due) {
       if (deadline !== undefined && now() >= deadline) return;
       try {
-        const token = await deps.getToken(m.tripId);
-        if (!token) {
-          await discard(m, "no_token");
-          continue;
-        }
+        const token = await deps.getToken();
+        // Signed out: the queue stays as it is until someone signs in again.
+        if (!token) return;
         if (!(await deps.fileExists(m.originalUri)) || !(await deps.fileExists(m.thumbUri))) {
           await discard(m, "missing_file");
           continue;

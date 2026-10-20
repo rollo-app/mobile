@@ -1,6 +1,6 @@
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
-import { listTrips } from "@/storage/trips";
+import { getSession } from "@/features/auth/session";
 import { runUploadPass } from "./sync";
 
 /**
@@ -32,10 +32,10 @@ export async function runBackgroundUpload(): Promise<BackgroundTask.BackgroundTa
 // the app in the background just to run the task.
 TaskManager.defineTask(UPLOAD_TASK, runBackgroundUpload);
 
-/** Registers the task if there are saved trips. Idempotent; never throws. */
+/** Registers the task if there is a session. Idempotent; never throws. */
 export async function registerBackgroundUpload(): Promise<void> {
   try {
-    if ((await listTrips()).length === 0) return;
+    if (!(await getSession())) return;
     if ((await BackgroundTask.getStatusAsync()) !== BackgroundTask.BackgroundTaskStatus.Available) return;
     await BackgroundTask.registerTaskAsync(UPLOAD_TASK, { minimumInterval: MINIMUM_INTERVAL_MIN });
   } catch (e) {

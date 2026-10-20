@@ -2,7 +2,7 @@ import { Alert } from "react-native";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
-import { saveSession } from "@/storage/trips";
+import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -31,8 +31,8 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", name: "Juani", role: "admin" },
-  members: [{ id: "m1", name: "Juani", role: "admin" }],
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+  members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" }],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 1,
 });
@@ -61,7 +61,7 @@ describe("Me · Subidas", () => {
   let queue: Queue;
 
   beforeEach(async () => {
-    await saveSession({ tripId: SUR, tripName: "Viaje al sur", joinCode: "HUB5FT", memberId: "m1", memberName: "Juani", role: "admin", token: "t" });
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
     mocked.fetchTrip.mockResolvedValue(detail());
     queue = await createQueue(memoryDb());
     getQueue.mockImplementation(() => Promise.resolve(queue));

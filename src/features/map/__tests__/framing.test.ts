@@ -30,7 +30,7 @@ describe("fitTarget", () => {
 
 const item = (id: string, lng: number, lat: number, takenAt = 1): MapItem => ({
   id, type: "photo", takenAt, day: "d", lat, lng, caption: null, durationS: null, thumbhash: null,
-  authorId: "a", authorName: "A", pending: false,
+  authorId: "a", authorName: "A", authorAvatarUrl: null, pending: false,
 });
 const none = { day: null, authorId: null };
 

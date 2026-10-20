@@ -3,10 +3,10 @@ import * as Haptics from "expo-haptics";
 import { memo } from "react";
 import { ActionSheetIOS, Pressable, StyleSheet, Text, View } from "react-native";
 import type { MapItem } from "@/features/map/features";
-import { memberColor } from "@/features/map/member-color";
+import { Avatar } from "@/features/profile/avatar";
+import { formatHandle } from "@/features/profile/username";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
-const AVATAR = 36;
 const THUMB = 56;
 
 /** Capture time "14:32" in the trip's time zone. */
@@ -25,18 +25,17 @@ type Props = {
 
 /** A native Feed row: who, when, the caption (or what they took) and the blurred photo. */
 export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete }: Props) {
+  const who = item.authorUsername ? formatHandle(item.authorUsername) : item.authorName;
   const when = clockTime(item.takenAt, timeZone);
   const generic = item.type === "video" ? `sacó un video · ${Math.round(item.durationS ?? 0)} s` : "sacó una foto";
   const located = item.lat !== null && item.lng !== null;
 
   const content = (
     <View testID="feed-row" style={styles.row}>
-      <View style={[styles.avatar, { backgroundColor: memberColor(item.authorId) }]}>
-        <Text style={[type.callout, styles.initial]}>{item.authorName.trim().charAt(0).toUpperCase()}</Text>
-      </View>
+      <Avatar id={item.authorId} name={item.authorName} avatarUrl={item.authorAvatarUrl} size={40} />
       <View style={styles.text}>
         <Text numberOfLines={1} style={[type.footnote, { color: colors.secondaryLabel }]}>
-          <Text style={{ fontWeight: "600", color: colors.label }}>{item.authorName}</Text>
+          <Text style={{ fontWeight: "600", color: colors.label }}>{who}</Text>
           {" · "}
           <Text>{when}</Text>
         </Text>
@@ -75,7 +74,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
   return (
     <Pressable
       accessibilityRole={located && onPress ? "button" : undefined}
-      accessibilityLabel={`${item.authorName}, ${when}`}
+      accessibilityLabel={`${who}, ${when}`}
       accessibilityHint={located && onPress ? "Abre la foto en el mapa" : undefined}
       onPress={located && onPress ? () => onPress(item) : undefined}
       onLongPress={canDelete ? openSheet : undefined}
@@ -90,8 +89,6 @@ const styles = StyleSheet.create({
   // All wrappers (Pressable, MenuView) fill the width: so the thumbnail always stays on the right.
   fill: { alignSelf: "stretch" },
   row: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md },
-  avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, alignItems: "center", justifyContent: "center" },
-  initial: { color: "#FFFFFF", fontWeight: "600" },
   text: { flex: 1, gap: 2 },
   thumb: { flexShrink: 0, width: THUMB, height: THUMB, borderRadius: radius.sm, borderCurve: "continuous" },
 });
