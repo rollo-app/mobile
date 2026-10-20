@@ -321,7 +321,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
   return (
     <>
       {body}
-      {/* Large title that collapses with the list (contentInsetAdjustmentBehavior), like Photos. Switching rolls lives in Vos. */}
+      {/* Large title that collapses with the list (contentInsetAdjustmentBehavior), like Photos. Switching rolls lives in Perfil. */}
       <Stack.Screen options={{ title: "Galería", headerLargeTitle: true }} />
       {toolbar}
       {(bar || selecting) && (

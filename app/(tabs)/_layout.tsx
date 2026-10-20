@@ -14,7 +14,7 @@ import { colors } from "@/ui/theme";
  * Bottom bar, icons only. The center camera isn't a screen: it's
  * `disabled` so tapping it doesn't switch tabs, and it opens capture on top.
  * Shows how many photos you have left today, or a lock if none are left or the roll isn't active.
- * After the reveal the same five tabs become Galería, Mapa, Presentación, (Feed hidden) and Vos.
+ * After the reveal the same five tabs become Galería, Mapa, Presentación, (Feed hidden) and Perfil.
  */
 export default function TabsLayout() {
   const { trip } = useActiveTrip();
@@ -53,7 +53,7 @@ export default function TabsLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="me">
         <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="account_circle" />
-        <NativeTabs.Trigger.Label hidden>Vos</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label hidden>Perfil</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

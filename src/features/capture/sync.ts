@@ -62,9 +62,9 @@ export async function runUploadPass(options?: RunOptions): Promise<void> {
  * Requests an upload pass. Never throws: if something fails it stays in the queue for the
  * next trigger (opening the app, returning to foreground, sending another photo).
  */
-export async function syncQueue(): Promise<void> {
+export async function syncQueue(options?: RunOptions): Promise<void> {
   try {
-    await runUploadPass();
+    await runUploadPass(options);
   } catch (e) {
     console.warn("No se pudo subir la cola", e);
   }

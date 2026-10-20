@@ -286,6 +286,30 @@ describe("uploader", () => {
       expect(await queue.pending()).toEqual([]);
     });
 
+    it("ignoreBackoff uploads items whose retry time is still in the future", async () => {
+      happyServer();
+      await queue.enqueue(item());
+      await queue.markAttempt(item().id, NOW + 5 * 60_000);
+
+      await createUploader(deps).run({ ignoreBackoff: true });
+
+      expect(await queue.pending()).toEqual([]);
+    });
+
+    it("ignoreBackoff requested during a run applies to the follow-up pass", async () => {
+      happyServer();
+      await queue.enqueue(item());
+      await queue.markAttempt(item().id, NOW + 5 * 60_000);
+      const uploader = createUploader(deps);
+
+      // A normal run is in flight (it skips the item); the network comes back meanwhile.
+      const first = uploader.run();
+      const second = uploader.run({ ignoreBackoff: true });
+      await Promise.all([first, second]);
+
+      expect(await queue.pending()).toEqual([]);
+    });
+
     it("backoff doubles: 1, 2, 4… up to 5 minutes", () => {
       expect([1, 2, 3, 4, 8, 9, 10, 20].map(retryDelay)).toEqual([
         1000, 2000, 4000, 8000, 128_000, 256_000, 300_000, 300_000,

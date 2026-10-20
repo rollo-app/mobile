@@ -26,12 +26,12 @@ Decisiones de producto:
   Con la app cerrada o suspendida sube `expo-background-task` (tarea `rollo-upload`, BGProcessingTask de iOS: solo
   con red, cuándo corre lo decide el sistema, ~25 s por pasada con corte limpio entre ítems); los PUT usan sesión
   de URLSession en background. Si se mata la app a mano, iOS no la despierta hasta que se vuelva a abrir.
-  En dev, la fila "Probar subida en segundo plano" de Vos la dispara.
+  En dev, la fila "Probar subida en segundo plano" de Perfil la dispara.
 - **Mapa sin señal automático** (`src/features/map/offline-*.ts`): al abrir la app y al volver a primer plano baja solo
   una zona amplia (300 km, z5–10) y otra detallada (40 km, z10–14) alrededor de la ubicación y de los lugares donde
   sacó fotos el grupo (grilla de 30 km), desde 3 días antes del inicio hasta el fin del rollo (antes del inicio, solo
   con Wi‑Fi; tope ~400 MB). Los packs usan el mismo `file://` de estilo que el MapView, se nombran
-  `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Vos → "Mapa sin señal".
+  `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Perfil → "Mapa sin señal".
 - **Captura:** cámara nativa con selector foto/video (máx. 15 s); si no quedan videos hoy, abre solo en
   foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + caption opcional. Una vez
   mandada no se puede repetir ni ver.
@@ -50,7 +50,7 @@ Decisiones de producto:
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
   La ceremonia del revelado será una presentación (a definir).
 - **A futuro (no para enero):** cuentas, amigos y feeds públicos de rollos. No cerrarle la puerta: la
-  tab "Vos" será el perfil y los miembros por rollo se podrán vincular a una cuenta.
+  tab "Perfil" será el perfil completo y los miembros por rollo se podrán vincular a una cuenta.
 
 ## Navegación y diseño
 
@@ -86,7 +86,7 @@ Decisiones de producto:
   - **Error al cargar una pantalla:** estado de error en la pantalla con botón "Reintentar"; si hay datos
     viejos, se mantienen.
   - **Procesos de fondo (subida de fotos):** nunca toasts ni alertas. Estado persistente: ícono de nube en
-    Rollo si hay pendientes y en Vos "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
+    Rollo si hay pendientes y en Perfil "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
   - **Alerta nativa** (`Alert`) solo para algo grave e irreversible (por ej. el rollo se reveló con fotos
     tuyas sin subir) o para confirmar una acción destructiva (borrar como admin).
   - Si un momento puntual necesita una confirmación fugaz, usar `burnt` (HUD nativo tipo AirPods), no un
@@ -153,7 +153,7 @@ Reglas:
 - **Idioma:** el código va en **inglés** (identificadores, comentarios, descripciones de tests, nombres de
   rutas y carpetas). En **español rioplatense** quedan solo los textos que ve el usuario (labels, mensajes,
   `accessibilityLabel`, títulos de pantalla), los commits y los PRs. Las etiquetas visibles de las tabs
-  ("Rollo", "Mapa", "Cámara", "Feed", "Vos") siguen en español aunque la ruta sea `roll`, `map`, etc.
+  ("Rollo", "Mapa", "Cámara", "Feed", "Perfil") siguen en español aunque la ruta sea `roll`, `map`, etc.
 - **TDD siempre:** primero el test (descripciones en inglés), verlo fallar, código mínimo, refactor.
   - Lógica (`src/**/__tests__`): `fetch` simulado con `globalThis.fetch = jest.fn(...)`.
   - Pantallas: `renderRouter` de `expo-router/testing-library` con navegación real, mockeando
@@ -168,7 +168,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 357 tests
+npm test                      # 410 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -190,7 +190,7 @@ Si compilar falla:
 - MapLibre no baja su binario ("invalid archive" / "already exists"): `cd ios && xcodebuild -resolvePackageDependencies -workspace Rollo.xcworkspace -scheme Rollo` y volver a compilar.
 - Después de cambiar de rama o instalar paquetes con Metro abierto, reiniciar Metro con `--clear` (si no, MapLibre se registra dos veces).
 
-Para entrar a un rollo revelado del seed: Vos → Desarrollo → Entrar con token (el ID y el token los imprime `npm run seed` o se consultan en la D1 local).
+Para entrar a un rollo revelado del seed: Perfil → Desarrollo → Entrar con token (el ID y el token los imprime `npm run seed` o se consultan en la D1 local).
 
 ## Apple
 

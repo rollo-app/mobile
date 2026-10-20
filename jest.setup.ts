@@ -155,6 +155,7 @@ jest.mock("@maplibre/maplibre-react-native", () => {
 jest.mock("expo-network", () => ({
   NetworkStateType: { NONE: "NONE", UNKNOWN: "UNKNOWN", WIFI: "WIFI", CELLULAR: "CELLULAR" },
   getNetworkStateAsync: jest.fn(async () => ({ type: "NONE", isConnected: false, isInternetReachable: false })),
+  addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
 // The map style is written to Documents (expo-file-system, native): in tests it's a fixed path.
@@ -336,3 +337,4 @@ jest.mock("expo-video", () => {
   const { View } = require("react-native");
   return { useVideoPlayer: jest.fn(() => ({ loop: false })), VideoView: View };
 });
+
