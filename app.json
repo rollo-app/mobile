@@ -65,7 +65,8 @@
           }
         }
       ],
-      "expo-background-task"
+      "expo-background-task",
+      "expo-video"
     ],
     "scheme": "rollo",
     "experiments": {
