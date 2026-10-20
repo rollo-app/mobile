@@ -3,7 +3,7 @@ import { Stack } from "expo-router";
 export default function Layout() {
   return (
     <Stack>
-      <Stack.Screen name="index" options={{ title: "Vos", headerLargeTitle: true }} />
+      <Stack.Screen name="index" options={{ title: "Perfil", headerLargeTitle: true }} />
     </Stack>
   );
 }
