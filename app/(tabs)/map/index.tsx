@@ -9,12 +9,14 @@ import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { boundsOf, feedToItems, itemsByTime, mergeItems, pendingToItems, toFeatures, type MapItem } from "@/features/map/features";
-import { canExpandCluster, fitTarget, isTripActive, MAX_ZOOM, photosNear } from "@/features/map/framing";
+import { fitTarget, isTripActive, MAX_ZOOM, photosNear } from "@/features/map/framing";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
-import { PinCarousel } from "@/features/map/pin-carousel";
+import { CAROUSEL_HEIGHT, PinCarousel } from "@/features/map/pin-carousel";
 import { UserLocationDot } from "@/features/map/user-location-dot";
 import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
+import { resolveTap } from "@/features/map/tap";
+import { rollPhase } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRevealedPhotos } from "@/features/media/revealed";
@@ -33,6 +35,10 @@ const TAB_BAR_GAP = 12;
 const TAB_BAR_MIN_INSET = 83;
 const USER_ZOOM = 12;
 const FOCUS_ZOOM = 15;
+const BUTTON_SIZE = 40;
+// Gap between the bar and the carousel.
+const CAROUSEL_BOTTOM = 18;
+const NO_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 
 type PressEvent = { nativeEvent: { features: GeoJSON.Feature[] }; stopPropagation?: () => void };
 
@@ -47,10 +53,15 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
-  const [scope, setScope] = useState<"all" | "today">("all");
+  const [pickedScope, setScope] = useState<"all" | "today">("all");
+  // Once the roll has ended there is no "today" anymore: only "Todo" applies.
+  const phase = detail ? rollPhase(detail.trip, Date.now()) : null;
+  const hasToday = phase !== "ended" && phase !== "revealed";
+  const scope = hasToday ? pickedScope : "all";
   const [authorId, setAuthorId] = useState<string | null>(null);
-  // Photos at the tapped place (sorted by time) and which of them is showing in the carousel.
-  const [selection, setSelection] = useState<{ ids: string[]; index: number } | null>(null);
+  // Photos at the tapped place or cluster and which of them is showing in the carousel.
+  // `clusterId` keeps the tapped cluster highlighted while its photos are swiped.
+  const [selection, setSelection] = useState<{ ids: string[]; index: number; clusterId: number | null } | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [hasLocation, setHasLocation] = useState<boolean | null>(null);
 
@@ -58,6 +69,8 @@ export default function MapScreen() {
   const sourceRef = useRef<GeoJSONSourceRef>(null);
   const framed = useRef(false);
   const zoomRef = useRef(DEFAULT_REGION.zoom);
+  // Where the camera was centered with padding for the carousel; null when there is none.
+  const padded = useRef<[number, number] | null>(null);
 
   const styleUri = useMemo(() => writeStyleFile(scheme), [scheme]);
 
@@ -86,6 +99,10 @@ export default function MapScreen() {
   useEffect(() => {
     Location.getForegroundPermissionsAsync().then((p) => setHasLocation(p.granted), () => setHasLocation(false));
   }, []);
+
+  const barInset = Math.max(insets.bottom, TAB_BAR_MIN_INSET) + TAB_BAR_GAP;
+  const carouselInset = barInset + CAROUSEL_BOTTOM + CAROUSEL_HEIGHT;
+  const buttonsTop = insets.top + HEADER_HEIGHT + 64 + spacing.sm;
 
   const padding = useMemo(
     () => ({ top: insets.top + HEADER_HEIGHT + 64, right: 48, bottom: Math.max(insets.bottom, TAB_BAR_MIN_INSET) + 160, left: 48 }),
@@ -127,7 +144,7 @@ export default function MapScreen() {
     setAuthorId(null);
     cameraRef.current?.flyTo({ center: [target.lng, target.lat], zoom: FOCUS_ZOOM, duration: 600 });
     const ids = itemsByTime(items, photosNear(all.features, [target.lng, target.lat], FOCUS_ZOOM).map((f) => f.properties.id)).map((i) => i.id);
-    setSelection({ ids, index: Math.max(0, ids.indexOf(focus)) });
+    setSelection({ ids, index: Math.max(0, ids.indexOf(focus)), clusterId: null });
   }, [focus, mapReady, items, all, router]);
 
   async function centerOnUser(ask: boolean): Promise<boolean> {
@@ -157,30 +174,33 @@ export default function MapScreen() {
       const feature = event.nativeEvent.features[0];
       if (!feature) return;
       event.stopPropagation?.();
-      const props = feature.properties ?? {};
       const center = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
-      const select = (ids: string[]) => setSelection({ ids, index: 0 });
-
-      if (!props.cluster) {
-        select(photosNear(shown.features, center, zoomRef.current).map((f) => f.properties.id));
-        return;
-      }
       void (async () => {
-        const source = sourceRef.current;
-        const expansion = await source?.getClusterExpansionZoom(props.cluster_id);
-        // A cluster that can no longer be opened (photos at the same spot): its leaves go to the carousel.
-        if (!canExpandCluster(expansion, zoomRef.current)) {
-          const leaves = (await source?.getClusterLeaves(props.cluster_id, props.point_count ?? 100, 0)) ?? [];
-          select(leaves.map((l) => l.properties?.id).filter((id): id is string => typeof id === "string"));
-        } else {
-          cameraRef.current?.easeTo({ center, zoom: expansion!, duration: 400 });
+        const tap = await resolveTap(feature, {
+          features: shown.features,
+          zoom: zoomRef.current,
+          getLeaves: async (id, limit, offset) => (await sourceRef.current?.getClusterLeaves(id, limit, offset)) ?? [],
+        });
+        setSelection({ ids: tap.ids, index: 0, clusterId: tap.clusterId });
+        // A cluster only gets centered (same zoom), with room below so the carousel doesn't cover it.
+        if (tap.clusterId !== null) {
+          cameraRef.current?.easeTo({ center, padding: { ...NO_PADDING, bottom: carouselInset }, duration: 400 });
+          padded.current = center;
         }
       })();
     },
-    [shown.features],
+    [shown.features, carouselInset],
   );
 
-  const barInset = Math.max(insets.bottom, TAB_BAR_MIN_INSET) + TAB_BAR_GAP;
+  // When the carousel closes (or a single pin takes over), the padding that made room for it goes away.
+  const clusterId = selection?.clusterId ?? null;
+  useEffect(() => {
+    if (clusterId === null && padded.current) {
+      cameraRef.current?.easeTo({ center: padded.current, padding: NO_PADDING, duration: 300 });
+      padded.current = null;
+    }
+  }, [clusterId]);
+
   const members = detail?.members ?? [];
   const authorName = members.find((m) => m.id === authorId)?.name;
   const actions = [
@@ -202,7 +222,8 @@ export default function MapScreen() {
         style={styles.fill}
         mapStyle={styleUri}
         logo={false}
-        compass={false}
+        compass
+        compassPosition={{ top: buttonsTop + BUTTON_SIZE + spacing.sm, right: spacing.md }}
         attribution={false}
         onDidFinishLoadingMap={() => setMapReady(true)}
         onRegionDidChange={(e) => {
@@ -216,18 +237,22 @@ export default function MapScreen() {
             <UserLocationDot color={tintHex[scheme]} />
           </UserLocation>
         )}
-        <PinLayers data={shown} selectedId={selectedId} haloColor={tintHex[scheme]} sourceRef={sourceRef} onPress={onPinsPress} />
+        <PinLayers data={shown} selectedId={selectedId} selectedClusterId={selection?.clusterId ?? null} haloColor={tintHex[scheme]} sourceRef={sourceRef} onPress={onPinsPress} />
       </Map>
 
       <View pointerEvents="box-none" style={[styles.controls, { top: insets.top + HEADER_HEIGHT + spacing.sm }]}>
         <View style={styles.row}>
-          <SegmentedControl
-            style={styles.segmented}
-            values={["Todo", "Hoy"]}
-            tintColor={tintHex[scheme]}
-            selectedIndex={scope === "all" ? 0 : 1}
-            onValueChange={(v) => setScope(v === "Hoy" ? "today" : "all")}
-          />
+          {hasToday ? (
+            <SegmentedControl
+              style={styles.segmented}
+              values={["Todo", "Hoy"]}
+              tintColor={tintHex[scheme]}
+              selectedIndex={scope === "all" ? 0 : 1}
+              onValueChange={(v) => setScope(v === "Hoy" ? "today" : "all")}
+            />
+          ) : (
+            <View style={styles.segmented} />
+          )}
           <MenuView
             title="Personas"
             actions={actions}
@@ -258,7 +283,7 @@ export default function MapScreen() {
         )}
       </View>
 
-      <View style={[styles.buttons, { top: insets.top + HEADER_HEIGHT + 64 + spacing.sm }]}>
+      <View style={[styles.buttons, { top: buttonsTop }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Ver todas"
@@ -283,7 +308,7 @@ export default function MapScreen() {
       </Text>
 
       {carousel.length > 0 && detail && selection && (
-        <View pointerEvents="box-none" style={[styles.cardWrap, { bottom: barInset + 18 }]}>
+        <View pointerEvents="box-none" style={[styles.cardWrap, { bottom: barInset + CAROUSEL_BOTTOM }]}>
           <PinCarousel
             key={selection.ids.join()}
             items={carousel}
@@ -322,7 +347,7 @@ const styles = StyleSheet.create({
   },
   noticeText: { color: colors.secondaryLabel },
   buttons: { position: "absolute", right: spacing.md, flexDirection: "row", gap: spacing.sm },
-  round: { ...chip, width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  round: { ...chip, width: BUTTON_SIZE, height: BUTTON_SIZE, alignItems: "center", justifyContent: "center" },
   attribution: { position: "absolute", left: spacing.md, color: colors.secondaryLabel },
   cardWrap: { position: "absolute", left: 0, right: 0 },
 });

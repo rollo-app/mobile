@@ -82,10 +82,16 @@ jest.mock("@maplibre/maplibre-react-native", () => {
   const React = require("react");
   const { Pressable, View } = require("react-native");
   const camera = { flyTo: jest.fn(), easeTo: jest.fn(), fitBounds: jest.fn() };
+  const getClusterLeaves = jest.fn();
+  const mapProps: { current: any } = { current: null };
   return {
     __camera: camera,
+    __getClusterLeaves: getClusterLeaves,
+    __mapProps: mapProps,
     // The map lets you tap "the void"; the pin source renders a button per pin (so screens can be tested without native).
-    Map: ({ children, onPress, onDidFinishLoadingMap }: any) => {
+    Map: (props: any) => {
+      const { children, onPress, onDidFinishLoadingMap } = props;
+      mapProps.current = props;
       React.useEffect(() => {
         onDidFinishLoadingMap?.();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,12 +108,12 @@ jest.mock("@maplibre/maplibre-react-native", () => {
       return null;
     },
     ViewAnnotation: View,
-    // With 2+ photos it adds a "cluster" that can't be opened (needs zoom 19) and whose leaves are the first two.
+    // With 2+ photos it adds a "cluster" whose leaves are the first two.
     GeoJSONSource: ({ data, onPress, ref }: any) => {
       React.useImperativeHandle(ref, () => ({
-        getClusterExpansionZoom: async () => 19,
-        getClusterLeaves: async () => data.features.slice(0, 2),
+        getClusterLeaves,
       }));
+      getClusterLeaves.mockImplementation(async () => data.features.slice(0, 2));
       const cluster = {
         type: "Feature",
         geometry: data.features[0]?.geometry,
@@ -267,7 +273,14 @@ jest.mock("expo-background-task", () => ({
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");
   const { Stack } = require("expo-router");
-  const Toolbar = ({ children }: any) => React.createElement(View, null, children);
+  // Like the real one, only Button/Menu/View/Spacer are accepted as direct children: a Fragment is dropped
+  // (so its items never reach the header). Throw instead of silently losing them.
+  const Toolbar = ({ children, placement }: any) => {
+    React.Children.toArray(children).forEach((c: any) => {
+      if (c?.type === React.Fragment) throw new Error(`Stack.Toolbar placement="${placement}": Fragment children are dropped by the header`);
+    });
+    return React.createElement(View, null, children);
+  };
   Toolbar.Button = ({ children, onPress, disabled }: any) =>
     React.createElement(
       Pressable,
@@ -275,6 +288,15 @@ jest.mock("expo-background-task", () => ({
       React.createElement(Text, null, children),
     );
   Toolbar.View = ({ children }: any) => React.createElement(View, null, children);
+  // Menus render open, so tests can press their actions directly.
+  Toolbar.Menu = ({ children, title, accessibilityLabel }: any) =>
+    React.createElement(View, { accessibilityLabel: accessibilityLabel ?? title }, children);
+  Toolbar.MenuAction = ({ children, onPress, isOn, disabled }: any) =>
+    React.createElement(
+      Pressable,
+      { accessibilityRole: "menuitem", accessibilityLabel: children, accessibilityState: { checked: !!isOn, disabled: !!disabled }, disabled, onPress },
+      React.createElement(Text, null, children),
+    );
   Object.defineProperty(Stack, "Toolbar", { value: Toolbar, configurable: true });
 }
 
@@ -291,7 +313,7 @@ jest.mock("expo-notifications", () => ({
 
 // Saving to Photos is native (expo-media-library): in tests the permission is granted and the album doesn't exist.
 jest.mock("expo-media-library", () => ({
-  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true, accessPrivileges: "all" })),
   Asset: { create: jest.fn(async () => ({ id: "asset" })) },
   Album: { get: jest.fn(async () => null), create: jest.fn(async () => ({ id: "album" })) },
 }));

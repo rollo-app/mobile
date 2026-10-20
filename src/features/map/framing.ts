@@ -41,8 +41,3 @@ export function photosNear(features: PinFeature[], center: [number, number], zoo
   }
   return near;
 }
-
-/** Does tapping the cluster zoom into it? Not if the needed zoom doesn't exist or we're already at the max: they go to the carousel. */
-export function canExpandCluster(expansionZoom: number | undefined, currentZoom: number): boolean {
-  return expansionZoom !== undefined && expansionZoom <= MAX_ZOOM && currentZoom < MAX_ZOOM - 0.5;
-}

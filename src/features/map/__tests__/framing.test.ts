@@ -1,4 +1,4 @@
-import { canExpandCluster, fitTarget, isTripActive, photosNear } from "../framing";
+import { fitTarget, isTripActive, photosNear } from "../framing";
 import { toFeatures, type MapItem } from "../features";
 
 describe("isTripActive", () => {
@@ -50,19 +50,5 @@ describe("photosNear", () => {
   it("returns at least the tapped one even if the point does not match exactly", () => {
     const { features } = toFeatures([item("a", -72.9, -49.3)], none);
     expect(photosNear(features, [-72.9, -49.3], 20).map((f) => f.properties.id)).toEqual(["a"]);
-  });
-});
-
-describe("canExpandCluster", () => {
-  it("opens by zooming if the needed zoom is within the maximum", () => {
-    expect(canExpandCluster(14, 12)).toBe(true);
-  });
-  it("does not open if it needs more zoom than the maximum (photos at the same point)", () => {
-    expect(canExpandCluster(18, 12)).toBe(false);
-    expect(canExpandCluster(undefined, 12)).toBe(false);
-  });
-  it("does not open if we are already at max zoom", () => {
-    expect(canExpandCluster(17, 17)).toBe(false);
-    expect(canExpandCluster(17, 16.8)).toBe(false);
   });
 });
