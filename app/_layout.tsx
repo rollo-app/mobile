@@ -5,11 +5,13 @@ import { useEffect } from "react";
 import { useColorScheme } from "react-native";
 import { CACHE_MAX_AGE, connectAppState, persister, queryClient } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
+import { useRevealTap } from "@/features/notifications/use-reveal-tap";
 import { useSyncTriggers } from "@/features/capture/use-sync-triggers";
 
 export default function RootLayout() {
   const scheme = useColorScheme();
   useSyncTriggers();
+  useRevealTap();
   useEffect(() => connectAppState(), []);
   return (
     <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE }}>

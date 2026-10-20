@@ -16,18 +16,22 @@ export function PinCarousel({
   index,
   onIndexChange,
   timeZone,
+  token,
+  onOpen,
 }: {
   items: MapItem[];
   index: number;
   onIndexChange: (index: number) => void;
   timeZone: string;
+  token?: string | null;
+  onOpen?: (item: MapItem) => void;
 }) {
   const { width } = useWindowDimensions();
 
   if (items.length === 1) {
     return (
       <View style={styles.single}>
-        <PinCard item={items[0]!} timeZone={timeZone} />
+        <PinCard item={items[0]!} timeZone={timeZone} token={token} onOpen={onOpen && (() => onOpen(items[0]!))} />
       </View>
     );
   }
@@ -48,7 +52,7 @@ export function PinCarousel({
       keyExtractor={(i) => i.id}
       renderItem={({ item }) => (
         <View style={{ width: cardWidth }}>
-          <PinCard item={item} timeZone={timeZone} />
+          <PinCard item={item} timeZone={timeZone} token={token} onOpen={onOpen && (() => onOpen(item))} />
         </View>
       )}
       initialScrollIndex={index}

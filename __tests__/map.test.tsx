@@ -1,3 +1,4 @@
+import { Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
@@ -217,5 +218,20 @@ describe("Map", () => {
     await screen.findByText("el viento no perdona");
     await waitFor(() => expect(screen).not.toHaveSearchParams({ focus: "f1" }));
   });
-});
 
+  it("after the reveal the card shows the real photo and tapping it opens the viewer", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
+    mocked.fetchFeed.mockResolvedValue({
+      ...feed([feedItem({ files: { thumb: "/media/f1/thumb", original: "/media/f1/original" } })]),
+      revealed: true,
+    });
+    await renderRouter({ ...routes, "photo/[id]": () => <Text>Foto</Text> }, { initialUrl: "/map" });
+
+    await fireEvent.press(await screen.findByLabelText("pin f1"));
+    await waitFor(() => expect(screen.getByTestId("pin-thumb").props.source).toEqual([expect.objectContaining({ uri: expect.stringContaining("/media/f1/thumb") })]));
+
+    await fireEvent.press(screen.getByRole("button", { name: /^Fede, / }));
+    expect(await screen.findByText("Foto")).toBeVisible();
+    expect(screen).toHavePathname("/photo/f1");
+  });
+});

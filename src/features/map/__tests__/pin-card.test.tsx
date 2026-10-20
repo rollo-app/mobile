@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react-native";
+import { fireEvent } from "@testing-library/react-native";
 import { PinCard } from "../pin-card";
 import type { MapItem } from "../features";
 
@@ -49,5 +50,33 @@ describe("PinCard", () => {
   it("a pending one says it is waiting for signal", async () => {
     await render(<PinCard item={item({ pending: true })} timeZone={TZ} now={NOW} />);
     expect(screen.getByText("Esperando señal")).toBeVisible();
+  });
+
+  describe("after the reveal", () => {
+    const revealed = item({ thumbPath: "/media/m1/thumb" });
+
+    it("shows the real photo with the thumbhash as placeholder", async () => {
+      await render(<PinCard item={revealed} timeZone={TZ} now={NOW} token="tok" />);
+
+      const thumb = screen.getByTestId("pin-thumb");
+      expect(thumb.props.source).toEqual([
+        { uri: expect.stringContaining("/media/m1/thumb"), headers: { Authorization: "Bearer tok" } },
+      ]);
+      expect(thumb.props.placeholder).toEqual([{ uri: expect.stringContaining("1QcSHQRnh493V4dIh4eXh1h4kJUI") }]);
+      expect(thumb.props.transition).toEqual({ duration: 200 });
+    });
+
+    it("without a token yet it keeps the blurry thumbhash", async () => {
+      await render(<PinCard item={revealed} timeZone={TZ} now={NOW} token={null} />);
+      expect(screen.getByTestId("pin-thumb").props.source).toEqual([]);
+    });
+
+    it("tapping the card calls onOpen", async () => {
+      const onOpen = jest.fn();
+      await render(<PinCard item={revealed} timeZone={TZ} now={NOW} token="tok" onOpen={onOpen} />);
+
+      await fireEvent.press(screen.getByRole("button", { name: /^Cami, / }));
+      expect(onOpen).toHaveBeenCalledTimes(1);
+    });
   });
 });

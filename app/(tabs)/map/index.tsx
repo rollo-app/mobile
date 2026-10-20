@@ -17,6 +17,7 @@ import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { useRevealedPhotos } from "@/features/media/revealed";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { colors, radius, spacing, tintHex, type } from "@/ui/theme";
@@ -42,6 +43,7 @@ export default function MapScreen() {
   const { detail } = useTripDetail(trip?.tripId);
   const { feed, error, refetch } = useFeed(trip?.tripId);
   const pending = usePendingItems(trip?.tripId);
+  const { token } = useRevealedPhotos(trip?.tripId);
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
@@ -288,6 +290,8 @@ export default function MapScreen() {
             index={selection.index}
             onIndexChange={(index) => setSelection({ ...selection, index })}
             timeZone={detail.trip.timezone}
+            token={token}
+            onOpen={detail.trip.revealed ? (item) => router.push(`/photo/${item.id}`) : undefined}
           />
         </View>
       )}
