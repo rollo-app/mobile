@@ -53,10 +53,10 @@ export default function RootLayout() {
           <Stack.Screen
             name="presentation"
             options={{
-              presentation: "fullScreenModal",
+              presentation: "transparentModal",
               headerShown: false,
               animation: "fade",
-              contentStyle: { backgroundColor: "#000" },
+              contentStyle: { backgroundColor: "transparent" },
             }}
           />
           <Stack.Screen
