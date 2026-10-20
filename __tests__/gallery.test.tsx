@@ -145,6 +145,14 @@ describe("Gallery", () => {
     expect(screen.queryByRole("button", { name: "Guardar todo" })).toBeNull();
   });
 
+  it("has Seleccionar and the ⋯ menu together in the header toolbar", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.getByRole("button", { name: "Seleccionar" })).toBeVisible();
+    expect(screen.getByLabelText("Más opciones")).toBeTruthy();
+  });
+
   it("Seleccionar becomes Cancelar while selecting", async () => {
     mocked.fetchFeed.mockResolvedValue(two());
     await open();

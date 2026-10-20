@@ -159,29 +159,29 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
 
   const toolbar = (
     <Stack.Toolbar placement="right">
-      {selecting ? (
-        <Stack.Toolbar.Button onPress={stopSelecting}>Cancelar</Stack.Toolbar.Button>
-      ) : (
-        <>
-          <Stack.Toolbar.Button disabled={busy || photos.length === 0} onPress={() => setSelecting(true)}>
-            Seleccionar
-          </Stack.Toolbar.Button>
-          <Stack.Toolbar.Menu icon="ellipsis.circle" accessibilityLabel="Más opciones">
-            <Stack.Toolbar.Menu title="Filtrar por persona" icon="person.2">
-              <Stack.Toolbar.MenuAction isOn={authorId === null} onPress={() => setAuthorId(null)}>
-                Todos
-              </Stack.Toolbar.MenuAction>
-              {authors.map((a) => (
-                <Stack.Toolbar.MenuAction key={a.id} isOn={authorId === a.id} onPress={() => setAuthorId(a.id)}>
-                  {a.name}
-                </Stack.Toolbar.MenuAction>
-              ))}
-            </Stack.Toolbar.Menu>
-            <Stack.Toolbar.MenuAction icon="square.and.arrow.down" disabled={!canSaveAll} onPress={confirmSaveAll}>
-              Guardar todo en Fotos
+      {/* Direct children only: the header drops Fragments, which is how both buttons once vanished. */}
+      {selecting && <Stack.Toolbar.Button onPress={stopSelecting}>Cancelar</Stack.Toolbar.Button>}
+      {!selecting && (
+        <Stack.Toolbar.Button disabled={busy || photos.length === 0} onPress={() => setSelecting(true)}>
+          Seleccionar
+        </Stack.Toolbar.Button>
+      )}
+      {!selecting && (
+        <Stack.Toolbar.Menu icon="ellipsis.circle" accessibilityLabel="Más opciones">
+          <Stack.Toolbar.Menu title="Filtrar por persona" icon="person.2">
+            <Stack.Toolbar.MenuAction isOn={authorId === null} onPress={() => setAuthorId(null)}>
+              Todos
             </Stack.Toolbar.MenuAction>
+            {authors.map((a) => (
+              <Stack.Toolbar.MenuAction key={a.id} isOn={authorId === a.id} onPress={() => setAuthorId(a.id)}>
+                {a.name}
+              </Stack.Toolbar.MenuAction>
+            ))}
           </Stack.Toolbar.Menu>
-        </>
+          <Stack.Toolbar.MenuAction icon="square.and.arrow.down" disabled={!canSaveAll} onPress={confirmSaveAll}>
+            Guardar todo en Fotos
+          </Stack.Toolbar.MenuAction>
+        </Stack.Toolbar.Menu>
       )}
     </Stack.Toolbar>
   );

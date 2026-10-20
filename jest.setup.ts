@@ -267,7 +267,14 @@ jest.mock("expo-background-task", () => ({
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");
   const { Stack } = require("expo-router");
-  const Toolbar = ({ children }: any) => React.createElement(View, null, children);
+  // Like the real one, only Button/Menu/View/Spacer are accepted as direct children: a Fragment is dropped
+  // (so its items never reach the header). Throw instead of silently losing them.
+  const Toolbar = ({ children, placement }: any) => {
+    React.Children.toArray(children).forEach((c: any) => {
+      if (c?.type === React.Fragment) throw new Error(`Stack.Toolbar placement="${placement}": Fragment children are dropped by the header`);
+    });
+    return React.createElement(View, null, children);
+  };
   Toolbar.Button = ({ children, onPress, disabled }: any) =>
     React.createElement(
       Pressable,
