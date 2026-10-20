@@ -107,14 +107,29 @@ describe("Presentation", () => {
     await screen.findByText("el viento no perdona");
   });
 
-  it("'Ver de nuevo' restarts and 'Cerrar' leaves", async () => {
+  it("'Ver de nuevo' restarts the story", async () => {
     await renderRouter(routes, { initialUrl: "/roll" });
     await act(async () => router.push("/presentation"));
     for (let i = 0; i < 7; i++) await tap();
     await fireEvent.press(await screen.findByLabelText("Ver de nuevo"));
     await screen.findByText("Se reveló");
 
-    await fireEvent.press(screen.getByLabelText("Cerrar"));
+  });
+
+  it("has no visible close button and closes with the VoiceOver escape action", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/presentation"));
+    await screen.findByText("Se reveló");
+    expect(screen.queryByLabelText("Cerrar")).toBeNull();
+
+    await fireEvent(await screen.findByTestId("story-surface"), "accessibilityAction", { nativeEvent: { actionName: "escape" } });
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("closes from the hidden 'Cerrar presentación' button", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/presentation"));
+    await fireEvent.press(await screen.findByLabelText("Cerrar presentación"));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
   });
 
