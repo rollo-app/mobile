@@ -49,6 +49,15 @@ export default function RootLayout() {
           />
           <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen
+            name="presentation"
+            options={{
+              presentation: "fullScreenModal",
+              headerShown: false,
+              animation: "fade",
+              contentStyle: { backgroundColor: "#000" },
+            }}
+          />
+          <Stack.Screen
             name="photo/[id]"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
           />
