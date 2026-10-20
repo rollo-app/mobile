@@ -247,12 +247,14 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
       />
     );
 
+  // No wrapping View: the list must be the screen's first child for the native header to find it as the
+  // main scroll view (large title collapses, edge effect). Stack.Screen and Toolbar render nothing.
   return (
-    <View style={styles.fill}>
+    <>
+      {body}
       {/* Large title that collapses with the list (contentInsetAdjustmentBehavior), like Photos. Switching rolls lives in Vos. */}
       <Stack.Screen options={{ title: "Galería", headerLargeTitle: true }} />
       {toolbar}
-      {body}
       {(bar || selecting) && (
         <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
           {bar?.kind === "progress" ? (
@@ -294,7 +296,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
           )}
         </View>
       )}
-    </View>
+    </>
   );
 }
 
@@ -306,7 +308,6 @@ function resultText(bar: Extract<Bar, { kind: "result" }>) {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.background },
   filter: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   header: { color: colors.label, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm },
   row: { flexDirection: "row", gap: GAP, marginBottom: GAP },
