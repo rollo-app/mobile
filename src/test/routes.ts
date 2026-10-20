@@ -15,6 +15,7 @@ import CreateScreen from "../../app/create";
 import DevTokenScreen from "../../app/dev-token";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
+import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
 import PhotoRoute from "../../app/photo/[id]";
 import RenameScreen from "../../app/rename";
@@ -30,6 +31,7 @@ export const routes = {
   rename: RenameScreen,
   "dev-token": DevTokenScreen,
   capture: CaptureScreen,
+  "offline-maps": OfflineMapsScreen,
   presentation: PresentationScreen,
   "photo/[id]": PhotoRoute,
   "(tabs)/_layout": TabsLayout,

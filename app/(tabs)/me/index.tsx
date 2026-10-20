@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { Share } from "react-native";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
+import { OfflineMapRow } from "@/features/map/offline-map-row";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
@@ -49,6 +50,7 @@ export default function MeScreen() {
       )}
 
       <Section>
+        <OfflineMapRow />
         <Row label="Tus rollos" value={String(trips.length)} onPress={() => router.push("/trips")} />
       </Section>
 
