@@ -3,6 +3,7 @@ import { pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { requestRevealPermission } from "@/features/notifications/reveal";
 import { createTrip } from "@/features/trips/actions";
 import { canCreate, defaultStart } from "@/features/trips/create-form";
 import { ErrorText } from "@/ui/components";
@@ -52,6 +53,7 @@ export default function CreateScreen() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       router.dismissTo("/roll");
+      void requestRevealPermission();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el rollo");
     } finally {

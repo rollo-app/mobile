@@ -123,24 +123,6 @@ describe("Roll", () => {
     expect(screen.queryByText("Fotos")).toBeNull();
   });
 
-  it("once revealed all three rows keep their full date, with the year if it isn't this one", async () => {
-    const t = trip({
-      startsAt: Date.UTC(2025, 0, 5, 13),
-      endsAt: Date.UTC(2025, 0, 12, 13),
-      revealAt: Date.UTC(2025, 0, 13, 13),
-      revealed: true,
-    });
-    mocked.fetchTrip.mockResolvedValue(detail({ trip: t }));
-    await renderRouter(routes, { initialUrl: "/roll" });
-
-    await screen.findByLabelText("12 en el rollo");
-    expect(screen.getByText("5 ene 2025, 10:00")).toBeVisible();
-    expect(screen.getByText("12 ene 2025, 10:00")).toBeVisible();
-    expect(screen.getByText("13 ene 2025, 10:00")).toBeVisible();
-    expect(screen.getByText("Se reveló")).toBeVisible();
-    expect(screen.queryByText("Fotos")).toBeNull();
-  });
-
   it("the contact sheet shows each photo's ThumbHash, newest to oldest", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 2 }));
     mocked.fetchFeed.mockResolvedValue({

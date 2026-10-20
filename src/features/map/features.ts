@@ -13,6 +13,8 @@ export type MapItem = {
   caption: string | null;
   durationS: number | null;
   thumbhash: string | null;
+  /** Where the thumbnail lives; only after the reveal. */
+  thumbPath?: string | null;
   authorId: string;
   authorName: string;
   pending: boolean;
@@ -35,6 +37,7 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
     caption: i.caption,
     durationS: i.durationS,
     thumbhash: i.thumbhash,
+    thumbPath: i.files?.thumb ?? null,
     authorId: i.author.id,
     authorName: i.author.name,
     pending: false,

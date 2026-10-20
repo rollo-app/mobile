@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
+import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { buildContactSheet } from "@/features/roll/contact-sheet";
@@ -15,7 +16,16 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 
 const COLUMNS = 6;
 
+/** After the reveal the Rollo tab is the gallery; before, the board. */
 export default function RollScreen() {
+  const { trip } = useActiveTrip();
+  const { detail } = useTripDetail(trip?.tripId);
+  const phase = useRollPhase(detail);
+  if (trip && phase === "revealed") return <GalleryScreen tripId={trip.tripId} />;
+  return <RollBoard />;
+}
+
+function RollBoard() {
   const { trip } = useActiveTrip();
   const { detail, error, refetch, isRefetching } = useTripDetail(trip?.tripId);
   const pending = usePendingCount(trip?.tripId);

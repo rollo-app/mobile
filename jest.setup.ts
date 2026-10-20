@@ -272,3 +272,14 @@ jest.mock("expo-background-task", () => ({
   Toolbar.View = ({ children }: any) => React.createElement(View, null, children);
   Object.defineProperty(Stack, "Toolbar", { value: Toolbar, configurable: true });
 }
+
+// Local notifications are native: tests get a mock they can inspect.
+jest.mock("expo-notifications", () => ({
+  SchedulableTriggerInputTypes: { DATE: "date" },
+  setNotificationHandler: jest.fn(),
+  scheduleNotificationAsync: jest.fn(async () => "id"),
+  cancelScheduledNotificationAsync: jest.fn(async () => {}),
+  getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+  useLastNotificationResponse: jest.fn(() => null),
+}));
