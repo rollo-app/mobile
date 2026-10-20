@@ -1,7 +1,7 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { decode, encode } from "fast-png";
-import { renderTabAvatar, type RingOptions, type Rgb } from "./tab-avatar";
+import { renderTabAvatar, toRgba8, type RingOptions, type Rgb } from "./tab-avatar";
 
 /** The icon is shown at 28 pt on a 3x screen. */
 export const TAB_ICON_POINTS = 28;
@@ -33,7 +33,8 @@ function hexToRgb(hex: string): Rgb {
 export async function ensureTabAvatarFiles(avatarUri: string, avatarUrl: string, tintHex: string): Promise<TabAvatarFiles> {
   const dir = new Directory(Paths.cache, "tab-avatar");
   dir.create({ intermediates: true, idempotent: true });
-  const key = `${cacheKey(avatarUrl)}-${tintHex.slice(1)}`;
+  // "v2": icons from before 16-bit PNGs were read correctly are discarded.
+  const key = `v2-${cacheKey(avatarUrl)}-${tintHex.slice(1)}`;
   const plain = new File(dir, `${key}-default.png`);
   const selected = new File(dir, `${key}-selected.png`);
   if (plain.exists && selected.exists) return { default: plain.uri, selected: selected.uri };
@@ -47,7 +48,7 @@ export async function ensureTabAvatarFiles(avatarUri: string, avatarUrl: string,
     const { base64 } = await image.saveAsync({ format: SaveFormat.PNG, base64: true });
     if (!base64) throw new Error("no base64 from manipulator");
     const png = decode(base64ToBytes(base64));
-    const rgba = toRgba(png.data, png.channels, png.width * png.height);
+    const rgba = toRgba8(png);
     const ring: RingOptions = { color: hexToRgb(tintHex), width: RING_WIDTH, gap: RING_GAP };
     writePng(plain, renderTabAvatar(rgba, png.width), png.width);
     writePng(selected, renderTabAvatar(rgba, png.width, { ring }), png.width);
@@ -74,14 +75,3 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
-function toRgba(data: ArrayLike<number>, channels: number, pixels: number): Uint8Array {
-  if (channels === 4) return Uint8Array.from(data);
-  const out = new Uint8Array(pixels * 4);
-  const at = (i: number) => data[i] ?? 0;
-  for (let i = 0; i < pixels; i++) {
-    const o = i * channels;
-    const isRgb = channels >= 3;
-    out.set([at(o), at(isRgb ? o + 1 : o), at(isRgb ? o + 2 : o), 255], i * 4);
-  }
-  return out;
-}

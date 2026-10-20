@@ -92,3 +92,50 @@ function sample(src: ArrayLike<number>, size: number, fx: number, fy: number): [
   }
   return res;
 }
+
+/** What a PNG decoder hands back (fast-png's shape), without depending on it. */
+export type DecodedPng = {
+  width: number;
+  height: number;
+  data: ArrayLike<number>;
+  channels: number;
+  depth: number;
+  palette?: ArrayLike<ArrayLike<number>>;
+};
+
+/**
+ * Any decoded PNG to 8-bit RGBA. iOS may write 16-bit or indexed PNGs: reading a 16-bit sample as a byte
+ * keeps only its low byte, which shows up as colored noise.
+ */
+export function toRgba8(png: DecodedPng): Uint8Array {
+  const { width, height, data, channels, depth, palette } = png;
+  const pixels = width * height;
+  const out = new Uint8Array(pixels * 4);
+  // Samples below 8 bits come packed, with each row starting on a new byte.
+  const rowBytes = Math.ceil((width * channels * depth) / 8);
+  const sample = (i: number): number => {
+    if (depth === 16) return (data[i] ?? 0) >> 8;
+    if (depth === 8) return data[i] ?? 0;
+    const row = Math.floor(i / (width * channels));
+    const bit = (i % (width * channels)) * depth;
+    const byte = data[row * rowBytes + (bit >> 3)] ?? 0;
+    return (byte >> (8 - depth - (bit & 7))) & ((1 << depth) - 1);
+  };
+  const scale = (v: number) => (depth < 8 && !palette ? Math.round((v * 255) / ((1 << depth) - 1)) : v);
+
+  for (let p = 0; p < pixels; p++) {
+    const o = p * channels;
+    let rgba: [number, number, number, number];
+    if (palette) {
+      const c = palette[sample(o)] ?? [0, 0, 0];
+      rgba = [c[0] ?? 0, c[1] ?? 0, c[2] ?? 0, c[3] ?? 255];
+    } else if (channels >= 3) {
+      rgba = [sample(o), sample(o + 1), sample(o + 2), channels === 4 ? sample(o + 3) : 255];
+    } else {
+      const g = scale(sample(o));
+      rgba = [g, g, g, channels === 2 ? sample(o + 1) : 255];
+    }
+    out.set(rgba, p * 4);
+  }
+  return out;
+}
