@@ -570,7 +570,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a friend link
-         * @description Returns an 8-character code (the link is rollo://amigos/<code>) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
+         * @description Returns an 8-character code (the link is rollo://friends/<code>) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
          */
         post: {
             parameters: {
@@ -1180,7 +1180,7 @@ export interface paths {
         put?: never;
         /**
          * Add your friends to the trip
-         * @description Any member adds their own friends directly. The answer is per friend (never all-or-nothing): `added` (also when they had left and come back), `already_member`, or `unavailable` (not your friend, removed by the admin, or unknown). A revealed rollo gets 409 for the whole request.
+         * @description Any member adds their own friends directly. The answer is per friend (never all-or-nothing): `added` (also when they had left and come back), `already_member`, or `unavailable` (not your friend, removed by the admin, or unknown). The rollo's admin can add back someone who was removed (they become active again with their old photos); for a regular member a removed person stays `unavailable`. A revealed rollo gets 409 for the whole request.
          */
         post: {
             parameters: {
@@ -1328,7 +1328,7 @@ export interface paths {
         post?: never;
         /**
          * Remove someone from the trip (admin)
-         * @description They lose access to the rollo and cannot rejoin. Their photos stay in the roll.
+         * @description They lose access to the rollo and cannot rejoin by code or through a regular member; only the admin can add them back as a friend. Their photos stay in the roll.
          */
         delete: {
             parameters: {
@@ -1868,7 +1868,7 @@ export interface components {
         };
         FriendLink: {
             /**
-             * @description 8-character code; the link is rollo://amigos/<code>
+             * @description 8-character code; the link is rollo://friends/<code>
              * @example K7M2QX9A
              */
             code: string;
@@ -2044,7 +2044,7 @@ export interface components {
             results: {
                 userId: string;
                 /**
-                 * @description added: now a member (also if they had left); already_member; unavailable: not your friend, removed by the admin, or unknown
+                 * @description added: now a member (also if they had left); already_member; unavailable: not your friend, removed by the admin (unless the caller is the admin), or unknown
                  * @enum {string}
                  */
                 status: "added" | "already_member" | "unavailable";
