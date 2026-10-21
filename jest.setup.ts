@@ -94,8 +94,11 @@ jest.mock("@maplibre/maplibre-react-native", () => {
   const getClusterLeaves = jest.fn();
   const mapProps: { current: any } = { current: null };
   const imagesProps: { current: any } = { current: null };
+  // How many times a Map has mounted (tests reset it): a remount reloads the style and loses the camera.
+  const mapMounts = { current: 0 };
   return {
     __camera: camera,
+    __mapMounts: mapMounts,
     __getClusterLeaves: getClusterLeaves,
     __mapProps: mapProps,
     __imagesProps: imagesProps,
@@ -104,6 +107,7 @@ jest.mock("@maplibre/maplibre-react-native", () => {
       const { children, onPress, onDidFinishLoadingMap } = props;
       mapProps.current = props;
       React.useEffect(() => {
+        mapMounts.current += 1;
         onDidFinishLoadingMap?.();
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, []);
@@ -213,13 +217,15 @@ jest.mock("@expo/ui/community/menu", () => {
         View,
         { style },
         children,
-        actions.map((a: { id: string; title: string }) =>
+        // Inline sections (displayInline + subactions) are flattened: their items show up in order.
+        actions.flatMap((a: any) => (a.displayInline && a.subactions ? a.subactions : [a])).map((a: { id: string; title: string; state?: string }) =>
           React.createElement(
             Pressable,
             {
               key: a.id,
               accessibilityRole: "menuitem",
               accessibilityLabel: a.title,
+              accessibilityState: { checked: a.state === "on" },
               onPress: () => onPressAction({ nativeEvent: { event: a.id } }),
             },
             React.createElement(Text, null, a.title),

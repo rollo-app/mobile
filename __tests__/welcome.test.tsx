@@ -57,8 +57,8 @@ describe("A user without rollos", () => {
     expect(screen).toHavePathname("/roll");
   });
 
-  it("Feed points to the Rollo tab instead of an empty list", async () => {
-    await renderRouter(routes, { initialUrl: "/feed" });
+  it("the Feed view points to the Rollo tab instead of an empty list", async () => {
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     expect(await screen.findByText("Primero hace falta un rollo")).toBeVisible();
   });

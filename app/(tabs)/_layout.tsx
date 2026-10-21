@@ -16,7 +16,7 @@ import { colors } from "@/ui/theme";
  * Bottom bar, icons only. The center camera isn't a screen: it's
  * `disabled` so tapping it doesn't switch tabs, and it opens capture on top.
  * Shows how many photos you have left today, or a lock if none are left or the roll isn't active.
- * After the reveal the same five tabs become Galería, Mapa, Presentación, (Feed hidden) and Perfil.
+ * After the reveal the roll and camera tabs become Galería and Presentación. The Feed lives inside Mapa.
  */
 export default function TabsLayout() {
   const { trip, loaded } = useActiveTrip();
@@ -48,11 +48,6 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf={tabs.camera.sf} md={tabs.camera.md} />
         <NativeTabs.Trigger.Label hidden>{tabs.camera.label}</NativeTabs.Trigger.Label>
         {tabs.camera.badge !== null && <NativeTabs.Trigger.Badge>{tabs.camera.badge}</NativeTabs.Trigger.Badge>}
-      </NativeTabs.Trigger>
-      {/* Hiding a tab remounts the navigator: it only happens when the roll changes or at the moment of the reveal. */}
-      <NativeTabs.Trigger name="feed" hidden={tabs.feedHidden}>
-        <NativeTabs.Trigger.Icon sf={{ default: "text.bubble", selected: "text.bubble.fill" }} md="chat_bubble" />
-        <NativeTabs.Trigger.Label hidden>Feed</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="me">
         {avatar ? (

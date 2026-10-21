@@ -1,15 +1,15 @@
 import { MenuView } from "@expo/ui/community/menu";
-import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { Camera, Images, Map, UserLocation, type CameraRef, type GeoJSONSourceRef } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { boundsOf, feedToItems, itemsByTime, mergeItems, pendingToItems, toFeatures, type MapItem } from "@/features/map/features";
 import { fitTarget, isTripActive, MAX_ZOOM, photosNear } from "@/features/map/framing";
+import { filterActive, filterLabel } from "@/features/map/map-filters";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
 import { CAROUSEL_HEIGHT, PinCarousel } from "@/features/map/pin-carousel";
 import { UserLocationDot } from "@/features/map/user-location-dot";
@@ -30,6 +30,8 @@ silenceTileNetworkErrors();
 // No pins or location: southern Argentina, where the trip is.
 const DEFAULT_REGION = { center: [-72.89, -49.33] as [number, number], zoom: 6 };
 const HEADER_HEIGHT = 44;
+/** Height of the row under the header (segmented control and filter pill). */
+export const CONTROLS_ROW_HEIGHT = 34;
 const TAB_BAR_GAP = 12;
 // Height of the native tab bar (49 pt + 34 pt home indicator on notch iPhones). If the
 // safe area already includes it, `Math.max` changes nothing; if not, this keeps it from covering what's below.
@@ -43,10 +45,21 @@ const NO_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 
 type PressEvent = { nativeEvent: { features: GeoJSON.Feature[] }; stopPropagation?: () => void };
 
-export function RollMap() {
+type RollMapProps = {
+  /** Photo to fly to and open (from the Feed); it is consumed by clearing the `focus` route param. */
+  focus?: string;
+  /** Drawn at the start of the row under the header, before the filter pill. */
+  rowStart?: ReactNode;
+  /**
+   * Drawn over the map (opaque, under the row) while the map stays mounted, so the camera and the
+   * style survive. While it is there the map's own controls are hidden and only `rowStart` stays.
+   */
+  cover?: ReactNode;
+};
+
+export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   const { trip } = useActiveTrip();
   const router = useRouter();
-  const { focus } = useLocalSearchParams<{ focus?: string }>();
   const { detail } = useTripDetail(trip?.id);
   const { feed, error, refetch } = useFeed(trip?.id);
   const pending = usePendingItems(trip?.id);
@@ -54,11 +67,11 @@ export function RollMap() {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
-  const [pickedScope, setScope] = useState<"all" | "today">("all");
-  // Once the roll has ended there is no "today" anymore: only "Todo" applies.
+  const [pickedToday, setToday] = useState(false);
+  // Once the roll has ended there is no "today" anymore: "Solo hoy" goes away.
   const phase = detail ? rollPhase(detail.trip, Date.now()) : null;
   const hasToday = phase !== "ended" && phase !== "revealed";
-  const scope = hasToday ? pickedScope : "all";
+  const today = hasToday && pickedToday;
   const [authorId, setAuthorId] = useState<string | null>(null);
   // Photos at the tapped place or cluster and which of them is showing in the carousel.
   // `clusterId` keeps the tapped cluster highlighted while its photos are swiped.
@@ -83,8 +96,8 @@ export function RollMap() {
   const all = useMemo(() => toFeatures(items, { day: null, authorId: null }), [items]);
   const pinAvatars = usePinAvatars(items);
   const shown = useMemo(
-    () => toFeatures(items, { day: scope === "today" ? (detail?.today.date ?? null) : null, authorId }, pinAvatars.ready),
-    [items, scope, authorId, detail?.today.date, pinAvatars.ready],
+    () => toFeatures(items, { day: today ? (detail?.today.date ?? null) : null, authorId }, pinAvatars.ready),
+    [items, today, authorId, detail?.today.date, pinAvatars.ready],
   );
   const carousel = useMemo(
     () => (selection ? itemsByTime(items, selection.ids) : []),
@@ -142,7 +155,7 @@ export function RollMap() {
     router.setParams({ focus: undefined });
     if (target.lat === null || target.lng === null) return;
     framed.current = true;
-    setScope("all");
+    setToday(false);
     setAuthorId(null);
     cameraRef.current?.flyTo({ center: [target.lng, target.lat], zoom: FOCUS_ZOOM, duration: 600 });
     const ids = itemsByTime(items, photosNear(all.features, [target.lng, target.lat], FOCUS_ZOOM).map((f) => f.properties.id)).map((i) => i.id);
@@ -204,11 +217,25 @@ export function RollMap() {
   }, [clusterId]);
 
   const members = detail?.members ?? [];
-  const authorName = members.find((m) => m.id === authorId)?.name;
+  const filters = { today, authorName: members.find((m) => m.id === authorId)?.name ?? null };
+  const filterColor = filterActive(filters) ? colors.tint : colors.label;
+  const on = (yes: boolean) => (yes ? ("on" as const) : ("off" as const));
   const actions = [
-    { id: "all", title: "Todos", state: authorId === null ? ("on" as const) : ("off" as const) },
-    ...members.map((m) => ({ id: m.id, title: m.name, state: authorId === m.id ? ("on" as const) : ("off" as const) })),
+    ...(hasToday ? [{ id: TODAY_ACTION, title: "Solo hoy", image: "calendar" as const, state: on(today) }] : []),
+    {
+      id: "people",
+      title: "Personas",
+      displayInline: true,
+      subactions: [
+        { id: ALL_ACTION, title: "Todos", state: on(authorId === null) },
+        ...members.map((m) => ({ id: m.id, title: m.name, state: on(authorId === m.id) })),
+      ],
+    },
   ];
+  function onFilterAction(id: string) {
+    if (id === TODAY_ACTION) setToday((t) => !t);
+    else setAuthorId(id === ALL_ACTION ? null : id);
+  }
 
   return (
     <View style={styles.fill}>
@@ -219,58 +246,55 @@ export function RollMap() {
           ...(trip ? { headerTitle: () => <TripSwitcher name={trip.name} /> } : {}),
         }}
       />
-      <Map
-        key={styleUri}
+      {/* While covered, VoiceOver skips the map: it is not what is on screen. */}
+      <View
         style={styles.fill}
-        mapStyle={styleUri}
-        logo={false}
-        compass
-        compassPosition={{ top: buttonsTop + BUTTON_SIZE + spacing.sm, right: spacing.md }}
-        attribution={false}
-        onDidFinishLoadingMap={() => setMapReady(true)}
-        onRegionDidChange={(e) => {
-          zoomRef.current = e.nativeEvent.zoom;
-        }}
-        onPress={() => setSelection(null)}
+        accessibilityElementsHidden={!!cover}
+        importantForAccessibility={cover ? "no-hide-descendants" : "auto"}
       >
-        <Camera ref={cameraRef} initialViewState={DEFAULT_REGION} maxZoom={MAX_ZOOM} />
-        {hasLocation === true && (
-          <UserLocation>
-            <UserLocationDot color={tintHex[scheme]} />
-          </UserLocation>
-        )}
-        {/* Before the pins: its images are registered before the data that references them. */}
-        <Images images={pinAvatars.images} />
-        <PinLayers data={shown} selectedId={selectedId} selectedClusterId={selection?.clusterId ?? null} haloColor={tintHex[scheme]} sourceRef={sourceRef} onPress={onPinsPress} />
-      </Map>
+        <Map
+          key={styleUri}
+          style={styles.fill}
+          mapStyle={styleUri}
+          logo={false}
+          compass
+          compassPosition={{ top: buttonsTop + BUTTON_SIZE + spacing.sm, right: spacing.md }}
+          attribution={false}
+          onDidFinishLoadingMap={() => setMapReady(true)}
+          onRegionDidChange={(e) => {
+            zoomRef.current = e.nativeEvent.zoom;
+          }}
+          onPress={() => setSelection(null)}
+        >
+          <Camera ref={cameraRef} initialViewState={DEFAULT_REGION} maxZoom={MAX_ZOOM} />
+          {hasLocation === true && (
+            <UserLocation>
+              <UserLocationDot color={tintHex[scheme]} />
+            </UserLocation>
+          )}
+          {/* Before the pins: its images are registered before the data that references them. */}
+          <Images images={pinAvatars.images} />
+          <PinLayers data={shown} selectedId={selectedId} selectedClusterId={selection?.clusterId ?? null} haloColor={tintHex[scheme]} sourceRef={sourceRef} onPress={onPinsPress} />
+        </Map>
+      </View>
+
+      {cover && <View style={[StyleSheet.absoluteFill, styles.cover]}>{cover}</View>}
 
       <View pointerEvents="box-none" style={[styles.controls, { top: insets.top + HEADER_HEIGHT + spacing.sm }]}>
         <View style={styles.row}>
-          {hasToday ? (
-            <SegmentedControl
-              style={styles.segmented}
-              values={["Todo", "Hoy"]}
-              tintColor={tintHex[scheme]}
-              selectedIndex={scope === "all" ? 0 : 1}
-              onValueChange={(v) => setScope(v === "Hoy" ? "today" : "all")}
-            />
-          ) : (
-            <View style={styles.segmented} />
+          {rowStart ?? <View style={styles.rowStart} />}
+          {!cover && (
+            <MenuView title="Filtros" actions={actions} onPressAction={({ nativeEvent }) => onFilterAction(nativeEvent.event)}>
+              <View style={styles.pill}>
+                <SymbolView name="line.3.horizontal.decrease.circle" size={15} tintColor={filterColor as string} />
+                <Text style={[type.subhead, { color: filterColor }]} numberOfLines={1}>
+                  {filterLabel(filters)}
+                </Text>
+              </View>
+            </MenuView>
           )}
-          <MenuView
-            title="Personas"
-            actions={actions}
-            onPressAction={({ nativeEvent }) => setAuthorId(nativeEvent.event === "all" ? null : nativeEvent.event)}
-          >
-            <View style={styles.pill}>
-              <SymbolView name="person.2" size={15} tintColor={(authorId ? colors.tint : colors.label) as string} />
-              <Text style={[type.subhead, { color: authorId ? colors.tint : colors.label }]} numberOfLines={1}>
-                {authorName ?? "Personas"}
-              </Text>
-            </View>
-          </MenuView>
         </View>
-        {error && (
+        {!cover && error && (
           <View style={styles.notice}>
             <Text numberOfLines={1} style={[type.footnote, styles.noticeText]}>
               {error}
@@ -280,53 +304,60 @@ export function RollMap() {
             </Pressable>
           </View>
         )}
-        {noPins && !error && (
+        {!cover && noPins && !error && (
           <View style={styles.notice}>
             <Text style={[type.footnote, styles.noticeText]}>Todavía no hay fotos en el mapa</Text>
           </View>
         )}
       </View>
 
-      <View style={[styles.buttons, { top: buttonsTop }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Ver todas"
-          onPress={() => frameAll(shown.features, 500)}
-          style={styles.round}
-        >
-          <SymbolView name="square.dashed" size={17} tintColor={colors.label as string} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Centrar en mi ubicación"
-          onPress={() => void centerOnUser(true)}
-          style={styles.round}
-        >
-          <SymbolView name="location.fill" size={17} tintColor={colors.label as string} />
-        </Pressable>
-      </View>
+      {!cover && (
+        <>
+          <View style={[styles.buttons, { top: buttonsTop }]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ver todas"
+              onPress={() => frameAll(shown.features, 500)}
+              style={styles.round}
+            >
+              <SymbolView name="square.dashed" size={17} tintColor={colors.label as string} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Centrar en mi ubicación"
+              onPress={() => void centerOnUser(true)}
+              style={styles.round}
+            >
+              <SymbolView name="location.fill" size={17} tintColor={colors.label as string} />
+            </Pressable>
+          </View>
 
-      {/* ODbL requires showing the attribution while the map is visible: fixed text, not tappable. */}
-      <Text pointerEvents="none" style={[type.caption, styles.attribution, { bottom: barInset + 2 }]}>
-        © OpenStreetMap · OpenFreeMap
-      </Text>
+          {/* ODbL requires showing the attribution while the map is visible: fixed text, not tappable. */}
+          <Text pointerEvents="none" style={[type.caption, styles.attribution, { bottom: barInset + 2 }]}>
+            © OpenStreetMap · OpenFreeMap
+          </Text>
 
-      {carousel.length > 0 && detail && selection && (
-        <View pointerEvents="box-none" style={[styles.cardWrap, { bottom: barInset + CAROUSEL_BOTTOM }]}>
-          <PinCarousel
-            key={selection.ids.join()}
-            items={carousel}
-            index={selection.index}
-            onIndexChange={(index) => setSelection({ ...selection, index })}
-            timeZone={detail.trip.timezone}
-            token={token}
-            onOpen={detail.trip.revealed ? (item) => router.push(`/photo/${item.id}`) : undefined}
-          />
-        </View>
+          {carousel.length > 0 && detail && selection && (
+            <View pointerEvents="box-none" style={[styles.cardWrap, { bottom: barInset + CAROUSEL_BOTTOM }]}>
+              <PinCarousel
+                key={selection.ids.join()}
+                items={carousel}
+                index={selection.index}
+                onIndexChange={(index) => setSelection({ ...selection, index })}
+                timeZone={detail.trip.timezone}
+                token={token}
+                onOpen={detail.trip.revealed ? (item) => router.push(`/photo/${item.id}`) : undefined}
+              />
+            </View>
+          )}
+        </>
       )}
     </View>
   );
 }
+
+const TODAY_ACTION = "today";
+const ALL_ACTION = "all";
 
 const chip = {
   backgroundColor: colors.background,
@@ -338,8 +369,9 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   controls: { position: "absolute", left: spacing.md, right: spacing.md, gap: spacing.sm },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  segmented: { flex: 1 },
-  pill: { ...chip, flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, height: 34 },
+  rowStart: { flex: 1 },
+  pill: { ...chip, flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, height: CONTROLS_ROW_HEIGHT },
+  cover: { backgroundColor: colors.background },
   notice: {
     ...chip,
     alignSelf: "center",

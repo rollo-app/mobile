@@ -5,8 +5,6 @@ import EmailScreen from "../../app/(auth)/email";
 import CompleteProfileScreen from "../../app/(auth)/profile";
 import TabsLayout from "../../app/(tabs)/_layout";
 import CameraTab from "../../app/(tabs)/camera";
-import FeedLayout from "../../app/(tabs)/feed/_layout";
-import FeedScreen from "../../app/(tabs)/feed/index";
 import MapLayout from "../../app/(tabs)/map/_layout";
 import MapScreen from "../../app/(tabs)/map/index";
 import RollLayout from "../../app/(tabs)/roll/_layout";
@@ -56,8 +54,6 @@ export const routes = {
   "(tabs)/map/_layout": MapLayout,
   "(tabs)/map/index": MapScreen,
   "(tabs)/camera": CameraTab,
-  "(tabs)/feed/_layout": FeedLayout,
-  "(tabs)/feed/index": FeedScreen,
   "(tabs)/me/_layout": MeLayout,
   "(tabs)/me/index": MeScreen,
 };
