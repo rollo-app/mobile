@@ -1,3 +1,4 @@
+import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { queryClient } from "@/api/query-client";
@@ -206,32 +207,56 @@ describe("Roll with unuploaded photos", () => {
   });
 });
 
+describe("Roll board · people and settings", () => {
+  beforeEach(() => saveTrip(SUR, "Viaje al sur"));
+
+  it("shows the invite code and the members below the dates", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    expect(await screen.findByText("Invitar")).toBeVisible();
+    expect(screen.getByText("HUB5FT")).toBeVisible();
+    expect(screen.getByText("En el rollo · 2")).toBeVisible();
+    expect(screen.getAllByText("Fede")[0]).toBeVisible();
+    expect(screen.getByText("Admin")).toBeVisible();
+  });
+
+  it("shares the invitation with the roll's name and code", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Compartir invitación" }));
+
+    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo con el código HUB5FT' });
+    share.mockRestore();
+  });
+
+  it("ends with the offline map row, and no 'Tus rollos' row", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    expect(await screen.findByRole("button", { name: /^Mapa sin señal/ })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
+  });
+});
+
 describe("Me", () => {
   beforeEach(() => saveTrip(SUR, "Viaje al sur"));
 
-  it("shows the profile header, the active trip and an Editar perfil row", async () => {
+  it("is only the account: profile header, Editar perfil and sign out, with no email or rollo sections", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/me" });
 
-    expect(await screen.findByText("juani@rollo.test")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Editar perfil" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Viaje al sur, Admin" })).toBeVisible();
-  });
-
-  it("shows the invite code and the members", async () => {
-    mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/me" });
-
-    expect(await screen.findByText("HUB5FT")).toBeVisible();
-    expect(screen.getAllByText("Fede")[0]).toBeVisible();
-  });
-
-  it("from your trips the picker opens", async () => {
-    mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/me" });
-
-    await fireEvent.press(await screen.findByRole("button", { name: "Tus rollos, 1" }));
-    expect(screen).toHavePathname("/trips");
+    expect(await screen.findByRole("button", { name: "Editar perfil" })).toBeVisible();
+    expect(screen.getByText("@juani")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+    expect(screen.queryByText("juani@rollo.test")).toBeNull();
+    for (const title of ["Rollo activo", "Invitar"]) expect(screen.queryByText(title)).toBeNull();
+    expect(screen.queryByText(/^En el rollo/)).toBeNull();
+    expect(screen.queryByText("HUB5FT")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Mapa sin señal/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
   });
 
   it("in development, a row triggers the background upload for testing", async () => {

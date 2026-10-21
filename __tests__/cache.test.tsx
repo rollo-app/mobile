@@ -91,10 +91,10 @@ describe("Shared trip data", () => {
     expect(mocked.fetchTrip).toHaveBeenCalledTimes(2);
   });
 
-  it("Me also offers Reintentar when there is no data", async () => {
+  it("Roll offers Reintentar when there is no data", async () => {
     mocked.fetchTrip.mockRejectedValueOnce(new Error("Sin conexión"));
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/roll" });
 
     await fireEvent.press((await screen.findAllByRole("button", { name: "Reintentar" }))[0]!);
 

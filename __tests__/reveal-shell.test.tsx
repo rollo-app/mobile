@@ -58,6 +58,20 @@ describe("revealed roll", () => {
     expect(screen.queryByText("Fechas")).toBeNull();
   });
 
+  it("the gallery has a 'Sobre el rollo' button that opens the invite and the members", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await markPresentationSeen(SUR);
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Sobre el rollo" }));
+
+    expect(screen).toHavePathname("/roll-info");
+    expect(await screen.findByText("Invitar")).toBeVisible();
+    expect(screen.getByText("HUB5FT")).toBeVisible();
+    expect(screen.getByText("En el rollo · 1")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^Mapa sin señal/ })).toBeNull();
+  });
+
   it("opens the presentation automatically the first time, and only once", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     mocked.fetchFeed.mockResolvedValue({

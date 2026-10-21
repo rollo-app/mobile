@@ -23,6 +23,7 @@ import NotFound from "../../app/+not-found";
 import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
 import PhotoRoute from "../../app/photo/[id]";
+import RollInfoScreen from "../../app/roll-info";
 import TripsScreen from "../../app/trips";
 
 
@@ -34,6 +35,7 @@ export const routes = {
   create: CreateScreen,
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
+  "roll-info": RollInfoScreen,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
   presentation: PresentationScreen,

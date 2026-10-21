@@ -220,12 +220,13 @@ describe("Login", () => {
 describe("Profile tab", () => {
   beforeEach(() => signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] }));
 
-  it("shows your name and email, and the active roll", async () => {
+  it("shows your name and handle, not your email nor the active roll", async () => {
     await renderRouter(routes, { initialUrl: "/me" });
 
-    expect(await screen.findByText("juani@rollo.test")).toBeVisible();
+    expect(await screen.findByText("@juani")).toBeVisible();
     expect(screen.getAllByText("Juani").length).toBeGreaterThan(0);
-    expect(await screen.findByRole("button", { name: "Viaje al sur, Admin" })).toBeVisible();
+    expect(screen.queryByText("juani@rollo.test")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Viaje al sur, Admin" })).toBeNull();
   });
 
   it("log out tells the server, lands on the login and keeps the pending photos", async () => {
@@ -303,6 +304,16 @@ describe("Edit profile", () => {
     await waitFor(() => expect(screen).toHavePathname("/me"));
     expect(calls).toEqual(["PATCH /me"]);
     expect(await screen.findAllByText("Juan")).not.toHaveLength(0);
+  });
+
+  it("shows the email as a read-only row at the top of the form", async () => {
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Editar perfil" }));
+
+    expect(await screen.findByText("Email")).toBeVisible();
+    expect(screen.getByText("juani@rollo.test")).toBeVisible();
+    expect(screen.getByText("Es lo que hace única tu cuenta.")).toBeVisible();
   });
 
   describe("username", () => {

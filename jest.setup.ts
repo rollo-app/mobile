@@ -301,10 +301,10 @@ jest.mock("expo-background-task", () => ({
     });
     return React.createElement(View, null, children);
   };
-  Toolbar.Button = ({ children, onPress, disabled }: any) =>
+  Toolbar.Button = ({ children, onPress, disabled, accessibilityLabel }: any) =>
     React.createElement(
       Pressable,
-      { accessibilityRole: "button", accessibilityLabel: children, accessibilityState: { disabled: !!disabled }, disabled, onPress },
+      { accessibilityRole: "button", accessibilityLabel: accessibilityLabel ?? children, accessibilityState: { disabled: !!disabled }, disabled, onPress },
       React.createElement(Text, null, children),
     );
   Toolbar.View = ({ children }: any) => React.createElement(View, null, children);
