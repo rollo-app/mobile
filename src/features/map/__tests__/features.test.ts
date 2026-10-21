@@ -25,7 +25,7 @@ describe("toFeatures", () => {
     const { features } = toFeatures([item()], none);
     expect(features).toHaveLength(1);
     expect(features[0]!.geometry).toEqual({ type: "Point", coordinates: [-72.89, -49.33] });
-    expect(features[0]!.properties).toEqual({ id: "m1", initial: "C", color: memberColor("a1"), pending: false });
+    expect(features[0]!.properties).toEqual({ id: "m1", initial: "C", color: memberColor("a1"), pending: false, avatar: "" });
   });
 
   it("uses the uppercase initial even if the name is lowercase or has spaces", () => {

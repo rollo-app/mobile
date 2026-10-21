@@ -14,6 +14,13 @@ export type RingOptions = {
   gap: number;
 };
 
+/** Stable short key from the avatar path (a new photo has a new path, so it regenerates). */
+export function cacheKey(avatarUrl: string): string {
+  let h = 5381;
+  for (let i = 0; i < avatarUrl.length; i++) h = ((h * 33) ^ avatarUrl.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 const at = (a: ArrayLike<number>, i: number) => a[i] ?? 0;
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
