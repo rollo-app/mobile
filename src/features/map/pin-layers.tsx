@@ -2,6 +2,7 @@ import { GeoJSONSource, Layer, type FilterSpecification, type GeoJSONSourceRef }
 import type { Ref } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import type { PinCollection } from "./features";
+import { PIN_AVATAR_SCALE } from "./pin-avatar-files";
 
 const UNCLUSTERED: FilterSpecification = ["!", ["has", "point_count"]];
 /** Greater than the map's max zoom (MAX_ZOOM): clustering always applies, two pins never overlap. */
@@ -13,7 +14,8 @@ type PressEvent = NativeSyntheticEvent<{ features: GeoJSON.Feature[] }>;
 /**
  * Pins are native layers over a clustered source (no React markers, which
  * can't handle hundreds of photos): a circle in each author's color with their initial, and
- * dark clusters with the count. Pending ones (yours, not uploaded) appear dimmed.
+ * dark clusters with the count. Pending ones (yours, not uploaded) appear dimmed. When the author's
+ * photo is ready (`avatar` property, its style image registered with `Images`) it covers the circle and the initial.
  */
 export function PinLayers({
   data,
@@ -111,6 +113,19 @@ export function PinLayers({
           "text-allow-overlap": true,
         }}
         paint={{ "text-color": "#FFFFFF" }}
+      />
+      <Layer
+        id="pins-avatar"
+        type="symbol"
+        filter={["all", ["!", ["has", "point_count"]], ["!=", ["get", "avatar"], ""]]}
+        layout={{
+          "icon-image": ["get", "avatar"],
+          // The PNG is PIN_AVATAR_SCALE times bigger than its size in pt (Images doesn't take a scale for uris).
+          "icon-size": ["case", ["==", ["get", "id"], selectedId ?? ""], 1.2 / PIN_AVATAR_SCALE, 1 / PIN_AVATAR_SCALE],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        }}
+        paint={{ "icon-opacity": ["case", ["get", "pending"], 0.7, 1] }}
       />
     </GeoJSONSource>
   );

@@ -1,6 +1,7 @@
 import type { Schemas } from "@/api/client";
 import type { PendingMedia } from "@/features/capture/queue";
 import { memberColor } from "./member-color";
+import { pinAvatarKey } from "./pin-avatars";
 
 /** A photo or video on the map: from the server feed or yours from the local queue (pending). */
 export type MapItem = {
@@ -24,7 +25,14 @@ export type MapItem = {
 
 export type MapFilters = { day: string | null; authorId: string | null };
 
-export type PinProperties = { id: string; initial: string; color: string; pending: boolean };
+export type PinProperties = {
+  id: string;
+  initial: string;
+  color: string;
+  pending: boolean;
+  /** Style image key of the author's photo once it is ready; "" while the pin keeps the initial. */
+  avatar: string;
+};
 export type PinFeature = GeoJSON.Feature<GeoJSON.Point, PinProperties>;
 export type PinCollection = GeoJSON.FeatureCollection<GeoJSON.Point, PinProperties>;
 
@@ -80,12 +88,13 @@ export function itemsByTime(items: MapItem[], ids: string[]): MapItem[] {
   return items.filter((i) => wanted.has(i.id)).sort((a, b) => a.takenAt - b.takenAt);
 }
 
-export function toFeatures(items: MapItem[], filters: MapFilters): PinCollection {
+export function toFeatures(items: MapItem[], filters: MapFilters, readyAvatars: ReadonlySet<string> = new Set()): PinCollection {
   const features: PinFeature[] = [];
   for (const i of items) {
     if (i.lat === null || i.lng === null) continue;
     if (filters.day && i.day !== filters.day) continue;
     if (filters.authorId && i.authorId !== filters.authorId) continue;
+    const avatarKey = i.authorAvatarUrl ? pinAvatarKey(i.authorId, i.authorAvatarUrl) : "";
     features.push({
       type: "Feature",
       geometry: { type: "Point", coordinates: [i.lng, i.lat] },
@@ -94,6 +103,7 @@ export function toFeatures(items: MapItem[], filters: MapFilters): PinCollection
         initial: i.authorName.trim().charAt(0).toUpperCase(),
         color: memberColor(i.authorId),
         pending: i.pending,
+        avatar: readyAvatars.has(avatarKey) ? avatarKey : "",
       },
     });
   }

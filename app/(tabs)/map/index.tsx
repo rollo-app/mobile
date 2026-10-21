@@ -1,6 +1,6 @@
 import { MenuView } from "@expo/ui/community/menu";
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
-import { Camera, Map, UserLocation, type CameraRef, type GeoJSONSourceRef } from "@maplibre/maplibre-react-native";
+import { Camera, Images, Map, UserLocation, type CameraRef, type GeoJSONSourceRef } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -13,6 +13,7 @@ import { fitTarget, isTripActive, MAX_ZOOM, photosNear } from "@/features/map/fr
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
 import { CAROUSEL_HEIGHT, PinCarousel } from "@/features/map/pin-carousel";
 import { UserLocationDot } from "@/features/map/user-location-dot";
+import { usePinAvatars } from "@/features/map/use-pin-avatars";
 import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { resolveTap } from "@/features/map/tap";
@@ -88,9 +89,10 @@ function MapBody() {
   }, [feed, pending, detail?.me]);
 
   const all = useMemo(() => toFeatures(items, { day: null, authorId: null }), [items]);
+  const pinAvatars = usePinAvatars(items);
   const shown = useMemo(
-    () => toFeatures(items, { day: scope === "today" ? (detail?.today.date ?? null) : null, authorId }),
-    [items, scope, authorId, detail?.today.date],
+    () => toFeatures(items, { day: scope === "today" ? (detail?.today.date ?? null) : null, authorId }, pinAvatars.ready),
+    [items, scope, authorId, detail?.today.date, pinAvatars.ready],
   );
   const carousel = useMemo(
     () => (selection ? itemsByTime(items, selection.ids) : []),
@@ -245,6 +247,8 @@ function MapBody() {
             <UserLocationDot color={tintHex[scheme]} />
           </UserLocation>
         )}
+        {/* Before the pins: its images are registered before the data that references them. */}
+        <Images images={pinAvatars.images} />
         <PinLayers data={shown} selectedId={selectedId} selectedClusterId={selection?.clusterId ?? null} haloColor={tintHex[scheme]} sourceRef={sourceRef} onPress={onPinsPress} />
       </Map>
 

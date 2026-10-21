@@ -93,10 +93,12 @@ jest.mock("@maplibre/maplibre-react-native", () => {
   const camera = { flyTo: jest.fn(), easeTo: jest.fn(), fitBounds: jest.fn() };
   const getClusterLeaves = jest.fn();
   const mapProps: { current: any } = { current: null };
+  const imagesProps: { current: any } = { current: null };
   return {
     __camera: camera,
     __getClusterLeaves: getClusterLeaves,
     __mapProps: mapProps,
+    __imagesProps: imagesProps,
     // The map lets you tap "the void"; the pin source renders a button per pin (so screens can be tested without native).
     Map: (props: any) => {
       const { children, onPress, onDidFinishLoadingMap } = props;
@@ -146,6 +148,10 @@ jest.mock("@maplibre/maplibre-react-native", () => {
       );
     },
     Layer: View,
+    Images: (props: any) => {
+      imagesProps.current = props;
+      return null;
+    },
     UserLocation: View,
     LogManager: { onLog: jest.fn(), setLogLevel: jest.fn() },
     OfflineManager: {
@@ -159,6 +165,13 @@ jest.mock("@maplibre/maplibre-react-native", () => {
     },
   };
 });
+
+// Pin avatars are downloaded and drawn to a file (expo-file-system, native): in tests it's a fixed path per key.
+jest.mock("@/features/map/pin-avatar-files", () => ({
+  PIN_AVATAR_POINTS: 30,
+  PIN_AVATAR_SCALE: 3,
+  ensurePinAvatarFile: jest.fn(async (_uri: string, key: string) => `file:///cache/pin-avatar/${key}.png`),
+}));
 
 // Network state is native: in tests the phone has no connection (so nothing tries to download maps).
 jest.mock("expo-network", () => ({

@@ -48,7 +48,7 @@ Decisiones de producto:
   mandada no se puede repetir ni ver.
 - **Antes del revelado** no se ve ninguna foto, solo su **ThumbHash** (colores difusos, lo genera el
   celular y el server lo devuelve en el feed). Para que den ganas de abrir la app: **mapa en vivo** con
-  pins (autor y hora), **feed** y la hoja de contacto del rollo. Se muestra solo el total del grupo.
+  pins (autor y hora; con la foto de perfil del autor si tiene, hecha en JS como `tab-avatar` y registrada con `Images`, y si no la inicial sobre su color), **feed** y la hoja de contacto del rollo. Se muestra solo el total del grupo.
 - **Rollo configurable al crearlo** (lo hace el admin, formulario nativo con `@expo/ui`): nombre, inicio y fin
   **con fecha y hora**, fotos y videos por persona por día, y **cuándo se revela** (al terminar o en otro
   momento, siempre igual o posterior al fin). Las fechas las valida el server; la app muestra su mensaje inline (`src/features/trips/create-form.ts` solo chequea los nombres).
@@ -226,7 +226,7 @@ Feed, identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa �
 con dev build contra el backend local.
 
 Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Rollo,
-los pins del mapa con la foto del autor (hoy siguen con inicial y color: son capas nativas), la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día, deploy del backend,
+la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día, deploy del backend,
 TestFlight y la prueba real.
 
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):

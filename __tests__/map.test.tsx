@@ -4,6 +4,7 @@ import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/qu
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
+import { pinAvatarKey } from "@/features/map/pin-avatars";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -14,6 +15,7 @@ const { __camera: camera, __getClusterLeaves: getClusterLeaves, __mapProps: mapP
   __getClusterLeaves: jest.Mock;
   __mapProps: { current: Record<string, any> };
 };
+const { __imagesProps: imagesProps } = jest.requireMock("@maplibre/maplibre-react-native") as { __imagesProps: { current: Record<string, any> } };
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -107,6 +109,24 @@ describe("Map", () => {
 
     await fireEvent.press(screen.getByLabelText("mapa"));
     await waitFor(() => expect(screen.queryByText("el viento no perdona")).toBeNull());
+  });
+
+  it("registers the author's photo as a map image and tells the pin to use it once it is ready", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([feedItem({ author: { id: "m2", name: "Fede", username: null, avatarUrl: "/avatars/m2-v1.jpg" } })]),
+    );
+    await renderRouter(routes, { initialUrl: "/map" });
+
+    const key = pinAvatarKey("m2", "/avatars/m2-v1.jpg");
+    await waitFor(() => expect(imagesProps.current.images).toEqual({ [key]: `file:///cache/pin-avatar/${key}.png` }));
+  });
+
+  it("registers no map images for authors without a photo", async () => {
+    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    await renderRouter(routes, { initialUrl: "/map" });
+
+    expect(await screen.findByLabelText("pin f1")).toBeVisible();
+    expect(imagesProps.current.images).toEqual({});
   });
 
   it("adds your pending photos with a location", async () => {
