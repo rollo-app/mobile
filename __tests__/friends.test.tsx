@@ -1,11 +1,51 @@
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { Alert, Share } from "react-native";
 import * as actions from "@/features/friends/actions";
+import * as tripActions from "@/features/trips/actions";
+import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/friends/actions");
+jest.mock("@/features/trips/actions");
 const mocked = jest.mocked(actions);
+const trips = jest.mocked(tripActions);
+
+const DAY = 24 * 60 * 60 * 1000;
+
+const revealedDetail = (): tripActions.TripDetail => ({
+  trip: {
+    id: "t1",
+    name: "Viaje al sur",
+    joinCode: "HUB5FT",
+    timezone: "America/Argentina/Buenos_Aires",
+    startsAt: Date.now() - 5 * DAY,
+    endsAt: Date.now() - 2 * DAY,
+    revealAt: Date.now() - DAY,
+    revealed: true,
+    dailyPhotoLimit: 10,
+    dailyVideoLimit: 3,
+  },
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" },
+  members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" }],
+  today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
+  totalUploaded: 3,
+});
+
+type Node = { type: string; props: Record<string, unknown>; children: (Node | string)[] | null };
+
+/** The bottom bar's triggers, in order, as [route name, SF symbol]. */
+function tabBar(): [unknown, unknown][] {
+  const found: [unknown, unknown][] = [];
+  const walk = (n: Node | Node[] | string | null) => {
+    if (!n || typeof n === "string") return;
+    if (Array.isArray(n)) return n.forEach(walk);
+    if (n.type === "RNSTabsScreenIOS" && !n.props.hidden) found.push([n.props.screenKey, n.props.iconResourceName]);
+    n.children?.forEach(walk);
+  };
+  walk(screen.toJSON() as never);
+  return found;
+}
 
 const cami: actions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null };
 const tomi: actions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null };
@@ -16,6 +56,7 @@ let share: jest.SpyInstance;
 beforeEach(async () => {
   await signInAs({ trips: [tripSummary("t1", "Viaje al sur")] });
   mocked.fetchFriends.mockResolvedValue([cami, tomi]);
+  trips.fetchTrip.mockReturnValue(new Promise(() => {}));
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
 });
@@ -26,13 +67,49 @@ afterEach(() => {
 });
 
 describe("Friends", () => {
-  it("Perfil shows an Amigos row with the count and opens the list", async () => {
+  it("the bar has an Amigos tab between the camera and Perfil that opens the list", async () => {
+    await renderRouter(routes, { initialUrl: "/friends" });
+
+    expect(await screen.findByText("Cami")).toBeVisible();
+    expect(screen).toHavePathname("/friends");
+    expect(tabBar().map(([name]) => name)).toEqual(["roll", "map", "camera", "friends", "me"]);
+    expect(tabBar()[3]).toEqual(["friends", "person.2"]);
+  });
+
+  it("Perfil no longer has an Amigos row", async () => {
     await renderRouter(routes, { initialUrl: "/me" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Amigos, 2" }));
+    expect(await screen.findByRole("button", { name: "Editar perfil" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^Amigos/ })).toBeNull();
+  });
 
-    await waitFor(() => expect(screen).toHavePathname("/friends"));
+  it("with no rolls the Amigos tab still shows the list and the invite", async () => {
+    await signInAs({ trips: [] });
+    await renderRouter(routes, { initialUrl: "/friends" });
+
     expect(await screen.findByText("Cami")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Invitar a un amigo" })).toBeVisible();
+    expect(tabBar().map(([name]) => name)).toContain("friends");
+  });
+
+  it("after the reveal the Amigos tab is still there", async () => {
+    trips.fetchTrip.mockResolvedValue(revealedDetail());
+    trips.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [] });
+    await markPresentationSeen("t1");
+    await renderRouter(routes, { initialUrl: "/friends" });
+
+    expect(await screen.findByText("Cami")).toBeVisible();
+    await waitFor(() => expect(tabBar()[0]![1]).toBe("square.grid.2x2"));
+    expect(tabBar().map(([name]) => name)).toEqual(["roll", "map", "camera", "friends", "me"]);
+  });
+
+  it("tapping a friend opens their profile", async () => {
+    await renderRouter(routes, { initialUrl: "/friends" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: /^Cami/ }));
+
+    await waitFor(() => expect(screen).toHavePathname("/friends/user/u2"));
+    expect(alert).not.toHaveBeenCalled();
   });
 
   it("lists photo or initial, name and handle", async () => {
@@ -41,7 +118,9 @@ describe("Friends", () => {
     expect(await screen.findByText("Cami")).toBeVisible();
     expect(screen.getByText("@cami")).toBeVisible();
     expect(screen.getByText("Tomi")).toBeVisible();
-    expect(screen.getAllByTestId("avatar", { includeHiddenElements: true })).toHaveLength(2);
+    for (const name of [/^Cami/, /^Tomi/]) {
+      expect(within(screen.getByRole("button", { name })).getAllByTestId("avatar", { includeHiddenElements: true })).toHaveLength(1);
+    }
   });
 
   it("shows an empty state that still offers to invite", async () => {
@@ -89,32 +168,5 @@ describe("Friends", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Invitar a un amigo" }));
 
     expect(await screen.findByText(/Sin conexión/)).toBeVisible();
-  });
-
-  it("asks before removing a friend and then drops them from the list", async () => {
-    mocked.removeFriend.mockResolvedValue();
-    await renderRouter(routes, { initialUrl: "/friends" });
-
-    await fireEvent.press(await screen.findByRole("button", { name: /^Cami/ }));
-
-    expect(alert).toHaveBeenCalledTimes(1);
-    expect(mocked.removeFriend).not.toHaveBeenCalled();
-    const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
-    buttons.find((b) => b.text === "Borrar amigo")!.onPress!();
-
-    await waitFor(() => expect(screen.queryByText("Cami")).toBeNull());
-    expect(mocked.removeFriend).toHaveBeenCalledWith("u2");
-    expect(screen.getByText("Tomi")).toBeVisible();
-  });
-
-  it("keeps the friend and shows the error if removing fails", async () => {
-    mocked.removeFriend.mockRejectedValue(new Error("No se pudo borrar"));
-    await renderRouter(routes, { initialUrl: "/friends" });
-    await fireEvent.press(await screen.findByRole("button", { name: /^Cami/ }));
-    const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
-    buttons.find((b) => b.text === "Borrar amigo")!.onPress!();
-
-    expect(await screen.findByText("No se pudo borrar")).toBeVisible();
-    expect(screen.getByText("Cami")).toBeVisible();
   });
 });

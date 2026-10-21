@@ -1,11 +1,14 @@
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { queryClient } from "@/api/query-client";
+import * as friendActions from "@/features/friends/actions";
 import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
+// The Amigos tab is mounted too: its list loads fine so its own "Reintentar" stays out of the way.
+jest.mock("@/features/friends/actions");
 const mocked = jest.mocked(actions);
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -34,6 +37,7 @@ const detail = (): actions.TripDetail => ({
 });
 
 beforeEach(() => {
+  jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   mocked.fetchTrip.mockReset();
   mocked.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 9 * 24 * 60 * 60 * 1000, items: [] });
   return signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });

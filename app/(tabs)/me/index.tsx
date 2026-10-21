@@ -4,7 +4,6 @@ import { Alert, StyleSheet, Text, View } from "react-native";
 import { deleteAccount, logout } from "@/features/auth/actions";
 import { useMe } from "@/features/auth/use-me";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
-import { useFriends } from "@/features/friends/use-friends";
 import { OfflineMapRow } from "@/features/map/offline-map-row";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
@@ -13,7 +12,6 @@ import { colors, spacing, type } from "@/ui/theme";
 
 export default function MeScreen() {
   const { me } = useMe();
-  const { friends } = useFriends();
   const [accountError, setAccountError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -50,10 +48,6 @@ export default function MeScreen() {
       )}
       <Section>
         <Row label="Editar perfil" onPress={() => router.push("/edit-profile")} />
-      </Section>
-
-      <Section>
-        <Row label="Amigos" value={friends ? String(friends.length) : undefined} onPress={() => router.push("/friends")} />
       </Section>
 
       {__DEV__ && (

@@ -5,6 +5,9 @@ import EmailScreen from "../../app/(auth)/email";
 import CompleteProfileScreen from "../../app/(auth)/profile";
 import TabsLayout from "../../app/(tabs)/_layout";
 import CameraTab from "../../app/(tabs)/camera";
+import FriendsLayout from "../../app/(tabs)/friends/_layout";
+import FriendsTab from "../../app/(tabs)/friends/index";
+import FriendProfileRoute from "../../app/(tabs)/friends/user/[id]";
 import MapLayout from "../../app/(tabs)/map/_layout";
 import MapScreen from "../../app/(tabs)/map/index";
 import RollLayout from "../../app/(tabs)/roll/_layout";
@@ -17,7 +20,6 @@ import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
 import EditProfileScreen from "../../app/edit-profile";
-import FriendsScreen from "../../app/friends";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
 import NotFound from "../../app/+not-found";
@@ -36,7 +38,6 @@ export const routes = {
   create: CreateScreen,
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
-  friends: FriendsScreen,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
   "roll-info": RollInfoScreen,
@@ -54,6 +55,9 @@ export const routes = {
   "(tabs)/map/_layout": MapLayout,
   "(tabs)/map/index": MapScreen,
   "(tabs)/camera": CameraTab,
+  "(tabs)/friends/_layout": FriendsLayout,
+  "(tabs)/friends/index": FriendsTab,
+  "(tabs)/friends/user/[id]": FriendProfileRoute,
   "(tabs)/me/_layout": MeLayout,
   "(tabs)/me/index": MeScreen,
 };
