@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime, formatTime, nextPhaseEdge, rollPhase, startsIn } from "../phase";
+import { formatDate, formatDateRange, formatDateTime, formatTime, nextPhaseEdge, rollPhase, startsIn } from "../phase";
 
 const TZ = "America/Argentina/Buenos_Aires";
 const HOUR = 60 * 60 * 1000;
@@ -47,5 +47,31 @@ describe("formatting in the trip's zone", () => {
   it("formats a short date with time, adding the year only when it is not the current one", () => {
     expect(formatDateTime(at, at, TZ)).toBe("29 oct, 19:00");
     expect(formatDateTime(Date.UTC(2025, 0, 12, 13, 0), at, TZ)).toBe("12 ene 2025, 10:00");
+  });
+});
+
+describe("formatDateRange", () => {
+  const at = Date.UTC(2026, 9, 29, 22, 0); // 29 oct 2026, 19:00 in Buenos Aires
+
+  it("one day shows the day once", () => {
+    expect(formatDateRange(Date.UTC(2027, 0, 3, 13), Date.UTC(2027, 0, 3, 23), Date.UTC(2027, 0, 1, 13), TZ)).toBe("3 ene");
+  });
+
+  it("same month shows the month once", () => {
+    expect(formatDateRange(Date.UTC(2026, 10, 3, 13), Date.UTC(2026, 10, 10, 13), at, TZ)).toBe("3 – 10 nov");
+  });
+
+  it("across months shows both months", () => {
+    expect(formatDateRange(Date.UTC(2026, 9, 28, 13), Date.UTC(2026, 10, 4, 13), at, TZ)).toBe("28 oct – 4 nov");
+  });
+
+  it("adds the year when the end isn't in the current year", () => {
+    expect(formatDateRange(Date.UTC(2027, 0, 3, 13), Date.UTC(2027, 0, 12, 13), at, TZ)).toBe("3 – 12 ene 2027");
+    expect(formatDateRange(Date.UTC(2026, 11, 28, 13), Date.UTC(2027, 0, 4, 13), at, TZ)).toBe("28 dic 2026 – 4 ene 2027");
+  });
+
+  it("counts days in the given zone", () => {
+    // 2 Nov 01:00 UTC is still 1 Nov in Buenos Aires.
+    expect(formatDateRange(Date.UTC(2026, 10, 2, 1), Date.UTC(2026, 10, 2, 1), at, TZ)).toBe("1 nov");
   });
 });

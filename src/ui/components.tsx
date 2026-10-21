@@ -145,8 +145,8 @@ export function Row({
   onPress?: () => void;
   /** Spinner in place of the chevron (an action running). */
   loading?: boolean;
-  /** "danger" colors the label red, for destructive actions. */
-  tone?: "danger";
+  /** "danger" colors the label red, for destructive actions; "tint" makes it an action in the brand color. */
+  tone?: "danger" | "tint";
 }) {
   const content = (
     <>
@@ -157,7 +157,7 @@ export function Row({
           <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{detail}</Text>
         </View>
       ) : (
-        <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }]}>{label}</Text>
+        <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }, tone === "tint" && { color: colors.tint }]}>{label}</Text>
       )}
       {value !== undefined && (
         <View style={styles.rowValueBox}>

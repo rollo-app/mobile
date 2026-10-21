@@ -1,4 +1,8 @@
-/** Placeholder for a friend's profile (Task A4 replaces it). */
+import { useLocalSearchParams } from "expo-router";
+import { FriendProfileScreen } from "@/features/friends/friend-profile-screen";
+
+/** A friend's profile, inside the Amigos tab. */
 export default function FriendProfileRoute() {
-  return null;
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <FriendProfileScreen userId={id} />;
 }
