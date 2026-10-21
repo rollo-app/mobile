@@ -42,7 +42,7 @@ Decisiones de producto:
   una zona amplia (300 km, z5–10) y otra detallada (40 km, z10–14) alrededor de la ubicación y de los lugares donde
   sacó fotos el grupo (grilla de 30 km), desde 3 días antes del inicio hasta el fin del rollo (antes del inicio, solo
   con Wi‑Fi; tope ~400 MB). Los packs usan el mismo `file://` de estilo que el MapView, se nombran
-  `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Rollo (tablero, abajo) → "Mapa sin señal".
+  `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Perfil → "Mapa sin señal" (ajuste del celular, no del rollo).
 - **Captura:** cámara nativa con selector foto/video (máx. 15 s); si no quedan videos hoy, abre solo en
   foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + caption opcional. Una vez
   mandada no se puede repetir ni ver.
@@ -70,11 +70,12 @@ Decisiones de producto:
   `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación
   · Días · Perfil.
 - Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
-  miembros y "Mapa sin señal"): todo lo del rollo activo vive acá. Revelado, la tab es la galería y esos datos
+  miembros): todo lo del rollo activo vive acá. Revelado, la tab es la galería y esos datos
   (invitar, miembros, subidas) salen del botón "Sobre el rollo" del header (sheet `roll-info`). La actividad
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed.
 - Perfil = solo la cuenta: foto, nombre y @usuario, "Editar perfil" (ahí se ve el email, de solo lectura),
-  "Desarrollo" (solo dev) y "Cerrar sesión" / "Borrar cuenta". No carga datos de ningún rollo.
+  "Desarrollo" (solo dev), "Mapa sin señal" (ajuste del celular, fila propia) y "Cerrar sesión" / "Borrar cuenta".
+  No carga datos de ningún rollo.
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
   cards por todos lados, bordes de wireframe ni fuentes descargadas: se ve hecho con IA. La

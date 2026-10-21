@@ -72,6 +72,6 @@ describe("A user without rollos", () => {
     expect(screen.queryByText("Rollo activo")).toBeNull();
     expect(screen.queryByText("Invitar")).toBeNull();
     expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
-    expect(screen.queryByText("Mapa sin señal")).toBeNull();
+    expect(screen.getByRole("button", { name: /^Mapa sin señal/ })).toBeVisible();
   });
 });

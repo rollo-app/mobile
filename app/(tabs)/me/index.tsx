@@ -4,6 +4,7 @@ import { Alert, StyleSheet, Text, View } from "react-native";
 import { deleteAccount, logout } from "@/features/auth/actions";
 import { useMe } from "@/features/auth/use-me";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
+import { OfflineMapRow } from "@/features/map/offline-map-row";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { ErrorText, Row, Screen, Section } from "@/ui/components";
@@ -54,6 +55,10 @@ export default function MeScreen() {
           <Row label="Probar subida en segundo plano" onPress={() => void triggerBackgroundUploadForTesting()} />
         </Section>
       )}
+
+      <Section>
+        <OfflineMapRow />
+      </Section>
 
       <Section>
         <Row label="Cerrar sesión" onPress={() => void logout()} />
