@@ -227,7 +227,10 @@ Si compilar falla:
 - MapLibre no baja su binario ("invalid archive" / "already exists"): `cd ios && xcodebuild -resolvePackageDependencies -workspace Rollo.xcworkspace -scheme Rollo` y volver a compilar.
 - Después de cambiar de rama o instalar paquetes con Metro abierto, reiniciar Metro con `--clear` (si no, MapLibre se registra dos veces).
 
-Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en los 7 rollos de prueba, incluido Bariloche revelado); el código de 6 dígitos aparece en la consola de `npm run dev:lan` del backend.
+Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en los rollos de prueba, incluido Bariloche revelado, y es admin de "Finde en Tandil"); el código de 6 caracteres aparece en la consola de `npm run dev:lan` del backend.
+`npm run seed` del backend imprime al final cada cuenta y qué probar con ella (amigos con y sin rollos en común, uno que se salió y uno que sacó el admin,
+descripciones corta / de 150 / de 3 renglones, `nuevo@rollo.test` vacío, `rocio@rollo.test` sin @usuario), cada rollo con su código y etapa, y un
+link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de nuevo lo renueva). El detalle está en el CLAUDE.md del backend.
 
 ## Apple
 

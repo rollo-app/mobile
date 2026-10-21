@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
@@ -25,14 +24,13 @@ const PAGE = 30;
 const keyExtractor = (item: MapItem) => item.id;
 
 type FeedListProps = {
-  /** Where tapping a row goes; by default, the Map tab focused on that pin. */
-  onOpenOnMap?: (item: MapItem) => void;
+  /** Where tapping a row goes: the map, focused on that pin. */
+  onOpenOnMap: (item: MapItem) => void;
   /** Extra padding above the list (for content drawn over it). */
   contentInsetTop?: number;
 };
 
-export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps = {}) {
-  const router = useRouter();
+export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
   const queryClient = useQueryClient();
   const { trip } = useActiveTrip();
   const tripId = trip?.id;
@@ -54,14 +52,6 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps = {}) {
   // The server sends everything at once: show it in batches, newest first, and add more on reaching the end.
   const sections = useMemo(() => groupByDay(newest(all, limit), timeZone), [all, limit, timeZone]);
   const loadMore = useCallback(() => setLimit((n) => (n < all.length ? n + PAGE : n)), [all.length]);
-
-  const openOnMap = useCallback(
-    (item: MapItem) => {
-      if (onOpenOnMap) onOpenOnMap(item);
-      else router.navigate({ pathname: "/map", params: { focus: item.id } });
-    },
-    [router, onOpenOnMap],
-  );
 
   const remove = useCallback(
     async (item: MapItem) => {
@@ -99,9 +89,9 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps = {}) {
 
   const renderItem = useCallback(
     ({ item }: { item: MapItem }) => (
-      <FeedRow item={item} timeZone={timeZone} onPress={openOnMap} onDelete={isAdmin ? confirmRemove : undefined} />
+      <FeedRow item={item} timeZone={timeZone} onPress={onOpenOnMap} onDelete={isAdmin ? confirmRemove : undefined} />
     ),
-    [timeZone, openOnMap, isAdmin, confirmRemove],
+    [timeZone, onOpenOnMap, isAdmin, confirmRemove],
   );
 
   const renderSectionHeader = useCallback(

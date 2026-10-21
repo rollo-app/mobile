@@ -5,6 +5,7 @@ import * as tripActions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
+import { tabBar } from "@/test/tab-bar";
 
 jest.mock("@/features/friends/actions");
 jest.mock("@/features/trips/actions");
@@ -31,21 +32,6 @@ const revealedDetail = (): tripActions.TripDetail => ({
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
 });
-
-type Node = { type: string; props: Record<string, unknown>; children: (Node | string)[] | null };
-
-/** The bottom bar's triggers, in order, as [route name, SF symbol]. */
-function tabBar(): [unknown, unknown][] {
-  const found: [unknown, unknown][] = [];
-  const walk = (n: Node | Node[] | string | null) => {
-    if (!n || typeof n === "string") return;
-    if (Array.isArray(n)) return n.forEach(walk);
-    if (n.type === "RNSTabsScreenIOS" && !n.props.hidden) found.push([n.props.screenKey, n.props.iconResourceName]);
-    n.children?.forEach(walk);
-  };
-  walk(screen.toJSON() as never);
-  return found;
-}
 
 const cami: actions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
 const tomi: actions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null, bio: null };

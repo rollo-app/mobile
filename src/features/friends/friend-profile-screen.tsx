@@ -1,7 +1,7 @@
 import { MenuView } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert } from "react-native";
 import { ProfileHeader } from "@/features/profile/profile-header";
 import { ProfileShowcase } from "@/features/profile/profile-showcase";
@@ -26,6 +26,8 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
   const { profile, notFriend, error, refetch, isRefetching } = useFriend(userId);
   const { trips } = useActiveTrip();
   const [adding, setAdding] = useState(false);
+  // Guards against a second pick before `adding` re-renders the menu as disabled.
+  const addInFlight = useRef(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
@@ -67,6 +69,8 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
   }
 
   async function addTo(tripId: string) {
+    if (addInFlight.current) return;
+    addInFlight.current = true;
     setAddError(null);
     setAdding(true);
     try {
@@ -82,6 +86,7 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
     } catch (e) {
       setAddError(e instanceof Error ? e.message : `No se pudo sumar a ${friend.name}`);
     } finally {
+      addInFlight.current = false;
       setAdding(false);
     }
   }
@@ -102,8 +107,9 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
       return;
     }
     queryClient.setQueryData<Friend[]>(friendsKey, (current) => current?.filter((f) => f.id !== userId));
+    // The cached profile isn't removed here: doing it during the dismiss would refetch it, get a 404 and
+    // flash "No es tu amigo". It's garbage-collected once the screen unmounts.
     router.dismissTo("/friends");
-    queryClient.removeQueries({ queryKey: friendKey(userId), exact: true });
   }
 
   return (
@@ -128,7 +134,7 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
           {addable.length > 0 && (
             <MenuView
               title="Sumar a un rollo"
-              actions={addable.map((t) => ({ id: t.id, title: t.name }))}
+              actions={addable.map((t) => ({ id: t.id, title: t.name, attributes: { disabled: adding } }))}
               onPressAction={({ nativeEvent }) => void addTo(nativeEvent.event)}
             >
               <Row label="Sumar a un rollo" tone="tint" loading={adding} />

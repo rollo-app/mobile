@@ -4,8 +4,10 @@ import { ApiError } from "@/api/client";
 import * as actions from "@/features/friends/actions";
 import * as tripActions from "@/features/trips/actions";
 import { getActiveTripId } from "@/storage/active-trip";
+import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
+import { tabBar } from "@/test/tab-bar";
 
 jest.mock("@/features/friends/actions");
 jest.mock("@/features/trips/actions");
@@ -19,6 +21,27 @@ const tomi: actions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarU
 const sur: actions.CommonTrip = { id: "t1", name: "Viaje al sur", startsAt: Date.UTC(2027, 0, 3, 15), endsAt: Date.UTC(2027, 0, 12, 15), revealed: false };
 const bariloche: actions.CommonTrip = { id: "t3", name: "Bariloche", startsAt: Date.UTC(2025, 6, 10, 15), endsAt: Date.UTC(2025, 6, 14, 15), revealed: true };
 const escapada: actions.CommonTrip = { id: "t2", name: "Escapada", startsAt: Date.UTC(2026, 10, 20, 15), endsAt: Date.UTC(2026, 10, 22, 15), revealed: false };
+
+const DAY = 24 * 60 * 60 * 1000;
+
+const detail = (id: string, name: string, revealed: boolean): tripActions.TripDetail => ({
+  trip: {
+    id,
+    name,
+    joinCode: "HUB5FT",
+    timezone: "America/Argentina/Buenos_Aires",
+    startsAt: Date.now() - (revealed ? 5 : 1) * DAY,
+    endsAt: Date.now() + (revealed ? -2 : 2) * DAY,
+    revealAt: Date.now() + (revealed ? -1 : 3) * DAY,
+    revealed,
+    dailyPhotoLimit: 10,
+    dailyVideoLimit: 3,
+  },
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" },
+  members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" }],
+  today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
+  totalUploaded: 0,
+});
 
 const myTrips = [
   tripSummary("t1", "Viaje al sur"),
@@ -78,6 +101,19 @@ describe("Friend profile", () => {
     expect(await getActiveTripId()).toBe("t3");
   });
 
+  it("opening a roll in common in another phase updates the tab bar", async () => {
+    trips.fetchTrip.mockImplementation(async (id: string) => (id === "t3" ? detail("t3", "Bariloche", true) : detail("t1", "Viaje al sur", false)));
+    await markPresentationSeen("t3");
+    await renderRouter(routes, { initialUrl: "/friends/user/u2" });
+    await waitFor(() => expect(tabBar()[2]![1]).toBe("camera.fill"));
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Bariloche, Revelado" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(tabBar()[2]![1]).toBe("play.rectangle.fill"));
+    expect(tabBar()[0]![1]).toBe("square.grid.2x2");
+  });
+
   it("'Sumar a un rollo' lists only your unrevealed rolls without them, and adding one shows it in common", async () => {
     mocked.addFriendsToTrip.mockResolvedValue([{ userId: "u2", status: "added" }]);
     await renderRouter(routes, { initialUrl: "/friends/user/u2" });
@@ -94,6 +130,17 @@ describe("Friend profile", () => {
     expect(await screen.findByRole("button", { name: "Escapada" })).toBeVisible();
     await waitFor(() => expect(screen.queryByText("Sumar a un rollo")).toBeNull());
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("while adding, the 'Sumar a un rollo' options are disabled and a second pick is ignored", async () => {
+    mocked.addFriendsToTrip.mockClear().mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: "/friends/user/u2" });
+
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Escapada" }));
+
+    await waitFor(() => expect(screen.getByRole("menuitem", { name: "Escapada" })).toBeDisabled());
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Escapada" }));
+    expect(mocked.addFriendsToTrip).toHaveBeenCalledTimes(1);
   });
 
   it("says inline when the friend can't be added", async () => {

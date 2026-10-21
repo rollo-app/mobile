@@ -218,7 +218,7 @@ jest.mock("@expo/ui/community/menu", () => {
         { style },
         children,
         // Inline sections (displayInline + subactions) are flattened: their items show up in order.
-        actions.flatMap((a: any) => (a.displayInline && a.subactions ? a.subactions : [a])).map((a: { id: string; title: string; state?: string }) =>
+        actions.flatMap((a: any) => (a.displayInline && a.subactions ? a.subactions : [a])).map((a: { id: string; title: string; state?: string; attributes?: { disabled?: boolean } }) =>
           React.createElement(
             Pressable,
             {
@@ -226,6 +226,8 @@ jest.mock("@expo/ui/community/menu", () => {
               accessibilityRole: "menuitem",
               accessibilityLabel: a.title,
               accessibilityState: { checked: a.state === "on" },
+              // Only when set, so enabled items keep the plain { checked } state.
+              disabled: a.attributes?.disabled || undefined,
               onPress: () => onPressAction({ nativeEvent: { event: a.id } }),
             },
             React.createElement(Text, null, a.title),
