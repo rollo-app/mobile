@@ -5,6 +5,8 @@ import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { buildContactSheet } from "@/features/roll/contact-sheet";
+import { Welcome } from "@/features/roll/welcome";
+import { hasNoTrips } from "@/features/trips/active";
 import { daysUntil, formatDateTime, startsIn } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -18,9 +20,10 @@ const COLUMNS = 6;
 
 /** After the reveal the Rollo tab is the gallery; before, the board. */
 export default function RollScreen() {
-  const { trip } = useActiveTrip();
+  const { trip, loaded } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
+  if (hasNoTrips(loaded, trip)) return <Welcome />;
   if (trip && phase === "revealed") return <GalleryScreen tripId={trip.id} />;
   return <RollBoard />;
 }

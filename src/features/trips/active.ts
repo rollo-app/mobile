@@ -10,3 +10,8 @@ export type TripSummary = Schemas["TripSummary"];
 export function pickActiveTrip(trips: TripSummary[], activeId: string | null): TripSummary | null {
   return trips.find((t) => t.id === activeId) ?? trips[0] ?? null;
 }
+
+/** The list of trips has loaded and the user is in none: they get the welcome instead of a roll. */
+export function hasNoTrips(loaded: boolean, trip: TripSummary | null): boolean {
+  return loaded && trip === null;
+}

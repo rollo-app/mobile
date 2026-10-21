@@ -16,6 +16,8 @@ import { UserLocationDot } from "@/features/map/user-location-dot";
 import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { resolveTap } from "@/features/map/tap";
+import { NoRollYet } from "@/features/roll/no-roll-yet";
+import { hasNoTrips } from "@/features/trips/active";
 import { rollPhase } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -43,6 +45,12 @@ const NO_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 type PressEvent = { nativeEvent: { features: GeoJSON.Feature[] }; stopPropagation?: () => void };
 
 export default function MapScreen() {
+  const { trip, loaded } = useActiveTrip();
+  if (hasNoTrips(loaded, trip)) return <NoRollYet />;
+  return <MapBody />;
+}
+
+function MapBody() {
   const { trip } = useActiveTrip();
   const router = useRouter();
   const { focus } = useLocalSearchParams<{ focus?: string }>();

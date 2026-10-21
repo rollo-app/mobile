@@ -1,11 +1,7 @@
-import { Redirect, router } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Redirect } from "expo-router";
 import { gateFor } from "@/features/auth/gate";
 import { useMe } from "@/features/auth/use-me";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
-import { Button, ErrorText } from "@/ui/components";
-import { colors, spacing, type } from "@/ui/theme";
 
 export default function IndexScreen() {
   const { session, me, failed } = useMe();
@@ -17,37 +13,8 @@ export default function IndexScreen() {
 }
 
 function Home() {
-  const { trip, loaded, error, refetch } = useActiveTrip();
-  const insets = useSafeAreaInsets();
-
+  const { loaded } = useActiveTrip();
   if (!loaded) return null;
-  if (trip) return <Redirect href="/roll" />;
-
-  return (
-    <View style={[styles.screen, { paddingTop: insets.top + spacing.xl * 2, paddingBottom: insets.bottom + spacing.lg }]}>
-      <View style={styles.copy}>
-        <Text style={[type.largeTitle, { color: colors.label }]}>Rollo</Text>
-        <Text style={[type.body, { color: colors.secondaryLabel }]}>
-          Cada uno saca fotos y nadie las ve hasta el revelado, ni las propias.
-        </Text>
-      </View>
-      <View style={styles.actions}>
-        {error && <ErrorText>{error}</ErrorText>}
-        {error && <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />}
-        <Button label="Empezar un nuevo rollo" onPress={() => router.push("/create")} />
-        <Button label="Sumate con un código" variant="secondary" onPress={() => router.push("/join")} />
-      </View>
-    </View>
-  );
+  // With or without rollos, the Rollo tab is the home: with none it's the welcome.
+  return <Redirect href="/roll" />;
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    justifyContent: "space-between",
-    padding: spacing.lg,
-    backgroundColor: colors.background,
-  },
-  copy: { gap: spacing.sm },
-  actions: { gap: spacing.sm },
-});

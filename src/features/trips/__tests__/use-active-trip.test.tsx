@@ -49,4 +49,21 @@ describe("useActiveTrip", () => {
     await waitFor(() => expect(result.current.loaded).toBe(true));
     expect(result.current.trip).toBeNull();
   });
+
+  it("stays loaded while it retries after a failure, so screens don't swap and remount in a loop", async () => {
+    client.setDefaultOptions({ queries: { ...client.getDefaultOptions().queries, retry: false } });
+    globalThis.fetch = jest.fn(async () => {
+      throw new Error("Sin conexión");
+    }) as unknown as typeof fetch;
+    const { result } = await renderHook(() => useActiveTrip(), { wrapper: wrapper() });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    let release!: () => void;
+    globalThis.fetch = jest.fn(() => new Promise<Response>((resolve) => (release = () => resolve(new Response(JSON.stringify({ trips: [] }), { status: 200 }))))) as unknown as typeof fetch;
+    void result.current.refetch();
+
+    await waitFor(() => expect((globalThis.fetch as jest.Mock).mock.calls.length).toBe(1));
+    expect(result.current.loaded).toBe(true);
+    release();
+  });
 });

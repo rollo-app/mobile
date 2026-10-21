@@ -95,8 +95,11 @@ describe("Login", () => {
 
     const code = await screen.findByLabelText("Código");
     expect(code.props.textContentType).toBe("oneTimeCode");
+    expect(code.props.keyboardType).toBe("default");
+    expect(code.props.autoCapitalize).toBe("characters");
+    expect(screen.getByText("Te mandamos un código de 6 caracteres a juani@rollo.test. Vale 5 minutos.")).toBeVisible();
     expect(screen.getByRole("button", { name: /^Reenviar código/ })).toBeDisabled();
-    await fireEvent.changeText(code, "123456");
+    await fireEvent.changeText(code, "K7M4QX");
 
     expect(await screen.findByText("Completá tu perfil")).toBeVisible();
     expect(await getSessionToken()).toBe("tok");
@@ -119,7 +122,7 @@ describe("Login", () => {
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
-    await fireEvent.changeText(await screen.findByLabelText("Código"), "123456");
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
   });
@@ -133,7 +136,7 @@ describe("Login", () => {
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
-    await fireEvent.changeText(await screen.findByLabelText("Código"), "123456");
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
 
     expect(await screen.findByText("Completá tu perfil")).toBeVisible();
     expect(screen.getByLabelText("Tu nombre").props.value).toBe("Juani");
@@ -159,10 +162,45 @@ describe("Login", () => {
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
-    await fireEvent.changeText(await screen.findByLabelText("Código"), "000000");
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "AAAAAA");
 
     expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
     expect(await getSessionToken()).toBeNull();
+  });
+
+  it("types the code in uppercase and ignores characters it can't have", async () => {
+    mockApi({ "POST /auth/email/start": json(204) });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "k7-m0");
+
+    expect(screen.getByLabelText("Código").props.value).toBe("K7M");
+  });
+
+  it("an expired code shows the server's message and resend still works once the wait is over", async () => {
+    const calls = mockApi({
+      "POST /auth/email/start": json(204),
+      "POST /auth/email/verify": json(400, { error: "El código venció, pedí uno nuevo" }),
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
+    expect(await screen.findByText("El código venció, pedí uno nuevo")).toBeVisible();
+
+    // The countdown ticks every second; move the clock past the 60 s wait.
+    const realNow = Date.now();
+    const clock = jest.spyOn(Date, "now").mockImplementation(() => realNow + 61_000);
+    try {
+      await waitFor(() => expect(screen.getByRole("button", { name: "Reenviar código" })).toBeEnabled(), { timeout: 3000 });
+      await fireEvent.press(screen.getByRole("button", { name: "Reenviar código" }));
+      await waitFor(() => expect(calls.filter((c) => c === "POST /auth/email/start")).toHaveLength(2));
+      expect(screen.queryByText("El código venció, pedí uno nuevo")).toBeNull();
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it("a 401 anywhere closes the session and goes back to the login", async () => {

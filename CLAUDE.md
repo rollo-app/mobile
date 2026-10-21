@@ -12,7 +12,7 @@ amigos al sur de Argentina en **enero de 2027** (mucho tramo sin señal) y para 
 
 Decisiones de producto:
 
-- **Solo iOS** en la primera versión. **Con cuentas:** login con **email + código de 6 dígitos** (sin
+- **Solo iOS** en la primera versión. **Con cuentas:** login con **email + código de 6 caracteres (letras y números, vale 5 min)** (sin
   contraseña), obligatorio al abrir la app (`app/(auth)/`: email → código → "Completá tu perfil" si es nueva o
   no tiene nombre). El perfil es **nombre + foto** (`GET/PATCH /me`, foto con `expo-image-picker` 1:1 →
   512 px JPEG → `POST /me/avatar` → PUT → complete; sin foto, círculo con la inicial y `memberColor`). Además tiene un **nombre de usuario único** (`@usuario`, `PATCH /me`): se pide en "Completá tu perfil" junto al nombre

@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { startEmailLogin, verifyCode } from "@/features/auth/actions";
 import { AuthScreen } from "@/features/auth/auth-screen";
+import { LOGIN_CODE_LENGTH, normalizeLoginCode } from "@/features/auth/login-code";
 import { resendSecondsLeft } from "@/features/auth/resend";
 import { Button, ErrorText, Field } from "@/ui/components";
 
@@ -34,9 +35,9 @@ export default function CodeScreen() {
   }
 
   function change(text: string) {
-    const digits = text.replace(/\D/g, "").slice(0, 6);
-    setCode(digits);
-    if (digits.length === 6 && !loading) void submit(digits);
+    const next = normalizeLoginCode(text);
+    setCode(next);
+    if (next.length === LOGIN_CODE_LENGTH && !loading) void submit(next);
   }
 
   async function resend() {
@@ -54,20 +55,23 @@ export default function CodeScreen() {
   }
 
   return (
-    <AuthScreen title="Revisá tu mail" subtitle={`Te mandamos un código de 6 dígitos a ${email}.`}>
+    <AuthScreen title="Revisá tu mail" subtitle={`Te mandamos un código de 6 caracteres a ${email}. Vale 5 minutos.`}>
       <Field
         label="Código"
         value={code}
         onChangeText={change}
-        keyboardType="number-pad"
+        keyboardType="default"
+        autoCapitalize="characters"
+        autoCorrect={false}
+        spellCheck={false}
         textContentType="oneTimeCode"
         autoComplete="one-time-code"
-        maxLength={6}
+        maxLength={LOGIN_CODE_LENGTH}
         autoFocus
-        placeholder="123456"
+        placeholder="K7M4QX"
       />
       {error && <ErrorText>{error}</ErrorText>}
-      <Button label="Entrar" onPress={() => void submit(code)} disabled={code.length !== 6} loading={loading} />
+      <Button label="Entrar" onPress={() => void submit(code)} disabled={code.length !== LOGIN_CODE_LENGTH} loading={loading} />
       <Button
         label={wait > 0 ? `Reenviar código (${wait} s)` : "Reenviar código"}
         variant="secondary"

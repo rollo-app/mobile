@@ -27,3 +27,17 @@ describe("tabsFor", () => {
     expect(tabsFor(null, null).camera).toMatchObject({ target: "/capture", sf: "camera.fill" });
   });
 });
+
+describe("tabsFor without a roll", () => {
+  it("shows the camera locked and sends its tap to the Rollo tab", () => {
+    const tabs = tabsFor(null, null, false);
+    expect(tabs.camera.target).toBe("/roll");
+    expect(tabs.camera.badge).toBeNull();
+    expect(tabs.camera.sf).toBe("lock.fill");
+    expect(tabs.camera.label).toBe("Cámara, primero hace falta un rollo");
+  });
+
+  it("changes nothing when there is a roll", () => {
+    expect(tabsFor(null, null, true)).toEqual(tabsFor(null, null));
+  });
+});

@@ -105,10 +105,12 @@ export default function MeScreen() {
         />
       )}
 
-      <Section>
-        <OfflineMapRow />
-        <Row label="Tus rollos" value={String(trips.length)} onPress={() => router.push("/trips")} />
-      </Section>
+      {trips.length > 0 && (
+        <Section>
+          <OfflineMapRow />
+          <Row label="Tus rollos" value={String(trips.length)} onPress={() => router.push("/trips")} />
+        </Section>
+      )}
 
       {__DEV__ && (
         <Section title="Desarrollo">
