@@ -14,6 +14,7 @@
 
 - **Privacidad:** un rollo solo existe para sus miembros. Nada de esta feature muestra a alguien un rollo ajeno: ni fotos, ni nombre, ni que existe. "Rollos en común" = rollos donde **los dos** son miembros activos (`removed_at IS NULL AND left_at IS NULL`).
 - La cámara queda al centro: la barra tiene siempre 5 triggers en este orden: `roll`, `map`, `camera`, `friends`, `me`.
+- Descripción del perfil: hasta **150** caracteres y **3** renglones; opcional.
 - Ícono de la tab Amigos: SF `person.2` / `person.2.fill`, md `group`, label oculto `"Amigos"`.
 - El segmento "Feed" existe solo antes del revelado (hoy la tab Feed se oculta al revelarse; se mantiene esa regla).
 - Cobalto (`colors.tint`) solo en acciones y selección: segmento elegido, filtros activos, "Sumar a un rollo", "Invitar a un amigo".
@@ -47,6 +48,24 @@
 - [ ] **Step 3:** implementar la ruta en `friends.ts` reusando `FriendParams`, `publicFriend` y el mismo cálculo de `revealed` que `/me/trips` en `src/routes/me.ts`.
 - [ ] **Step 4:** `npm test`, `npm run typecheck`, `npm run openapi`; esperado: verde y `openapi.json` con la ruta.
 - [ ] **Step 5:** commit "Amigos: perfil de un amigo con rollos en común" y PR a `develop` (en español; **no mergear**).
+
+---
+
+### Task B2: Descripción del perfil
+
+**Files:**
+- Create: `migrations/<siguiente número>_user_bio.sql` (`ALTER TABLE users ADD COLUMN bio TEXT`)
+- Modify: `src/schemas.ts` (`bio` en `UserSchema`, `FriendSchema` y `UpdateProfileSchema`), `src/routes/me.ts` (`GET /me` y `PATCH /me`), `src/routes/friends.ts` (`publicFriend` y las consultas que lo alimentan), `openapi.json`, `CLAUDE.md` del backend
+- Test: `test/me.test.ts`, `test/friends.test.ts`
+
+**Interfaces:**
+- Produces: `bio: string | null` en `User` (`GET /me`), en `Friend` (lista y `GET /friends/{userId}`) y en el body de `PATCH /me` (opcional). Se guarda con `trim`; vacío → `null`; más de **150** caracteres → 400 `"La descripción puede tener hasta 150 caracteres"`. Los saltos de línea se permiten (máximo 3; más → mismo 400 con `"La descripción puede tener hasta 3 renglones"`).
+
+- [ ] **Step 1:** tests: (a) `PATCH /me { bio: "  Viajando por el sur  " }` guarda `"Viajando por el sur"` y `GET /me` la devuelve; (b) `bio: ""` la borra (`null`); (c) 151 caracteres → 400 con el mensaje; (d) 4 renglones → 400; (e) `PATCH /me` sin `bio` no la toca; (f) `GET /friends` y `GET /friends/{userId}` traen la `bio` del amigo.
+- [ ] **Step 2:** correr y verificar que fallan.
+- [ ] **Step 3:** implementar (migración nueva, nunca editar una aplicada; `npm run db:migrate:local`).
+- [ ] **Step 4:** `npm test`, `npm run typecheck`, `npm run openapi`; esperado: verde.
+- [ ] **Step 5:** commit "Perfil: descripción" en la misma rama `feature/perfil-amigo` y push (la PR #15 la suma).
 
 ---
 
@@ -103,18 +122,36 @@
 - [ ] **Step 4:** `npm test` y `npm run typecheck` verdes.
 - [ ] **Step 5:** commit "Amigos: tab propia en la barra".
 
+### Task A3b: Perfil propio (armazón), Ajustes y descripción
+
+**Files:**
+- Create: `src/features/profile/profile-header.tsx`, `src/features/profile/profile-showcase.tsx`, `src/features/profile/settings-screen.tsx` (todo lo que hoy muestra `app/(tabs)/me/index.tsx`), `app/settings.tsx` (ruta fina), `__tests__/profile.test.tsx`
+- Modify: `src/api/schema.d.ts` (`API_SPEC=../backend/openapi.json npm run api:generate`, backend en `feature/perfil-amigo` con B1 y B2), `app/(tabs)/me/index.tsx` y `app/(tabs)/me/_layout.tsx`, `src/features/profile/profile-form.tsx` (campo "Descripción"), `app/edit-profile.tsx`, `app/_layout.tsx` y `src/test/routes.ts` (ruta `settings`, push con título "Ajustes"), tests que hoy entran a Cerrar sesión / Borrar cuenta / Mapa sin señal / Desarrollo por Perfil
+
+**Diseño:** Perfil es lo que los demás ven de vos. Arriba `ProfileHeader` centrado: `Avatar` 72, nombre, @ y la descripción debajo (texto normal, centrado, solo si hay). En el header del stack, a la derecha, un botón con SF `gearshape` (`accessibilityLabel` "Ajustes") que hace push a `/settings`. Debajo, `ProfileShowcase`: `SegmentedControl` `["Fotos", "Mapa"]` y, por ahora, solo el estado vacío de cada segmento (las fotos destacadas son otro plan): propio → Fotos "Cuando se revele un rollo, vas a poder elegir tus mejores fotos para mostrar acá." y Mapa "Acá vas a ver las zonas donde sacaste tus fotos destacadas."; de un amigo → Fotos "Todavía no destacó fotos." y Mapa "Todavía no hay lugares.". Nada de MapLibre todavía. "Descripción" va solo en Editar perfil (no en "Completá tu perfil"): campo multilínea con contador `n/150`, guarda con el mismo `PATCH /me` del formulario.
+
+**Interfaces:**
+- Consumes: B2 (`bio`), A3 (Perfil ya sin la fila Amigos).
+- Produces: `ProfileHeader(props: { id: string; name: string; username: string | null; avatarUrl: string | null; bio: string | null })` y `ProfileShowcase(props: { own: boolean })`, que A4 reusa para el perfil de un amigo.
+
+- [ ] **Step 1:** tests: (a) Perfil muestra foto, nombre, @ y descripción, y no muestra "Cerrar sesión"; (b) sin descripción no hay texto vacío; (c) el engranaje abre `/settings` con Editar perfil, Mapa sin señal, Cerrar sesión y Borrar cuenta (mover ahí los tests existentes de esas filas); (d) el segmentado cambia entre los dos estados vacíos; (e) Editar perfil guarda la descripción (`updateProfile` llamado con `bio`), muestra el contador y el error del server inline; (f) "Completá tu perfil" no muestra "Descripción".
+- [ ] **Step 2:** verificar que fallan.
+- [ ] **Step 3:** implementar.
+- [ ] **Step 4:** `npm test` y `npm run typecheck` verdes.
+- [ ] **Step 5:** commit "Perfil: lo que ven los demás, Ajustes aparte y descripción".
+
 ### Task A4: Perfil de un amigo
 
 **Files:**
-- Modify: `src/api/schema.d.ts` (`API_SPEC=../backend/openapi.json npm run api:generate` con el backend en la rama de B1), `src/features/friends/actions.ts`, `src/features/friends/__tests__/actions.test.ts`
+- Modify: `src/features/friends/actions.ts` (el contrato ya se regeneró en A3b), `src/features/friends/__tests__/actions.test.ts`
 - Create: `src/features/friends/use-friend.ts`, `src/features/friends/friend-profile-screen.tsx`, `src/features/friends/addable-trips.ts` + `__tests__/addable-trips.test.ts`, `app/(tabs)/friends/user/[id].tsx` (ruta fina)
 - Modify: `app/(tabs)/friends/_layout.tsx` (pantalla `user/[id]`, título = nombre del amigo), `src/test/routes.ts`
 - Test: `__tests__/friend-profile.test.tsx`
 
-**Diseño (lista agrupada, nada de cards):** encabezado centrado con `Avatar` 72, nombre y @ (igual que Perfil). Sección "Rollos en común": una fila por rollo con nombre y fechas (con el formato de fechas que ya usa el selector de rollos), y "Revelado" como detalle si corresponde; tocarla hace `setActiveTripId(id)` + `router.navigate("/roll")`. Vacío: `Footnote` "Todavía no tienen rollos en común.". Fila "Sumar a un rollo" (cobalto) con `MenuView` de los rollos donde se lo puede sumar; si no hay ninguno, la fila no aparece. Al final, "Borrar amigo" (`tone="danger"`) con el `Alert` que hoy está en la lista; al confirmar, vuelve a `/friends`.
+**Diseño (lista agrupada, nada de cards):** arriba `ProfileHeader` con los datos del amigo (incluida su `bio`) y `ProfileShowcase own={false}` (de A3b), y debajo las secciones. Sección "Rollos en común": una fila por rollo con nombre y fechas (con el formato de fechas que ya usa el selector de rollos), y "Revelado" como detalle si corresponde; tocarla hace `setActiveTripId(id)` + `router.navigate("/roll")`. Vacío: `Footnote` "Todavía no tienen rollos en común.". Fila "Sumar a un rollo" (cobalto) con `MenuView` de los rollos donde se lo puede sumar; si no hay ninguno, la fila no aparece. Al final, "Borrar amigo" (`tone="danger"`) con el `Alert` que hoy está en la lista; al confirmar, vuelve a `/friends`.
 
 **Interfaces:**
-- Consumes: B1 (`GET /friends/{userId}`), `addFriendsToTrip(tripId, friendIds)` y `removeFriend(userId)` existentes, `useActiveTrip().trips`, `setActiveTripId` de `@/storage/active-trip`.
+- Consumes: B1 (`GET /friends/{userId}`), A3b (`ProfileHeader`, `ProfileShowcase`), `addFriendsToTrip(tripId, friendIds)` y `removeFriend(userId)` existentes, `useActiveTrip().trips`, `setActiveTripId` de `@/storage/active-trip`.
 - Produces: `fetchFriend(userId: string): Promise<{ friend: Friend; commonTrips: CommonTrip[] }>` y `export type CommonTrip` en `actions.ts`; `friendKey(userId) = ["friends", userId] as const` y `useFriend(userId)` en `use-friend.ts`; `addableTrips(myTrips: TripSummary[], common: CommonTrip[]): TripSummary[]` (con `type TripSummary = Schemas["TripSummary"]`, el tipo de `useActiveTrip().trips`) = tus rollos no revelados que no están en común, en el orden de `myTrips`.
 
 - [ ] **Step 1:** tests: `actions.test.ts` → `fetchFriend` hace `GET /friends/<id>`; `addable-trips.test.ts` excluye revelados y comunes; `friend-profile.test.tsx` (mockeando `@/features/friends/actions`): (a) muestra nombre, @ y los rollos en común; (b) tocar un rollo lo deja activo y abre `/roll`; (c) "Sumar a un rollo" → elegir uno llama `addFriendsToTrip(tripId, [id])` y, con `added`, el rollo aparece en común (refetch de `friendKey`); con `unavailable` o error (409), mensaje inline "No se pudo sumar a <nombre>" o el del server; (d) sin rollos para sumar, la fila no está; (e) 404 → `ErrorText` "No es tu amigo" y nada más; (f) "Borrar amigo" pide confirmación, llama `removeFriend` y vuelve a `/friends` sin esa persona (test movido de A3).
@@ -135,7 +172,7 @@
 - [ ] **Step 1:** tests: (a) crear un rollo teniendo amigos termina en `/add-friends` encima de `/roll`; (b) sin amigos, termina en `/roll` como hoy; (c) si cargar los amigos falla, también termina en `/roll` (el rollo ya se creó: no se muestra error).
 - [ ] **Step 2:** verificar que fallan.
 - [ ] **Step 3:** después de `router.dismissTo("/roll")`, `queryClient.ensureQueryData({ queryKey: friendsKey, queryFn: fetchFriends })` dentro de un `try`; si hay ≥ 1 amigo, `router.push("/add-friends")`.
-- [ ] **Step 4:** `npm test` y `npm run typecheck` verdes. Actualizar CLAUDE.md: barra Rollo · Mapa · Cámara · Amigos · Perfil (y después del revelado Galería · Mapa · Presentación · Amigos · Perfil), Feed adentro del Mapa, Amigos como tab con perfil y rollos en común, Perfil sin Amigos, el principio de privacidad de los rollos, y el conteo de tests.
+- [ ] **Step 4:** `npm test` y `npm run typecheck` verdes. Actualizar CLAUDE.md: barra Rollo · Mapa · Cámara · Amigos · Perfil (y después del revelado Galería · Mapa · Presentación · Amigos · Perfil), Feed adentro del Mapa, Amigos como tab con perfil y rollos en común, Perfil = lo que ven los demás (encabezado con descripción, Fotos | Mapa) con Ajustes detrás del engranaje, el principio de privacidad de los rollos, y el conteo de tests.
 - [ ] **Step 5:** commit "Crear rollo: ofrecer sumar amigos" y PR a `develop` (en español, **no mergear**, que diga que depende de la PR del backend); reportar qué probar en el iPhone.
 
 ## Fuera de alcance (anotado para después)
