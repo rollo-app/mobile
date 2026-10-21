@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Request a login code by email
-         * @description Sends a 6-digit code (valid 10 minutes, 5 attempts). A new request invalidates the previous codes. Rate limited per email and per IP. Works for new and existing users alike.
+         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts). A new request invalidates the previous codes. Rate limited per email and per IP. Works for new and existing users alike.
          */
         post: {
             parameters: {
@@ -83,7 +83,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange the emailed code for a session token
-         * @description Creates the user on the first successful verification. `isNew` is true while the user has no name.
+         * @description Creates the user on the first successful verification. `isNew` is true while the user has no name. The code is case-insensitive and spaces or dashes are ignored; a malformed code is answered like a wrong one.
          */
         post: {
             parameters: {
@@ -1385,7 +1385,10 @@ export interface components {
              * @example juani@example.com
              */
             email: string;
-            /** @example 123456 */
+            /**
+             * @description 6-character code from the email (letters and digits, no 0/O/1/I/L). Case-insensitive; spaces and dashes are ignored
+             * @example K7M2QX
+             */
             code: string;
         };
         UpdateProfileRequest: {
