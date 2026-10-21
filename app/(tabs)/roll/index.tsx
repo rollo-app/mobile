@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
 import { OfflineMapRow } from "@/features/map/offline-map-row";
+import { TabSwipe } from "@/features/navigation/tab-swipe";
 import { RollPeople } from "@/features/roll/roll-people";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
@@ -26,9 +27,11 @@ export default function RollScreen() {
   const { trip, loaded } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
-  if (hasNoTrips(loaded, trip)) return <Welcome />;
-  if (trip && phase === "revealed") return <GalleryScreen tripId={trip.id} />;
-  return <RollBoard />;
+  return (
+    <TabSwipe current="roll">
+      {hasNoTrips(loaded, trip) ? <Welcome /> : trip && phase === "revealed" ? <GalleryScreen tripId={trip.id} /> : <RollBoard />}
+    </TabSwipe>
+  );
 }
 
 function RollBoard() {

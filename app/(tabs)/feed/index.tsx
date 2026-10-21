@@ -9,6 +9,7 @@ import { feedToItems, mergeItems, pendingToItems, type MapItem } from "@/feature
 import { NoRollYet } from "@/features/roll/no-roll-yet";
 import { hasNoTrips } from "@/features/trips/active";
 import { deleteMedia } from "@/features/trips/actions";
+import { TabSwipe } from "@/features/navigation/tab-swipe";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { feedKey, useFeed } from "@/features/trips/use-feed";
 import { tripKey, useTripDetail } from "@/features/trips/use-trip-detail";
@@ -28,8 +29,7 @@ const keyExtractor = (item: MapItem) => item.id;
 
 export default function FeedScreen() {
   const { trip, loaded } = useActiveTrip();
-  if (hasNoTrips(loaded, trip)) return <NoRollYet />;
-  return <FeedList />;
+  return <TabSwipe current="feed">{hasNoTrips(loaded, trip) ? <NoRollYet /> : <FeedList />}</TabSwipe>;
 }
 
 function FeedList() {

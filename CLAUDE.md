@@ -69,6 +69,11 @@ Decisiones de producto:
   íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Feed · Perfil. La cámara es un trigger
   `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación
   · Días · Perfil.
+- **Swipe entre tabs** (`src/features/navigation/`): Rollo ↔ Feed ↔ Perfil con un arrastre horizontal (izq→der va a
+  la tab de la izquierda). Mapa (se panea) y Cámara (no es pantalla) no participan; tras el revelado Feed no existe y se
+  saltea. Es `PanResponder` de JS (sin módulo nativo, `react-native-gesture-handler` no está): `TabSwipe` envuelve
+  el contenido de cada tab y solo reclama el toque si el arrastre es claramente horizontal y no empezó en los 24 pt
+  del borde izquierdo (back swipe de iOS). La lógica de umbrales y vecinos es pura (`swipe-targets.ts`).
 - Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
   miembros y "Mapa sin señal"): todo lo del rollo activo vive acá. Revelado, la tab es la galería y esos datos
   (invitar, miembros, subidas) salen del botón "Sobre el rollo" del header (sheet `roll-info`). La actividad
@@ -183,7 +188,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 585 tests
+npm test                      # 629 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

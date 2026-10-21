@@ -4,6 +4,7 @@ import { Alert, StyleSheet, Text, View } from "react-native";
 import { deleteAccount, logout } from "@/features/auth/actions";
 import { useMe } from "@/features/auth/use-me";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
+import { TabSwipe } from "@/features/navigation/tab-swipe";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { ErrorText, Row, Screen, Section } from "@/ui/components";
@@ -37,30 +38,32 @@ export default function MeScreen() {
   }
 
   return (
-    <Screen grouped>
-      {me && (
-        <View style={styles.profile}>
-          <Avatar id={me.id} name={me.name} avatarUrl={me.avatarUrl} size={72} />
-          <Text style={[type.title, { color: colors.label }]}>{me.name}</Text>
-          {me.username && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{formatHandle(me.username)}</Text>}
-        </View>
-      )}
-      <Section>
-        <Row label="Editar perfil" onPress={() => router.push("/edit-profile")} />
-      </Section>
-
-      {__DEV__ && (
-        <Section title="Desarrollo">
-          <Row label="Probar subida en segundo plano" onPress={() => void triggerBackgroundUploadForTesting()} />
+    <TabSwipe current="me">
+      <Screen grouped>
+        {me && (
+          <View style={styles.profile}>
+            <Avatar id={me.id} name={me.name} avatarUrl={me.avatarUrl} size={72} />
+            <Text style={[type.title, { color: colors.label }]}>{me.name}</Text>
+            {me.username && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{formatHandle(me.username)}</Text>}
+          </View>
+        )}
+        <Section>
+          <Row label="Editar perfil" onPress={() => router.push("/edit-profile")} />
         </Section>
-      )}
-
-      <Section>
-        <Row label="Cerrar sesión" onPress={() => void logout()} />
-        <Row label="Borrar cuenta" tone="danger" loading={deleting} onPress={deleting ? undefined : confirmDelete} />
-      </Section>
-      {accountError && <ErrorText>{accountError}</ErrorText>}
-    </Screen>
+  
+        {__DEV__ && (
+          <Section title="Desarrollo">
+            <Row label="Probar subida en segundo plano" onPress={() => void triggerBackgroundUploadForTesting()} />
+          </Section>
+        )}
+  
+        <Section>
+          <Row label="Cerrar sesión" onPress={() => void logout()} />
+          <Row label="Borrar cuenta" tone="danger" loading={deleting} onPress={deleting ? undefined : confirmDelete} />
+        </Section>
+        {accountError && <ErrorText>{accountError}</ErrorText>}
+      </Screen>
+    </TabSwipe>
   );
 }
 
