@@ -208,7 +208,7 @@ export interface paths {
         post?: never;
         /**
          * Delete your account
-         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your avatar, sessions and pending login codes are deleted too. The same email can sign up again later as a brand-new user.
+         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
          */
         delete: {
             parameters: {
@@ -559,6 +559,281 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/friends/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a friend link
+         * @description Returns an 8-character code (the link is rollo://friends/<code>) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Friend link */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FriendLink"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friends/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Become friends with whoever made a link
+         * @description Send exactly one of `code` (a link that is still valid) or `claimToken` (from /friend-links/claim, valid 24 hours, single use). The friendship is symmetric and needs no acceptance. Redeeming your own link or one from a current friend is not an error. A wrong, expired or replaced code always gets the same 400. 10 failed attempts per user or per IP in an hour lock it (429).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RedeemFriendRequest"];
+                };
+            };
+            responses: {
+                /** @description The new (or existing) friend */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FriendResponse"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your friends
+         * @description Ordered by name.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Friends */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Friends"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friends/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a friend
+         * @description Removes the friendship in both directions. Also 204 if you were not friends. Rollos you share are not affected.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Friendship removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friend-links/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open a friend link (no session needed)
+         * @description For someone who opens the link before having an account. Returns who invited them and a claim token (valid 24 hours) to redeem the friendship once signed in. A wrong, expired or replaced code always gets the same 400. Rate limited per IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ClaimFriendLinkRequest"];
+                };
+            };
+            responses: {
+                /** @description Claim token */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ClaimResponse"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips": {
         parameters: {
             query?: never;
@@ -640,7 +915,7 @@ export interface paths {
         put?: never;
         /**
          * Join a trip
-         * @description With the invite code. The profile must have a name and a username. Idempotent: 201 when newly joined, 200 when already an active member. Someone removed by the admin gets 403.
+         * @description With the invite code. The profile must have a name and a username. Idempotent: 201 when newly joined (or back after leaving), 200 when already an active member. Someone removed by the admin gets 403. Revealed rollos 409.
          */
         post: {
             parameters: {
@@ -894,6 +1169,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trips/{tripId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add your friends to the trip
+         * @description Any member adds their own friends directly. The answer is per friend (never all-or-nothing): `added` (also when they had left and come back), `already_member`, or `unavailable` (not your friend, removed by the admin, or unknown). The rollo's admin can add back someone who was removed (they become active again with their old photos); for a regular member a removed person stays `unavailable`. A revealed rollo gets 409 for the whole request.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AddMembersRequest"];
+                };
+            };
+            responses: {
+                /** @description Result per friend */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AddMembersResponse"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/members/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Leave the trip
+         * @description You lose access and the rollo leaves your list; your photos stay in the roll. You can come back with the code or if a friend adds you (before the reveal). The admin can't leave (409).
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description You left the trip */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips/{tripId}/members/{memberId}": {
         parameters: {
             query?: never;
@@ -906,7 +1328,7 @@ export interface paths {
         post?: never;
         /**
          * Remove someone from the trip (admin)
-         * @description They lose access to the rollo and cannot rejoin. Their photos stay in the roll.
+         * @description They lose access to the rollo and cannot rejoin by code or through a regular member; only the admin can add them back as a friend. Their photos stay in the roll.
          */
         delete: {
             parameters: {
@@ -1444,6 +1866,66 @@ export interface components {
             /** @description The normalized username that was checked */
             username: string;
         };
+        FriendLink: {
+            /**
+             * @description 8-character code; the link is rollo://friends/<code>
+             * @example K7M2QX9A
+             */
+            code: string;
+            /**
+             * @description The link stops working at this instant (1 hour after it was generated)
+             * @example 1767225600000
+             */
+            expiresAt: number;
+        };
+        FriendResponse: {
+            friend: components["schemas"]["Friend"];
+        };
+        Friend: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string | null;
+            avatarUrl: string | null;
+        };
+        RedeemFriendRequest: {
+            /** @description Friend code typed or taken from a link that is still valid */
+            code?: string;
+            /** @description Token returned by /friend-links/claim */
+            claimToken?: string;
+        };
+        Friends: {
+            friends: components["schemas"]["Friend"][];
+        };
+        ClaimResponse: {
+            /** @description Permission to redeem this link while signed in. Valid for 24 hours */
+            claimToken: string;
+            /**
+             * @description The claim token stops working at this instant
+             * @example 1767225600000
+             */
+            expiresAt: number;
+            creator: {
+                name: string;
+                username: string | null;
+                avatarUrl: string | null;
+            };
+        };
+        ClaimFriendLinkRequest: {
+            /**
+             * @description Case-insensitive; spaces and dashes are ignored
+             * @example K7M2QX9A
+             */
+            code: string;
+        };
         TripCreated: {
             trip: components["schemas"]["Trip"];
             member: components["schemas"]["Member"];
@@ -1557,6 +2039,20 @@ export interface components {
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
+        };
+        AddMembersResponse: {
+            results: {
+                userId: string;
+                /**
+                 * @description added: now a member (also if they had left); already_member; unavailable: not your friend, removed by the admin (unless the caller is the admin), or unknown
+                 * @enum {string}
+                 */
+                status: "added" | "already_member" | "unavailable";
+            }[];
+        };
+        AddMembersRequest: {
+            /** @description User ids of your friends (1 to 50) */
+            friendIds: string[];
         };
         MediaRegistered: {
             /** Format: uuid */

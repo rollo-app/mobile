@@ -2,6 +2,7 @@ import * as ImagePicker from "expo-image-picker";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { ActionSheetIOS, Alert } from "react-native";
 import { createQueue } from "@/features/capture/queue";
+import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { getSessionToken } from "@/storage/session";
@@ -10,6 +11,7 @@ import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
+jest.mock("@/features/friends/actions");
 jest.mock("expo-image-picker");
 const mocked = jest.mocked(actions);
 const picker = jest.mocked(ImagePicker);
@@ -61,6 +63,7 @@ let alert: jest.SpyInstance;
 const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions");
 
 beforeEach(() => {
+  jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   mocked.fetchTrip.mockResolvedValue(tripDetail());
   mocked.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
   mocked.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });

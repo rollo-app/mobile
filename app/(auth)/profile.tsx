@@ -22,7 +22,7 @@ export default function CompleteProfileScreen() {
           <Text style={[type.body, { color: colors.secondaryLabel }]}>Así te ve el resto del rollo.</Text>
         </View>
         {/* Saving the name flips the gate: the app opens on its own. */}
-        <ProfileForm user={me} submitLabel="Listo" onSaved={() => {}} />
+        <ProfileForm user={me} submitLabel="Listo" askFriendCode onSaved={() => {}} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

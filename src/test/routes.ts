@@ -14,9 +14,12 @@ import RollScreen from "../../app/(tabs)/roll/index";
 import MeLayout from "../../app/(tabs)/me/_layout";
 import MeScreen from "../../app/(tabs)/me/index";
 import RootLayout from "../../app/_layout";
+import FriendLinkRoute from "../../app/friends/[code]";
+import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
 import EditProfileScreen from "../../app/edit-profile";
+import FriendsScreen from "../../app/friends";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
 import NotFound from "../../app/+not-found";
@@ -35,6 +38,9 @@ export const routes = {
   create: CreateScreen,
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
+  friends: FriendsScreen,
+  "add-friends": AddFriendsScreen,
+  "friends/[code]": FriendLinkRoute,
   "roll-info": RollInfoScreen,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
