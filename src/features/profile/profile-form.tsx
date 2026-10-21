@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActionSheetIOS, ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { meKey, type User } from "@/features/auth/actions";
+import { stashFriendCode } from "@/features/friends/handle-friend-link";
 import { Button, ErrorText, Field, Row, Section } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { updateProfile } from "./actions";
@@ -16,17 +17,21 @@ export function ProfileForm({
   submitLabel,
   onSaved,
   showEmail = false,
+  askFriendCode = false,
 }: {
   user: User;
   submitLabel: string;
   onSaved: () => void;
   /** Read-only email row at the top (editing, not completing). */
   showEmail?: boolean;
+  /** Optional "¿Te invitó un amigo?" code, only when signing up. */
+  askFriendCode?: boolean;
 }) {
   const queryClient = useQueryClient();
   const avatar = useAvatarUpload();
   const [name, setName] = useState(user.name ?? "");
   const [username, setUsername] = useState(user.username ?? suggestUsername(user.email));
+  const [friendCode, setFriendCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -50,6 +55,8 @@ export function ProfileForm({
     setError(null);
     setSaving(true);
     try {
+      // A wrong code is told here, before saving: the friendship itself is made once the profile is done.
+      if (askFriendCode && friendCode.trim()) await stashFriendCode(friendCode);
       if (trimmed !== user.name || normalized !== user.username) {
         const updated = await updateProfile({ name: trimmed, username: normalized });
         queryClient.setQueryData(meKey, (current: User | undefined) => ({
@@ -130,6 +137,21 @@ export function ProfileForm({
         {status.kind === "checking" && <Text style={[type.footnote, styles.status]}>Revisando…</Text>}
         {status.kind === "available" && <Text style={[type.footnote, styles.status]}>Disponible</Text>}
       </View>
+
+      {askFriendCode && (
+        <Field
+          label="¿Te invitó un amigo? Código"
+          value={friendCode}
+          onChangeText={(value) => {
+            setFriendCode(value);
+            setError(null);
+          }}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={12}
+          placeholder="Opcional"
+        />
+      )}
 
       {error && <ErrorText>{error}</ErrorText>}
 

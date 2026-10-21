@@ -7,6 +7,7 @@ import { CACHE_MAX_AGE, connectAppState, persister, queryClient } from "@/api/qu
 import "@/features/capture/background-upload"; // defines the background task at module level
 import { useRevealTap } from "@/features/notifications/use-reveal-tap";
 import { useOfflineMapSync } from "@/features/map/use-offline-map-sync";
+import { useRedeemPendingFriend } from "@/features/friends/use-pending-friend";
 import { useSyncTriggers } from "@/features/capture/use-sync-triggers";
 import { gateFor } from "@/features/auth/gate";
 import { signOut } from "@/features/auth/session";
@@ -37,6 +38,7 @@ export default function RootLayout() {
 function RootStack() {
   const { session, me, failed, refetch } = useMe();
   const gate = gateFor({ session, me, meFailed: failed });
+  useRedeemPendingFriend(gate === "app");
 
   if (gate === "loading") return <View style={styles.splash} />;
   if (gate === "error") {
@@ -53,6 +55,8 @@ function RootStack() {
     <Stack screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
       {/* Always available: "/" sends each state to its place, so any unmatched link ends up here too. */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      {/* A friend link works with or without a session: it routes to the right step itself. */}
+      <Stack.Screen name="amigos/[code]" options={{ headerShown: false }} />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>

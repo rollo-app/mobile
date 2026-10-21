@@ -14,6 +14,7 @@ import RollScreen from "../../app/(tabs)/roll/index";
 import MeLayout from "../../app/(tabs)/me/_layout";
 import MeScreen from "../../app/(tabs)/me/index";
 import RootLayout from "../../app/_layout";
+import FriendLinkRoute from "../../app/amigos/[code]";
 import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
 import EditProfileScreen from "../../app/edit-profile";
@@ -37,6 +38,7 @@ export const routes = {
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
   friends: FriendsScreen,
+  "amigos/[code]": FriendLinkRoute,
   "roll-info": RollInfoScreen,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
