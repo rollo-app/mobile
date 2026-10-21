@@ -1,5 +1,5 @@
 import { StyleSheet, Text } from "react-native";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
@@ -60,6 +60,12 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
   ...over,
 });
+
+/** The map's "Mapa" segment: Perfil (also mounted in tests) has its own "Fotos | Mapa" control. */
+const mapSegment = () => {
+  const profile = within(screen.getByTestId("profile-showcase")).getByRole("button", { name: "Mapa" });
+  return screen.getAllByRole("button", { name: "Mapa" }).find((b) => b !== profile)!;
+};
 
 const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items });
 
@@ -211,7 +217,8 @@ describe("Map", () => {
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
       await renderRouter(routes, { initialUrl: "/map" });
 
-      expect(await screen.findByRole("button", { name: "Mapa" })).toBeVisible();
+      await screen.findByRole("button", { name: "Feed" });
+      expect(mapSegment()).toBeVisible();
       expect(screen.queryByTestId("feed-list")).toBeNull();
 
       await fireEvent.press(screen.getByRole("button", { name: "Feed" }));
@@ -232,7 +239,7 @@ describe("Map", () => {
 
       await fireEvent.press(screen.getByRole("button", { name: "Feed" }));
       await screen.findByTestId("feed-list");
-      await fireEvent.press(screen.getByRole("button", { name: "Mapa" }));
+      await fireEvent.press(mapSegment());
 
       await waitFor(() => expect(screen.queryByTestId("feed-list")).toBeNull());
       expect(screen).toHaveSearchParams({ view: "map" });

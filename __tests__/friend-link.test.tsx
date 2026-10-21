@@ -12,7 +12,7 @@ const friends = jest.mocked(friendActions);
 const profile = jest.mocked(profileActions);
 
 const CODE = "K7M2QX9A";
-const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null };
+const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
 const claimed = (token = "ct1"): friendActions.FriendClaim => ({
   claimToken: token,
   expiresAt: Date.now() + 86_400_000,

@@ -47,8 +47,8 @@ function tabBar(): [unknown, unknown][] {
   return found;
 }
 
-const cami: actions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null };
-const tomi: actions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null };
+const cami: actions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
+const tomi: actions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null, bio: null };
 
 let alert: jest.SpyInstance;
 let share: jest.SpyInstance;
@@ -79,7 +79,7 @@ describe("Friends", () => {
   it("Perfil no longer has an Amigos row", async () => {
     await renderRouter(routes, { initialUrl: "/me" });
 
-    expect(await screen.findByRole("button", { name: "Editar perfil" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ajustes" })).toBeVisible();
     expect(screen.queryByRole("button", { name: /^Amigos/ })).toBeNull();
   });
 

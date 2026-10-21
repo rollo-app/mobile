@@ -27,6 +27,7 @@ import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
 import PhotoRoute from "../../app/photo/[id]";
 import RollInfoScreen from "../../app/roll-info";
+import SettingsScreen from "../../app/settings";
 import TripsScreen from "../../app/trips";
 
 
@@ -38,6 +39,7 @@ export const routes = {
   create: CreateScreen,
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
+  settings: SettingsScreen,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
   "roll-info": RollInfoScreen,

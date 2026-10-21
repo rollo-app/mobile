@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { ActionSheetIOS, Alert } from "react-native";
 import { createQueue } from "@/features/capture/queue";
@@ -220,7 +221,7 @@ describe("Login", () => {
   });
 });
 
-describe("Profile tab", () => {
+describe("Profile and settings", () => {
   beforeEach(() => signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] }));
 
   it("shows your name and handle, not your email nor the active roll", async () => {
@@ -241,7 +242,7 @@ describe("Profile tab", () => {
       originalUri: "file:///docs/pending/q1/original.jpg", thumbUri: "file:///docs/pending/q1/thumb.jpg", thumbhash: null,
     });
     const calls = mockApi({ "POST /auth/logout": json(204) });
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
 
@@ -253,7 +254,7 @@ describe("Profile tab", () => {
 
   it("delete account asks for a native confirmation with the destructive warning", async () => {
     const calls = mockApi({ "DELETE /me": json(204) });
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Borrar cuenta" }));
 
@@ -267,7 +268,7 @@ describe("Profile tab", () => {
 
   it("confirming deletes the account and goes back to the login", async () => {
     const calls = mockApi({ "DELETE /me": json(204) });
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/settings" });
     await fireEvent.press(await screen.findByRole("button", { name: "Borrar cuenta" }));
 
     const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
@@ -280,7 +281,7 @@ describe("Profile tab", () => {
 
   it("if deleting fails it shows the error inline and keeps the session", async () => {
     mockApi({ "DELETE /me": json(500, { error: "No se pudo borrar la cuenta" }) });
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/settings" });
     await fireEvent.press(await screen.findByRole("button", { name: "Borrar cuenta" }));
 
     const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
@@ -294,23 +295,25 @@ describe("Profile tab", () => {
 describe("Edit profile", () => {
   beforeEach(() => signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] }));
 
-  it("opens from Perfil with your name, and saving closes the sheet and updates the profile", async () => {
+  it("opens from Perfil's Ajustes with your name, and saving closes the sheet and updates the profile", async () => {
     const calls = mockApi({ "PATCH /me": json(200, { ...USER, name: "Juan" }) });
     await renderRouter(routes, { initialUrl: "/me" });
 
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Editar perfil" }));
     const input = await screen.findByLabelText("Tu nombre");
     expect(input.props.value).toBe("Juani");
     await fireEvent.changeText(input, "Juan");
     await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/me"));
+    await waitFor(() => expect(screen).toHavePathname("/settings"));
     expect(calls).toEqual(["PATCH /me"]);
+    await act(async () => router.back());
     expect(await screen.findAllByText("Juan")).not.toHaveLength(0);
   });
 
   it("shows the email as a read-only row at the top of the form", async () => {
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Editar perfil" }));
 
@@ -341,6 +344,7 @@ describe("Edit profile", () => {
         "PATCH /me": json(200, { ...USER, username: "juani.f" }),
       });
       await renderRouter(routes, { initialUrl: "/me" });
+      await fireEvent.press(await screen.findByRole("button", { name: "Ajustes" }));
       await fireEvent.press(await screen.findByRole("button", { name: "Editar perfil" }));
 
       await type("@Juani.F");
@@ -349,8 +353,9 @@ describe("Edit profile", () => {
       expect(calls).toEqual(["GET /usernames/juani.f"]);
       await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
 
-      await waitFor(() => expect(screen).toHavePathname("/me"));
+      await waitFor(() => expect(screen).toHavePathname("/settings"));
       expect(calls).toEqual(["GET /usernames/juani.f", "PATCH /me"]);
+      await act(async () => router.back());
       expect(await screen.findByText("@juani.f")).toBeVisible();
     });
 

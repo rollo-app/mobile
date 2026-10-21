@@ -63,8 +63,9 @@ describe("A user without rollos", () => {
     expect(await screen.findByText("Primero hace falta un rollo")).toBeVisible();
   });
 
-  it("Perfil still edits the profile and signs out, with no rollo sections", async () => {
+  it("Perfil's Ajustes still edits the profile and signs out, with no rollo sections", async () => {
     await renderRouter(routes, { initialUrl: "/me" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes" }));
 
     expect(await screen.findByRole("button", { name: "Editar perfil" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();

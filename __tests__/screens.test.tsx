@@ -111,7 +111,7 @@ describe("Roll", () => {
     await screen.findByLabelText("12 en el rollo");
     for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
     expect(screen.getByText("en 5 días")).toBeVisible();
-    expect(screen.queryByText("Fotos")).toBeNull();
+    expect(screen.queryByText("7 de 10")).toBeNull(); // the quota row (Perfil's "Fotos" segment is mounted too)
   });
 
   it("once it ended it keeps the three dates, marks it ended and counts down to the reveal", async () => {
@@ -123,7 +123,7 @@ describe("Roll", () => {
     for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
     expect(screen.getByText("Terminó")).toBeVisible();
     expect(screen.getByText("en 3 días")).toBeVisible();
-    expect(screen.queryByText("Fotos")).toBeNull();
+    expect(screen.queryByText("7 de 10")).toBeNull(); // the quota row (Perfil's "Fotos" segment is mounted too)
   });
 
   it("the contact sheet shows each photo's ThumbHash, newest to oldest", async () => {
@@ -244,24 +244,33 @@ describe("Roll board · people and settings", () => {
 describe("Me", () => {
   beforeEach(() => saveTrip(SUR, "Viaje al sur"));
 
-  it("is the account and device: profile header, Editar perfil, offline map and sign out, with no email or rollo sections", async () => {
+  it("Perfil shows who you are, with no email or rollo sections", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/me" });
 
-    expect(await screen.findByRole("button", { name: "Editar perfil" })).toBeVisible();
-    expect(screen.getByText("@juani")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+    expect(await screen.findByText("@juani")).toBeVisible();
     expect(screen.queryByText("juani@rollo.test")).toBeNull();
     for (const title of ["Rollo activo", "Invitar"]) expect(screen.queryByText(title)).toBeNull();
     expect(screen.queryByText(/^En el rollo/)).toBeNull();
     expect(screen.queryByText("HUB5FT")).toBeNull();
-    expect(screen.getByRole("button", { name: /^Mapa sin señal/ })).toBeVisible();
     expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
   });
 
-  it("in development, a row triggers the background upload for testing", async () => {
+  it("Ajustes is the account and device: Editar perfil, offline map and sign out, with no rollo sections", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    expect(await screen.findByRole("button", { name: "Editar perfil" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Mapa sin señal/ })).toBeVisible();
+    expect(screen.queryByText("juani@rollo.test")).toBeNull();
+    expect(screen.queryByText("HUB5FT")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
+  });
+
+  it("in development, a row in Ajustes triggers the background upload for testing", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Probar subida en segundo plano" }));
 

@@ -7,8 +7,10 @@ import { normalizeUsername } from "./username";
 
 const AVATAR_MAX = 512;
 
-export async function updateProfile({ name, username }: { name: string; username: string }): Promise<User> {
-  return unwrap((await authedClient()).PATCH("/me", { body: { name: name.trim(), username: normalizeUsername(username) } }));
+/** Saves name and username, and the description when given (the server trims it; empty clears it). */
+export async function updateProfile({ name, username, bio }: { name: string; username: string; bio?: string }): Promise<User> {
+  const body = { name: name.trim(), username: normalizeUsername(username), ...(bio === undefined ? {} : { bio }) };
+  return unwrap((await authedClient()).PATCH("/me", { body }));
 }
 
 /** Is this username free? (Your own counts as available.) The server normalizes it. */

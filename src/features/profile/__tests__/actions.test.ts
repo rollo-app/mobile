@@ -29,6 +29,13 @@ describe("updateProfile", () => {
     expect(await (fetchMock.mock.calls[0]![0] as Request).json()).toEqual({ name: "Juani", username: "juani" });
   });
 
+  it("sends the description as typed when given, and leaves it out otherwise", async () => {
+    const fetchMock = mockApi([[/^PATCH \/me$/, 200, user]]);
+
+    await updateProfile({ name: "Juani", username: "juani", bio: "Viajando por el sur" });
+    expect(await (fetchMock.mock.calls[0]![0] as Request).json()).toEqual({ name: "Juani", username: "juani", bio: "Viajando por el sur" });
+  });
+
   it("propagates the server's message", async () => {
     mockApi([[/^PATCH \/me$/, 409, { error: "Ese nombre de usuario ya está en uso." }]]);
     await expect(updateProfile({ name: "x", username: "taken" })).rejects.toThrow("Ese nombre de usuario ya está en uso.");

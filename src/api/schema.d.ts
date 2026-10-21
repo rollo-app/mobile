@@ -241,7 +241,7 @@ export interface paths {
         head?: never;
         /**
          * Edit your profile
-         * @description Send name and/or username. The name is shown in every rollo you are part of and does not have to be unique. The username must be unique (case-insensitive); setting your own current one is a no-op. 409 if someone else has it.
+         * @description Send any of name, username and bio; fields left out are not changed. The name is shown in every rollo you are part of and does not have to be unique. The username must be unique (case-insensitive); setting your own current one is a no-op. 409 if someone else has it. The bio is trimmed, an empty one clears it (null), and it allows up to 150 characters and 3 lines (400 otherwise).
          */
         patch: {
             parameters: {
@@ -732,7 +732,50 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * A friend's profile
+         * @description The friend and the rollos both of you are active members of (neither left nor was removed), most recent start first. 404 if you are not friends, also for an unknown id or your own.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Friend profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FriendProfile"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         put?: never;
         post?: never;
         /**
@@ -1800,6 +1843,11 @@ export interface components {
             username: string | null;
             /** @description Path (the app prefixes the API base URL), e.g. /avatars/<userId>/<version>.jpg; null if none */
             avatarUrl: string | null;
+            /**
+             * @description Profile description (up to 3 lines); null if none
+             * @example Viajando por el sur
+             */
+            bio: string | null;
         };
         EmailVerifyRequest: {
             /**
@@ -1821,6 +1869,11 @@ export interface components {
              * @example juanifraga
              */
             username?: string;
+            /**
+             * @description Profile description, up to 150 characters and 3 lines after trimming. An empty string clears it
+             * @example Viajando por el sur
+             */
+            bio?: string;
         };
         AvatarUpload: {
             /**
@@ -1895,6 +1948,11 @@ export interface components {
              */
             username: string | null;
             avatarUrl: string | null;
+            /**
+             * @description Profile description (up to 3 lines); null if none
+             * @example Viajando por el sur
+             */
+            bio: string | null;
         };
         RedeemFriendRequest: {
             /** @description Friend code typed or taken from a link that is still valid */
@@ -1904,6 +1962,27 @@ export interface components {
         };
         Friends: {
             friends: components["schemas"]["Friend"][];
+        };
+        FriendProfile: {
+            friend: components["schemas"]["Friend"];
+            /** @description Rollos both of you are active members of, most recent start first */
+            commonTrips: components["schemas"]["CommonTrip"][];
+        };
+        CommonTrip: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /**
+             * @description Trip start
+             * @example 1767225600000
+             */
+            startsAt: number;
+            /**
+             * @description Trip end
+             * @example 1767225600000
+             */
+            endsAt: number;
+            revealed: boolean;
         };
         ClaimResponse: {
             /** @description Permission to redeem this link while signed in. Valid for 24 hours */

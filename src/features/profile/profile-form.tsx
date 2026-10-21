@@ -11,13 +11,17 @@ import { useAvatarUpload } from "./use-avatar-upload";
 import { USERNAME_TAKEN, useUsernameStatus } from "./use-username-status";
 import { normalizeUsername, suggestUsername } from "./username";
 
-/** Photo (optional), name and username (required): used to complete the profile and to edit it. */
+/** Same limit as the server; it counts what JS counts (`String.length`). */
+const BIO_MAX = 150;
+
+/** Photo (optional), name and username (required), and the description when editing: completes or edits the profile. */
 export function ProfileForm({
   user,
   submitLabel,
   onSaved,
   showEmail = false,
   askFriendCode = false,
+  showBio = false,
 }: {
   user: User;
   submitLabel: string;
@@ -26,11 +30,14 @@ export function ProfileForm({
   showEmail?: boolean;
   /** Optional "¿Te invitó un amigo?" code, only when signing up. */
   askFriendCode?: boolean;
+  /** Optional "Descripción", only when editing (not when completing the profile). */
+  showBio?: boolean;
 }) {
   const queryClient = useQueryClient();
   const avatar = useAvatarUpload();
   const [name, setName] = useState(user.name ?? "");
   const [username, setUsername] = useState(user.username ?? suggestUsername(user.email));
+  const [bio, setBio] = useState(user.bio ?? "");
   const [friendCode, setFriendCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -57,12 +64,14 @@ export function ProfileForm({
     try {
       // A wrong code is told here, before saving: the friendship itself is made once the profile is done.
       if (askFriendCode && friendCode.trim()) await stashFriendCode(friendCode);
-      if (trimmed !== user.name || normalized !== user.username) {
-        const updated = await updateProfile({ name: trimmed, username: normalized });
+      const bioChanged = showBio && bio !== (user.bio ?? "");
+      if (trimmed !== user.name || normalized !== user.username || bioChanged) {
+        const updated = await updateProfile({ name: trimmed, username: normalized, ...(bioChanged ? { bio } : {}) });
         queryClient.setQueryData(meKey, (current: User | undefined) => ({
           ...(current ?? updated),
           name: updated.name,
           username: updated.username,
+          bio: updated.bio,
         }));
         void queryClient.invalidateQueries({ queryKey: ["trip"] });
         void queryClient.invalidateQueries({ queryKey: ["feed"] });
@@ -138,6 +147,24 @@ export function ProfileForm({
         {status.kind === "available" && <Text style={[type.footnote, styles.status]}>Disponible</Text>}
       </View>
 
+      {showBio && (
+        <View style={styles.bioBlock}>
+          <Field
+            label="Descripción"
+            value={bio}
+            onChangeText={(value) => {
+              setBio(value);
+              setError(null);
+            }}
+            maxLength={BIO_MAX}
+            multiline
+            placeholder="Opcional"
+            style={styles.bio}
+          />
+          <Text style={[type.footnote, styles.counter]}>{`${bio.length}/${BIO_MAX}`}</Text>
+        </View>
+      )}
+
       {askFriendCode && (
         <Field
           label="¿Te invitó un amigo? Código"
@@ -174,6 +201,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
   usernameBlock: { gap: spacing.xs },
+  bioBlock: { gap: spacing.xs },
+  bio: { minHeight: 88, paddingTop: 14, paddingBottom: 14, textAlignVertical: "top" },
+  counter: { color: colors.secondaryLabel, paddingHorizontal: spacing.md, textAlign: "right" },
   status: { color: colors.secondaryLabel, paddingHorizontal: spacing.md },
   photoError: { gap: spacing.sm },
 });

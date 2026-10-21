@@ -80,7 +80,7 @@ export function Button({
   );
 }
 
-export function Field({ label, prefix, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
+export function Field({ label, prefix, style, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
   return (
     <View style={styles.field}>
       <Text style={[type.footnote, styles.footnote]}>{label}</Text>
@@ -90,7 +90,7 @@ export function Field({ label, prefix, ...props }: { label: string; /** Fixed te
           <TextInput
             accessibilityLabel={label}
             placeholderTextColor={colors.tertiaryLabel}
-            style={[type.body, styles.prefixedInput]}
+            style={[type.body, styles.prefixedInput, style]}
             {...props}
           />
         </View>
@@ -98,7 +98,7 @@ export function Field({ label, prefix, ...props }: { label: string; /** Fixed te
         <TextInput
           accessibilityLabel={label}
           placeholderTextColor={colors.tertiaryLabel}
-          style={[type.body, styles.input]}
+          style={[type.body, styles.input, style]}
           {...props}
         />
       )}

@@ -4,7 +4,7 @@ import { useMe } from "@/features/auth/use-me";
 import { ProfileForm } from "@/features/profile/profile-form";
 import { colors, spacing } from "@/ui/theme";
 
-/** Edit your photo and name (sheet). */
+/** Edit your photo, name, username and description (sheet). */
 export default function EditProfileScreen() {
   const { me } = useMe();
   if (!me) return null;
@@ -15,7 +15,7 @@ export default function EditProfileScreen() {
       style={{ backgroundColor: colors.groupedBackground }}
       contentContainerStyle={styles.screen}
     >
-      <ProfileForm user={me} showEmail submitLabel="Guardar" onSaved={() => router.back()} />
+      <ProfileForm user={me} showEmail showBio submitLabel="Guardar" onSaved={() => router.back()} />
     </ScrollView>
   );
 }
