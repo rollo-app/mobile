@@ -75,6 +75,15 @@ function RootStack() {
           />
           <Stack.Screen name="friends" options={{ title: "Amigos" }} />
           <Stack.Screen
+            name="add-friends"
+            options={{
+              title: "Sumar amigos",
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.6, 1],
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="edit-profile"
             options={{
               title: "Editar perfil",

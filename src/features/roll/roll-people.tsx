@@ -1,16 +1,26 @@
+import { router } from "expo-router";
 import { Share } from "react-native";
+import { useLeaveTrip } from "@/features/friends/use-leave-trip";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import type { TripDetail } from "@/features/trips/actions";
-import { Row, Section } from "@/ui/components";
+import { ErrorText, Row, Section } from "@/ui/components";
 
 /** The invite (code and share) and the members of a roll. */
 export function RollPeople({ detail }: { detail: TripDetail }) {
   const share = () =>
     Share.share({ message: `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}` });
 
+  const leave = useLeaveTrip(detail.trip.id, detail.trip.name);
+
   return (
     <>
+      {!detail.trip.revealed && (
+        <Section>
+          <Row label="Sumar amigos" onPress={() => router.push("/add-friends")} />
+        </Section>
+      )}
+
       <Section title="Invitar" footer="Con este código se suman al rollo.">
         <Row label="Código" value={detail.trip.joinCode} />
         <Row label="Compartir invitación" onPress={() => void share()} />
@@ -27,6 +37,11 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
           />
         ))}
       </Section>
+
+      <Section>
+        <Row label="Salirme del rollo" tone="danger" loading={leave.leaving} onPress={leave.leaving ? undefined : leave.confirm} />
+      </Section>
+      {leave.error && <ErrorText>{leave.error}</ErrorText>}
     </>
   );
 }

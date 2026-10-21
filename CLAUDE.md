@@ -52,6 +52,15 @@ Decisiones de producto:
 - **Rollo configurable al crearlo** (lo hace el admin, formulario nativo con `@expo/ui`): nombre, inicio y fin
   **con fecha y hora**, fotos y videos por persona por día, y **cuándo se revela** (al terminar o en otro
   momento, siempre igual o posterior al fin). Las fechas las valida el server; la app muestra su mensaje inline (`src/features/trips/create-form.ts` solo chequea los nombres).
+- **Amigos** (`src/features/friends/`): se hace amistad con un **link de amistad** (`POST /friends/link`, vale 1 hora, uno
+  vivo a la vez, multiuso): `rollo://amigos/<CODE>` con CODE de 8 caracteres, que también se puede escribir a mano. Abrirlo
+  (`app/amigos/[code].tsx`, fuera del grupo protegido) llama a `POST /friend-links/claim` **sin sesión** y: con cuenta lista
+  canjea (`POST /friends/redeem`) y abre la lista; sin cuenta guarda el permiso de canje (24 h) en SecureStore
+  (`rollo.pendingFriend`, nunca en el cache de Query) y lo canjea cuando el perfil queda completo (`use-pending-friend.ts`,
+  el único lugar donde se canjea). "Completá tu perfil" tiene el campo opcional "¿Te invitó un amigo? Código". Perfil → "Amigos"
+  (lista con foto, nombre y @; borrar es silencioso) e "Invitar a un amigo". Cualquier miembro suma a **sus** amigos al rollo
+  desde "Sumar amigos" (sheet `add-friends`, respuesta por amigo: "Ya está" / "No disponible"), y cualquiera menos el admin
+  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código). Los links `https` (Universal Links) llegan con TestFlight.
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
@@ -60,7 +69,7 @@ Decisiones de producto:
   (`react-native-vision-camera` o `expo-camera`); la selfie chica (~1080 px).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
   La ceremonia del revelado será una presentación (a definir).
-- **A futuro (no para enero):** amigos y feeds públicos de rollos. No cerrarle la puerta: la tab "Perfil" será
+- **A futuro (no para enero):** feeds públicos de rollos, perfiles públicos y avisar cuando te suman a un rollo (push). No cerrarle la puerta: la tab "Perfil" será
   el perfil completo.
 
 ## Navegación y diseño
@@ -131,7 +140,7 @@ src/
                           *.ts            lógica pura, testeable sin React
                           *.tsx           componentes propios del dominio
                           __tests__/      tests de esa lógica, al lado del código
-                        Dominios: auth (sesión, login, gate), profile (nombre, foto, `Avatar`), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
+                        Dominios: auth (sesión, login, gate), friends (amigos, link de amistad, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
                         (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications, roll (tablero).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, Button,
