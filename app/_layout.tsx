@@ -56,7 +56,7 @@ function RootStack() {
       {/* Always available: "/" sends each state to its place, so any unmatched link ends up here too. */}
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {/* A friend link works with or without a session: it routes to the right step itself. */}
-      <Stack.Screen name="amigos/[code]" options={{ headerShown: false }} />
+      <Stack.Screen name="friends/[code]" options={{ headerShown: false }} />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>

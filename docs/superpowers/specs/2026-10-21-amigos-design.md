@@ -35,7 +35,7 @@ Que dos personas sean amigos no se puede forzar desde afuera: nadie puede agrega
   en registrarse y, si abrió el link a tiempo, queda amigo igual.
 - Al abrirlo, la amistad se crea **sin pedir aceptación**: generar el link es el consentimiento de quien lo creó, y abrirlo el del otro.
 - **(mi decisión)** El link tiene un token largo, no adivinable. Una persona no puede ser amiga de sí misma. Abrir el link de alguien que ya es tu amigo no hace nada ni da error.
-- **(mi decisión)** Forma del link: esquema propio de la app (`rollo://amigos/<token>`) para poder probar ya con la cuenta gratis de Apple;
+- **(mi decisión)** Forma del link: esquema propio de la app (`rollo://friends/<token>`) para poder probar ya con la cuenta gratis de Apple;
   los links `https` (Universal Links) llegan con TestFlight y la cuenta paga. El mismo token se puede **escribir a mano** como código corto
   (**mi decisión:** 8 caracteres con el alfabeto del código de login) para quien no tiene la app instalada: iOS no recuerda el link a través de la instalación.
 - Persona sin cuenta que abre el link (app instalada): la app lleva a registrarse, guarda el token y, al terminar el registro

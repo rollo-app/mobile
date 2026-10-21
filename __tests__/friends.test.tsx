@@ -79,7 +79,7 @@ describe("Friends", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
 
     expect(share).toHaveBeenCalledTimes(1);
-    expect((share.mock.calls[0]![0] as { message: string }).message).toContain("rollo://amigos/K7M2QX9A");
+    expect((share.mock.calls[0]![0] as { message: string }).message).toContain("rollo://friends/K7M2QX9A");
   });
 
   it("shows the error inline when the link can't be made", async () => {

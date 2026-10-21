@@ -29,7 +29,7 @@ beforeEach(() => {
 describe("Opening a friend link", () => {
   describe("without a session", () => {
     it("claims the link, keeps the permission and goes to sign in", async () => {
-      await renderRouter(routes, { initialUrl: `/amigos/${CODE}` });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
       await waitFor(() => expect(screen).toHavePathname("/email"));
       expect(friends.claimFriendLink).toHaveBeenCalledWith(CODE);
@@ -40,7 +40,7 @@ describe("Opening a friend link", () => {
     it("a second link replaces the pending one", async () => {
       await setPendingFriend({ claimToken: "old", creatorName: "Tomi" });
       friends.claimFriendLink.mockResolvedValue(claimed("ct2"));
-      await renderRouter(routes, { initialUrl: `/amigos/${CODE}` });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
       await waitFor(() => expect(screen).toHavePathname("/email"));
       expect(await getPendingFriend()).toEqual({ claimToken: "ct2", creatorName: "Cami" });
@@ -49,10 +49,10 @@ describe("Opening a friend link", () => {
     it("an invalid or expired link shows the message on the screen, keeps the old pending one and doesn't navigate away", async () => {
       await setPendingFriend({ claimToken: "old", creatorName: "Tomi" });
       friends.claimFriendLink.mockRejectedValue(new ApiError(400, "Código incorrecto o vencido"));
-      await renderRouter(routes, { initialUrl: `/amigos/${CODE}` });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
       expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
-      expect(screen).toHavePathname(`/amigos/${CODE}`);
+      expect(screen).toHavePathname(`/friends/${CODE}`);
       expect(await getPendingFriend()).toEqual({ claimToken: "old", creatorName: "Tomi" });
 
       await fireEvent.press(screen.getByRole("button", { name: "Seguir" }));
@@ -60,7 +60,7 @@ describe("Opening a friend link", () => {
     });
 
     it("a malformed code is rejected without asking the server", async () => {
-      await renderRouter(routes, { initialUrl: "/amigos/hola" });
+      await renderRouter(routes, { initialUrl: "/friends/hola" });
 
       expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
       expect(friends.claimFriendLink).not.toHaveBeenCalled();
@@ -71,7 +71,7 @@ describe("Opening a friend link", () => {
     beforeEach(() => signInAs({ trips: [tripSummary("t1", "Viaje al sur")] }));
 
     it("claims, redeems and lands on the friends list with the new friend", async () => {
-      await renderRouter(routes, { initialUrl: `/amigos/${CODE}` });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
       await waitFor(() => expect(screen).toHavePathname("/friends"));
       expect(friends.claimFriendLink).toHaveBeenCalledWith(CODE);
@@ -82,7 +82,7 @@ describe("Opening a friend link", () => {
 
     it("an invalid link shows the message and stays", async () => {
       friends.claimFriendLink.mockRejectedValue(new ApiError(400, "Código incorrecto o vencido"));
-      await renderRouter(routes, { initialUrl: `/amigos/${CODE}` });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
       expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
       expect(friends.redeemFriend).not.toHaveBeenCalled();
@@ -93,7 +93,7 @@ describe("Opening a friend link", () => {
     it("opening your own link (or an existing friend's) is not an error", async () => {
       friends.redeemFriend.mockResolvedValue({ ...cami, id: USER.id, name: USER.name! });
       friends.fetchFriends.mockResolvedValue([]);
-      await renderRouter(routes, { initialUrl: `/amigos/${CODE}` });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
       await waitFor(() => expect(screen).toHavePathname("/friends"));
       expect(screen.queryByRole("alert")).toBeNull();
@@ -116,7 +116,7 @@ describe("Opening a friend link", () => {
 
     it("a signed-in account with no profile still keeps the link, and redeems it once the profile is done", async () => {
       await signInAs({ user: newcomer });
-      await renderRouter(routes, { initialUrl: `/amigos/${CODE}` });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
       await waitFor(() => expect(screen).toHavePathname("/profile"));
       expect(friends.redeemFriend).not.toHaveBeenCalled();
 

@@ -8,7 +8,7 @@ import { colors, spacing } from "@/ui/theme";
 import { openFriendLink } from "./handle-friend-link";
 
 /**
- * `rollo://amigos/<code>`: opens a friend link. With a ready account the friendship is made and the list
+ * `rollo://friends/<code>`: opens a friend link. With a ready account the friendship is made and the list
  * opens; without one the permission is kept and the sign-up goes on. A dead link is explained here.
  */
 export function FriendLinkScreen({ code }: { code: string }) {

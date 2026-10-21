@@ -53,8 +53,8 @@ Decisiones de producto:
   **con fecha y hora**, fotos y videos por persona por día, y **cuándo se revela** (al terminar o en otro
   momento, siempre igual o posterior al fin). Las fechas las valida el server; la app muestra su mensaje inline (`src/features/trips/create-form.ts` solo chequea los nombres).
 - **Amigos** (`src/features/friends/`): se hace amistad con un **link de amistad** (`POST /friends/link`, vale 1 hora, uno
-  vivo a la vez, multiuso): `rollo://amigos/<CODE>` con CODE de 8 caracteres, que también se puede escribir a mano. Abrirlo
-  (`app/amigos/[code].tsx`, fuera del grupo protegido) llama a `POST /friend-links/claim` **sin sesión** y: con cuenta lista
+  vivo a la vez, multiuso): `rollo://friends/<CODE>` con CODE de 8 caracteres, que también se puede escribir a mano. Abrirlo
+  (`app/friends/[code].tsx`, fuera del grupo protegido) llama a `POST /friend-links/claim` **sin sesión** y: con cuenta lista
   canjea (`POST /friends/redeem`) y abre la lista; sin cuenta guarda el permiso de canje (24 h) en SecureStore
   (`rollo.pendingFriend`, nunca en el cache de Query) y lo canjea cuando el perfil queda completo (`use-pending-friend.ts`,
   el único lugar donde se canjea). "Completá tu perfil" tiene el campo opcional "¿Te invitó un amigo? Código". Perfil → "Amigos"

@@ -1,8 +1,8 @@
-const SCHEME_PREFIX = /^rollo:\/\/amigos\//i;
+const SCHEME_PREFIX = /^rollo:\/\/friends\//i;
 
 /** The link that makes whoever opens it your friend. */
 export function friendLinkUrl(code: string): string {
-  return `rollo://amigos/${code}`;
+  return `rollo://friends/${code}`;
 }
 
 /** The 8-character code out of a full link or a typed code (any case, spaces and dashes); null if it isn't one. */
