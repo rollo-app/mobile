@@ -17,6 +17,7 @@ import RootLayout from "../../app/_layout";
 import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
 import EditProfileScreen from "../../app/edit-profile";
+import FriendsScreen from "../../app/friends";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
 import NotFound from "../../app/+not-found";
@@ -35,6 +36,7 @@ export const routes = {
   create: CreateScreen,
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
+  friends: FriendsScreen,
   "roll-info": RollInfoScreen,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,

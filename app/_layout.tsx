@@ -69,6 +69,7 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
+          <Stack.Screen name="friends" options={{ title: "Amigos" }} />
           <Stack.Screen
             name="edit-profile"
             options={{
