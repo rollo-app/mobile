@@ -3,7 +3,6 @@ import { Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
-import { OfflineMapRow } from "@/features/map/offline-map-row";
 import { RollPeople } from "@/features/roll/roll-people";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
@@ -84,10 +83,6 @@ function RollBoard() {
 
           <UploadStatusSection tripId={detail.trip.id} timeZone={detail.trip.timezone} />
           <RollPeople detail={detail} />
-
-          <Section>
-            <OfflineMapRow />
-          </Section>
         </>
       )}
     </Screen>

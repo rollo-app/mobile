@@ -232,11 +232,11 @@ describe("Roll board · people and settings", () => {
     share.mockRestore();
   });
 
-  it("ends with the offline map row, and no 'Tus rollos' row", async () => {
+  it("has no 'Tus rollos' row", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    expect(await screen.findByRole("button", { name: /^Mapa sin señal/ })).toBeVisible();
+    await screen.findByRole("button", { name: "Compartir invitación" });
     expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
   });
 });
@@ -244,7 +244,7 @@ describe("Roll board · people and settings", () => {
 describe("Me", () => {
   beforeEach(() => saveTrip(SUR, "Viaje al sur"));
 
-  it("is only the account: profile header, Editar perfil and sign out, with no email or rollo sections", async () => {
+  it("is the account and device: profile header, Editar perfil, offline map and sign out, with no email or rollo sections", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/me" });
 
@@ -255,7 +255,7 @@ describe("Me", () => {
     for (const title of ["Rollo activo", "Invitar"]) expect(screen.queryByText(title)).toBeNull();
     expect(screen.queryByText(/^En el rollo/)).toBeNull();
     expect(screen.queryByText("HUB5FT")).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Mapa sin señal/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Mapa sin señal/ })).toBeVisible();
     expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
   });
 
