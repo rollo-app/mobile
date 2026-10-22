@@ -231,16 +231,22 @@ Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en
     "Rollo" estaba tomado). Apunta a `https://rollo-api.juanifraga.com`. Esa cuenta tiene otra app ("Contador
     Truco"): no tocarla.
   - Las dos pueden convivir instaladas en el mismo iPhone (ambas abren `rollo://`).
-- **Build y TestFlight** (EAS, la clave de la API de App Store Connect "EAS" ya está cargada en las credenciales
-  de EAS; el `.p8` no va al repo):
+- **Build y TestFlight** (EAS, proyecto `@rollo-app/rollo`). El certificado de distribución y el perfil viven en
+  EAS. Como la cuenta del amigo es individual, Juani no puede entrar al portal con su Apple ID ("no team"): todo
+  se hace con la clave de la API de App Store Connect "EAS" (Admin, `.p8` fuera del repo, que es público), que se
+  pasa por variables de entorno en la terminal:
 
   ```bash
-  npx eas-cli build -p ios --profile production      # build en la nube, sube solo el build number
-  npx eas-cli submit -p ios --profile production     # lo manda a TestFlight
+  export EXPO_ASC_API_KEY_PATH="/ruta/al/AuthKey_XXXX.p8" EXPO_ASC_KEY_ID=... EXPO_ASC_ISSUER_ID=...
+  export EXPO_APPLE_TEAM_ID=UXHNAR4HYC EXPO_APPLE_TEAM_TYPE=INDIVIDUAL
+  npx eas-cli@latest build -p ios --profile production    # en la nube; sube solo el build number
   ```
 
-  `submit.production.ios.ascAppId` de `eas.json` es el Apple ID de la app (App Store Connect → la app →
-  Información de la app). El export compliance ya va en el build (`usesNonExemptEncryption: false`).
+  Al "Do you want to log in to your Apple account?" se contesta que no. `eas submit` no toma esas variables para
+  subir: necesita `ascApiKeyPath`, `ascApiKeyId` y `ascApiKeyIssuerId` en `submit.production.ios` de `eas.json`,
+  que se agregan **solo en local, sin commitear**, antes de `npx eas-cli@latest submit -p ios --profile production`.
+  `ascAppId` (6825843502) es el Apple ID de la app en App Store Connect. El export compliance ya va en el build
+  (`usesNonExemptEncryption: false`).
 - El entitlement de push sigue sacado (`./plugins/without-push-entitlement`) hasta que usemos push.
 - Pendiente para la revisión de la App Store (no para TestFlight): cuenta de prueba para el revisor en el backend,
   URL de política de privacidad y las etiquetas de privacidad.
