@@ -5,6 +5,7 @@ import { deleteAccount, logout } from "@/features/auth/actions";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
 import { OfflineMapRow } from "@/features/map/offline-map-row";
 import { ErrorText, Row, Screen, Section, SwitchRow } from "@/ui/components";
+import { DevMomentRows } from "./dev-moment-rows";
 import { useProfileVisibility } from "./use-profile-visibility";
 
 /** Ajustes: the account and this phone (Editar perfil, who sees your profile, offline map, sign out, delete account). */
@@ -49,6 +50,7 @@ export function SettingsScreen() {
       {__DEV__ && (
         <Section title="Desarrollo">
           <Row label="Probar subida en segundo plano" onPress={() => void triggerBackgroundUploadForTesting()} />
+          <DevMomentRows />
         </Section>
       )}
 

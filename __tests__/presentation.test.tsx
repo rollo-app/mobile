@@ -72,14 +72,11 @@ beforeEach(async () => {
 });
 
 describe("Presentation", () => {
-  it("opens with the reveal title, then walks day card, photos and the outro", async () => {
+  it("starts at the first day card (no reveal intro), then walks photos and the outro", async () => {
     await renderRouter(routes, { initialUrl: "/presentation" });
 
-    await screen.findByText("Se reveló");
-    expect(screen.getByText("Viaje al sur")).toBeTruthy();
-
-    await tap();
     await screen.findByText("Día 1");
+    expect(screen.queryByText("Se reveló")).toBeNull();
     expect(screen.getByText("12 de enero")).toBeTruthy();
 
     await tap();
@@ -101,7 +98,6 @@ describe("Presentation", () => {
   it("tapping the left side goes back to the previous photo", async () => {
     await renderRouter(routes, { initialUrl: "/presentation" });
     await tap();
-    await tap();
     await screen.findByText("el viento no perdona");
     await tap(); // b
     await fireEvent.press(await screen.findByTestId("story-surface"), { nativeEvent: { locationX: 10 } });
@@ -111,7 +107,6 @@ describe("Presentation", () => {
   it("tapping the author leaves the presentation and opens their profile, without advancing the story", async () => {
     await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: "/roll" });
     await act(async () => router.push("/presentation"));
-    await tap();
     await tap();
     await screen.findByText("el viento no perdona");
 
@@ -125,16 +120,15 @@ describe("Presentation", () => {
   it("'Ver de nuevo' restarts the story", async () => {
     await renderRouter(routes, { initialUrl: "/roll" });
     await act(async () => router.push("/presentation"));
-    for (let i = 0; i < 7; i++) await tap();
+    for (let i = 0; i < 6; i++) await tap();
     await fireEvent.press(await screen.findByLabelText("Ver de nuevo"));
-    await screen.findByText("Se reveló");
-
+    await screen.findByText("Día 1");
   });
 
   it("has no visible close button and closes with the VoiceOver escape action", async () => {
     await renderRouter(routes, { initialUrl: "/roll" });
     await act(async () => router.push("/presentation"));
-    await screen.findByText("Se reveló");
+    await screen.findByText("Día 1");
     expect(screen.queryByLabelText("Cerrar")).toBeNull();
 
     await fireEvent(await screen.findByTestId("story-surface"), "accessibilityAction", { nativeEvent: { actionName: "escape" } });
@@ -146,6 +140,13 @@ describe("Presentation", () => {
     await act(async () => router.push("/presentation"));
     await fireEvent.press(await screen.findByLabelText("Cerrar presentación"));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("never shows the reveal intro, even when it was never seen", async () => {
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await screen.findByText("Día 1");
+    expect(screen.queryByText("Se reveló")).toBeNull();
+    expect(screen.queryByText(/Revelando/)).toBeNull();
   });
 
   it("explains when there are no photos to show", async () => {

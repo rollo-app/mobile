@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { useEffect } from "react";
+import { useRollStarted } from "@/features/capture/use-roll-started";
 import { useTodayLeft } from "@/features/capture/use-today-left";
 import { scheduleRevealNotification } from "@/features/notifications/reveal";
 import { useTabAvatar } from "@/features/profile/use-tab-avatar";
@@ -32,7 +33,8 @@ export default function TabsLayout() {
     if (info) void scheduleRevealNotification(info);
   }, [info?.id, info?.name, info?.revealAt, info?.revealed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useFirstPresentation(trip?.id, phase === "revealed");
+  useFirstPresentation(trip?.id, phase === "revealed", loaded);
+  useRollStarted(trip?.id, phase, loaded);
 
   return (
     <NativeTabs tintColor={colors.tint} minimizeBehavior="onScrollDown">

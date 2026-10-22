@@ -2,12 +2,14 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { StoryPlayer } from "@/features/presentation/story-player";
-import { formatDate } from "@/features/trips/phase";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { spacing, type } from "@/ui/theme";
 
-/** The reveal presentation: fullscreen and dark, for the active roll. */
+/**
+ * The presentation's stories: fullscreen and black, for the active roll. The reveal intro isn't
+ * here: it's `/reveal`, which hands over to this screen.
+ */
 export default function PresentationScreen() {
   const router = useRouter();
   const { trip } = useActiveTrip();
@@ -16,16 +18,7 @@ export default function PresentationScreen() {
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
   if (detail && token && photos.length > 0) {
-    return (
-      <StoryPlayer
-        photos={photos}
-        token={token}
-        timeZone={detail.trip.timezone}
-        title={detail.trip.name}
-        revealDate={formatDate(detail.trip.revealAt, detail.trip.timezone)}
-        onClose={close}
-      />
-    );
+    return <StoryPlayer photos={photos} token={token} timeZone={detail.trip.timezone} onClose={close} />;
   }
 
   const waiting = !error && (loading || !detail || !token);

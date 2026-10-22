@@ -393,3 +393,16 @@ jest.mock("expo-video", () => {
   return { useVideoPlayer: jest.fn(() => ({ loop: false })), VideoView: View };
 });
 
+
+// Native animation, haptics and audio modules are mocked out. The darkroom (Skia) only shows its title.
+jest.mock("@/features/reveal/darkroom-intro", () => {
+  const { createElement: h } = require("react");
+  const { Text, View } = require("react-native");
+  return {
+    DarkroomIntro: ({ title, date }: { title: string; date: string }) =>
+      h(View, null, h(Text, null, "Se reveló"), h(Text, null, title), h(Text, null, date)),
+  };
+});
+jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
+jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
+jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));

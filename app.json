@@ -77,6 +77,13 @@
           "savePhotosPermission": "Rollo guarda en tu carrete las fotos y videos del rollo que elijas.",
           "photosPermission": "Rollo usa el acceso a tus fotos solo para crear el álbum del rollo cuando guardás todo."
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": false,
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "scheme": "rollo",

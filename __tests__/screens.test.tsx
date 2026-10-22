@@ -302,6 +302,17 @@ describe("Me", () => {
 
     expect(BackgroundTask.triggerTaskWorkerForTestingAsync).toHaveBeenCalled();
   });
+
+  it("in development, 'Ver revelado' in Ajustes opens the reveal screen", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { revealed: true })] });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchFeed.mockReturnValue(new Promise(() => {})); // stays on the reveal while it loads
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver revelado" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/reveal"));
+  });
 });
 
 describe("Trip picker", () => {

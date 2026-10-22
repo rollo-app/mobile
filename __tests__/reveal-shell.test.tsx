@@ -102,7 +102,7 @@ describe("revealed roll", () => {
     expect(style.maxWidth).toBe(Dimensions.get("window").width * 0.45);
   });
 
-  it("opens the presentation automatically the first time, and only once", async () => {
+  it("opens the reveal automatically the first time, and only once", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     mocked.fetchFeed.mockResolvedValue({
       revealed: true,
@@ -117,8 +117,8 @@ describe("revealed roll", () => {
     });
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    expect(await screen.findByTestId("story-surface")).toBeTruthy();
-    expect(screen).toHavePathname("/presentation");
+    expect(await screen.findByTestId("reveal-surface")).toBeTruthy();
+    expect(screen).toHavePathname("/reveal");
     expect(await hasSeenPresentation(SUR)).toBe(true);
   });
 
