@@ -79,7 +79,7 @@ construye lo mínimo que cumple, bien hecho y con el estilo de la app, y nada m�
     "No disponible" como hoy.
   - Ve el perfil de quien lo bloqueó como un perfil privado: "Este perfil es privado".
   - Sus fotos siguen visibles para el resto del rollo.
-- **Desbloquear:** desde el perfil de la persona, o desde Perfil → "Bloqueados" (fila nueva, solo si hay alguien
+- **Desbloquear:** desde el perfil de la persona, o desde Perfil → Ajustes → "Bloqueados" (fila nueva, solo si hay alguien
   bloqueado), una lista simple con foto, nombre y @. Tocar una fila abre su perfil, donde está "Desbloquear". No
   devuelve la amistad.
 - Bloquear a alguien no impide unirse a un rollo con el código (el código lo pasan las personas).
