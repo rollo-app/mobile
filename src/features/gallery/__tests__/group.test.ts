@@ -13,9 +13,12 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   width: null,
   height: null,
   thumbhash: null,
-  author: { id: authorId, name: authorId, username: null, avatarUrl: null },
+  author: { id: authorId, userId: `u-${authorId}`, name: authorId, username: null, avatarUrl: null },
   thumbPath: `/t/${id}`,
   originalPath: `/o/${id}`,
+  authorUserId: "u-m1",
+  featuredByMe: false,
+  featureBlocked: false,
 });
 
 describe("gallery grouping", () => {

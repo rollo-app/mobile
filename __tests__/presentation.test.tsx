@@ -49,7 +49,7 @@ const item = (id: string, iso: string, author: { id: string; name: string; usern
   caption,
   durationS: null,
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
-  author: { username: null, ...author },
+  author: { username: null, userId: `u-${author.id}`, ...author },
   files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
 });
 

@@ -135,8 +135,8 @@ describe("Roll", () => {
       revealed: false,
       revealAt: Date.now() + 9 * DAY,
       items: [
-        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", name: "Fede", username: null, avatarUrl: null } },
-        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", name: "Fede", username: null, avatarUrl: null } },
+        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
+        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
       ],
     });
     await renderRouter(routes, { initialUrl: "/roll" });

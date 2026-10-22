@@ -80,7 +80,7 @@ describe("revealed roll", () => {
       items: [
         {
           id: "a", type: "photo", takenAt: Date.now() - DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
-          thumbhash: null, durationS: null, author: { id: "m1", name: "Juani", username: null, avatarUrl: null },
+          thumbhash: null, durationS: null, author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null },
           files: { thumb: "/m/a/thumb", original: "/m/a/original" },
         },
       ],

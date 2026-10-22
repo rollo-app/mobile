@@ -1,16 +1,42 @@
 import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import { ApiError, unwrap } from "@/api/client";
+import { ApiError, unwrap, type Schemas } from "@/api/client";
 import { authedClient } from "@/features/auth/session";
 import type { User } from "@/features/auth/actions";
 import { normalizeUsername } from "./username";
 
 const AVATAR_MAX = 512;
 
-/** Saves name and username, and the description when given (the server trims it; empty clears it). */
-export async function updateProfile({ name, username, bio }: { name: string; username: string; bio?: string }): Promise<User> {
-  const body = { name: name.trim(), username: normalizeUsername(username), ...(bio === undefined ? {} : { bio }) };
+export type UserProfile = Schemas["UserProfile"];
+export type ProfileVisibility = Schemas["ProfileVisibility"];
+
+/**
+ * Saves only the fields given: name (trimmed), username (normalized), description (the server trims
+ * it; empty clears it) and who sees your profile.
+ */
+export async function updateProfile({
+  name,
+  username,
+  bio,
+  profileVisibility,
+}: {
+  name?: string;
+  username?: string;
+  bio?: string;
+  profileVisibility?: ProfileVisibility;
+}): Promise<User> {
+  const body = {
+    ...(name === undefined ? {} : { name: name.trim() }),
+    ...(username === undefined ? {} : { username: normalizeUsername(username) }),
+    ...(bio === undefined ? {} : { bio }),
+    ...(profileVisibility === undefined ? {} : { profileVisibility }),
+  };
   return unwrap((await authedClient()).PATCH("/me", { body }));
+}
+
+/** Someone's public profile; `canSee` says whether their bio and featured photos are visible to you. */
+export async function fetchUser(userId: string): Promise<UserProfile> {
+  return unwrap((await authedClient()).GET("/users/{userId}", { params: { path: { userId } } }));
 }
 
 /** Is this username free? (Your own counts as available.) The server normalizes it. */

@@ -18,6 +18,12 @@ export type RevealedPhoto = {
   height: number | null;
   thumbhash: string | null;
   author: Schemas["FeedItem"]["author"];
+  /** The author's user id (to open their profile). */
+  authorUserId: string;
+  /** You featured it on your profile. */
+  featuredByMe: boolean;
+  /** Its author doesn't let others feature it (they still can). */
+  featureBlocked: boolean;
   thumbPath: string;
   originalPath: string;
 };
@@ -41,6 +47,9 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
               height: item.height ?? null,
               thumbhash: item.thumbhash,
               author: item.author,
+              authorUserId: item.author.userId,
+              featuredByMe: item.featuredByMe ?? false,
+              featureBlocked: item.featureBlocked ?? false,
               thumbPath: item.files.thumb,
               originalPath: item.files.original,
             },

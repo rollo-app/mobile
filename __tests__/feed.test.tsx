@@ -49,7 +49,7 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   caption: "el viento no perdona",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
+  author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null },
   ...over,
 });
 
@@ -112,8 +112,8 @@ describe("Feed", () => {
   it("names the author by handle, falling back to the name when there is none", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
-        feedItem({ id: "a", caption: null, author: { id: "m2", name: "Fede", username: "fede.s", avatarUrl: null } }),
-        feedItem({ id: "b", caption: null, author: { id: "m3", name: "Cami", username: null, avatarUrl: null } }),
+        feedItem({ id: "a", caption: null, author: { id: "m2", userId: "u-m2", name: "Fede", username: "fede.s", avatarUrl: null } }),
+        feedItem({ id: "b", caption: null, author: { id: "m3", userId: "u-m3", name: "Cami", username: null, avatarUrl: null } }),
       ]),
     );
     await renderRouter(routes, { initialUrl: "/map?view=feed" });

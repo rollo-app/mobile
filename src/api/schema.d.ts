@@ -241,7 +241,7 @@ export interface paths {
         head?: never;
         /**
          * Edit your profile
-         * @description Send any of name, username and bio; fields left out are not changed. The name is shown in every rollo you are part of and does not have to be unique. The username must be unique (case-insensitive); setting your own current one is a no-op. 409 if someone else has it. The bio is trimmed, an empty one clears it (null), and it allows up to 150 characters and 3 lines (400 otherwise).
+         * @description Send any of name, username, bio and profileVisibility; fields left out are not changed. The name is shown in every rollo you are part of and does not have to be unique. The username must be unique (case-insensitive); setting your own current one is a no-op. 409 if someone else has it. The bio is trimmed, an empty one clears it (null), and it allows up to 150 characters and 3 lines (400 otherwise). profileVisibility is "friends" (default) or "public"; any other value is a 400.
          */
         patch: {
             parameters: {
@@ -542,6 +542,65 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A user's profile
+         * @description Name, username and avatar are always visible. The bio (and featured photos) only if canSee: it is you, a friend, or the profile is public; otherwise bio is null. Never includes the email. 404 if the user does not exist.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserProfile"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1611,7 +1670,7 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions and the download paths.
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo and whether its author blocked featuring. Every item carries the author's user id (`author.userId`).
          */
         get: {
             parameters: {
@@ -1807,6 +1866,376 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/{mediaId}/feature-block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Don't let others feature this photo (author only)
+         * @description Removes it from everyone else's profile and stops new ones (they get 409). You can still feature it yourself. Idempotent. 403 if you did not take it; 404 if it does not exist or you are not an active member of its rollo.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Done */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Let others feature this photo again (author only)
+         * @description Idempotent. Photos removed from other profiles while it was blocked do not come back.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Done */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/featured/{mediaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Feature a photo on your profile
+         * @description A photo (not a video) of a revealed rollo you are an active member of, yours or someone else's. Idempotent. 404 if it does not exist or you are not an active member; 409 if the rollo is not revealed, if its author does not let others feature it (unless you took it) or if you already have 60; 400 for a video.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Featured */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Remove a photo from your profile
+         * @description 204 also if it was not featured.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Not featured anymore */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/featured": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A user's featured photos
+         * @description Most recently featured first. Only if you can see the profile (it is you, a friend, or it is public); otherwise 403. Each photo carries a ~5 km zone instead of its location, and its author when it is not the owner; never the rollo or the caption. Photos that were deleted, blocked by their author, or whose rollo the owner left do not show up.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Featured photos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FeaturedPhotos"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/featured/{userId}/{mediaId}/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * File of a featured photo
+         * @description Streamed from R2 under the profile's permission (not the rollo's): 403 if you can't see the profile, 404 if that user does not feature this photo (or it no longer shows on their profile). Same caching as the trip download.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                    mediaId: string;
+                    variant: "thumb" | "original";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description File */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1848,7 +2277,13 @@ export interface components {
              * @example Viajando por el sur
              */
             bio: string | null;
+            profileVisibility: components["schemas"]["ProfileVisibility"];
         };
+        /**
+         * @description Who can see your bio and featured photos: your friends only, or anyone signed in. Name, username and avatar are always visible
+         * @enum {string}
+         */
+        ProfileVisibility: "friends" | "public";
         EmailVerifyRequest: {
             /**
              * @description Trimmed and lowercased
@@ -1874,6 +2309,7 @@ export interface components {
              * @example Viajando por el sur
              */
             bio?: string;
+            profileVisibility?: components["schemas"]["ProfileVisibility"];
         };
         AvatarUpload: {
             /**
@@ -1918,6 +2354,34 @@ export interface components {
             available: boolean;
             /** @description The normalized username that was checked */
             username: string;
+        };
+        UserProfile: {
+            user: components["schemas"]["PublicUser"];
+            /** @description Whether you and this user are friends (false for yourself) */
+            isFriend: boolean;
+            profileVisibility: components["schemas"]["ProfileVisibility"];
+            /** @description Whether you can see the bio and featured photos: it is you, a friend, or the profile is public */
+            canSee: boolean;
+        };
+        PublicUser: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string | null;
+            avatarUrl: string | null;
+            /**
+             * @description Profile description; null if none or if you cannot see this profile (canSee is false)
+             * @example Viajando por el sur
+             */
+            bio: string | null;
         };
         FriendLink: {
             /**
@@ -2205,10 +2669,15 @@ export interface components {
             /** @description ThumbHash in base64. Always returned, also before the reveal, on purpose: it only encodes blurry colors (~25 bytes), the photo cannot be reconstructed from it. */
             thumbhash: string | null;
             durationS: number | null;
-            /** @description `id` is the author's membership id */
+            /** @description `id` is the author's membership id; `userId` their user id */
             author: {
                 /** Format: uuid */
                 id: string;
+                /**
+                 * Format: uuid
+                 * @description The author's user id (to open their profile)
+                 */
+                userId: string;
                 name: string;
                 username: string | null;
                 avatarUrl: string | null;
@@ -2222,7 +2691,51 @@ export interface components {
                 thumb: string;
                 original: string;
             };
+            /** @description Only after the reveal: you featured it on your profile */
+            featuredByMe?: boolean;
+            /** @description Only after the reveal: the author does not let others feature it (they still can) */
+            featureBlocked?: boolean;
         };
+        FeaturedPhotos: {
+            /** @description Most recently featured first */
+            photos: components["schemas"]["FeaturedPhoto"][];
+        };
+        /** @description A photo on someone's profile. Never includes the rollo, the caption or the exact location */
+        FeaturedPhoto: {
+            /** Format: uuid */
+            mediaId: string;
+            takenAt: number;
+            width: number | null;
+            height: number | null;
+            thumbhash: string | null;
+            /** @description Who took it; null when it is the profile owner */
+            author: {
+                /**
+                 * Format: uuid
+                 * @description User id
+                 */
+                id: string;
+                name: string;
+                username: string | null;
+                avatarUrl: string | null;
+            } | null;
+            zone: components["schemas"]["Zone"];
+            /** @example /featured/<userId>/<mediaId>/thumb */
+            thumbPath: string;
+            /** @example /featured/<userId>/<mediaId>/original */
+            originalPath: string;
+        };
+        /**
+         * @description null if the photo has no GPS
+         * @example {
+         *       "lat": -41.075,
+         *       "lng": -71.475
+         *     }
+         */
+        Zone: {
+            lat: number;
+            lng: number;
+        } | null;
     };
     responses: never;
     parameters: never;
