@@ -77,6 +77,17 @@ describe("revealed roll", () => {
     expect(rollTitle()).toBe("Bariloche, cambiar de rollo");
   });
 
+  it("the gallery header title is narrower than the board's so it clears the toolbar", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await markPresentationSeen(SUR);
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await screen.findByText("Este rollo no tiene fotos");
+
+    const button = screen.getAllByLabelText(/, cambiar de rollo$/)[0];
+    const style = StyleSheet.flatten(typeof button.props.style === "function" ? button.props.style({ pressed: false }) : button.props.style);
+    expect(style.maxWidth).toBe(Dimensions.get("window").width * 0.32);
+  });
+
   it("the Rollo tab shows the gallery instead of the board", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await markPresentationSeen(SUR);

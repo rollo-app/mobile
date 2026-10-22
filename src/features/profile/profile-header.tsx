@@ -11,11 +11,12 @@ type Props = {
   avatarUrl: string | null;
   bio: string | null;
   /** How many friends (and, on someone else's profile, how many in common); tapping it opens the list. */
-  friends?: { count: number; mutual?: number; onPress: () => void };
+  friends?: { count: number; mutual?: number; canSee?: boolean; onPress: () => void };
 };
 
 /** Top of a profile (yours or someone's): photo, name, @, the description when there is one and the friend count. */
 export function ProfileHeader({ id, name, username, avatarUrl, bio, friends }: Props) {
+  const friendCount = friends ? formatFriendCount(friends.count, friends.mutual, friends.canSee) : null;
   return (
     <View style={styles.header}>
       <Avatar id={id} name={name} avatarUrl={avatarUrl} size={72} />
@@ -26,10 +27,10 @@ export function ProfileHeader({ id, name, username, avatarUrl, bio, friends }: P
           {bio}
         </Text>
       ) : null}
-      {friends && (
+      {friends && friendCount && (
         // A fact, not an action: secondary text, never the tint.
         <Pressable accessibilityRole="button" onPress={friends.onPress} hitSlop={8} style={({ pressed }) => [styles.count, pressed && styles.pressed]}>
-          <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{formatFriendCount(friends.count, friends.mutual)}</Text>
+          <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{friendCount}</Text>
         </Pressable>
       )}
     </View>

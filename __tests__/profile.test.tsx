@@ -58,11 +58,12 @@ describe("Perfil", () => {
     await waitFor(() => expect(screen).toHavePathname("/friends"));
   });
 
-  it("without friends it says 0 amigos", async () => {
+  it("without friends there is no friend count line", async () => {
     await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
     await renderRouter(routes, { initialUrl: "/me" });
 
-    expect(await screen.findByRole("button", { name: "0 amigos" })).toBeVisible();
+    await screen.findByText("@juani");
+    expect(screen.queryByText(/amigo/)).toBeNull();
   });
 
   it("without a description there is no empty text under the handle", async () => {

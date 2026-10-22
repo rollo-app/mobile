@@ -38,7 +38,7 @@ export function UserProfileScreen({ userId }: { userId: string }) {
         username={user.username}
         avatarUrl={user.avatarUrl}
         bio={user.bio}
-        friends={{ count: friendCount, mutual: mutualCount, onPress: () => router.push(`/user/${userId}/friends`) }}
+        friends={{ count: friendCount, mutual: mutualCount, canSee, onPress: () => router.push(`/user/${userId}/friends`) }}
       />
       <ProfileShowcase own={false} userId={userId} canSee={canSee} />
       {isFriend && <FriendSections userId={userId} name={user.name} />}

@@ -271,6 +271,14 @@ describe("Profile of someone who isn't your friend", () => {
     expect(featuredActions.fetchFeatured).not.toHaveBeenCalledWith("u9");
   });
 
+  it("private non-friend with no friends in common shows no friend count line", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 12, mutualCount: 0 }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByText("Este perfil es privado")).toBeVisible();
+    expect(screen.queryByText(/amigos/)).toBeNull();
+  });
+
   it("public: their description and featured photos, still without friend actions", async () => {
     fetchUser.mockResolvedValue(userProfile({ ...lu, bio: "Sacando fotos del cielo" }, { isFriend: false, profileVisibility: "public" }));
     jest.mocked(featuredActions).fetchFeatured.mockImplementation(async (id) => (id === "u9" ? [featuredPhoto("p1", {}, "u9")] : []));
@@ -329,10 +337,9 @@ describe("Someone's profile header", () => {
   });
 
   it("shows how many friends they have, singular and plural", async () => {
-    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 1 }));
-    const { unmount } = await renderRouter(routes, { initialUrl: "/user/u9" });
-    expect(await screen.findByRole("button", { name: "1 amigo" })).toBeVisible();
-    unmount();
+    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 1, mutualCount: 1 }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+    expect(await screen.findByRole("button", { name: "1 amigo · 1 en común" })).toBeVisible();
   });
 
   it("adds how many are in common", async () => {
