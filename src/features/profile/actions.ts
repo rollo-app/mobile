@@ -9,6 +9,8 @@ const AVATAR_MAX = 512;
 
 export type UserProfile = Schemas["UserProfile"];
 export type ProfileVisibility = Schemas["ProfileVisibility"];
+export type UserFriends = Schemas["UserFriends"];
+export type UserFriend = Schemas["UserFriend"];
 
 /**
  * Saves only the fields given: name (trimmed), username (normalized), description (the server trims
@@ -34,9 +36,14 @@ export async function updateProfile({
   return unwrap((await authedClient()).PATCH("/me", { body }));
 }
 
-/** Someone's public profile; `canSee` says whether their bio and featured photos are visible to you. */
+/** Someone's public profile (bio and friend count always); `canSee` says whether their featured photos and full friend list are visible to you. */
 export async function fetchUser(userId: string): Promise<UserProfile> {
   return unwrap((await authedClient()).GET("/users/{userId}", { params: { path: { userId } } }));
+}
+
+/** Someone's friends: all of them if you may see their profile (`scope: "all"`), else only the ones in common. */
+export async function fetchUserFriends(userId: string): Promise<UserFriends> {
+  return unwrap((await authedClient()).GET("/users/{userId}/friends", { params: { path: { userId } } }));
 }
 
 /** Is this username free? (Your own counts as available.) The server normalizes it. */

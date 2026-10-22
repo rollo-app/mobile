@@ -31,6 +31,7 @@ import RollInfoScreen from "../../app/roll-info";
 import SettingsScreen from "../../app/settings";
 import TripsScreen from "../../app/trips";
 import UserProfileRoute from "../../app/user/[id]";
+import UserFriendsRoute from "../../app/user/[id]/friends";
 
 
 export const routes = {
@@ -51,6 +52,7 @@ export const routes = {
   "photo/[id]": PhotoRoute,
   "featured/[userId]/[mediaId]": FeaturedRoute,
   "user/[id]": UserProfileRoute,
+  "user/[id]/friends": UserFriendsRoute,
   "(auth)/_layout": AuthLayout,
   "(auth)/email": EmailScreen,
   "(auth)/code": CodeScreen,

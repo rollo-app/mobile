@@ -41,7 +41,7 @@ export function SettingsScreen() {
         <Row label="Editar perfil" onPress={() => router.push("/edit-profile")} />
       </Section>
 
-      <Section footer="Si está apagado, solo tus amigos ven tus fotos destacadas y tu descripción.">
+      <Section footer="Si está apagado, solo tus amigos ven tus fotos destacadas y tu lista de amigos.">
         <SwitchRow label="Perfil público" value={visibility.isPublic} onValueChange={(v) => void visibility.setPublic(v)} />
       </Section>
       {visibility.error && <ErrorText>{visibility.error}</ErrorText>}

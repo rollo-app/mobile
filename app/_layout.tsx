@@ -84,7 +84,10 @@ function RootStack() {
           />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
           {/* Someone's profile from a roll or a photo: a push over the tabs (a sheet or viewer closes first). */}
+          {/* No title: the name is already in the profile's header. */}
           <Stack.Screen name="user/[id]" options={{ title: "" }} />
+          {/* "Amigos" or "Amigos en común", set by the screen once it knows. */}
+          <Stack.Screen name="user/[id]/friends" options={{ title: "Amigos" }} />
           <Stack.Screen
             name="edit-profile"
             options={{

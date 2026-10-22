@@ -4,7 +4,7 @@ import { fetchUser } from "./actions";
 export const userKey = (userId: string) => ["user", userId] as const;
 
 /**
- * Someone's profile: name, @ and photo always; bio only if `canSee`. `profile` is the latest known
+ * Someone's profile: name, @, photo, bio and friend count always; `canSee` gates featured photos. `profile` is the latest known
  * data even if stale; `error` appears only if there's no data at all.
  */
 export function useUser(userId: string | undefined) {

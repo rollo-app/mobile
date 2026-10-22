@@ -68,8 +68,11 @@ Decisiones de producto:
   amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el admin
   puede "Salirme del rollo" (conserva sus fotos y puede volver con el código). Los links `https` (Universal Links) llegan con TestFlight.
 - **Perfil de cualquier usuario** (`src/features/friends/user-profile-screen.tsx`, `GET /users/{userId}` →
-  `{ user, isFriend, profileVisibility, canSee }`): nombre, @ y foto se ven siempre; descripción y destacadas solo si `canSee`
-  (sos vos, es tu amigo o su perfil es público), si no "Este perfil es privado"; y si es amigo, además lo de amigo
+  `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
+  encabezado); nombre, @, foto, **descripción** y cantidad de amigos se ven siempre ("12 amigos · 3 en común", texto
+  secundario tocable: abre `/user/<id>/friends`, `GET /users/{userId}/friends` → "Amigos" con la lista completa si `canSee`,
+  si no "Amigos en común" con solo los comunes; en tu Perfil la cantidad sale de `useFriends()` y lleva a la tab Amigos);
+  destacadas solo si `canSee` (sos vos, es tu amigo o su perfil es público), si no "Este perfil es privado"; y si es amigo, además lo de amigo
   (`useFriend` solo con `isFriend`). Se llega desde la tab Amigos (`/friends/user/<id>`) y desde afuera con `/user/<id>`
   (push en el stack raíz): tocar un miembro en "En el rollo" (vos no sos tocable), el avatar o el nombre del autor en la
   tarjeta del mapa, en una fila del Feed y en el visor. Tocarte a vos lleva a Perfil (`/me`). Todo pasa por
@@ -82,7 +85,8 @@ Decisiones de producto:
   coordenada: la ubicación va como **zona de ~5 km** (celda de 0.05°). En un perfil, "Fotos | Mapa": la grilla (con la
   insignia del autor si no es el dueño del perfil; tocar una abre `/featured/<userId>/<mediaId>`) y el mapa por zonas.
   **Visibilidad:** `profileVisibility` `"friends"` (por defecto) o `"public"`, con el switch "Perfil público" de Ajustes
-  (`PATCH /me`, error inline): apagado, solo tus amigos ven tus destacadas y tu descripción.
+  (`PATCH /me`, error inline): apagado, solo tus amigos ven tus destacadas y tu lista de amigos
+  (la descripción y la cantidad de amigos son siempre públicas).
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
@@ -221,7 +225,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 794 tests
+npm test                      # 823 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

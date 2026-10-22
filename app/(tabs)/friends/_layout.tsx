@@ -4,7 +4,7 @@ export default function Layout() {
   return (
     <Stack>
       <Stack.Screen name="index" options={{ title: "Amigos", headerLargeTitle: true }} />
-      {/* The title is the friend's name, set by the screen once it loads. */}
+      {/* No title: the name is already in the profile's header. */}
       <Stack.Screen name="user/[id]" options={{ title: "" }} />
     </Stack>
   );

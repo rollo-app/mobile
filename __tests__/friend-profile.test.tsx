@@ -11,6 +11,8 @@ import { tabBar } from "@/test/tab-bar";
 import * as featuredActions from "@/features/featured/actions";
 import * as profileActions from "@/features/profile/actions";
 import { featuredPhoto } from "@/test/featured";
+// The navigation bar is drawn natively: its options are read from the container instead.
+import { navigationRef } from "expo-router/build/global-state/navigationRef";
 
 jest.mock("@/features/friends/actions");
 // Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
@@ -60,6 +62,7 @@ const myTrips = [
 
 let alert: jest.SpyInstance;
 let fetchUser: jest.SpyInstance;
+let fetchUserFriends: jest.SpyInstance;
 
 /** `GET /users/{id}` for someone: by default a friend you can see. */
 const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserProfile> = {}): profileActions.UserProfile => ({
@@ -67,6 +70,8 @@ const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserPr
   isFriend: true,
   profileVisibility: "friends",
   canSee: true,
+  friendCount: 12,
+  mutualCount: 0,
   ...over,
 });
 
@@ -83,6 +88,7 @@ beforeEach(async () => {
   fetchUser = jest
     .spyOn(profileActions, "fetchUser")
     .mockImplementation(async (id: string) => userProfile(id === "u3" ? tomi : cami));
+  fetchUserFriends = jest.spyOn(profileActions, "fetchUserFriends").mockResolvedValue({ scope: "all", friends: [] });
   jest.mocked(featuredActions).fetchFeatured.mockClear();
   mocked.fetchFriend.mockClear();
 });
@@ -90,6 +96,7 @@ beforeEach(async () => {
 afterEach(() => {
   alert.mockRestore();
   fetchUser.mockRestore();
+  fetchUserFriends.mockRestore();
 });
 
 const confirmRemoval = () => {
@@ -294,5 +301,117 @@ describe("Profile of someone who isn't your friend", () => {
     expect(screen.queryByText("Rollos en común")).toBeNull();
     expect(screen.queryByRole("button", { name: "Borrar amigo" })).toBeNull();
     expect(screen.queryByText("No es tu amigo")).toBeNull();
+  });
+});
+
+describe("Someone's profile header", () => {
+  it("has no title in the navigation bar: the name is already in the header", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    await screen.findByText("@lu");
+    await waitFor(() => expect(navigationRef.getCurrentOptions()).toEqual(expect.objectContaining({ title: "" })));
+  });
+
+  it("has no title inside Amigos either", async () => {
+    await renderRouter(routes, { initialUrl: "/friends/user/u3" });
+
+    await screen.findByText("@tomi");
+    await waitFor(() => expect(navigationRef.getCurrentOptions()).toEqual(expect.objectContaining({ title: "" })));
+  });
+
+  it("shows the description of a private profile that isn't your friend", async () => {
+    fetchUser.mockResolvedValue(userProfile({ ...lu, bio: "Sacando fotos del cielo" }, { isFriend: false, canSee: false }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByText("Sacando fotos del cielo")).toBeVisible();
+    expect(screen.getByText("Este perfil es privado")).toBeVisible();
+  });
+
+  it("shows how many friends they have, singular and plural", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 1 }));
+    const { unmount } = await renderRouter(routes, { initialUrl: "/user/u9" });
+    expect(await screen.findByRole("button", { name: "1 amigo" })).toBeVisible();
+    unmount();
+  });
+
+  it("adds how many are in common", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 12, mutualCount: 3 }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByRole("button", { name: "12 amigos · 3 en común" })).toBeVisible();
+  });
+
+  it("without friends in common it only shows the count", async () => {
+    await renderRouter(routes, { initialUrl: "/user/u2" });
+
+    expect(await screen.findByRole("button", { name: "12 amigos" })).toBeVisible();
+  });
+});
+
+describe("Someone's friends", () => {
+  const ana = { id: "u5", name: "Ana", username: "ana", avatarUrl: null };
+
+  it("tapping the count opens their whole list when you can see their profile", async () => {
+    fetchUserFriends.mockResolvedValue({ scope: "all", friends: [ana, { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null }] });
+    await renderRouter(routes, { initialUrl: "/user/u2" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "12 amigos" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u2/friends"));
+    expect(fetchUserFriends).toHaveBeenCalledWith("u2");
+    expect(await screen.findByRole("button", { name: "Ana" })).toBeVisible();
+    expect(navigationRef.getCurrentOptions()).toEqual(expect.objectContaining({ title: "Amigos" }));
+    expect(screen.queryByText(/Su perfil es privado/)).toBeNull();
+  });
+
+  it("only the friends in common on a private profile, with the explanation", async () => {
+    fetchUserFriends.mockResolvedValue({ scope: "mutual", friends: [ana] });
+    await renderRouter(routes, { initialUrl: "/user/u9/friends" });
+
+    expect(await screen.findByText(/Su perfil es privado/)).toBeVisible();
+    expect(navigationRef.getCurrentOptions()).toEqual(expect.objectContaining({ title: "Amigos en común" }));
+    expect(screen.getByText("Su perfil es privado: solo ves los amigos que tienen en común.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Ana" })).toBeVisible();
+  });
+
+  it("says when they have no friends", async () => {
+    await renderRouter(routes, { initialUrl: "/user/u9/friends" });
+    expect(await screen.findByText("Todavía no tiene amigos.")).toBeVisible();
+  });
+
+  it("says when you have no friends in common", async () => {
+    fetchUserFriends.mockResolvedValue({ scope: "mutual", friends: [] });
+    await renderRouter(routes, { initialUrl: "/user/u9/friends" });
+    expect(await screen.findByText("No tienen amigos en común.")).toBeVisible();
+  });
+
+  it("tapping someone in the list opens their profile", async () => {
+    fetchUserFriends.mockResolvedValue({ scope: "all", friends: [ana] });
+    fetchUser.mockImplementation(async (id: string) => userProfile(id === "u5" ? { ...ana, bio: null } : cami, { isFriend: id !== "u5" }));
+    await renderRouter(routes, { initialUrl: "/user/u2/friends" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Ana" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u5"));
+    expect(await screen.findByText("@ana")).toBeVisible();
+  });
+
+  it("tapping yourself in the list opens your Perfil", async () => {
+    fetchUserFriends.mockResolvedValue({ scope: "all", friends: [{ id: "u1", name: "Juani", username: "juani", avatarUrl: null }] });
+    await renderRouter(routes, { initialUrl: "/user/u2/friends" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Juani" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/me"));
+  });
+
+  it("shows a retry when the list can't be loaded", async () => {
+    fetchUserFriends.mockRejectedValueOnce(new Error("Sin conexión")).mockResolvedValue({ scope: "all", friends: [ana] });
+    await renderRouter(routes, { initialUrl: "/user/u2/friends" });
+
+    expect(await screen.findByText("Sin conexión")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByRole("button", { name: "Ana" })).toBeVisible();
   });
 });

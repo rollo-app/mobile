@@ -568,7 +568,7 @@ export interface paths {
         };
         /**
          * A user's profile
-         * @description Name, username and avatar are always visible. The bio (and featured photos) only if canSee: it is you, a friend, or the profile is public; otherwise bio is null. Never includes the email. 404 if the user does not exist.
+         * @description Name, username, avatar, bio and friend counts are always visible. Featured photos and the full friend list only if canSee: it is you, a friend, or the profile is public. Never includes the email. 404 if the user does not exist.
          */
         get: {
             parameters: {
@@ -588,6 +588,65 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["UserProfile"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A user's friends
+         * @description If you can see the profile (it is you, a friend, or the profile is public) every friend (scope all); otherwise only the friends you have in common (scope mutual). Sorted by name. Only id, name, username and avatar. 404 if the user does not exist.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User's friends */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserFriends"];
                     };
                 };
                 /** @description Missing or invalid session token */
@@ -2360,8 +2419,12 @@ export interface components {
             /** @description Whether you and this user are friends (false for yourself) */
             isFriend: boolean;
             profileVisibility: components["schemas"]["ProfileVisibility"];
-            /** @description Whether you can see the bio and featured photos: it is you, a friend, or the profile is public */
+            /** @description Whether you can see the featured photos and the full friend list: it is you, a friend, or the profile is public */
             canSee: boolean;
+            /** @description How many friends this user has (always public) */
+            friendCount: number;
+            /** @description How many of your friends are also this user's friends (0 for yourself) */
+            mutualCount: number;
         };
         PublicUser: {
             /**
@@ -2378,10 +2441,34 @@ export interface components {
             username: string | null;
             avatarUrl: string | null;
             /**
-             * @description Profile description; null if none or if you cannot see this profile (canSee is false)
+             * @description Profile description; null if none. Always public, whatever canSee says
              * @example Viajando por el sur
              */
             bio: string | null;
+        };
+        UserFriends: {
+            /**
+             * @description all: every friend of this user (canSee); mutual: only the friends you have in common
+             * @enum {string}
+             */
+            scope: "all" | "mutual";
+            /** @description Sorted by name, case-insensitive */
+            friends: components["schemas"]["UserFriend"][];
+        };
+        UserFriend: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string | null;
+            avatarUrl: string | null;
         };
         FriendLink: {
             /**

@@ -48,6 +48,23 @@ describe("Perfil", () => {
     expect(screen.queryByRole("button", { name: /^Mapa sin señal/ })).toBeNull();
   });
 
+  it("shows how many friends you have and tapping it opens Amigos", async () => {
+    jest.mocked(friendActions).fetchFriends.mockResolvedValue([{ id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null }]);
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "1 amigo" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/friends"));
+  });
+
+  it("without friends it says 0 amigos", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    expect(await screen.findByRole("button", { name: "0 amigos" })).toBeVisible();
+  });
+
   it("without a description there is no empty text under the handle", async () => {
     await signInAs({ user: { ...USER, bio: null }, trips: [tripSummary(SUR, "Viaje al sur")] });
     await renderRouter(routes, { initialUrl: "/me" });
@@ -95,7 +112,7 @@ describe("Ajustes: Perfil público", () => {
 
     const toggle = await screen.findByRole("switch", { name: "Perfil público" });
     expect(toggle.props.value).toBe(false);
-    expect(screen.getByText("Si está apagado, solo tus amigos ven tus fotos destacadas y tu descripción.")).toBeVisible();
+    expect(screen.getByText("Si está apagado, solo tus amigos ven tus fotos destacadas y tu lista de amigos.")).toBeVisible();
   });
 
   it("turning it on saves profileVisibility public with PATCH /me", async () => {
@@ -264,7 +281,7 @@ describe("Perfil: fotos destacadas", () => {
 
   it("on a friend's profile the badge shows on the photos the friend didn't take", async () => {
     jest.mocked(friendActions).fetchFriend.mockResolvedValue({ friend: { ...CAMI, bio: null }, commonTrips: [] });
-    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null }, isFriend: true, profileVisibility: "friends", canSee: true });
+    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null }, isFriend: true, profileVisibility: "friends", canSee: true, friendCount: 0, mutualCount: 0 });
     featured.fetchFeatured.mockImplementation(async (userId) =>
       userId === "u2"
         ? [

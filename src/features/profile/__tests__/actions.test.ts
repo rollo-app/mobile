@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 import { setSessionToken } from "@/storage/session";
-import { checkUsername, fetchUser, updateProfile, uploadAvatar } from "../actions";
+import { checkUsername, fetchUser, fetchUserFriends, updateProfile, uploadAvatar } from "../actions";
 
 jest.mock("expo-image-manipulator", () => {
   const ctx = { resize: jest.fn(), renderAsync: jest.fn(async () => ({ saveAsync: jest.fn(async () => ({ uri: "file:///cache/avatar.jpg", width: 512, height: 512 })) })) };
@@ -51,7 +51,7 @@ describe("updateProfile", () => {
 
 describe("fetchUser", () => {
   it("GETs /users/{userId} and returns the profile", async () => {
-    const profile = { user: { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null }, isFriend: false, profileVisibility: "friends", canSee: false };
+    const profile = { user: { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null }, isFriend: false, profileVisibility: "friends", canSee: false, friendCount: 3, mutualCount: 1 };
     const fetchMock = mockApi([[/^GET \/users\/u2$/, 200, profile]]);
 
     expect(await fetchUser("u2")).toEqual(profile);
@@ -61,6 +61,21 @@ describe("fetchUser", () => {
   it("propagates a 404", async () => {
     mockApi([[/./, 404, { error: "No existe" }]]);
     await expect(fetchUser("u2")).rejects.toThrow("No existe");
+  });
+});
+
+describe("fetchUserFriends", () => {
+  it("GETs /users/{userId}/friends and returns the scope and the list", async () => {
+    const body = { scope: "mutual", friends: [{ id: "u3", name: "Tomi", username: "tomi", avatarUrl: null }] };
+    const fetchMock = mockApi([[/^GET \/users\/u2\/friends$/, 200, body]]);
+
+    expect(await fetchUserFriends("u2")).toEqual(body);
+    expect((fetchMock.mock.calls[0]![0] as Request).headers.get("Authorization")).toBe("Bearer tok");
+  });
+
+  it("propagates a 404", async () => {
+    mockApi([[/./, 404, { error: "No existe" }]]);
+    await expect(fetchUserFriends("u2")).rejects.toThrow("No existe");
   });
 });
 

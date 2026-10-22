@@ -106,6 +106,8 @@ describe("revealed roll", () => {
       isFriend: false,
       profileVisibility: "friends",
       canSee: false,
+      friendCount: 0,
+      mutualCount: 0,
     });
     const base = detail();
     const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const };
