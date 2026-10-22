@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import * as friendActions from "@/features/friends/actions";
 import * as tripActions from "@/features/trips/actions";
 import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
+import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
@@ -144,9 +145,10 @@ describe("Add friends to a roll", () => {
     await waitFor(() => expect(screen).toHavePathname("/friends"));
   });
 
-  it("after the reveal 'Sobre el rollo' no longer offers to add friends", async () => {
+  it("after the reveal the 'Rollo' segment no longer offers to add friends", async () => {
     trips.fetchTrip.mockResolvedValue(detail({ revealed: true, revealAt: Date.now() - DAY }));
-    await renderRouter(routes, { initialUrl: "/roll-info" });
+    await markPresentationSeen(SUR);
+    await renderRouter(routes, { initialUrl: "/roll?view=roll" });
 
     expect(await screen.findByText("Invitar")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();

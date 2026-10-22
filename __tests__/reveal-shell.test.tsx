@@ -7,8 +7,19 @@ import { hasSeenPresentation, markPresentationSeen } from "@/storage/presentatio
 import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
+import { RollDates } from "@/features/roll/roll-dates";
+import { UploadStatusSection } from "@/features/capture/upload-status-section";
 
 jest.mock("@/features/trips/actions");
+// Pass-throughs, so the tests can see which screens render the shared dates and the uploads.
+jest.mock("@/features/roll/roll-dates", () => {
+  const actual = jest.requireActual("@/features/roll/roll-dates");
+  return { ...actual, RollDates: jest.fn(actual.RollDates) };
+});
+jest.mock("@/features/capture/upload-status-section", () => {
+  const actual = jest.requireActual("@/features/capture/upload-status-section");
+  return { ...actual, UploadStatusSection: jest.fn(actual.UploadStatusSection) };
+});
 const mocked = jest.mocked(actions);
 const notifications = jest.mocked(Notifications);
 
@@ -88,54 +99,6 @@ describe("revealed roll", () => {
     expect(style.maxWidth).toBe(Dimensions.get("window").width * 0.45);
   });
 
-  it("the Rollo tab shows the gallery instead of the board", async () => {
-    mocked.fetchTrip.mockResolvedValue(detail());
-    await markPresentationSeen(SUR);
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
-
-    expect(await screen.findByText("Este rollo no tiene fotos")).toBeVisible();
-    expect(screen.queryByText("Fechas")).toBeNull();
-  });
-
-  it("the gallery has a 'Sobre el rollo' menu action that opens the invite and the members", async () => {
-    mocked.fetchTrip.mockResolvedValue(detail());
-    await markPresentationSeen(SUR);
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
-
-    expect(screen.queryByRole("button", { name: "Sobre el rollo" })).toBeNull();
-    await fireEvent.press(await screen.findByRole("menuitem", { name: "Sobre el rollo" }));
-
-    expect(screen).toHavePathname("/roll-info");
-    expect(await screen.findByText("Invitar")).toBeVisible();
-    expect(screen.getByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("En el rollo · 1")).toBeVisible();
-    expect(screen.queryByRole("button", { name: /^Mapa sin señal/ })).toBeNull();
-  });
-
-  it("tapping a member in 'Sobre el rollo' closes the sheet and opens their profile", async () => {
-    const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
-      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
-      isFriend: false,
-      profileVisibility: "friends",
-      canSee: false,
-      friendCount: 0,
-      mutualCount: 0,
-    });
-    const base = detail();
-    const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const };
-    mocked.fetchTrip.mockResolvedValue({ ...base, members: [...base.members, fede] });
-    await markPresentationSeen(SUR);
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
-
-    await fireEvent.press(await screen.findByRole("menuitem", { name: "Sobre el rollo" }));
-    await fireEvent.press(await screen.findByRole("button", { name: "Fede" }));
-
-    await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
-    expect(await screen.findByText("Este perfil es privado")).toBeVisible();
-    expect(screen.queryByText("En el rollo · 2")).toBeNull();
-    fetchUser.mockRestore();
-  });
-
   it("opens the presentation automatically the first time, and only once", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     mocked.fetchFeed.mockResolvedValue({
@@ -171,6 +134,116 @@ describe("revealed roll", () => {
 
     expect(await screen.findByText("Fechas")).toBeVisible();
     expect(screen).toHavePathname("/roll");
+  });
+});
+
+const item = (id: string, type: "photo" | "video") => ({
+  id, type, takenAt: Date.now() - 3 * DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
+  thumbhash: null, durationS: type === "video" ? 9 : null,
+  author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null },
+  files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
+});
+
+describe("revealed roll: Galería | Rollo", () => {
+  const revealedWithMedia = async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [item("a", "photo"), item("b", "video")] });
+    await markPresentationSeen(SUR);
+  };
+
+  it("before the reveal there's no segmented control and the board shows the shared dates", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+
+    expect(await screen.findByText("Fechas")).toBeVisible();
+    expect(jest.mocked(RollDates)).toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Galería" })).toBeNull();
+  });
+
+  it("after the reveal the gallery comes first, under a Galería | Rollo control", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+
+    expect(await screen.findByTestId("gallery-list")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Galería" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Rollo" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Seleccionar" })).toBeTruthy();
+    expect(screen.queryByText("Fechas")).toBeNull();
+  });
+
+  it("the gallery menu no longer has 'Sobre el rollo'", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+
+    expect(await screen.findByRole("menuitem", { name: "Guardar todo en Fotos" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Sobre el rollo" })).toBeNull();
+  });
+
+  it("'Rollo' shows the summary, the dates, the uploads and the members, without the gallery toolbar", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await screen.findByTestId("gallery-list");
+    jest.mocked(RollDates).mockClear();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Rollo" }));
+
+    expect(screen).toHaveSearchParams({ view: "roll" });
+    expect(await screen.findByText("1 foto · 1 video · 1 persona · 4 días")).toBeVisible();
+    expect(screen.getByText("Fechas")).toBeVisible();
+    expect(screen.getByText("Se reveló")).toBeVisible();
+    expect(jest.mocked(RollDates)).toHaveBeenCalled();
+    expect(jest.mocked(UploadStatusSection)).toHaveBeenCalledWith(expect.objectContaining({ tripId: SUR }), undefined);
+    expect(screen.getByText("Invitar")).toBeVisible();
+    expect(screen.getByText("HUB5FT")).toBeVisible();
+    expect(screen.getByText("En el rollo · 1")).toBeVisible();
+    expect(screen.queryByText("Hoy")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Guardar todo en Fotos" })).toBeNull();
+  });
+
+  it("going back to 'Galería' keeps the same gallery mounted", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    const list = await screen.findByTestId("gallery-list");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Rollo" }));
+    await screen.findByText("Invitar");
+    await fireEvent.press(screen.getByRole("button", { name: "Galería" }));
+
+    expect(screen.getByTestId("gallery-list")).toBe(list);
+    expect(screen.queryByText("Invitar")).toBeNull();
+    expect(screen.getByRole("button", { name: "Seleccionar" })).toBeTruthy();
+  });
+
+  it("/roll?view=roll opens straight on 'Rollo'", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+
+    expect(await screen.findByText("Invitar")).toBeVisible();
+    expect(screen.getByText("1 foto · 1 video · 1 persona · 4 días")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
+  });
+
+  it("tapping a member in 'Rollo' opens their profile", async () => {
+    const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
+      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
+      isFriend: false,
+      profileVisibility: "friends",
+      canSee: false,
+      friendCount: 0,
+      mutualCount: 0,
+    });
+    const base = detail();
+    const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const };
+    mocked.fetchTrip.mockResolvedValue({ ...base, members: [...base.members, fede] });
+    await markPresentationSeen(SUR);
+    await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Fede" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
+    expect(await screen.findByText("Este perfil es privado")).toBeVisible();
+    fetchUser.mockRestore();
   });
 });
 

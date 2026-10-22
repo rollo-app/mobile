@@ -27,7 +27,6 @@ import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
 import PhotoRoute from "../../app/photo/[id]";
 import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
-import RollInfoScreen from "../../app/roll-info";
 import SettingsScreen from "../../app/settings";
 import TripsScreen from "../../app/trips";
 import UserProfileRoute from "../../app/user/[id]";
@@ -45,7 +44,6 @@ export const routes = {
   settings: SettingsScreen,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
-  "roll-info": RollInfoScreen,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
   presentation: PresentationScreen,

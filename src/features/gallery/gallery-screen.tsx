@@ -142,8 +142,11 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPre
   );
 }, sameCell);
 
-/** Revealed roll: grid grouped by day, filter by person, and downloads to Photos. */
-export function GalleryScreen({ tripId }: { tripId: string }) {
+/**
+ * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
+ * its header buttons while it stays mounted behind another view.
+ */
+export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId: string; toolbar?: boolean }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -273,9 +276,6 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
         )}
         {!selecting && (
           <Stack.Toolbar.Menu icon="ellipsis.circle" accessibilityLabel="Más opciones">
-            <Stack.Toolbar.MenuAction icon="person.2" onPress={() => router.push("/roll-info")}>
-              Sobre el rollo
-            </Stack.Toolbar.MenuAction>
             <Stack.Toolbar.Menu title="Filtrar por persona" icon="person.2">
               <Stack.Toolbar.MenuAction isOn={authorId === null} onPress={() => setAuthorId(null)}>
                 Todos
@@ -369,9 +369,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
   return (
     <>
       {body}
-      {/* Large title that collapses with the list (contentInsetAdjustmentBehavior), like Photos. Switching rolls lives in Perfil. */}
-      <Stack.Screen options={{ title: "Galería", headerLargeTitle: true }} />
-      {toolbar}
+      {showToolbar && toolbar}
       {!bar && !selecting && featureError && !featureErrorDismissed && (
         <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
           <View style={styles.barRow}>

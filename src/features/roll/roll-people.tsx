@@ -8,10 +8,9 @@ import type { TripDetail } from "@/features/trips/actions";
 import { ErrorText, Row, Section } from "@/ui/components";
 
 /**
- * The invite (code and share) and the members of a roll. Tapping a member (not you) opens their
- * profile; `inSheet` (the "Sobre el rollo" sheet) closes the sheet first.
+ * The invite (code and share) and the members of a roll. Tapping a member (not you) opens their profile.
  */
-export function RollPeople({ detail, inSheet = false }: { detail: TripDetail; inSheet?: boolean }) {
+export function RollPeople({ detail }: { detail: TripDetail }) {
   const openProfile = useOpenProfile();
   const share = () =>
     Share.share({ message: `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}` });
@@ -39,7 +38,7 @@ export function RollPeople({ detail, inSheet = false }: { detail: TripDetail; in
             label={m.name}
             detail={m.username ? formatHandle(m.username) : undefined}
             value={m.role === "admin" ? "Admin" : undefined}
-            onPress={m.userId === detail.me.userId ? undefined : () => openProfile(m.userId, { leave: inSheet })}
+            onPress={m.userId === detail.me.userId ? undefined : () => openProfile(m.userId)}
           />
         ))}
       </Section>

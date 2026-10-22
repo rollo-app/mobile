@@ -1,15 +1,15 @@
 import { Image } from "expo-image";
-import { Stack } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
-import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
+import { RevealedRollScreen } from "@/features/roll/revealed-roll-screen";
+import { RollDates } from "@/features/roll/roll-dates";
 import { RollPeople } from "@/features/roll/roll-people";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { buildContactSheet } from "@/features/roll/contact-sheet";
 import { Welcome } from "@/features/roll/welcome";
 import { hasNoTrips } from "@/features/trips/active";
-import { daysUntil, formatDateTime, startsIn } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
@@ -20,19 +20,20 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 
 const COLUMNS = 6;
 
-/** After the reveal the Rollo tab is the gallery; before, the board. */
+/** After the reveal the Rollo tab is "Galería | Rollo"; before, the board. */
 export default function RollScreen() {
   const { trip, loaded } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
+  const { view } = useLocalSearchParams<{ view?: string }>();
   if (hasNoTrips(loaded, trip)) return <Welcome />;
-  const gallery = trip && phase === "revealed";
+  const revealed = trip && phase === "revealed";
   // The gallery's right toolbar (select + menu) is wider, so its title gets less room.
-  const maxWidthRatio = gallery ? 0.45 : 0.5;
+  const maxWidthRatio = revealed && view !== "roll" ? 0.45 : 0.5;
   return (
     <>
       {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.name} maxWidthRatio={maxWidthRatio} /> }} />}
-      {gallery ? <GalleryScreen tripId={trip.id} /> : <RollBoard />}
+      {revealed ? <RevealedRollScreen tripId={trip.id} /> : <RollBoard />}
     </>
   );
 }
@@ -46,13 +47,6 @@ function RollBoard() {
   const phase = useRollPhase(detail);
   // Your queued photos are already in the roll, even if they haven't been uploaded yet.
   const total = (detail?.totalUploaded ?? 0) + pending;
-
-  const tz = detail?.trip.timezone ?? "";
-  const at = (ms: number) => formatDateTime(ms, Date.now(), tz);
-  const startNote = phase === "upcoming" ? startsIn(detail!.trip.startsAt, Date.now(), tz) : "Empezó";
-  const endNote = phase === "ended" || phase === "revealed" ? "Terminó" : undefined;
-  const revealNote =
-    phase === "revealed" ? "Se reveló" : detail ? daysUntil(detail.trip.revealAt, Date.now(), tz) : undefined;
 
   return (
     <Screen grouped>
@@ -81,11 +75,7 @@ function RollBoard() {
             </Section>
           )}
 
-          <Section title="Fechas">
-            <Row label="Empieza" value={at(detail.trip.startsAt)} note={startNote} />
-            <Row label="Termina" value={at(detail.trip.endsAt)} note={endNote} />
-            <Row label="Se revela" value={at(detail.trip.revealAt)} note={revealNote} />
-          </Section>
+          <RollDates detail={detail} phase={phase} />
 
           <UploadStatusSection tripId={detail.trip.id} timeZone={detail.trip.timezone} />
           <RollPeople detail={detail} />

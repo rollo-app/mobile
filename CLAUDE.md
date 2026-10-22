@@ -76,7 +76,7 @@ Decisiones de producto:
   (`useFriend` solo con `isFriend`). Se llega desde la tab Amigos (`/friends/user/<id>`) y desde afuera con `/user/<id>`
   (push en el stack raíz): tocar un miembro en "En el rollo" (vos no sos tocable), el avatar o el nombre del autor en la
   tarjeta del mapa, en una fila del Feed y en el visor. Tocarte a vos lleva a Perfil (`/me`). Todo pasa por
-  `useOpenProfile()`: desde una sheet ("Sobre el rollo") o el visor (modales) primero se cierra el modal (`leave`) y después
+  `useOpenProfile()`: desde una sheet o el visor (modales) primero se cierra el modal (`leave`) y después
   se hace el push, porque un push después de un modal se presentaría como otro modal.
 - **Fotos destacadas** (`src/features/featured/`): de un rollo **revelado** donde sos miembro activo destacás **fotos** (no
   videos), tuyas o de otros, hasta **60**: en el visor con la pill "Destacar" / "Destacada" (`star` / `star.fill`) y en la
@@ -107,8 +107,11 @@ Decisiones de producto:
   vuelve al Mapa enfocando ese pin. El segmento Feed existe solo antes del revelado. "Solo hoy" va en el menú de filtros.
   La lógica vive en `src/features/map/roll-map.tsx`, `src/features/map/activity-screen.tsx` y `src/features/feed/feed-list.tsx`.
 - Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
-  miembros): todo lo del rollo activo vive acá. Revelado, la tab es la galería y esos datos
-  (invitar, miembros, subidas) salen del botón "Sobre el rollo" del header (sheet `roll-info`). La actividad
+  miembros): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
+  `gallery` por defecto o `roll`, como "Mapa | Feed"; la galería queda montada y su toolbar solo se ve en Galería). El
+  segmento Rollo es una lista agrupada con el resumen ("64 fotos · 3 videos · 8 personas · 6 días"), Fechas (el mismo
+  `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,
+  `roll-overview.tsx`). La actividad
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
 - Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
@@ -140,7 +143,7 @@ Decisiones de producto:
   - **Error al cargar una pantalla:** estado de error en la pantalla con botón "Reintentar"; si hay datos
     viejos, se mantienen.
   - **Procesos de fondo (subida de fotos):** nunca toasts ni alertas. Estado persistente: ícono de nube en
-    Rollo si hay pendientes y en el tablero de Rollo (sección de subidas, y "Sobre el rollo" una vez revelado) "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
+    Rollo si hay pendientes y en el tablero de Rollo (sección de subidas, y el segmento "Rollo" una vez revelado) "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
   - **Alerta nativa** (`Alert`) solo para algo grave e irreversible (por ej. el rollo se reveló con fotos
     tuyas sin subir) o para confirmar una acción destructiva (borrar como admin).
   - Si un momento puntual necesita una confirmación fugaz, usar `burnt` (HUD nativo tipo AirPods), no un
@@ -225,7 +228,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 823 tests
+npm test                      # 839 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
