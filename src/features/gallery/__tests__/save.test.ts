@@ -26,9 +26,12 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   width: null,
   height: null,
   thumbhash: null,
-  author: { id: "m1", name: "Cami", username: null, avatarUrl: null },
+  author: { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null },
   thumbPath: `/trips/t/media/${id}/thumb`,
   originalPath: `/trips/t/media/${id}/original`,
+  authorUserId: "u-m1",
+  featuredByMe: false,
+  featureBlocked: false,
 });
 
 const ctx = {
@@ -74,7 +77,7 @@ describe("createSaver", () => {
     const order: string[] = [];
     (embedMetadataIfMissing as jest.Mock).mockImplementationOnce(async () => void order.push("embed"));
     (Asset.create as jest.Mock).mockImplementationOnce(async () => void order.push("create"));
-    const withData = { ...photo("a"), takenAt: 1_800_000_000_000, lat: -50.3, lng: -72.2, caption: "Viento", author: { id: "m1", name: "Cami", username: null, avatarUrl: null } };
+    const withData = { ...photo("a"), takenAt: 1_800_000_000_000, lat: -50.3, lng: -72.2, caption: "Viento", author: { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null } };
     await createSaver(ctx)(withData);
     expect(embedMetadataIfMissing).toHaveBeenCalledWith(expect.anything(), {
       takenAt: 1_800_000_000_000,

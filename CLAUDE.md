@@ -14,14 +14,14 @@ Decisiones de producto:
 
 - **Solo iOS** en la primera versión. **Con cuentas:** login con **email + código de 6 caracteres (letras y números, vale 5 min)** (sin
   contraseña), obligatorio al abrir la app (`app/(auth)/`: email → código → "Completá tu perfil" si es nueva o
-  no tiene nombre). El perfil es **nombre + foto** (`GET/PATCH /me`, foto con `expo-image-picker` 1:1 →
+  no tiene nombre). El perfil es **nombre + foto + descripción opcional** (`bio`, hasta 150 caracteres y 3 renglones; `GET/PATCH /me`, foto con `expo-image-picker` 1:1 →
   512 px JPEG → `POST /me/avatar` → PUT → complete; sin foto, círculo con la inicial y `memberColor`). Además tiene un **nombre de usuario único** (`@usuario`, `PATCH /me`): se pide en "Completá tu perfil" junto al nombre
-  (sugerido desde el email, con chequeo de disponibilidad) y se muestra en Perfil, miembros y Feed. Crear rollo
+  (sugerido desde el email, con chequeo de disponibilidad) y se muestra en Perfil, Amigos, miembros y Feed. Crear rollo
   o unirse es solo con el código de 6 (`POST /trips/join`; el server pide nombre en el perfil). **La sesión es un
   único token en SecureStore (`rollo.session`)** que usan todas las llamadas; un `401` en cualquiera cierra la
   sesión local y vuelve al login (`setUnauthorizedHandler` en `src/api/client.ts`). Los rollos salen de
   `GET /me/trips` (cache de TanStack Query); el rollo activo es el último que abriste y solo se guarda su id
-  (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Perfil; cerrar sesión **no** borra la
+  (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
   cola de fotos pendientes.
 - **Cámara nativa del sistema** (`expo-image-picker` → `launchCameraAsync`), no una cámara propia:
   funciona mejor, sobre todo en video. Lo que se saca **no queda en el carrete**: se sube y se borra
@@ -37,12 +37,12 @@ Decisiones de producto:
   Con la app cerrada o suspendida sube `expo-background-task` (tarea `rollo-upload`, BGProcessingTask de iOS: solo
   con red, cuándo corre lo decide el sistema, ~25 s por pasada con corte limpio entre ítems); los PUT usan sesión
   de URLSession en background. Si se mata la app a mano, iOS no la despierta hasta que se vuelva a abrir.
-  En dev, la fila "Probar subida en segundo plano" de Perfil (sección Desarrollo) la dispara.
+  En dev, la fila "Probar subida en segundo plano" de Ajustes (sección Desarrollo) la dispara.
 - **Mapa sin señal automático** (`src/features/map/offline-*.ts`): al abrir la app y al volver a primer plano baja solo
   una zona amplia (300 km, z5–10) y otra detallada (40 km, z10–14) alrededor de la ubicación y de los lugares donde
   sacó fotos el grupo (grilla de 30 km), desde 3 días antes del inicio hasta el fin del rollo (antes del inicio, solo
   con Wi‑Fi; tope ~400 MB). Los packs usan el mismo `file://` de estilo que el MapView, se nombran
-  `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Perfil → "Mapa sin señal" (ajuste del celular, no del rollo).
+  `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Ajustes → "Mapa sin señal" (ajuste del celular, no del rollo).
 - **Captura:** cámara nativa con selector foto/video (máx. 15 s); si no quedan videos hoy, abre solo en
   foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + caption opcional. Una vez
   mandada no se puede repetir ni ver.
@@ -52,15 +52,41 @@ Decisiones de producto:
 - **Rollo configurable al crearlo** (lo hace el admin, formulario nativo con `@expo/ui`): nombre, inicio y fin
   **con fecha y hora**, fotos y videos por persona por día, y **cuándo se revela** (al terminar o en otro
   momento, siempre igual o posterior al fin). Las fechas las valida el server; la app muestra su mensaje inline (`src/features/trips/create-form.ts` solo chequea los nombres).
+- **Privacidad de los rollos:** un rollo solo existe para sus miembros. Nadie más ve sus fotos, su nombre ni que existe
+  (tampoco en el perfil de un amigo: "Rollos en común" son solo los rollos donde **los dos** son miembros activos). Si algún
+  día hay rollos públicos, es una decisión del grupo, no de una persona.
 - **Amigos** (`src/features/friends/`): se hace amistad con un **link de amistad** (`POST /friends/link`, vale 1 hora, uno
   vivo a la vez, multiuso): `rollo://friends/<CODE>` con CODE de 8 caracteres, que también se puede escribir a mano. Abrirlo
   (`app/friends/[code].tsx`, fuera del grupo protegido) llama a `POST /friend-links/claim` **sin sesión** y: con cuenta lista
-  canjea (`POST /friends/redeem`) y abre la lista; sin cuenta guarda el permiso de canje (24 h) en SecureStore
+  canjea (`POST /friends/redeem`) y abre la tab Amigos; sin cuenta guarda el permiso de canje (24 h) en SecureStore
   (`rollo.pendingFriend`, nunca en el cache de Query) y lo canjea cuando el perfil queda completo (`use-pending-friend.ts`,
-  el único lugar donde se canjea). "Completá tu perfil" tiene el campo opcional "¿Te invitó un amigo? Código". Perfil → "Amigos"
-  (lista con foto, nombre y @; borrar es silencioso) e "Invitar a un amigo". Cualquier miembro suma a **sus** amigos al rollo
-  desde "Sumar amigos" (sheet `add-friends`, respuesta por amigo: "Ya está" / "No disponible"), y cualquiera menos el admin
+  el único lugar donde se canjea). "Completá tu perfil" tiene el campo opcional "¿Te invitó un amigo? Código". La tab **Amigos**
+  (`(tabs)/friends`, global: funciona sin rollos) tiene la lista (foto, nombre y @) e "Invitar a un amigo"; tocar uno abre su
+  perfil (`/friends/user/<id>`) con su encabezado, sus destacadas ("Fotos | Mapa"), "Rollos en común" (`GET /friends/{userId}`),
+  "Sumar a un rollo" y "Borrar amigo" (silencioso). Cualquier miembro suma a **sus** amigos al rollo
+  desde "Sumar amigos" (sheet `add-friends`, respuesta por amigo: "Ya está" / "No disponible"); al crear un rollo, si tenés
+  amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el admin
   puede "Salirme del rollo" (conserva sus fotos y puede volver con el código). Los links `https` (Universal Links) llegan con TestFlight.
+- **Perfil de cualquier usuario** (`src/features/friends/user-profile-screen.tsx`, `GET /users/{userId}` →
+  `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
+  encabezado); nombre, @, foto, **descripción** y cantidad de amigos se ven siempre ("12 amigos · 3 en común", texto
+  secundario tocable: abre `/user/<id>/friends`, `GET /users/{userId}/friends` → "Amigos" con la lista completa si `canSee`,
+  si no "Amigos en común" con solo los comunes; en tu Perfil la cantidad sale de `useFriends()` y lleva a la tab Amigos);
+  destacadas solo si `canSee` (sos vos, es tu amigo o su perfil es público), si no "Este perfil es privado"; y si es amigo, además lo de amigo
+  (`useFriend` solo con `isFriend`). Se llega desde la tab Amigos (`/friends/user/<id>`) y desde afuera con `/user/<id>`
+  (push en el stack raíz): tocar un miembro en "En el rollo" (vos no sos tocable), el avatar o el nombre del autor en la
+  tarjeta del mapa, en una fila del Feed y en el visor. Tocarte a vos lleva a Perfil (`/me`). Todo pasa por
+  `useOpenProfile()`: desde una sheet o el visor (modales) primero se cierra el modal (`leave`) y después
+  se hace el push, porque un push después de un modal se presentaría como otro modal.
+- **Fotos destacadas** (`src/features/featured/`): de un rollo **revelado** donde sos miembro activo destacás **fotos** (no
+  videos), tuyas o de otros, hasta **60**: en el visor con la pill "Destacar" / "Destacada" (`star` / `star.fill`) y en la
+  grilla con el menú de mantener apretado "Destacar en tu perfil" / "Sacar de tu perfil". El autor puede "No dejar que la
+  destaquen" (borra las de otros y bloquea nuevas; él siempre puede destacar las suyas). Nunca sale el rollo, el caption ni la
+  coordenada: la ubicación va como **zona de ~5 km** (celda de 0.05°). En un perfil, "Fotos | Mapa": la grilla (con la
+  insignia del autor si no es el dueño del perfil; tocar una abre `/featured/<userId>/<mediaId>`) y el mapa por zonas.
+  **Visibilidad:** `profileVisibility` `"friends"` (por defecto) o `"public"`, con el switch "Perfil público" de Ajustes
+  (`PATCH /me`, error inline): apagado, solo tus amigos ven tus destacadas y tu lista de amigos
+  (la descripción y la cantidad de amigos son siempre públicas).
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
@@ -68,23 +94,40 @@ Decisiones de producto:
   disparador opcional. Ese "momento" es foto principal + selfie, con cámara propia
   (`react-native-vision-camera` o `expo-camera`); la selfie chica (~1080 px).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
-  La ceremonia del revelado será una presentación (a definir).
-- **A futuro (no para enero):** feeds públicos de rollos, perfiles públicos y avisar cuando te suman a un rollo (push). No cerrarle la puerta: la tab "Perfil" será
-  el perfil completo.
+  **El revelado** es una pantalla propia (`/reveal`, `src/features/reveal/`, fullScreenModal): se abre sola **una vez por
+  rollo** la primera vez que entrás a un rollo revelado (`useFirstPresentation`, esperando `loaded` para no disparar en un rollo que no es el
+  activo). Dura ~7 s: cuarto oscuro rojo con grano animado ("Revelando {rollo}") → 9–12 fotos que salen de su ThumbHash (shader de
+  Skia: umbral de ruido, sepia a color, borroso a nítido) con háptico que crece (`react-native-pulsar`) → golpe (impacto + éxito + clic
+  de obturador generado en código con `expo-audio`) y la luz pasa de roja a blanca → "Se reveló · {rollo} · {fecha}" →
+  `router.replace("/presentation")`. Tocar salta a las historias. Sin fotos o con error va directo a `/presentation`; con "Reducir
+  movimiento", fundido simple y solo el háptico de éxito; si el shader no compila, las fotos se ven sin efecto.
+  **La presentación** (`/presentation`, botón del centro) son **solo las historias**, sobre negro desde el primer frame.
+- **"Arrancó el rollo"** (`/roll-started`, `src/features/capture/roll-started.tsx`, `use-roll-started.ts`): la primera vez que el rollo activo
+  está en curso (una vez por rollo) un candado grande se sacude y se abre (SF Symbol `lock` → `lock.open` con `.symbolEffect(.replace.magic)`,
+  módulo local `modules/rollo-symbol`; sin el módulo nativo cae a `expo-symbols`) con un "clac" y pasa a cámara. Texto "Arrancó el rollo.
+  Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En "Tus rollos" el badge del rollo en curso dice LIVE.
+- **A futuro (no para enero):** feeds públicos de rollos, buscar perfiles públicos y avisar cuando te suman a un rollo (push).
 
 ## Navegación y diseño
 
 - **Barra de abajo nativa** (`NativeTabs` de `expo-router/native-tabs`, liquid glass en iOS 26), **solo
-  íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Feed · Perfil. La cámara es un trigger
-  `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación
-  · Días · Perfil.
+  íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Amigos · Perfil. La cámara es un trigger
+  `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación (solo historias)
+  · Amigos · Perfil.
+- Mapa = mapa + Feed: control "Mapa | Feed" arriba (param `view`), el mapa queda montado al pasar al Feed y tocar una fila
+  vuelve al Mapa enfocando ese pin. El segmento Feed existe solo antes del revelado. "Solo hoy" va en el menú de filtros.
+  La lógica vive en `src/features/map/roll-map.tsx`, `src/features/map/activity-screen.tsx` y `src/features/feed/feed-list.tsx`.
 - Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
-  miembros): todo lo del rollo activo vive acá. Revelado, la tab es la galería y esos datos
-  (invitar, miembros, subidas) salen del botón "Sobre el rollo" del header (sheet `roll-info`). La actividad
-  ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed.
-- Perfil = solo la cuenta: foto, nombre y @usuario, "Editar perfil" (ahí se ve el email, de solo lectura),
-  "Desarrollo" (solo dev), "Mapa sin señal" (ajuste del celular, fila propia) y "Cerrar sesión" / "Borrar cuenta".
-  No carga datos de ningún rollo.
+  miembros): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
+  `gallery` por defecto o `roll`, como "Mapa | Feed"; la galería queda montada y su toolbar solo se ve en Galería). El
+  segmento Rollo es una lista agrupada con el resumen ("64 fotos · 3 videos · 8 personas · 6 días"), Fechas (el mismo
+  `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,
+  `roll-overview.tsx`). La actividad
+  ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
+- Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
+  zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
+  ahí se ve el email, de solo lectura), "Perfil público", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Ver revelado" y "Ver candado", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
+  "Cerrar sesión" / "Borrar cuenta".
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
   cards por todos lados, bordes de wireframe ni fuentes descargadas: se ve hecho con IA. La
@@ -111,7 +154,7 @@ Decisiones de producto:
   - **Error al cargar una pantalla:** estado de error en la pantalla con botón "Reintentar"; si hay datos
     viejos, se mantienen.
   - **Procesos de fondo (subida de fotos):** nunca toasts ni alertas. Estado persistente: ícono de nube en
-    Rollo si hay pendientes y en el tablero de Rollo (sección de subidas, y "Sobre el rollo" una vez revelado) "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
+    Rollo si hay pendientes y en el tablero de Rollo (sección de subidas, y el segmento "Rollo" una vez revelado) "N fotos esperando señal" / "N no se pudieron subir" con el motivo.
   - **Alerta nativa** (`Alert`) solo para algo grave e irreversible (por ej. el rollo se reveló con fotos
     tuyas sin subir) o para confirmar una acción destructiva (borrar como admin).
   - Si un momento puntual necesita una confirmación fugaz, usar `burnt` (HUD nativo tipo AirPods), no un
@@ -125,6 +168,12 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 - **Development build** (`expo-dev-client`): Expo Go de la App Store está trabado en un SDK viejo.
 - Cliente de la API **generado del contrato**: `openapi-typescript` → `src/api/schema.d.ts` (no editar
   a mano) + `openapi-fetch`. `unwrap()` convierte el `{ error }` del server en `ApiError`.
+- Paquetes nativos del revelado y "Arrancó el rollo": **Reanimated 4 + `react-native-worklets`**, **`@shopify/react-native-skia`** (shaders SkSL),
+  **`react-native-pulsar`** (hápticos continuos), **`expo-audio`** (plugin con `enableBackgroundPlayback: false`: no toca la sesión de audio de
+  la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados). Agregarlos o cambiarlos
+  pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
+- Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
+  `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`; `app.config.ts` solo cambia nombre y
   bundle id según `APP_VARIANT` (ver Apple).
 
@@ -132,8 +181,12 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 
 ```
 app/                    Solo rutas (Expo Router). Pantallas finas: arman hooks y componentes de features.
-  (tabs)/               NativeTabs: roll, map, camera (abre /capture o /presentation), feed, me; cada una con su Stack
-  photo/[id].tsx        visor de una foto revelada; presentation.tsx, capture.tsx, create.tsx, join.tsx...
+  (tabs)/               NativeTabs: roll, map (+ Feed), camera (abre /capture o /presentation), friends, me; cada una con su Stack
+  photo/[id].tsx        visor de una foto revelada; presentation.tsx, capture.tsx, create.tsx, join.tsx, settings.tsx...
+  friends/[code].tsx    link de amistad (fuera del grupo protegido; el perfil de un amigo es (tabs)/friends/user/[id])
+  reveal.tsx, roll-started.tsx  el revelado y "Arrancó el rollo" (fullScreenModal; fino, usan `src/features/reveal` y `capture`)
+  user/[id].tsx         perfil de cualquier usuario desde fuera de Amigos (miembros, autor de una foto)
+  featured/[userId]/[mediaId].tsx  visor de una foto destacada de un perfil
 src/
   features/<dominio>/   Todo lo de un dominio, junto:
                           actions.ts      llamadas a la API (es lo que mockean los tests de pantalla)
@@ -141,15 +194,16 @@ src/
                           *.ts            lógica pura, testeable sin React
                           *.tsx           componentes propios del dominio
                           __tests__/      tests de esa lógica, al lado del código
-                        Dominios: auth (sesión, login, gate), friends (amigos, link de amistad, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
+                        Dominios: auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
                         (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications, roll (tablero).
-  ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, Button,
+  ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, SwitchRow, Button,
                         Field, Body, Footnote, ErrorText, Loading
   api/                  cliente generado del contrato (schema.d.ts NO se edita a mano) + client.ts
   storage/              lo que se guarda en el celular (SecureStore). Sus claves NO se renombran
   test/                 helpers de tests: rutas de la app (routes.ts) y SQLite en memoria
 __tests__/              tests de pantallas con navegación real (renderRouter)
+modules/rollo-symbol/   Módulo local de Expo (Swift): vista nativa de SF Symbols con transición magic replace; wrapper JS con fallback
 ```
 
 Reglas:
@@ -194,7 +248,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 679 tests
+npm test                      # 923 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -216,7 +270,18 @@ Si compilar falla:
 - MapLibre no baja su binario ("invalid archive" / "already exists"): `cd ios && xcodebuild -resolvePackageDependencies -workspace Rollo.xcworkspace -scheme Rollo` y volver a compilar.
 - Después de cambiar de rama o instalar paquetes con Metro abierto, reiniciar Metro con `--clear` (si no, MapLibre se registra dos veces).
 
-Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en los 7 rollos de prueba, incluido Bariloche revelado); el código de 6 dígitos aparece en la consola de `npm run dev:lan` del backend.
+Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en los rollos de prueba, incluido Bariloche revelado, y es admin de "Finde en Tandil"); el código de 6 caracteres aparece en la consola de `npm run dev:lan` del backend.
+`npm run seed` del backend imprime al final cada cuenta y qué probar con ella (amigos con y sin rollos en común, uno que se salió y uno que sacó el admin,
+descripciones corta / de 150 / de 3 renglones, `nuevo@rollo.test` vacío, `rocio@rollo.test` sin @usuario), cada rollo con su código y etapa, y un
+link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de nuevo lo renueva). El detalle está en el CLAUDE.md del backend.
+
+## Sitio público
+
+`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): inicio + soporte, `/privacidad`
+y `/terminos`. Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
+se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/`. `npm run site:build` para verlo,
+`npm run site:deploy` para publicarlo. Son las URLs de privacidad, soporte y marketing de App Store Connect.
+Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Juani).
 
 ## Apple
 
@@ -254,8 +319,9 @@ Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en
 ## Estado y plan (octubre 2026)
 
 Hecho: crear rollo configurable (fechas, cupos, revelado), unirse con código, etapas del rollo, cámara con
-preview, cola offline con subida en segundo plano, cache persistente, Mapa (pins agrupados, carrusel, filtros),
-Feed, identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa · Presentación · Perfil, cuentas (email + código, perfil con foto), presentación
+preview, cola offline con subida en segundo plano, cache persistente, Mapa (pins agrupados, carrusel, filtros)
+con el Feed adentro, Amigos (tab, link de amistad, perfil con rollos en común, sumar a un rollo), fotos destacadas en el
+perfil (grilla, mapa por zonas, perfil público o solo amigos, perfil de cualquier miembro o autor), identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa · Presentación · Amigos · Perfil, cuentas (email + código, perfil con foto y descripción), presentación
 (enfoque + historias), galería con visor y descargas a Fotos, y aviso local del revelado. Corre en el iPhone
 con dev build contra el backend local.
 

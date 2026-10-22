@@ -127,6 +127,25 @@ describe("Capture", () => {
     expect(picker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
+  it("waits for the saved active trip instead of deciding with the first one in the list", async () => {
+    const OTHER = "22222222-2222-4222-8222-222222222222";
+    const upcoming = tripDetail(10, 3);
+    upcoming.trip = { ...upcoming.trip, id: OTHER, name: "Mendoza", startsAt: Date.UTC(2099, 9, 31, 22, 0), endsAt: Date.UTC(2099, 10, 5) };
+    await signInAs({
+      trips: [tripSummary(OTHER, "Mendoza", { role: "member" }), tripSummary(SUR, "Viaje al sur")],
+      active: SUR,
+    });
+    // Both details are already cached, so only the saved-id read is async.
+    queryClient.setQueryData(["trip", OTHER], upcoming, { updatedAt: Date.now() });
+    queryClient.setQueryData(["trip", SUR], tripDetail(7, 2), { updatedAt: Date.now() });
+    trips.fetchTrip.mockImplementation(async (id: string) => (id === OTHER ? upcoming : tripDetail(7, 2)));
+    picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
+    await openCapture();
+
+    await waitFor(() => expect(picker.launchCameraAsync).toHaveBeenCalled());
+    expect(screen.queryByText("Este rollo todavía no empezó")).toBeNull();
+  });
+
   it("after the roll ended it says when it is revealed and does not open the camera", async () => {
     const d = tripDetail(10, 3);
     trips.fetchTrip.mockResolvedValue({

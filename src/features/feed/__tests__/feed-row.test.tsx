@@ -57,6 +57,31 @@ describe("FeedRow", () => {
     expect(screen.getByTestId("feed-thumb-empty")).toBeTruthy();
   });
 
+  it("tapping the avatar or the name calls onAuthorPress, not onPress", async () => {
+    const onPress = jest.fn();
+    const onAuthorPress = jest.fn();
+    await render(<FeedRow item={item()} timeZone={TZ} onPress={onPress} onAuthorPress={onAuthorPress} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Perfil de Cami" }));
+    await fireEvent.press(screen.getByText("Cami"));
+    expect(onAuthorPress).toHaveBeenCalledTimes(2);
+    expect(onAuthorPress).toHaveBeenCalledWith(expect.objectContaining({ id: "f1" }));
+    expect(onPress).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText("sacó una foto"));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("VoiceOver can open the author's profile from the row", async () => {
+    const onAuthorPress = jest.fn();
+    await render(<FeedRow item={item()} timeZone={TZ} onPress={jest.fn()} onAuthorPress={onAuthorPress} />);
+
+    const row = screen.getByRole("button", { name: "Cami, 14:32" });
+    expect(row.props.accessibilityActions).toEqual([{ name: "profile", label: "Ver perfil de Cami" }]);
+    await fireEvent(row, "accessibilityAction", { nativeEvent: { actionName: "profile" } });
+    expect(onAuthorPress).toHaveBeenCalledTimes(1);
+  });
+
   it("a pending photo says 'Esperando señal'", async () => {
     await render(<FeedRow item={item({ pending: true })} timeZone={TZ} />);
     expect(screen.getByText("Esperando señal")).toBeTruthy();

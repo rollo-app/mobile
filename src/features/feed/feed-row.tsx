@@ -19,23 +19,40 @@ type Props = {
   timeZone: string;
   /** Tap on a row with a location (goes to the map). Without a location the row is not tappable. */
   onPress?: (item: MapItem) => void;
+  /** Tap on the author's photo or name (their profile). */
+  onAuthorPress?: (item: MapItem) => void;
   /** Admin only: enables "Borrar foto" (action sheet) on long-press of the row. */
   onDelete?: (item: MapItem) => void;
 };
 
 /** A native Feed row: who, when, the caption (or what they took) and the blurred photo. */
-export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete }: Props) {
+export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete }: Props) {
   const who = item.authorUsername ? formatHandle(item.authorUsername) : item.authorName;
   const when = clockTime(item.takenAt, timeZone);
   const generic = item.type === "video" ? `sacó un video · ${Math.round(item.durationS ?? 0)} s` : "sacó una foto";
   const located = item.lat !== null && item.lng !== null;
+  const canDelete = !!onDelete && !item.pending;
+  const openAuthor = onAuthorPress && (() => onAuthorPress(item));
+  // Long-press opens the native action sheet (admin only). We don't use MenuView: it is a native host
+  // that takes its content's size and the row stopped filling the width.
+  const openSheet = canDelete ? () => showDeleteSheet(() => onDelete?.(item)) : undefined;
+
+  const avatar = <Avatar id={item.authorId} name={item.authorName} avatarUrl={item.authorAvatarUrl} size={40} />;
 
   const content = (
     <View testID="feed-row" style={styles.row}>
-      <Avatar id={item.authorId} name={item.authorName} avatarUrl={item.authorAvatarUrl} size={40} />
+      {openAuthor ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`Perfil de ${item.authorName}`} onPress={openAuthor} onLongPress={openSheet}>
+          {avatar}
+        </Pressable>
+      ) : (
+        avatar
+      )}
       <View style={styles.text}>
         <Text numberOfLines={1} style={[type.footnote, { color: colors.secondaryLabel }]}>
-          <Text style={{ fontWeight: "600", color: colors.label }}>{who}</Text>
+          <Text onPress={openAuthor} onLongPress={openAuthor ? openSheet : undefined} style={{ fontWeight: "600", color: colors.label }}>
+            {who}
+          </Text>
           {" · "}
           <Text>{when}</Text>
         </Text>
@@ -56,34 +73,34 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onDelete
     </View>
   );
 
-  const canDelete = !!onDelete && !item.pending;
   if (!(located && onPress) && !canDelete) return content;
-
-  // Long-press opens the native action sheet (admin only). We don't use MenuView: it is a native host
-  // that takes its content's size and the row stopped filling the width.
-  function openSheet() {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    ActionSheetIOS.showActionSheetWithOptions(
-      { options: ["Borrar foto", "Cancelar"], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
-      (index) => {
-        if (index === 0) onDelete?.(item);
-      },
-    );
-  }
 
   return (
     <Pressable
       accessibilityRole={located && onPress ? "button" : undefined}
       accessibilityLabel={`${who}, ${when}`}
       accessibilityHint={located && onPress ? "Abre la foto en el mapa" : undefined}
+      // The row is one VoiceOver element, so the author's profile is a custom action.
+      accessibilityActions={openAuthor ? [{ name: "profile", label: `Ver perfil de ${item.authorName}` }] : undefined}
+      onAccessibilityAction={openAuthor ? (e) => e.nativeEvent.actionName === "profile" && openAuthor() : undefined}
       onPress={located && onPress ? () => onPress(item) : undefined}
-      onLongPress={canDelete ? openSheet : undefined}
+      onLongPress={openSheet}
       style={({ pressed }) => [styles.fill, pressed && { backgroundColor: colors.fill }]}
     >
       {content}
     </Pressable>
   );
 });
+
+function showDeleteSheet(onDelete: () => void) {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  ActionSheetIOS.showActionSheetWithOptions(
+    { options: ["Borrar foto", "Cancelar"], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
+    (index) => {
+      if (index === 0) onDelete();
+    },
+  );
+}
 
 const styles = StyleSheet.create({
   // All wrappers (Pressable, MenuView) fill the width: so the thumbnail always stays on the right.

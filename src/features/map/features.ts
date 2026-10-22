@@ -17,6 +17,8 @@ export type MapItem = {
   /** Where the thumbnail lives; only after the reveal. */
   thumbPath?: string | null;
   authorId: string;
+  /** The author's user id (to open their profile); unknown only for a pending one without it. */
+  authorUserId?: string;
   authorName: string;
   authorUsername?: string | null;
   authorAvatarUrl: string | null;
@@ -49,6 +51,7 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
     thumbhash: i.thumbhash,
     thumbPath: i.files?.thumb ?? null,
     authorId: i.author.id,
+    authorUserId: i.author.userId,
     authorName: i.author.name,
     authorUsername: i.author.username,
     authorAvatarUrl: i.author.avatarUrl,
@@ -57,7 +60,10 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
 }
 
 /** Your not-yet-uploaded photos (local queue) as items, with you as author. */
-export function pendingToItems(pending: PendingMedia[], me: { id: string; name: string; username?: string | null; avatarUrl?: string | null }): MapItem[] {
+export function pendingToItems(
+  pending: PendingMedia[],
+  me: { id: string; userId?: string; name: string; username?: string | null; avatarUrl?: string | null },
+): MapItem[] {
   return pending.map((m) => ({
     id: m.id,
     type: m.type,
@@ -69,6 +75,7 @@ export function pendingToItems(pending: PendingMedia[], me: { id: string; name: 
     durationS: m.durationS,
     thumbhash: m.thumbhash,
     authorId: me.id,
+    ...(me.userId ? { authorUserId: me.userId } : {}),
     authorName: me.name,
     authorUsername: me.username ?? null,
     authorAvatarUrl: me.avatarUrl ?? null,

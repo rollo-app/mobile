@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import * as friendActions from "@/features/friends/actions";
 import * as tripActions from "@/features/trips/actions";
 import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
+import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
@@ -14,9 +15,9 @@ const trips = jest.mocked(tripActions);
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
 
-const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null };
-const tomi: friendActions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null };
-const fede: friendActions.Friend = { id: "u5", name: "Fede", username: "fede.s", avatarUrl: null };
+const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
+const tomi: friendActions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null, bio: null };
+const fede: friendActions.Friend = { id: "u5", name: "Fede", username: "fede.s", avatarUrl: null, bio: null };
 
 const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" = "admin"): tripActions.TripDetail => ({
   trip: {
@@ -144,9 +145,10 @@ describe("Add friends to a roll", () => {
     await waitFor(() => expect(screen).toHavePathname("/friends"));
   });
 
-  it("after the reveal 'Sobre el rollo' no longer offers to add friends", async () => {
+  it("after the reveal the 'Rollo' segment no longer offers to add friends", async () => {
     trips.fetchTrip.mockResolvedValue(detail({ revealed: true, revealAt: Date.now() - DAY }));
-    await renderRouter(routes, { initialUrl: "/roll-info" });
+    await markPresentationSeen(SUR);
+    await renderRouter(routes, { initialUrl: "/roll?view=roll" });
 
     expect(await screen.findByText("Invitar")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();

@@ -1,13 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
 import { memo, useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { FeedRow } from "@/features/feed/feed-row";
 import { groupByDay, newest, type FeedSection } from "@/features/feed/sections";
 import { feedToItems, mergeItems, pendingToItems, type MapItem } from "@/features/map/features";
-import { NoRollYet } from "@/features/roll/no-roll-yet";
-import { hasNoTrips } from "@/features/trips/active";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { deleteMedia } from "@/features/trips/actions";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { feedKey, useFeed } from "@/features/trips/use-feed";
@@ -26,14 +24,14 @@ const PAGE = 30;
 
 const keyExtractor = (item: MapItem) => item.id;
 
-export default function FeedScreen() {
-  const { trip, loaded } = useActiveTrip();
-  if (hasNoTrips(loaded, trip)) return <NoRollYet />;
-  return <FeedList />;
-}
+type FeedListProps = {
+  /** Where tapping a row goes: the map, focused on that pin. */
+  onOpenOnMap: (item: MapItem) => void;
+  /** Extra padding above the list (for content drawn over it). */
+  contentInsetTop?: number;
+};
 
-function FeedList() {
-  const router = useRouter();
+export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
   const queryClient = useQueryClient();
   const { trip } = useActiveTrip();
   const tripId = trip?.id;
@@ -55,11 +53,6 @@ function FeedList() {
   // The server sends everything at once: show it in batches, newest first, and add more on reaching the end.
   const sections = useMemo(() => groupByDay(newest(all, limit), timeZone), [all, limit, timeZone]);
   const loadMore = useCallback(() => setLimit((n) => (n < all.length ? n + PAGE : n)), [all.length]);
-
-  const openOnMap = useCallback(
-    (item: MapItem) => router.navigate({ pathname: "/map", params: { focus: item.id } }),
-    [router],
-  );
 
   const remove = useCallback(
     async (item: MapItem) => {
@@ -95,11 +88,20 @@ function FeedList() {
     }
   }, [refetch]);
 
+  const openProfile = useOpenProfile();
+  const openAuthor = useCallback((item: MapItem) => item.authorUserId && openProfile(item.authorUserId), [openProfile]);
+
   const renderItem = useCallback(
     ({ item }: { item: MapItem }) => (
-      <FeedRow item={item} timeZone={timeZone} onPress={openOnMap} onDelete={isAdmin ? confirmRemove : undefined} />
+      <FeedRow
+        item={item}
+        timeZone={timeZone}
+        onPress={onOpenOnMap}
+        onAuthorPress={openAuthor}
+        onDelete={isAdmin ? confirmRemove : undefined}
+      />
     ),
-    [timeZone, openOnMap, isAdmin, confirmRemove],
+    [timeZone, onOpenOnMap, openAuthor, isAdmin, confirmRemove],
   );
 
   const renderSectionHeader = useCallback(
@@ -131,6 +133,7 @@ function FeedList() {
       testID="feed-list"
       style={styles.list}
       contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={contentInsetTop ? { paddingTop: contentInsetTop } : undefined}
       sections={sections}
       keyExtractor={keyExtractor}
       renderItem={renderItem}

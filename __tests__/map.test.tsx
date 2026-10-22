@@ -1,21 +1,31 @@
 import { StyleSheet, Text } from "react-native";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
-import { signInAs, tripSummary } from "@/test/account";
+import { signInAs, tripSummary, USER } from "@/test/account";
 import { pinAvatarKey } from "@/features/map/pin-avatars";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
+import { colors } from "@/ui/theme";
+import * as featuredActions from "@/features/featured/actions";
 
 jest.mock("@/features/trips/actions");
+// Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
+jest.mock("@/features/featured/actions");
+beforeEach(() => {
+  jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
+});
 const mocked = jest.mocked(actions);
 const { __camera: camera, __getClusterLeaves: getClusterLeaves, __mapProps: mapProps } = jest.requireMock("@maplibre/maplibre-react-native") as {
   __camera: { flyTo: jest.Mock; easeTo: jest.Mock };
   __getClusterLeaves: jest.Mock;
   __mapProps: { current: Record<string, any> };
 };
-const { __imagesProps: imagesProps } = jest.requireMock("@maplibre/maplibre-react-native") as { __imagesProps: { current: Record<string, any> } };
+const { __imagesProps: imagesProps, __mapMounts: mapMounts } = jest.requireMock("@maplibre/maplibre-react-native") as {
+  __imagesProps: { current: Record<string, any> };
+  __mapMounts: { current: number };
+};
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -53,9 +63,15 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   caption: "el viento no perdona",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
+  author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null },
   ...over,
 });
+
+/** The map's "Mapa" segment: Perfil (also mounted in tests) has its own "Fotos | Mapa" control. */
+const mapSegment = () => {
+  const profile = within(screen.getByTestId("profile-showcase")).getByRole("button", { name: "Mapa" });
+  return screen.getAllByRole("button", { name: "Mapa" }).find((b) => b !== profile)!;
+};
 
 const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items });
 
@@ -113,7 +129,7 @@ describe("Map", () => {
 
   it("registers the author's photo as a map image and tells the pin to use it once it is ready", async () => {
     mocked.fetchFeed.mockResolvedValue(
-      feed([feedItem({ author: { id: "m2", name: "Fede", username: null, avatarUrl: "/avatars/m2-v1.jpg" } })]),
+      feed([feedItem({ author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: "/avatars/m2-v1.jpg" } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
 
@@ -138,30 +154,49 @@ describe("Map", () => {
     expect(screen.getByLabelText(/^Juani, /)).toBeVisible();
   });
 
-  it("the Hoy filter keeps only the photos from the trip day", async () => {
+  it("Solo hoy in the filter menu keeps only the photos from the trip day and turns the pill cobalt", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([feedItem({ id: "hoy" }), feedItem({ id: "ayer", day: "2027-01-11" })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
     expect(await screen.findByLabelText("pin ayer")).toBeVisible();
+    expect(screen.getByText("Filtros")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Hoy" })).toBeNull();
 
-    await fireEvent.press(screen.getByRole("button", { name: "Hoy" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Solo hoy" }));
 
     expect(screen.getByLabelText("pin hoy")).toBeVisible();
     expect(screen.queryByLabelText("pin ayer")).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "Solo hoy" }).props.accessibilityState).toEqual({ checked: true });
+    expect(screen.getByText("Hoy")).toHaveStyle({ color: colors.tint });
+
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Solo hoy" }));
+    expect(screen.getByLabelText("pin ayer")).toBeVisible();
+    expect(screen.getByText("Filtros")).toBeVisible();
   });
 
-  it("once the roll is revealed there is no Hoy filter, only Personas", async () => {
+  it("once the roll is revealed there is no Solo hoy and no Mapa | Feed, only the people filter", async () => {
     mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
     await renderRouter(routes, { initialUrl: "/map" });
 
-    expect(await screen.findByText("Personas")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Hoy" })).toBeNull();
+    expect(await screen.findByRole("menuitem", { name: "Todos" })).toBeVisible();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Feed" })).toBeNull());
+    expect(screen.queryByRole("menuitem", { name: "Solo hoy" })).toBeNull();
+    expect(screen.getByText("Filtros")).toBeVisible();
   });
 
-  it("the Personas menu filters by person and also lets you go back to everyone", async () => {
+  it("once the roll is revealed view=feed still shows the map", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
+
+    expect(await screen.findByRole("menuitem", { name: "Todos" })).toBeVisible();
+    await waitFor(() => expect(screen.queryByTestId("feed-list")).toBeNull());
+    expect(screen.getByLabelText("mapa")).toBeVisible();
+  });
+
+  it("the people filter names the person on the pill and goes back to everyone", async () => {
     mocked.fetchFeed.mockResolvedValue(
-      feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani", username: null, avatarUrl: null } })]),
+      feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
     expect(await screen.findByLabelText("pin mia")).toBeVisible();
@@ -169,9 +204,54 @@ describe("Map", () => {
     await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
     expect(screen.queryByLabelText("pin mia")).toBeNull();
     expect(screen.getByLabelText("pin de-fede")).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Fede" }).props.accessibilityState).toEqual({ checked: true });
+
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Solo hoy" }));
+    expect(screen.getByText("Hoy · Fede")).toBeVisible();
 
     await fireEvent.press(screen.getByRole("menuitem", { name: "Todos" }));
     expect(screen.getByLabelText("pin mia")).toBeVisible();
+    expect(screen.getByText("Hoy")).toBeVisible();
+  });
+
+  describe("Mapa | Feed", () => {
+    beforeEach(() => {
+      mapMounts.current = 0;
+    });
+
+    it("shows the segmented control on the map and Feed draws the list over it", async () => {
+      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await screen.findByRole("button", { name: "Feed" });
+      expect(mapSegment()).toBeVisible();
+      expect(screen.queryByTestId("feed-list")).toBeNull();
+
+      await fireEvent.press(screen.getByRole("button", { name: "Feed" }));
+
+      expect(await screen.findByTestId("feed-list")).toBeVisible();
+      expect(screen).toHaveSearchParams({ view: "feed" });
+      // The list leaves room for the row with the segmented control drawn over it.
+      expect(StyleSheet.flatten(screen.getByTestId("feed-list").props.contentContainerStyle).paddingTop).toBeGreaterThan(0);
+      // In Feed the filter pill goes away (the map behind it is not what you are looking at).
+      expect(screen.queryByText("Filtros")).toBeNull();
+      expect(screen.queryByRole("menuitem", { name: "Todos" })).toBeNull();
+    });
+
+    it("going back to Mapa does not mount the map again", async () => {
+      await renderRouter(routes, { initialUrl: "/map" });
+      await screen.findByRole("button", { name: "Feed" });
+      expect(mapMounts.current).toBe(1);
+
+      await fireEvent.press(screen.getByRole("button", { name: "Feed" }));
+      await screen.findByTestId("feed-list");
+      await fireEvent.press(mapSegment());
+
+      await waitFor(() => expect(screen.queryByTestId("feed-list")).toBeNull());
+      expect(screen).toHaveSearchParams({ view: "map" });
+      expect(screen.getByLabelText("mapa")).toBeVisible();
+      expect(mapMounts.current).toBe(1);
+    });
   });
 
   it("if the request fails with no cache, it shows a small notice and allows retrying without removing the map", async () => {
@@ -196,8 +276,8 @@ describe("Map", () => {
   it("tapping a pin with other photos at the same place opens a carousel with all of them, by time", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
-        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", name: "Fede", username: null, avatarUrl: null } }),
-        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", name: "Juani", username: null, avatarUrl: null }, caption: "primera" }),
+        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null } }),
+        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null }, caption: "primera" }),
         feedItem({ id: "lejos", lat: -48.5, lng: -72.0, caption: "otra" }),
       ]),
     );
@@ -313,5 +393,36 @@ describe("Map", () => {
     await fireEvent.press(screen.getByRole("button", { name: /^Fede, / }));
     expect(await screen.findByText("Foto")).toBeVisible();
     expect(screen).toHavePathname("/photo/f1");
+  });
+
+  it("tapping the author on the card opens their profile, without opening the photo", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
+    mocked.fetchFeed.mockResolvedValue({
+      ...feed([feedItem({ files: { thumb: "/media/f1/thumb", original: "/media/f1/original" } })]),
+      revealed: true,
+    });
+    await renderRouter(
+      { ...routes, "photo/[id]": () => <Text>Foto</Text>, "user/[id]": () => <Text>Perfil de alguien</Text> },
+      { initialUrl: "/map" },
+    );
+
+    await fireEvent.press(await screen.findByLabelText("pin f1"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Fede" }));
+
+    expect(await screen.findByText("Perfil de alguien")).toBeVisible();
+    expect(screen).toHavePathname("/user/u-m2");
+    expect(screen.queryByText("Foto")).toBeNull();
+  });
+
+  it("tapping your own name on the card goes to Perfil", async () => {
+    await signInAs({ user: { ...USER, id: "u-m1" }, trips: [tripSummary(SUR, "Viaje al sur")] });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchFeed.mockResolvedValue(feed([feedItem({ author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]));
+    await renderRouter(routes, { initialUrl: "/map" });
+
+    await fireEvent.press(await screen.findByLabelText("pin f1"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Juani" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/me"));
   });
 });

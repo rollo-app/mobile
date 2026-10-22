@@ -1,3 +1,5 @@
+import { MenuView } from "@expo/ui/community/menu";
+import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -7,12 +9,17 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useMe } from "@/features/auth/use-me";
+import { blockFeature, unblockFeature } from "@/features/featured/actions";
+import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { Avatar } from "@/features/profile/avatar";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatPinTime } from "@/features/map/pin-time";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { feedKey } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { colors, spacing, type } from "@/ui/theme";
+import { spacing, tintHex, type } from "@/ui/theme";
 import { PermissionNotice } from "./permission-notice";
 import { PermissionDeniedError } from "./save";
 import { useSaver } from "./use-saver";
@@ -82,6 +89,14 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
   const { photos, token, loading } = useRevealedPhotos(tripId);
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
+  const { me } = useMe();
+  const openProfile = useOpenProfile();
+  const queryClient = useQueryClient();
+  const featured = useToggleFeatured();
+  // Which photo the last feature/block attempt was for, so its error shows only on that page.
+  const [featureTarget, setFeatureTarget] = useState<string | null>(null);
+  const [blocking, setBlocking] = useState(false);
+  const [blockError, setBlockError] = useState<string | null>(null);
 
   const startIndex = useRef<number | null>(null);
   if (startIndex.current === null && photos.length > 0) startIndex.current = Math.max(0, photos.findIndex((p) => p.id === id));
@@ -105,7 +120,31 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
     }
   }
 
+  function toggleFeatured(target: RevealedPhoto) {
+    if (!tripId) return;
+    setFeatureTarget(target.id);
+    setBlockError(null);
+    void featured.toggle(target, tripId);
+  }
+
+  async function setBlocked(target: RevealedPhoto, blocked: boolean) {
+    if (!tripId || blocking) return;
+    setFeatureTarget(target.id);
+    setBlocking(true);
+    setBlockError(null);
+    try {
+      await (blocked ? blockFeature : unblockFeature)(target.id);
+      await queryClient.invalidateQueries({ queryKey: feedKey(tripId) });
+    } catch (e) {
+      setBlockError(e instanceof Error ? e.message : "No se pudo cambiar");
+    } finally {
+      setBlocking(false);
+    }
+  }
+
   const state = (photo && saves[photo.id]) || "idle";
+  const featuring = !!photo && featured.pending.has(photo.id);
+  const featureError = photo && featureTarget === photo.id ? (blockError ?? featured.error) : null;
   const timeZone = detail?.trip.timezone ?? "America/Argentina/Buenos_Aires";
 
   return (
@@ -145,8 +184,16 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
           {photo && (
             <View pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.md }]}>
               <View style={styles.authorRow}>
-                <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
-                <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
+                {/* Closes the viewer and opens the author's profile over the tabs (or Perfil if it's you). */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Perfil de ${photo.author.name}`}
+                  onPress={() => openProfile(photo.authorUserId, { leave: true })}
+                  style={({ pressed }) => [styles.authorRow, pressed && styles.pressed]}
+                >
+                  <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
+                  <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
+                </Pressable>
                 <Text style={[type.subhead, styles.dim]}>{formatPinTime(photo.takenAt, timeZone)}</Text>
               </View>
               {photo.caption ? <Text style={[type.quote, styles.white]}>{photo.caption}</Text> : null}
@@ -177,7 +224,43 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
                   )}
                   <Text style={[type.subhead, styles.white]}>{state === "saved" ? "Guardada ✓" : "Guardar en Fotos"}</Text>
                 </Pressable>
+                {photo.type === "photo" && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={photo.featuredByMe ? "Destacada" : "Destacar"}
+                    accessibilityState={{ selected: photo.featuredByMe, busy: featuring }}
+                    disabled={featuring}
+                    onPress={() => toggleFeatured(photo)}
+                    style={styles.pill}
+                  >
+                    <SymbolView
+                      name={photo.featuredByMe ? "star.fill" : "star"}
+                      size={15}
+                      // The viewer is always black: the dark-scheme cobalt reads on it whatever the system theme.
+                      tintColor={photo.featuredByMe ? tintHex.dark : "#FFFFFF"}
+                    />
+                    <Text style={[type.subhead, styles.white]}>{photo.featuredByMe ? "Destacada" : "Destacar"}</Text>
+                  </Pressable>
+                )}
+                {photo.type === "photo" && !!me && photo.authorUserId === me.id && (
+                  <MenuView
+                    actions={[
+                      {
+                        id: photo.featureBlocked ? "unblock" : "block",
+                        title: photo.featureBlocked ? "Dejar que la destaquen" : "No dejar que la destaquen",
+                        image: photo.featureBlocked ? "star" : "star.slash",
+                        attributes: { disabled: blocking },
+                      },
+                    ]}
+                    onPressAction={({ nativeEvent }) => void setBlocked(photo, nativeEvent.event === "block")}
+                  >
+                    <View accessibilityLabel="Más opciones" style={styles.pill}>
+                      <SymbolView name="ellipsis" size={15} tintColor="#FFFFFF" />
+                    </View>
+                  </MenuView>
+                )}
               </View>
+              {featureError && <Text style={[type.footnote, styles.dim]}>{featureError}</Text>}
               {state === "failed" && <Text style={[type.footnote, styles.dim]}>No se pudo guardar. Probá de nuevo.</Text>}
               {state === "denied" && <PermissionNotice />}
             </View>
@@ -211,6 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
   },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  pressed: { opacity: 0.5 },
   white: { color: "#FFFFFF" },
   dim: { color: "rgba(255,255,255,0.7)" },
   actions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },

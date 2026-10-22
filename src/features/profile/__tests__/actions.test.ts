@@ -1,6 +1,6 @@
 import { File } from "expo-file-system";
 import { setSessionToken } from "@/storage/session";
-import { checkUsername, updateProfile, uploadAvatar } from "../actions";
+import { checkUsername, fetchUser, fetchUserFriends, updateProfile, uploadAvatar } from "../actions";
 
 jest.mock("expo-image-manipulator", () => {
   const ctx = { resize: jest.fn(), renderAsync: jest.fn(async () => ({ saveAsync: jest.fn(async () => ({ uri: "file:///cache/avatar.jpg", width: 512, height: 512 })) })) };
@@ -29,9 +29,53 @@ describe("updateProfile", () => {
     expect(await (fetchMock.mock.calls[0]![0] as Request).json()).toEqual({ name: "Juani", username: "juani" });
   });
 
+  it("sends the description as typed when given, and leaves it out otherwise", async () => {
+    const fetchMock = mockApi([[/^PATCH \/me$/, 200, user]]);
+
+    await updateProfile({ name: "Juani", username: "juani", bio: "Viajando por el sur" });
+    expect(await (fetchMock.mock.calls[0]![0] as Request).json()).toEqual({ name: "Juani", username: "juani", bio: "Viajando por el sur" });
+  });
+
+  it("sends only the profile visibility when that's all that changes", async () => {
+    const fetchMock = mockApi([[/^PATCH \/me$/, 200, user]]);
+
+    await updateProfile({ profileVisibility: "public" });
+    expect(await (fetchMock.mock.calls[0]![0] as Request).json()).toEqual({ profileVisibility: "public" });
+  });
+
   it("propagates the server's message", async () => {
     mockApi([[/^PATCH \/me$/, 409, { error: "Ese nombre de usuario ya está en uso." }]]);
     await expect(updateProfile({ name: "x", username: "taken" })).rejects.toThrow("Ese nombre de usuario ya está en uso.");
+  });
+});
+
+describe("fetchUser", () => {
+  it("GETs /users/{userId} and returns the profile", async () => {
+    const profile = { user: { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null }, isFriend: false, profileVisibility: "friends", canSee: false, friendCount: 3, mutualCount: 1 };
+    const fetchMock = mockApi([[/^GET \/users\/u2$/, 200, profile]]);
+
+    expect(await fetchUser("u2")).toEqual(profile);
+    expect((fetchMock.mock.calls[0]![0] as Request).headers.get("Authorization")).toBe("Bearer tok");
+  });
+
+  it("propagates a 404", async () => {
+    mockApi([[/./, 404, { error: "No existe" }]]);
+    await expect(fetchUser("u2")).rejects.toThrow("No existe");
+  });
+});
+
+describe("fetchUserFriends", () => {
+  it("GETs /users/{userId}/friends and returns the scope and the list", async () => {
+    const body = { scope: "mutual", friends: [{ id: "u3", name: "Tomi", username: "tomi", avatarUrl: null }] };
+    const fetchMock = mockApi([[/^GET \/users\/u2\/friends$/, 200, body]]);
+
+    expect(await fetchUserFriends("u2")).toEqual(body);
+    expect((fetchMock.mock.calls[0]![0] as Request).headers.get("Authorization")).toBe("Bearer tok");
+  });
+
+  it("propagates a 404", async () => {
+    mockApi([[/./, 404, { error: "No existe" }]]);
+    await expect(fetchUserFriends("u2")).rejects.toThrow("No existe");
   });
 });
 

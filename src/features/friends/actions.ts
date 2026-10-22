@@ -4,6 +4,7 @@ import { authedClient } from "@/features/auth/session";
 
 export type Friend = Schemas["Friend"];
 export type FriendLink = Schemas["FriendLink"];
+export type CommonTrip = Schemas["CommonTrip"];
 export type FriendClaim = Schemas["ClaimResponse"];
 export type AddMemberResult = Schemas["AddMembersResponse"]["results"][number];
 
@@ -28,6 +29,11 @@ export async function redeemFriend(input: { code: string } | { claimToken: strin
 
 export async function fetchFriends(): Promise<Friend[]> {
   return (await unwrap((await authedClient()).GET("/friends"))).friends;
+}
+
+/** A friend and the rolls you're both active members in. 404 if you aren't friends. */
+export async function fetchFriend(userId: string): Promise<{ friend: Friend; commonTrips: CommonTrip[] }> {
+  return unwrap((await authedClient()).GET("/friends/{userId}", { params: { path: { userId } } }));
 }
 
 export async function removeFriend(userId: string): Promise<void> {

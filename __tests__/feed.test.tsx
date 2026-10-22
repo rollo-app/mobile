@@ -1,14 +1,20 @@
 import { act } from "@testing-library/react-native";
-import { ActionSheetIOS, Alert } from "react-native";
+import { ActionSheetIOS, Alert, Text } from "react-native";
 import * as sections from "@/features/feed/sections";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
-import { signInAs, tripSummary } from "@/test/account";
+import { signInAs, tripSummary, USER } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
+import * as featuredActions from "@/features/featured/actions";
 
 jest.mock("@/features/trips/actions");
+// Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
+jest.mock("@/features/featured/actions");
+beforeEach(() => {
+  jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
+});
 const mocked = jest.mocked(actions);
 const { __camera: camera } = jest.requireMock("@maplibre/maplibre-react-native") as { __camera: { flyTo: jest.Mock } };
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
@@ -49,7 +55,7 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   caption: "el viento no perdona",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
+  author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null },
   ...over,
 });
 
@@ -102,7 +108,7 @@ describe("Feed", () => {
         feedItem({ id: "c", takenAt: Date.parse("2027-01-12T20:00:00Z"), caption: "tarde" }),
       ]),
     );
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await screen.findByText("tarde");
     const texts = screen.getAllByText(/^(Martes 12|Lunes 11|tarde|temprano|ayer vieja)$/).map((n) => n.props.children);
@@ -112,11 +118,11 @@ describe("Feed", () => {
   it("names the author by handle, falling back to the name when there is none", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
-        feedItem({ id: "a", caption: null, author: { id: "m2", name: "Fede", username: "fede.s", avatarUrl: null } }),
-        feedItem({ id: "b", caption: null, author: { id: "m3", name: "Cami", username: null, avatarUrl: null } }),
+        feedItem({ id: "a", caption: null, author: { id: "m2", userId: "u-m2", name: "Fede", username: "fede.s", avatarUrl: null } }),
+        feedItem({ id: "b", caption: null, author: { id: "m3", userId: "u-m3", name: "Cami", username: null, avatarUrl: null } }),
       ]),
     );
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     const rows = await screen.findAllByTestId("feed-row");
     expect(within(rows[0]!).getByText("@fede.s")).toBeVisible();
@@ -126,34 +132,61 @@ describe("Feed", () => {
 
   it("your unuploaded photos go in their day with 'Esperando señal'", async () => {
     await queue.enqueue(queued());
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     expect(await screen.findByText("Esperando señal")).toBeVisible();
     expect(within(screen.getByTestId("feed-row")).getByText("Juani")).toBeVisible();
     expect(screen.getByText("Martes 12")).toBeVisible();
   });
 
-  it("tapping a row with a location goes to the map centered on that photo", async () => {
+  it("tapping a row with a location switches to Mapa centered on that photo", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Fede, / }));
 
-    await waitFor(() => expect(screen).toHavePathname("/map"));
-    // The Map received the id: it flies to the photo.
+    // Same tab: the view switches to Mapa and the (already mounted) map flies to the photo and opens its card.
+    await waitFor(() => expect(screen.queryByTestId("feed-list")).toBeNull());
+    expect(screen).toHavePathname("/map");
+    expect(screen).toHaveSearchParams({ view: "map" });
     await waitFor(() => expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33], zoom: 15 })));
+    // The list is gone, so the caption on screen is the pin's card.
+    expect(await screen.findByText("el viento no perdona")).toBeVisible();
+  });
+
+  it("tapping the author's photo or name opens their profile instead of the map", async () => {
+    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: "/map?view=feed" });
+
+    const author = await screen.findByRole("button", { name: "Perfil de Fede" });
+    camera.flyTo.mockClear();
+    await fireEvent.press(author);
+
+    expect(await screen.findByText("Perfil de alguien")).toBeVisible();
+    expect(screen).toHavePathname("/user/u-m2");
+    expect(camera.flyTo).not.toHaveBeenCalled();
+  });
+
+  it("tapping your own name (also on an unuploaded photo) goes to Perfil", async () => {
+    await signInAs({ user: { ...USER, id: "u-m1" }, trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
+    await queue.enqueue(queued());
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Juani" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/me"));
   });
 
   it("a row without a location is not tappable", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem({ lat: null, lng: null })]));
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await screen.findByText("el viento no perdona");
     expect(screen.queryByRole("button", { name: /^Fede, / })).toBeNull();
   });
 
   it("pull to refresh requests the feed again", async () => {
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
     await screen.findByText(EMPTY);
     mocked.fetchFeed.mockClear();
 
@@ -167,7 +200,7 @@ describe("Feed", () => {
   it("does not recompute the grouping on every render", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
     const group = jest.spyOn(sections, "groupByDay");
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
     await screen.findByText("el viento no perdona");
     const before = group.mock.calls.length;
 
@@ -183,7 +216,7 @@ describe("Feed", () => {
   it("shows items in batches and loads more when reaching the end of the list", async () => {
     const many = Array.from({ length: 70 }, (_, n) => feedItem({ id: `f${n}`, takenAt: 1_800_000_000_000 + n * 60_000 }));
     mocked.fetchFeed.mockResolvedValue(feed(many));
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
     await screen.findByTestId("feed-list");
     // The host does not expose the list props: walk up to the SectionList.
     const list = () => {
@@ -208,7 +241,7 @@ describe("Feed", () => {
   describe("admin", () => {
     it("Borrar foto asks for confirmation and, if confirmed, deletes and refetches feed and trip", async () => {
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
-      await renderRouter(routes, { initialUrl: "/feed" });
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
       mocked.fetchFeed.mockClear();
       mocked.fetchTrip.mockClear();
@@ -237,7 +270,7 @@ describe("Feed", () => {
     it("if the server rejects, it shows an alert with its message", async () => {
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
       mocked.deleteMedia.mockRejectedValue(new Error("El viaje ya se reveló"));
-      await renderRouter(routes, { initialUrl: "/feed" });
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
 
       await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
@@ -250,7 +283,7 @@ describe("Feed", () => {
 
     it("a pending photo cannot be deleted", async () => {
       await queue.enqueue(queued());
-      await renderRouter(routes, { initialUrl: "/feed" });
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
       await screen.findByText("Esperando señal");
       await fireEvent(within(screen.getByTestId("feed-row")).getByText("Juani"), "longPress");
@@ -261,7 +294,7 @@ describe("Feed", () => {
   it("a non-admin member cannot delete", async () => {
     mocked.fetchTrip.mockResolvedValue(detail("member"));
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await screen.findByText("el viento no perdona");
     await fireEvent(within(screen.getByTestId("feed-row")).getByText("Fede"), "longPress");
@@ -269,13 +302,13 @@ describe("Feed", () => {
   });
 
   it("with no photos it explains they will show up here", async () => {
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
     expect(await screen.findByText(EMPTY)).toBeVisible();
   });
 
   it("while loading it shows a small indicator, not the empty state", async () => {
     mocked.fetchFeed.mockReturnValue(new Promise(() => {}));
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     expect(await screen.findByTestId("feed-loading")).toBeTruthy();
     expect(screen.queryByText(EMPTY)).toBeNull();
@@ -283,7 +316,7 @@ describe("Feed", () => {
 
   it("if it fails with no cache it shows the error with Reintentar", async () => {
     mocked.fetchFeed.mockRejectedValueOnce(new Error("Sin conexión"));
-    await renderRouter(routes, { initialUrl: "/feed" });
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     expect((await screen.findAllByText("Sin conexión"))[0]).toBeVisible();
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));

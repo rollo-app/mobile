@@ -1,4 +1,4 @@
-import { clearActiveTripId, getActiveTripId, setActiveTripId } from "../active-trip";
+import { clearActiveTripId, getActiveTripId, onActiveTripIdChange, setActiveTripId } from "../active-trip";
 import { clearSessionToken, getSessionToken, setSessionToken } from "../session";
 
 describe("session token", () => {
@@ -29,5 +29,18 @@ describe("active trip id", () => {
 
     await clearActiveTripId();
     expect(await getActiveTripId()).toBeNull();
+  });
+
+  it("tells subscribers about every change once it's saved, until they unsubscribe", async () => {
+    const seen: (string | null)[] = [];
+    const saved = () => require("expo-secure-store").__store.get("rollo.activeTrip") ?? null;
+    const unsubscribe = onActiveTripIdChange((id) => seen.push(id, saved()));
+
+    await setActiveTripId("t2");
+    await clearActiveTripId();
+    unsubscribe();
+    await setActiveTripId("t3");
+
+    expect(seen).toEqual(["t2", "t2", null, null]);
   });
 });

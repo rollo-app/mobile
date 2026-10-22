@@ -1,15 +1,15 @@
 import { Image } from "expo-image";
-import { Stack } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
-import { GalleryScreen } from "@/features/gallery/gallery-screen";
+import { Stack, useLocalSearchParams } from "expo-router";
+import { StyleSheet, Text, View, type ColorValue } from "react-native";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
+import { RevealedRollScreen } from "@/features/roll/revealed-roll-screen";
+import { RollDates } from "@/features/roll/roll-dates";
 import { RollPeople } from "@/features/roll/roll-people";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { buildContactSheet } from "@/features/roll/contact-sheet";
 import { Welcome } from "@/features/roll/welcome";
 import { hasNoTrips } from "@/features/trips/active";
-import { daysUntil, formatDateTime, startsIn } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
@@ -20,15 +20,47 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 
 const COLUMNS = 6;
 
-/** After the reveal the Rollo tab is the gallery; before, the board. */
+/** After the reveal the Rollo tab is "Galería | Rollo"; before, the board. */
 export default function RollScreen() {
   const { trip, loaded } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
+  const { view } = useLocalSearchParams<{ view?: string }>();
   if (hasNoTrips(loaded, trip)) return <Welcome />;
-  if (trip && phase === "revealed") return <GalleryScreen tripId={trip.id} />;
-  return <RollBoard />;
+  const revealed = trip && phase === "revealed";
+  // The gallery's right toolbar (select + menu) is wider, so its title gets less room.
+  const maxWidthRatio = revealed && view !== "roll" ? 0.45 : 0.5;
+  // Revealed, the header is solid with the screen's background so it reads as one block with the
+  // "Galería | Rollo" row under it. Set here (not in the revealed screen) so that switching to a trip
+  // that isn't revealed clears them: undefined goes back to the stack's default header.
+  const header = revealed ? solidHeader(view === "roll" ? colors.groupedBackground : colors.background) : defaultHeader;
+  return (
+    <>
+      {trip && (
+        <Stack.Screen
+          options={{ ...header, headerTitle: () => <TripSwitcher name={trip.name} maxWidthRatio={maxWidthRatio} /> }}
+        />
+      )}
+      {revealed ? <RevealedRollScreen tripId={trip.id} /> : <RollBoard />}
+    </>
+  );
 }
+
+const solidHeader = (backgroundColor: ColorValue) => ({
+  headerTransparent: false,
+  headerStyle: { backgroundColor },
+  headerShadowVisible: false,
+  headerBlurEffect: "none" as const,
+  headerLargeTitle: false,
+});
+
+const defaultHeader = {
+  headerTransparent: undefined,
+  headerStyle: undefined,
+  headerShadowVisible: undefined,
+  headerBlurEffect: undefined,
+  headerLargeTitle: undefined,
+};
 
 function RollBoard() {
   const { trip } = useActiveTrip();
@@ -40,16 +72,8 @@ function RollBoard() {
   // Your queued photos are already in the roll, even if they haven't been uploaded yet.
   const total = (detail?.totalUploaded ?? 0) + pending;
 
-  const tz = detail?.trip.timezone ?? "";
-  const at = (ms: number) => formatDateTime(ms, Date.now(), tz);
-  const startNote = phase === "upcoming" ? startsIn(detail!.trip.startsAt, Date.now(), tz) : "Empezó";
-  const endNote = phase === "ended" || phase === "revealed" ? "Terminó" : undefined;
-  const revealNote =
-    phase === "revealed" ? "Se reveló" : detail ? daysUntil(detail.trip.revealAt, Date.now(), tz) : undefined;
-
   return (
     <Screen grouped>
-      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.name} /> }} />}
       {error ? (
         <>
           <ErrorText>{error}</ErrorText>
@@ -75,11 +99,7 @@ function RollBoard() {
             </Section>
           )}
 
-          <Section title="Fechas">
-            <Row label="Empieza" value={at(detail.trip.startsAt)} note={startNote} />
-            <Row label="Termina" value={at(detail.trip.endsAt)} note={endNote} />
-            <Row label="Se revela" value={at(detail.trip.revealAt)} note={revealNote} />
-          </Section>
+          <RollDates detail={detail} phase={phase} />
 
           <UploadStatusSection tripId={detail.trip.id} timeZone={detail.trip.timezone} />
           <RollPeople detail={detail} />

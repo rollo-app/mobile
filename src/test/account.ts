@@ -5,7 +5,7 @@ import { myTripsKey } from "@/features/trips/use-active-trip";
 import { setActiveTripId } from "@/storage/active-trip";
 import { setSessionToken } from "@/storage/session";
 
-export const USER: User = { id: "u1", email: "juani@rollo.test", name: "Juani", username: "juani", avatarUrl: null };
+export const USER: User = { id: "u1", email: "juani@rollo.test", name: "Juani", username: "juani", avatarUrl: null, bio: null, profileVisibility: "friends" };
 
 export const tripSummary = (id: string, name: string, over: Partial<TripSummary> = {}): TripSummary => ({
   id,
@@ -17,6 +17,7 @@ export const tripSummary = (id: string, name: string, over: Partial<TripSummary>
   revealed: false,
   role: "admin",
   totalUploaded: 0,
+  coverThumbhash: null,
   ...over,
 });
 

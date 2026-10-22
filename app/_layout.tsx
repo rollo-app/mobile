@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { StyleSheet, Text, useColorScheme, View } from "react-native";
 import { CACHE_MAX_AGE, connectAppState, persister, queryClient } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
+import { REVEAL_BACKGROUND } from "@/features/reveal/reveal-screen";
 import { useRevealTap } from "@/features/notifications/use-reveal-tap";
 import { useOfflineMapSync } from "@/features/map/use-offline-map-sync";
 import { useRedeemPendingFriend } from "@/features/friends/use-pending-friend";
@@ -73,7 +74,6 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
-          <Stack.Screen name="friends" options={{ title: "Amigos" }} />
           <Stack.Screen
             name="add-friends"
             options={{
@@ -83,19 +83,16 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
+          <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
+          {/* Someone's profile from a roll or a photo: a push over the tabs (a sheet or viewer closes first). */}
+          {/* No title: the name is already in the profile's header. */}
+          <Stack.Screen name="user/[id]" options={{ title: "" }} />
+          {/* "Amigos" or "Amigos en común", set by the screen once it knows. */}
+          <Stack.Screen name="user/[id]/friends" options={{ title: "Amigos" }} />
           <Stack.Screen
             name="edit-profile"
             options={{
               title: "Editar perfil",
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.6, 1],
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="roll-info"
-            options={{
-              title: "Sobre el rollo",
               presentation: "formSheet",
               sheetAllowedDetents: [0.6, 1],
               sheetGrabberVisible: true,
@@ -111,6 +108,12 @@ function RootStack() {
             }}
           />
           <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          {/* The lock → camera moment when a roll starts. */}
+          <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          <Stack.Screen
+            name="reveal"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: REVEAL_BACKGROUND } }}
+          />
           <Stack.Screen
             name="presentation"
             options={{
@@ -122,6 +125,10 @@ function RootStack() {
           />
           <Stack.Screen
             name="photo/[id]"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
+          />
+          <Stack.Screen
+            name="featured/[userId]/[mediaId]"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
           />
       </Stack.Protected>

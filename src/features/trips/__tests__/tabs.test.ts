@@ -7,7 +7,7 @@ describe("tabsFor", () => {
     const tabs = tabsFor("active", { photos: 7, videos: 2 });
     expect(tabs.roll).toEqual({ sf: { default: "film", selected: "film.fill" }, md: "movie", label: "Rollo" });
     expect(tabs.camera).toMatchObject({ sf: "camera.fill", label: "Cámara", target: "/capture", badge: "7" });
-    expect(tabs.feedHidden).toBe(false);
+    expect(tabs).not.toHaveProperty("feedHidden");
   });
 
   it("with the quota used up or before the start, the camera is locked", () => {
@@ -16,11 +16,11 @@ describe("tabsFor", () => {
     expect(tabsFor("ended", { photos: 3, videos: 1 }).camera).toMatchObject({ label: "Cámara, rollo cerrado", badge: null });
   });
 
-  it("after the reveal: gallery, presentation without badge, and no feed", () => {
+  it("after the reveal: gallery and presentation without badge", () => {
     const tabs = tabsFor("revealed", { photos: 3, videos: 1 });
     expect(tabs.roll).toMatchObject({ sf: { default: "square.grid.2x2", selected: "square.grid.2x2.fill" }, label: "Galería" });
     expect(tabs.camera).toEqual({ sf: "play.rectangle.fill", md: "slideshow", label: "Presentación", target: "/presentation", badge: null });
-    expect(tabs.feedHidden).toBe(true);
+    expect(tabs).not.toHaveProperty("feedHidden");
   });
 
   it("while the phase is unknown it looks like shooting", () => {

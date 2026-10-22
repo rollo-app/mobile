@@ -94,16 +94,25 @@ jest.mock("@maplibre/maplibre-react-native", () => {
   const getClusterLeaves = jest.fn();
   const mapProps: { current: any } = { current: null };
   const imagesProps: { current: any } = { current: null };
+  // Last props of each source and layer, by id (so tests can check clustering and expressions).
+  const sourceProps: Record<string, any> = {};
+  const layerProps: Record<string, any> = {};
+  // How many times a Map has mounted (tests reset it): a remount reloads the style and loses the camera.
+  const mapMounts = { current: 0 };
   return {
     __camera: camera,
+    __mapMounts: mapMounts,
     __getClusterLeaves: getClusterLeaves,
     __mapProps: mapProps,
     __imagesProps: imagesProps,
+    __sourceProps: sourceProps,
+    __layerProps: layerProps,
     // The map lets you tap "the void"; the pin source renders a button per pin (so screens can be tested without native).
     Map: (props: any) => {
       const { children, onPress, onDidFinishLoadingMap } = props;
       mapProps.current = props;
       React.useEffect(() => {
+        mapMounts.current += 1;
         onDidFinishLoadingMap?.();
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, []);
@@ -120,7 +129,9 @@ jest.mock("@maplibre/maplibre-react-native", () => {
     },
     ViewAnnotation: View,
     // With 2+ photos it adds a "cluster" whose leaves are the first two.
-    GeoJSONSource: ({ data, onPress, ref }: any) => {
+    GeoJSONSource: (props: any) => {
+      const { data, onPress, ref } = props;
+      sourceProps[props.id] = props;
       React.useImperativeHandle(ref, () => ({
         getClusterLeaves,
       }));
@@ -145,9 +156,13 @@ jest.mock("@maplibre/maplibre-react-native", () => {
             onPress: () => onPress({ nativeEvent: { features: [f] }, stopPropagation: () => {} }),
           }),
         ),
+        props.children,
       );
     },
-    Layer: View,
+    Layer: (props: any) => {
+      layerProps[props.id] = props;
+      return React.createElement(View, props);
+    },
     Images: (props: any) => {
       imagesProps.current = props;
       return null;
@@ -213,13 +228,17 @@ jest.mock("@expo/ui/community/menu", () => {
         View,
         { style },
         children,
-        actions.map((a: { id: string; title: string }) =>
+        // Inline sections (displayInline + subactions) are flattened: their items show up in order.
+        actions.flatMap((a: any) => (a.displayInline && a.subactions ? a.subactions : [a])).map((a: { id: string; title: string; state?: string; attributes?: { disabled?: boolean } }) =>
           React.createElement(
             Pressable,
             {
               key: a.id,
               accessibilityRole: "menuitem",
               accessibilityLabel: a.title,
+              accessibilityState: { checked: a.state === "on" },
+              // Only when set, so enabled items keep the plain { checked } state.
+              disabled: a.attributes?.disabled || undefined,
               onPress: () => onPressAction({ nativeEvent: { event: a.id } }),
             },
             React.createElement(Text, null, a.title),
@@ -248,6 +267,15 @@ jest.mock("@expo/ui/swift-ui", () => {
       h(View, { accessibilityLabel: title, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
     Stepper: ({ label, value }: any) =>
       h(View, { accessibilityLabel: label, accessibilityValue: { text: String(value) } }, h(RNText, null, label)),
+    Toggle: ({ isOn, onIsOnChange, modifiers }: any) =>
+      h(View, {
+        accessible: true,
+        accessibilityRole: "switch",
+        accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel,
+        accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled },
+        value: !!isOn,
+        onValueChange: onIsOnChange,
+      }),
     Picker: ({ selection, onSelectionChange, children }: any) =>
       h(
         View,
@@ -271,6 +299,10 @@ jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   tag: (tag: string) => ({ tag }),
   pickerStyle: (style: string) => ({ style }),
   foregroundStyle: (style: unknown) => ({ foregroundStyle: style }),
+  tint: (tint: unknown) => ({ tint }),
+  labelsHidden: () => ({ labelsHidden: true }),
+  disabled: (disabled = true) => ({ disabled }),
+  accessibilityLabel: (accessibilityLabel: string) => ({ accessibilityLabel }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).
@@ -361,3 +393,16 @@ jest.mock("expo-video", () => {
   return { useVideoPlayer: jest.fn(() => ({ loop: false })), VideoView: View };
 });
 
+
+// Native animation, haptics and audio modules are mocked out. The darkroom (Skia) only shows its title.
+jest.mock("@/features/reveal/darkroom-intro", () => {
+  const { createElement: h } = require("react");
+  const { Text, View } = require("react-native");
+  return {
+    DarkroomIntro: ({ title, date }: { title: string; date: string }) =>
+      h(View, null, h(Text, null, "Se reveló"), h(Text, null, title), h(Text, null, date)),
+  };
+});
+jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
+jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
+jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));
