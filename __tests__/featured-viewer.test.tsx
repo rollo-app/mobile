@@ -1,5 +1,7 @@
+import { ActionSheetIOS } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as featuredActions from "@/features/featured/actions";
+import * as moderationActions from "@/features/moderation/actions";
 import * as friendActions from "@/features/friends/actions";
 import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
@@ -9,6 +11,8 @@ import { routes } from "@/test/routes";
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/friends/actions");
 jest.mock("@/features/featured/actions");
+jest.mock("@/features/moderation/actions");
+const moderation = jest.mocked(moderationActions);
 const featured = jest.mocked(featuredActions);
 
 const SUR = "11111111-1111-4111-8111-111111111111";
@@ -103,5 +107,29 @@ describe("Featured viewer", () => {
     await screen.findByTestId("featured-viewer");
     expect(await viewer().findByText("Juani")).toBeVisible();
     expect(viewer().queryByRole("button", { name: "Sacar de tu perfil" })).toBeNull();
+  });
+
+  describe("reporting", () => {
+    let sheet: jest.SpyInstance;
+    beforeEach(() => {
+      moderation.reportMedia.mockReset().mockResolvedValue(undefined);
+      sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_o, cb) => cb(0));
+    });
+    afterEach(() => sheet.mockRestore());
+
+    it("the featured viewer reports a photo", async () => {
+      await openFromProfile("Foto de Cami");
+
+      await fireEvent.press(viewer().getByRole("menuitem", { name: "Denunciar" }));
+
+      await waitFor(() => expect(moderation.reportMedia).toHaveBeenCalledWith("p2", "offensive"));
+      await waitFor(() => expect(screen.queryByTestId("featured-viewer")).toBeNull());
+    });
+
+    it("a photo you took yourself has no Denunciar", async () => {
+      await openFromProfile("Foto destacada");
+
+      expect(viewer().queryByRole("menuitem", { name: "Denunciar" })).toBeNull();
+    });
   });
 });

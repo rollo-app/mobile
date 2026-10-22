@@ -8,14 +8,18 @@ import { signInAs, tripSummary, USER } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 import * as featuredActions from "@/features/featured/actions";
+import * as moderationActions from "@/features/moderation/actions";
+import * as Burnt from "burnt";
 
 jest.mock("@/features/trips/actions");
+jest.mock("@/features/moderation/actions");
 // Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
 jest.mock("@/features/featured/actions");
 beforeEach(() => {
   jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
 });
 const mocked = jest.mocked(actions);
+const moderation = jest.mocked(moderationActions);
 const { __camera: camera } = jest.requireMock("@maplibre/maplibre-react-native") as { __camera: { flyTo: jest.Mock } };
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 
@@ -36,10 +40,10 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, blockedByMe: false },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role },
-    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, blockedByMe: false },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", blockedByMe: false },
   ],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -84,7 +88,12 @@ const queued = (over: Partial<QueuedMedia> = {}): QueuedMedia => ({
 let queue: Queue;
 let alert: jest.SpyInstance;
 const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation(() => {});
-jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(), ImpactFeedbackStyle: { Light: "light" } }));
+jest.mock("expo-haptics", () => ({
+  impactAsync: jest.fn(),
+  ImpactFeedbackStyle: { Light: "light" },
+  notificationAsync: jest.fn(),
+  NotificationFeedbackType: { Success: "success" },
+}));
 
 beforeEach(async () => {
   mocked.fetchTrip.mockResolvedValue(detail());
@@ -238,6 +247,65 @@ describe("Feed", () => {
     expect(rows()).toBe(70);
   });
 
+  describe("reporting", () => {
+    // The row's own sheet picks `label`, then the reason sheet picks index 0 ("Es ofensivo").
+    const pickReport = () =>
+      sheet.mockImplementation((opts, cb) => {
+        if (opts.options.includes("Denunciar")) cb(opts.options.indexOf("Denunciar"));
+        else cb(0);
+      });
+    afterEach(() => sheet.mockImplementation(() => {}));
+
+    it("long-pressing someone else's row reports it and the row disappears", async () => {
+      moderation.reportMedia.mockResolvedValue(undefined);
+      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+      await screen.findByText("el viento no perdona");
+      pickReport();
+
+      await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
+
+      await waitFor(() => expect(moderation.reportMedia).toHaveBeenCalledWith("f1", "offensive"));
+      await waitFor(() => expect(screen.queryByText("el viento no perdona")).toBeNull());
+    });
+
+    it("your own rows offer no Denunciar", async () => {
+      mocked.fetchFeed.mockResolvedValue(
+        feed([feedItem({ author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]),
+      );
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+      await screen.findByText("el viento no perdona");
+
+      await fireEvent(screen.getByLabelText(/^Juani, /), "longPress");
+
+      expect(sheet.mock.calls[0]![0].options).toEqual(["Borrar foto", "Cancelar"]);
+    });
+
+    it("a member sees Denunciar but not Borrar foto on someone else's row", async () => {
+      mocked.fetchTrip.mockResolvedValue(detail("member"));
+      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+      await screen.findByText("el viento no perdona");
+
+      await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
+
+      expect(sheet.mock.calls[0]![0].options).toEqual(["Denunciar", "Cancelar"]);
+    });
+
+    it("a failed report keeps the row and shows the error HUD", async () => {
+      moderation.reportMedia.mockRejectedValue(new Error("sin señal"));
+      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+      await screen.findByText("el viento no perdona");
+      pickReport();
+
+      await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
+
+      await waitFor(() => expect(Burnt.alert).toHaveBeenCalledWith(expect.objectContaining({ preset: "error" })));
+      expect(screen.getByText("el viento no perdona")).toBeVisible();
+    });
+  });
+
   describe("admin", () => {
     it("Borrar foto asks for confirmation and, if confirmed, deletes and refetches feed and trip", async () => {
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
@@ -247,7 +315,7 @@ describe("Feed", () => {
       mocked.fetchTrip.mockClear();
 
       await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
-      sheet.mock.calls[0]![1](0);
+      sheet.mock.calls[0]![1](1);
 
       expect(alert).toHaveBeenCalledWith(
         "¿Borrar esta foto?",
@@ -274,7 +342,7 @@ describe("Feed", () => {
       await screen.findByText("el viento no perdona");
 
       await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
-      sheet.mock.calls[0]![1](0);
+      sheet.mock.calls[0]![1](1);
       const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
       await act(async () => buttons.find((b) => b.text === "Borrar")!.onPress!());
 
@@ -298,7 +366,7 @@ describe("Feed", () => {
 
     await screen.findByText("el viento no perdona");
     await fireEvent(within(screen.getByTestId("feed-row")).getByText("Fede"), "longPress");
-    expect(sheet).not.toHaveBeenCalled();
+    expect(sheet.mock.calls.flatMap((c) => c[0].options)).not.toContain("Borrar foto");
   });
 
   it("with no photos it explains they will show up here", async () => {

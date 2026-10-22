@@ -33,10 +33,10 @@ const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" =
     dailyVideoLimit: 3,
     ...over,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role },
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, blockedByMe: false },
   members: [
-    { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role },
-    { id: "m5", userId: "u5", name: "Fede", username: "fede.s", avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, blockedByMe: false },
+    { id: "m5", userId: "u5", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", blockedByMe: false },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,

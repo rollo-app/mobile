@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, Style
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { FeedRow } from "@/features/feed/feed-row";
 import { groupByDay, newest, type FeedSection } from "@/features/feed/sections";
+import { useReport } from "@/features/moderation/use-report";
 import { feedToItems, mergeItems, pendingToItems, type MapItem } from "@/features/map/features";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { deleteMedia } from "@/features/trips/actions";
@@ -88,6 +89,9 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
     }
   }, [refetch]);
 
+  const report = useReport();
+  const reportItem = useCallback((item: MapItem) => void report.reportMedia({ mediaId: item.id, tripId }), [report.reportMedia, tripId]);
+
   const openProfile = useOpenProfile();
   const openAuthor = useCallback((item: MapItem) => item.authorUserId && openProfile(item.authorUserId), [openProfile]);
 
@@ -99,9 +103,10 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
         onPress={onOpenOnMap}
         onAuthorPress={openAuthor}
         onDelete={isAdmin ? confirmRemove : undefined}
+        onReport={me && item.authorUserId !== me.userId ? reportItem : undefined}
       />
     ),
-    [timeZone, onOpenOnMap, openAuthor, isAdmin, confirmRemove],
+    [timeZone, onOpenOnMap, openAuthor, isAdmin, confirmRemove, me, reportItem],
   );
 
   const renderSectionHeader = useCallback(

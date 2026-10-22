@@ -406,3 +406,6 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
 jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));
+
+// Native HUD (burnt): tests get mocks they can inspect.
+jest.mock("burnt", () => ({ alert: jest.fn(), toast: jest.fn() }));

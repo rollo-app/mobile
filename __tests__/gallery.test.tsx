@@ -1,10 +1,12 @@
 import { act } from "@testing-library/react-native";
-import { Alert, Linking, Text } from "react-native";
+import { ActionSheetIOS, Alert, Linking, Text } from "react-native";
+import { router } from "expo-router";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { requestPermissionsAsync } from "expo-media-library";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { PermissionDeniedError } from "@/features/gallery/save";
 import * as featuredActions from "@/features/featured/actions";
+import * as moderationActions from "@/features/moderation/actions";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
@@ -12,6 +14,7 @@ import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/featured/actions");
+jest.mock("@/features/moderation/actions");
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(),
   NotificationFeedbackType: { Success: "success" },
@@ -27,6 +30,7 @@ jest.mock("@/features/gallery/save", () => ({
 }));
 const mocked = jest.mocked(actions);
 const featured = jest.mocked(featuredActions);
+const moderation = jest.mocked(moderationActions);
 const { __camera: camera } = jest.requireMock("@maplibre/maplibre-react-native") as { __camera: { flyTo: jest.Mock } };
 
 const SUR = "11111111-1111-4111-8111-111111111111";
@@ -45,10 +49,10 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
-    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", blockedByMe: false },
   ],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -470,6 +474,41 @@ describe("Photo viewer", () => {
     await openViewer("c");
     await screen.findByRole("button", { name: "Guardar en Fotos" });
     expect(screen.queryByRole("button", { name: "Destacar" })).toBeNull();
+  });
+
+  it("reports someone else's photo and moves on to the next one", async () => {
+    moderation.reportMedia.mockReset().mockResolvedValue(undefined);
+    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_o, cb) => cb(0));
+    await openViewer("a");
+    await screen.findByText("Fede");
+
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Denunciar" }));
+
+    await waitFor(() => expect(moderation.reportMedia).toHaveBeenCalledWith("a", "offensive"));
+    expect(await screen.findByText("el glaciar")).toBeVisible();
+    expect(screen.queryByText("Fede")).toBeNull();
+    sheet.mockRestore();
+  });
+
+  it("reporting the last photo closes the viewer", async () => {
+    moderation.reportMedia.mockReset().mockResolvedValue(undefined);
+    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_o, cb) => cb(0));
+    mocked.fetchFeed.mockResolvedValue(feed([item("only")]));
+    await renderRouter(routes, { initialUrl: "/map" });
+    await act(async () => router.push(`/photo/only?tripId=${SUR}`));
+
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Denunciar" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/map"));
+    sheet.mockRestore();
+  });
+
+  it("your own photo has no Denunciar", async () => {
+    const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
+    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine })]));
+    await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
+    await screen.findByRole("menuitem", { name: "No dejar que la destaquen" });
+    expect(screen.queryByRole("menuitem", { name: "Denunciar" })).toBeNull();
   });
 
   it("someone else's photo has no feature-block option", async () => {
