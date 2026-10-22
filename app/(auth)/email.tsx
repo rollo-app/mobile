@@ -3,6 +3,7 @@ import { useState } from "react";
 import { startEmailLogin } from "@/features/auth/actions";
 import { AuthScreen } from "@/features/auth/auth-screen";
 import { isValidEmail } from "@/features/auth/email";
+import { TermsNotice } from "@/features/auth/terms-notice";
 import { Button, ErrorText, Field } from "@/ui/components";
 
 export default function EmailScreen() {
@@ -40,6 +41,7 @@ export default function EmailScreen() {
       />
       {error && <ErrorText>{error}</ErrorText>}
       <Button label="Continuar" onPress={submit} disabled={!isValidEmail(email)} loading={loading} />
+      <TermsNotice />
     </AuthScreen>
   );
 }

@@ -1,7 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
-import { ActionSheetIOS, Alert } from "react-native";
+import { ActionSheetIOS, Alert, Linking } from "react-native";
 import { createQueue } from "@/features/capture/queue";
 import * as moderationActions from "@/features/moderation/actions";
 import * as friendActions from "@/features/friends/actions";
@@ -90,6 +90,17 @@ describe("Login", () => {
 
     expect(await screen.findByLabelText("Tu email")).toBeVisible();
     expect(screen.queryByText("Fechas")).toBeNull();
+  });
+
+  it("the email screen links to the terms and the privacy policy", async () => {
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
+    await renderRouter(routes, { initialUrl: "/email" });
+
+    await fireEvent.press(await screen.findByText("Términos"));
+    expect(open).toHaveBeenLastCalledWith("https://rollo.juanifraga.com/terminos");
+    await fireEvent.press(screen.getByText("Política de privacidad"));
+    expect(open).toHaveBeenLastCalledWith("https://rollo.juanifraga.com/privacidad");
+    open.mockRestore();
   });
 
   it("email → code → complete profile → the app", async () => {
