@@ -264,6 +264,12 @@ la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), 
 testing externo en TestFlight (revisión de Apple) y la prueba real. El backend ya está en producción
 (`rollo-api.juanifraga.com`) y el build 2 (1.0.0) ya se instala por TestFlight (testing interno).
 
+Pendiente (después de enero, no antes del viaje): **migrar el backend a Supabase**. La idea es que Postgres de
+Supabase reemplace a D1 y que las fotos sigan en R2 (gratis y sin costo de egress), con el Worker conectado
+por Hyperdrive o el backend en Supabase. A tener en cuenta: el plan gratis de Supabase pausa el proyecto tras
+7 días sin uso, hay que pasar de SQLite a Postgres y la base queda en una sola región. Se planea y hace en
+`rollo-app/backend`; si cambia el contrato, la app solo regenera `schema.d.ts`.
+
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):
 
 1. **Cámara y subida offline** (lo central): captura nativa foto/video, GPS, compresión + thumbnail,
