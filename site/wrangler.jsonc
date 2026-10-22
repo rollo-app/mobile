@@ -1,0 +1,6 @@
+{
+  "name": "rollo-site",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./dist", "not_found_handling": "404-page" },
+  "routes": [{ "pattern": "rollo.juanifraga.com", "custom_domain": true }]
+}
