@@ -5,6 +5,7 @@ import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
 import { hasSeenRevealIntro, markRevealIntroSeen } from "@/storage/reveal-intro";
 import { signInAs, tripSummary } from "@/test/account";
+import { REVEAL_TIMELINE } from "@/features/reveal/timeline";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
@@ -99,6 +100,47 @@ describe("Reveal", () => {
     await screen.findByText("Se reveló");
     await act(async () => {});
     expect(await hasSeenRevealIntro(SUR)).toBe(true);
+  });
+
+  describe("while it loads", () => {
+    const hangingFeed = () => mocked.fetchFeed.mockReturnValue(new Promise(() => {}));
+
+    it("shows a spinner and a tap goes on to the stories", async () => {
+      hangingFeed();
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+
+      await fireEvent.press(await screen.findByTestId("reveal-loading"));
+
+      expect(screen).toHavePathname("/presentation");
+    });
+
+    // renderRouter already runs on Jest's fake timers.
+    it("goes on to the stories when it takes too long", async () => {
+      hangingFeed();
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+      expect(screen.getByTestId("reveal-loading")).toBeTruthy();
+      await act(async () => jest.advanceTimersByTime(REVEAL_TIMELINE.loadingTimeoutMs - 100));
+      expect(screen).toHavePathname("/reveal");
+
+      await act(async () => jest.advanceTimersByTime(100));
+      expect(screen).toHavePathname("/presentation");
+    });
+
+    it("clears the safety timer when it leaves", async () => {
+      hangingFeed();
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+      expect(screen.getByTestId("reveal-loading")).toBeTruthy();
+      const replace = jest.spyOn(router, "replace");
+
+      screen.unmount();
+      jest.advanceTimersByTime(REVEAL_TIMELINE.loadingTimeoutMs * 2); // nothing is mounted: no act
+
+      expect(replace).not.toHaveBeenCalled();
+      replace.mockRestore();
+    });
   });
 
   it("plays even when it was already seen", async () => {

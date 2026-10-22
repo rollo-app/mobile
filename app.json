@@ -78,7 +78,13 @@
           "photosPermission": "Rollo usa el acceso a tus fotos solo para crear el álbum del rollo cuando guardás todo."
         }
       ],
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "scheme": "rollo",
     "experiments": {

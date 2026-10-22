@@ -18,6 +18,7 @@ import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Presets, usePatternComposer, type Pattern } from "react-native-pulsar";
 import Animated, {
   Easing,
+  ReduceMotion,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -36,7 +37,7 @@ import { playShutter, prepareShutter, releaseShutter } from "./shutter-sound";
 import { REVEAL_TIMELINE } from "./timeline";
 import { useSkiaThumbs } from "./use-skia-thumbs";
 
-const { developAt: DEVELOP_AT, hitAt: HIT_AT, titleAt: TITLE_AT, cellMs: CELL_MS } = REVEAL_TIMELINE;
+const { developAt: DEVELOP_AT, hitAt: HIT_AT, titleAt: TITLE_AT, cellMs: CELL_MS, reduced: REDUCED } = REVEAL_TIMELINE;
 const DEVELOP_MS = HIT_AT - DEVELOP_AT;
 /** Each cell takes CELL_MS to develop; their starts spread over STAGGER_MS. */
 const STAGGER_MS = DEVELOP_MS - CELL_MS;
@@ -121,10 +122,17 @@ export function DarkroomIntro({
     const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
 
     if (reduceMotion) {
-      gridOpacity.value = withTiming(1, { duration: 800 });
-      at(800, () => Presets.System.notificationSuccess());
-      gridOpacity.value = withDelay(1400, withTiming(0.25, { duration: 600 }));
-      titleOpacity.value = withDelay(1400, withTiming(1, { duration: 600 }));
+      // Plain fades, but they must still play: Reanimated's default (ReduceMotion.System) would skip
+      // the delays and jump to the end, showing the title at frame 0.
+      const never = { reduceMotion: ReduceMotion.Never };
+      const { fadeInMs, hapticAt, dimAt, dimMs, dimOpacity } = REDUCED;
+      gridOpacity.value = withSequence(
+        ReduceMotion.Never,
+        withTiming(1, { duration: fadeInMs, ...never }),
+        withDelay(dimAt - fadeInMs, withTiming(dimOpacity, { duration: dimMs, ...never }), ReduceMotion.Never),
+      );
+      at(hapticAt, () => Presets.System.notificationSuccess());
+      titleOpacity.value = withDelay(dimAt, withTiming(1, { duration: dimMs, ...never }), ReduceMotion.Never);
       return () => timers.forEach(clearTimeout);
     }
 

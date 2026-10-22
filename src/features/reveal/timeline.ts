@@ -13,4 +13,18 @@ export const REVEAL_TIMELINE = {
   cellMs: 2400,
   /** The whole sequence: then the screen moves on to the stories. */
   totalMs: 7000,
+  /** Waiting this long for the photos, the detail or the token, the screen gives up and goes to the stories. */
+  loadingTimeoutMs: 6000,
+  /** With Reduce Motion: no development, the photos fade in, the haptic confirms, then they dim under the title. */
+  reduced: {
+    /** The photos fade in fully over this long. */
+    fadeInMs: 800,
+    /** The success haptic, once they are in. */
+    hapticAt: 800,
+    /** The photos dim and the title fades in. */
+    dimAt: 1400,
+    dimMs: 600,
+    /** How much of the photos stays under the title. */
+    dimOpacity: 0.25,
+  },
 } as const;
