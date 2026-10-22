@@ -68,8 +68,8 @@ construye lo mínimo que cumple, bien hecho y con el estilo de la app, y nada m�
   - Desaparecen sus fotos, videos, captions y pins **en todos los rollos** (feed, mapa, galería, presentación,
     hoja de contacto) y sus destacadas.
   - Se borra la amistad (en los dos sentidos).
-  - Sigue apareciendo en la lista de miembros del rollo, con "Bloqueado" en gris en lugar de lo que muestre hoy esa
-    fila. Los totales del grupo (contadores, "N fotos") no cambian: son del grupo.
+  - Sigue apareciendo en la lista de miembros del rollo, con su foto y nombre como hoy y "Bloqueado" en
+    gris como detalle de la fila. Sus filas de actividad del Feed desaparecen porque son de sus fotos. Los totales del grupo (contadores, "N fotos") no cambian: son del grupo.
   - Su perfil muestra el encabezado (nombre, @, foto) y la acción "Desbloquear"; no muestra destacadas, amigos ni
     rollos en común.
 - **Qué pasa para quien es bloqueado (sin que se entere):**
@@ -95,7 +95,8 @@ construye lo mínimo que cumple, bien hecho y con el estilo de la app, y nada m�
 - Un mail por denuncia nueva a `REPORTS_EMAIL` (por defecto `soporte@juanifraga.com`), por Resend, con asunto
   "Denuncia en Rollo: foto de @usuario" o "Denuncia en Rollo: @usuario". Contiene: motivo; quién denuncia (nombre,
   @, email); qué se denunció (autor con nombre, @ y email; rollo; caption; fecha); para una foto, un **link firmado
-  de R2 a la versión de pantalla**, válido 7 días, para poder verla; y los comandos listos para actuar (abajo).
+  de R2 (GET) al original** (foto JPEG o video MP4), válido 7 días, para poder verla (hace falta un helper de
+  presign GET; hoy solo existe `presignPut`); y los comandos listos para actuar (abajo).
 - Si el mail falla, la denuncia igual queda guardada y la respuesta a la app es éxito (se loguea el error).
 
 ### Cómo actúa Juani
@@ -106,6 +107,10 @@ construye lo mínimo que cumple, bien hecho y con el estilo de la app, y nada m�
   - `DELETE /admin/users/{userId}`: borra la cuenta igual que "Borrar cuenta" (`DELETE /me`), reusando esa lógica.
   - `GET /admin/reports?limit=50`: las últimas denuncias, por si se pierde un mail.
 - El mail incluye los `curl` armados para la foto y para el autor (sin el token: `$ROLLO_ADMIN_TOKEN`).
+- Las rutas `/admin/*` no van al `openapi.json` público ni al cliente de la app. `DELETE /admin/users/{id}` usa la
+  misma función que `DELETE /me` (extraerla a `src/lib/` está bien). Las denuncias sobre esa cuenta se borran con
+  ella (los mails quedan en el Gmail de Juani).
+- El mail usa `src/lib/email.ts` y el mismo remitente verificado (`rollo@juanifraga.com`).
 - Un `docs/moderacion.md` en el backend explica cómo cargar el secret, cómo usar los comandos y que hay que actuar en
   menos de 24 h.
 
@@ -124,11 +129,15 @@ Migración nueva (siguiente número libre en `develop` del backend):
 
 - `POST /reports` con `{ mediaId, reason }` o `{ userId, reason }` → `204`. No se puede denunciar algo propio ni algo
   que no se puede ver (foto de un rollo del que no sos miembro, o destacada que no te toca ver) → `404`.
+  Se puede denunciar a cualquier usuario que exista salvo a uno mismo (el encabezado del perfil es visible para
+  todos). `reportedByMe` del perfil cuenta solo denuncias a la persona, no a sus fotos.
 - `GET /blocks` → lista de personas bloqueadas (mismo formato que la lista de amigos).
 - `PUT /blocks/{userId}` → `204` (idempotente; borra la amistad). `DELETE /blocks/{userId}` → `204`.
 - Filtrado **en el server** para quien pide: todo lo que lista fotos (feed de un rollo, destacadas, lo que alimenta
   mapa, galería y presentación) excluye fotos de personas que bloqueaste y fotos que denunciaste. Así la app no
-  repite la regla en cada pantalla.
+  repite la regla en cada pantalla. No hace falta que pedir una foto oculta directo por id dé 404. Contadores,
+  totales del grupo y cupos diarios **no** cambian ni por denuncias ni por bloqueos.
+- Destacadas existentes: no se borran al bloquear, solo se filtran (en los dos sentidos).
 - El perfil de usuario (`GET /users/{id}`) indica `blockedByMe` y `reportedByMe`; si te bloquearon, se responde como
   perfil privado. Los miembros de un rollo indican `blockedByMe`.
 - Canje de links de amistad: si hay bloqueo en cualquier sentido, responde igual que un link inválido.
@@ -167,9 +176,9 @@ Migración nueva (siguiente número libre en `develop` del backend):
   archivo de R2 y reuse la lógica que ya existe.
 - El link firmado de 7 días en el mail para ver la foto denunciada.
 - Denunciar una persona no la oculta; bloquear es lo que oculta.
-- Error de red al denunciar: HUD nativo de error con `burnt` (CLAUDE.md lo prevé para confirmaciones fugaces; hay que
-  instalarlo con `npx expo install burnt`, que pide rebuild). Si se prefiere no sumar un paquete nativo, la
-  alternativa es un `Alert` simple.
+- Error de red al denunciar o bloquear: HUD nativo de error con `burnt` (CLAUDE.md lo prevé; `npx expo install burnt`,
+  pide rebuild, que igual hace falta para TestFlight).
+- El link del mail apunta al original (foto o video), no a una versión nueva.
 - Motivos fijos ("Es ofensivo", "Es acoso o abuso", "Otro motivo"), sin texto libre.
 
 ## Queda a criterio de quien construye
