@@ -261,7 +261,8 @@ con dev build contra el backend local.
 
 Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Rollo,
 la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día,
-el primer build de TestFlight y la prueba real. El backend ya está en producción (`rollo-api.juanifraga.com`).
+testing externo en TestFlight (revisión de Apple) y la prueba real. El backend ya está en producción
+(`rollo-api.juanifraga.com`) y el build 2 (1.0.0) ya se instala por TestFlight (testing interno).
 
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):
 
