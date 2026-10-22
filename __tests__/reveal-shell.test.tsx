@@ -44,8 +44,8 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     dailyVideoLimit: 3,
     ...over,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
-  members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" }],
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
+  members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
 });
@@ -284,13 +284,15 @@ describe("revealed roll: Galería | Rollo", () => {
     const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
       user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
       isFriend: false,
+      blockedByMe: false,
+      reportedByMe: false,
       profileVisibility: "friends",
       canSee: false,
       friendCount: 0,
       mutualCount: 0,
     });
     const base = detail();
-    const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const };
+    const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const, blockedByMe: false };
     mocked.fetchTrip.mockResolvedValue({ ...base, members: [...base.members, fede] });
     await markPresentationSeen(SUR);
     await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });

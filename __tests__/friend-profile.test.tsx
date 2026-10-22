@@ -1,5 +1,6 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
-import { Alert } from "react-native";
+import { ActionSheetIOS, Alert } from "react-native";
+import * as moderation from "@/features/moderation/actions";
 import { ApiError } from "@/api/client";
 import * as actions from "@/features/friends/actions";
 import * as tripActions from "@/features/trips/actions";
@@ -15,6 +16,7 @@ import { featuredPhoto } from "@/test/featured";
 import { navigationRef } from "expo-router/build/global-state/navigationRef";
 
 jest.mock("@/features/friends/actions");
+jest.mock("@/features/moderation/actions");
 // Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
 jest.mock("@/features/featured/actions");
 beforeEach(() => {
@@ -47,8 +49,8 @@ const detail = (id: string, name: string, revealed: boolean): tripActions.TripDe
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" },
-  members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" }],
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false },
+  members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 0,
 });
@@ -68,6 +70,8 @@ let fetchUserFriends: jest.SpyInstance;
 const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserProfile> = {}): profileActions.UserProfile => ({
   user: friend,
   isFriend: true,
+  blockedByMe: false,
+  reportedByMe: false,
   profileVisibility: "friends",
   canSee: true,
   friendCount: 12,
@@ -280,7 +284,7 @@ describe("Profile of someone who isn't your friend", () => {
   });
 
   it("public: their description and featured photos, still without friend actions", async () => {
-    fetchUser.mockResolvedValue(userProfile({ ...lu, bio: "Sacando fotos del cielo" }, { isFriend: false, profileVisibility: "public" }));
+    fetchUser.mockResolvedValue(userProfile({ ...lu, bio: "Sacando fotos del cielo" }, { isFriend: false, blockedByMe: false, reportedByMe: false, profileVisibility: "public" }));
     jest.mocked(featuredActions).fetchFeatured.mockImplementation(async (id) => (id === "u9" ? [featuredPhoto("p1", {}, "u9")] : []));
     await renderRouter(routes, { initialUrl: "/user/u9" });
 
@@ -420,5 +424,71 @@ describe("Someone's friends", () => {
     expect(await screen.findByText("Sin conexión")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
     expect(await screen.findByRole("button", { name: "Ana" })).toBeVisible();
+  });
+});
+
+describe("Moderation from a profile", () => {
+  const pressAlert = (label: string) =>
+    alert.mockImplementation((_t, _m, buttons) => {
+      buttons!.find((b: { text?: string }) => b.text === label)!.onPress!();
+    });
+
+  beforeEach(() => {
+    jest.mocked(moderation).blockUser.mockReset().mockResolvedValue(undefined);
+    jest.mocked(moderation).unblockUser.mockReset().mockResolvedValue(undefined);
+    jest.mocked(moderation).reportUser.mockReset().mockResolvedValue(undefined);
+    jest.mocked(moderation).fetchBlocked.mockReset().mockResolvedValue([]);
+  });
+
+  it("blocking from a profile confirms, calls blockUser and shows Desbloquear", async () => {
+    pressAlert("Bloquear");
+    await renderRouter(routes, { initialUrl: "/user/u2" });
+    await screen.findByText("@cami");
+
+    jest.mocked(moderation).blockUser.mockImplementation(async () => {
+      fetchUser.mockImplementation(async () => userProfile(cami, { blockedByMe: true, isFriend: false, canSee: false, friendCount: 0 }));
+    });
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Bloquear" }));
+
+    expect(alert).toHaveBeenCalledWith("¿Bloquear a Cami?", expect.any(String), expect.any(Array));
+    await waitFor(() => expect(moderation.blockUser).toHaveBeenCalledWith("u2"));
+    expect(await screen.findByRole("button", { name: "Desbloquear" })).toBeVisible();
+  });
+
+  it("reporting a person shows Denunciaste a esta persona", async () => {
+    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_o, cb) => cb(0));
+    await renderRouter(routes, { initialUrl: "/user/u2" });
+    await screen.findByText("@cami");
+    expect(screen.queryByText("Denunciaste a esta persona")).toBeNull();
+
+    fetchUser.mockImplementation(async () => userProfile(cami, { reportedByMe: true }));
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Denunciar" }));
+
+    await waitFor(() => expect(moderation.reportUser).toHaveBeenCalledWith("u2", "offensive"));
+    expect(await screen.findByText("Denunciaste a esta persona")).toBeVisible();
+    expect(screen.queryByRole("menuitem", { name: "Denunciar" })).toBeNull();
+    sheet.mockRestore();
+  });
+
+  it("a blocked profile hides featured photos and friends", async () => {
+    fetchUser.mockImplementation(async () => userProfile(cami, { blockedByMe: true, isFriend: true, canSee: false, friendCount: 0 }));
+    mocked.fetchFriend.mockResolvedValue({ friend: cami, commonTrips: [sur] });
+    await renderRouter(routes, { initialUrl: "/user/u2" });
+
+    expect(await screen.findByRole("button", { name: "Desbloquear" })).toBeVisible();
+    expect(screen.getByText("@cami")).toBeVisible();
+    expect(screen.queryByText("Rollos en común")).toBeNull();
+    expect(screen.queryByText("Este perfil es privado")).toBeNull();
+    expect(screen.queryByText("Todavía no destacó fotos.")).toBeNull();
+    expect(featuredActions.fetchFeatured).not.toHaveBeenCalledWith("u2");
+  });
+
+  it("your own profile has no moderation menu", async () => {
+    fetchUser.mockImplementation(async () => userProfile({ id: "u1", name: "Juani", username: "juani", avatarUrl: null, bio: null }));
+    await renderRouter(routes, { initialUrl: "/user/u1" });
+    await screen.findByText("@juani");
+
+    expect(screen.queryByRole("menuitem", { name: "Bloquear" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Denunciar" })).toBeNull();
   });
 });

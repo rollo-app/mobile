@@ -37,7 +37,7 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
             leading={<Avatar id={m.id} name={m.name} avatarUrl={m.avatarUrl} size={40} />}
             label={m.name}
             detail={m.username ? formatHandle(m.username) : undefined}
-            value={m.role === "admin" ? "Admin" : undefined}
+            value={m.blockedByMe ? "Bloqueado" : m.role === "admin" ? "Admin" : undefined}
             onPress={m.userId === detail.me.userId ? undefined : () => openProfile(m.userId)}
           />
         ))}

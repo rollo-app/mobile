@@ -8,7 +8,7 @@ import { routes } from "@/test/routes";
 jest.mock("@/features/trips/actions");
 
 const DAY = 24 * 60 * 60 * 1000;
-const member = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const };
+const member = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const, blockedByMe: false };
 const detail = (): actions.TripDetail => ({
   trip: {
     id: "t1", name: "Viaje al sur", joinCode: "HUB5FT", timezone: "America/Argentina/Buenos_Aires",

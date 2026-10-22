@@ -23,19 +23,25 @@ type Props = {
   onAuthorPress?: (item: MapItem) => void;
   /** Admin only: enables "Borrar foto" (action sheet) on long-press of the row. */
   onDelete?: (item: MapItem) => void;
+  /** Enables "Denunciar" (action sheet) on long-press of the row; not offered on your own rows. */
+  onReport?: (item: MapItem) => void;
 };
 
 /** A native Feed row: who, when, the caption (or what they took) and the blurred photo. */
-export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete }: Props) {
+export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete, onReport }: Props) {
   const who = item.authorUsername ? formatHandle(item.authorUsername) : item.authorName;
   const when = clockTime(item.takenAt, timeZone);
   const generic = item.type === "video" ? `sacó un video · ${Math.round(item.durationS ?? 0)} s` : "sacó una foto";
   const located = item.lat !== null && item.lng !== null;
   const canDelete = !!onDelete && !item.pending;
+  const canReport = !!onReport && !item.pending;
   const openAuthor = onAuthorPress && (() => onAuthorPress(item));
-  // Long-press opens the native action sheet (admin only). We don't use MenuView: it is a native host
-  // that takes its content's size and the row stopped filling the width.
-  const openSheet = canDelete ? () => showDeleteSheet(() => onDelete?.(item)) : undefined;
+  // Long-press opens the native action sheet (report and, for the admin, delete). We don't use MenuView: it is
+  // a native host that takes its content's size and the row stopped filling the width.
+  const openSheet =
+    canDelete || canReport
+      ? () => showRowSheet({ onReport: canReport ? () => onReport?.(item) : undefined, onDelete: canDelete ? () => onDelete?.(item) : undefined })
+      : undefined;
 
   const avatar = <Avatar id={item.authorId} name={item.authorName} avatarUrl={item.authorAvatarUrl} size={40} />;
 
@@ -73,7 +79,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
     </View>
   );
 
-  if (!(located && onPress) && !canDelete) return content;
+  if (!(located && onPress) && !openSheet) return content;
 
   return (
     <Pressable
@@ -92,13 +98,19 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
   );
 });
 
-function showDeleteSheet(onDelete: () => void) {
+function showRowSheet({ onReport, onDelete }: { onReport?: () => void; onDelete?: () => void }) {
   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const actions = [
+    ...(onReport ? [{ label: "Denunciar", run: onReport }] : []),
+    ...(onDelete ? [{ label: "Borrar foto", run: onDelete }] : []),
+  ];
   ActionSheetIOS.showActionSheetWithOptions(
-    { options: ["Borrar foto", "Cancelar"], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
-    (index) => {
-      if (index === 0) onDelete();
+    {
+      options: [...actions.map((a) => a.label), "Cancelar"],
+      destructiveButtonIndex: onDelete ? actions.length - 1 : undefined,
+      cancelButtonIndex: actions.length,
     },
+    (index) => actions[index]?.run(),
   );
 }
 

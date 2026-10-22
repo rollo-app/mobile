@@ -31,10 +31,10 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
-    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", blockedByMe: false },
   ],
   today: { date: "2027-01-14", photosLeft: 0, videosLeft: 0 },
   totalUploaded: 3,

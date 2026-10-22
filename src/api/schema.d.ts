@@ -208,7 +208,7 @@ export interface paths {
         post?: never;
         /**
          * Delete your account
-         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
+         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your reports and blocks (made and received) are deleted too. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
          */
         delete: {
             parameters: {
@@ -929,6 +929,220 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Users you blocked
+         * @description Ordered by name.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Blocked users */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Blocks"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/blocks/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Block a user
+         * @description Idempotent and one-directional. Also removes the friendship in both directions. Does not remove anyone from a rollo. Also removes the blocked user's photos from your featured list. A new block is emailed to support (at most 10 reports and blocks per user per 24 hours are emailed).
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Blocked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Unblock a user
+         * @description Only removes your own block; a block the other user made on you stays. Also 204 if you had not blocked them. Friendship is not restored.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Unblocked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report a photo or a person
+         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos). At most 10 reports and blocks per user per 24 hours are emailed to support; the rest are stored without email. 404 if the photo is not one the reporter can see; 400 if it is theirs.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateReportRequest"];
+                };
+            };
+            responses: {
+                /** @description Reported */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1729,7 +1943,7 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo and whether its author blocked featuring. Every item carries the author's user id (`author.userId`).
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo and whether its author blocked featuring. Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
          */
         get: {
             parameters: {
@@ -2157,7 +2371,7 @@ export interface paths {
         };
         /**
          * A user's featured photos
-         * @description Newest photo first (by when it was taken). Only if you can see the profile (it is you, a friend, or it is public); otherwise 403. Each photo carries a ~5 km zone instead of its location, and its author when it is not the owner; never the rollo or the caption. Photos that were deleted, blocked by their author, or whose rollo the owner left do not show up.
+         * @description Newest photo first (by when it was taken). Only if you can see the profile (it is you, a friend, or it is public); otherwise 403. Each photo carries a ~5 km zone instead of its location, and its author when it is not the owner; never the rollo or the caption. Photos you reported or by authors you blocked, and photos that were deleted, blocked by their author, or whose rollo the owner left do not show up.
          */
         get: {
             parameters: {
@@ -2420,8 +2634,12 @@ export interface components {
             user: components["schemas"]["PublicUser"];
             /** @description Whether you and this user are friends (false for yourself) */
             isFriend: boolean;
+            /** @description Whether you blocked this user */
+            blockedByMe: boolean;
+            /** @description Whether you reported this user (their profile, not a photo) */
+            reportedByMe: boolean;
             profileVisibility: components["schemas"]["ProfileVisibility"];
-            /** @description Whether you can see the featured photos and the full friend list: it is you, a friend, or the profile is public */
+            /** @description Whether you can see the featured photos and the full friend list: it is you, a friend, or the profile is public, and neither of you blocked the other */
             canSee: boolean;
             /** @description How many friends this user has (always public) */
             friendCount: number;
@@ -2537,6 +2755,18 @@ export interface components {
             endsAt: number;
             revealed: boolean;
         };
+        Blocks: {
+            blocked: components["schemas"]["Friend"][];
+        };
+        CreateReportRequest: {
+            reason: components["schemas"]["ReportReason"];
+            /** @description Photo or video to report */
+            mediaId?: string;
+            /** @description Person to report */
+            userId?: string;
+        };
+        /** @enum {string} */
+        ReportReason: "offensive" | "abuse" | "other";
         ClaimResponse: {
             /** @description Permission to redeem this link while signed in. Valid for 24 hours */
             claimToken: string;
@@ -2610,6 +2840,8 @@ export interface components {
             username: string | null;
             avatarUrl: string | null;
             role: components["schemas"]["Role"];
+            /** @description Whether you blocked this member */
+            blockedByMe: boolean;
         };
         CreateTripRequest: {
             /** @example Viaje al sur */
