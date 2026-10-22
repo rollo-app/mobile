@@ -22,7 +22,8 @@ Decisiones de producto:
   sesión local y vuelve al login (`setUnauthorizedHandler` en `src/api/client.ts`). Los rollos salen de
   `GET /me/trips` (cache de TanStack Query); el rollo activo es el último que abriste y solo se guarda su id
   (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
-  cola de fotos pendientes.
+  cola de fotos pendientes. Si `POST /auth/logout` no llega al server, esa sesión queda en `rollo.pendingLogout`
+  (SecureStore) y se reintenta en silencio al abrir la app, al volver a primer plano y al volver la red (`src/features/auth/pending-logout.ts`).
 - **Cámara nativa del sistema** (`expo-image-picker` → `launchCameraAsync`), no una cámara propia:
   funciona mejor, sobre todo en video. Lo que se saca **no queda en el carrete**: se sube y se borra
   del caché local.
@@ -263,7 +264,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1031 tests
+npm test                      # 1046 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

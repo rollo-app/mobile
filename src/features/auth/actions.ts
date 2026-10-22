@@ -1,7 +1,10 @@
-import { createApiClient, unwrap, type Schemas } from "@/api/client";
+import { ApiError, createApiClient, unwrap, type Schemas } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
 import { forgetPushToken } from "@/features/notifications/push-token";
+import { addPendingLogout } from "@/storage/pending-logout";
+import { getSessionToken } from "@/storage/session";
+import { logoutOnServer } from "./pending-logout";
 import { authedClient, signIn, signOut } from "./session";
 
 export type User = Schemas["User"];
@@ -34,14 +37,19 @@ export async function fetchMe(): Promise<User> {
 
 /**
  * Logs out. First this phone stops getting the account's pushes (while the session still works);
- * the phone's session is cleared even if the server can't be reached.
+ * the phone's session is cleared even if the server can't be reached. Then the session stays valid
+ * on the server, so it's kept as a pending logout that `retryPendingLogouts` finishes later.
  */
 export async function logout(): Promise<void> {
   await forgetPushToken();
-  try {
-    await unwrap((await authedClient()).POST("/auth/logout"));
-  } catch {
-    // Nothing to do: leaving the session on the server expires on its own.
+  const session = await getSessionToken();
+  if (session) {
+    try {
+      await logoutOnServer(session);
+    } catch (e) {
+      // A 401 means the server already dropped it.
+      if (!(e instanceof ApiError && e.status === 401)) await addPendingLogout(session).catch(() => {});
+    }
   }
   await signOut();
 }

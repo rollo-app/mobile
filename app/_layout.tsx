@@ -14,6 +14,7 @@ import { useRedeemPendingFriend } from "@/features/friends/use-pending-friend";
 import { useSyncTriggers } from "@/features/capture/use-sync-triggers";
 import { gateFor } from "@/features/auth/gate";
 import { signOut } from "@/features/auth/session";
+import { useRetryPendingLogouts } from "@/features/auth/use-retry-pending-logouts";
 import { useMe } from "@/features/auth/use-me";
 import { Button } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
@@ -22,6 +23,7 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   useSyncTriggers();
   useOfflineMapSync();
+  useRetryPendingLogouts();
   useEffect(() => connectAppState(), []);
   useEffect(() => void cancelLegacyRevealNotifications(), []);
   return (
