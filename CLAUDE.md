@@ -94,14 +94,25 @@ Decisiones de producto:
   disparador opcional. Ese "momento" es foto principal + selfie, con cámara propia
   (`react-native-vision-camera` o `expo-camera`); la selfie chica (~1080 px).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
-  La ceremonia del revelado será una presentación (a definir).
+  **El revelado** es una pantalla propia (`/reveal`, `src/features/reveal/`, fullScreenModal): se abre sola **una vez por
+  rollo** la primera vez que entrás a un rollo revelado (`useFirstPresentation`, esperando `loaded` para no disparar en un rollo que no es el
+  activo). Dura ~7 s: cuarto oscuro rojo con grano animado ("Revelando {rollo}") → 9–12 fotos que salen de su ThumbHash (shader de
+  Skia: umbral de ruido, sepia a color, borroso a nítido) con háptico que crece (`react-native-pulsar`) → golpe (impacto + éxito + clic
+  de obturador generado en código con `expo-audio`) y la luz pasa de roja a blanca → "Se reveló · {rollo} · {fecha}" →
+  `router.replace("/presentation")`. Tocar salta a las historias. Sin fotos o con error va directo a `/presentation`; con "Reducir
+  movimiento", fundido simple y solo el háptico de éxito; si el shader no compila, las fotos se ven sin efecto.
+  **La presentación** (`/presentation`, botón del centro) son **solo las historias**, sobre negro desde el primer frame.
+- **"Arrancó el rollo"** (`/roll-started`, `src/features/capture/roll-started.tsx`, `use-roll-started.ts`): la primera vez que el rollo activo
+  está en curso (una vez por rollo) un candado grande se sacude y se abre (SF Symbol `lock` → `lock.open` con `.symbolEffect(.replace.magic)`,
+  módulo local `modules/rollo-symbol`; sin el módulo nativo cae a `expo-symbols`) con un "clac" y pasa a cámara. Texto "Arrancó el rollo.
+  Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En "Tus rollos" el badge del rollo en curso dice LIVE.
 - **A futuro (no para enero):** feeds públicos de rollos, buscar perfiles públicos y avisar cuando te suman a un rollo (push).
 
 ## Navegación y diseño
 
 - **Barra de abajo nativa** (`NativeTabs` de `expo-router/native-tabs`, liquid glass en iOS 26), **solo
   íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Amigos · Perfil. La cámara es un trigger
-  `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación
+  `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación (solo historias)
   · Amigos · Perfil.
 - Mapa = mapa + Feed: control "Mapa | Feed" arriba (param `view`), el mapa queda montado al pasar al Feed y tocar una fila
   vuelve al Mapa enfocando ese pin. El segmento Feed existe solo antes del revelado. "Solo hoy" va en el menú de filtros.
@@ -115,7 +126,7 @@ Decisiones de producto:
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
 - Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
-  ahí se ve el email, de solo lectura), "Perfil público", "Desarrollo" (solo dev), "Mapa sin señal" (ajuste del celular) y
+  ahí se ve el email, de solo lectura), "Perfil público", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Ver revelado" y "Ver candado", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
   "Cerrar sesión" / "Borrar cuenta".
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
@@ -157,6 +168,12 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 - **Development build** (`expo-dev-client`): Expo Go de la App Store está trabado en un SDK viejo.
 - Cliente de la API **generado del contrato**: `openapi-typescript` → `src/api/schema.d.ts` (no editar
   a mano) + `openapi-fetch`. `unwrap()` convierte el `{ error }` del server en `ApiError`.
+- Paquetes nativos del revelado y "Arrancó el rollo": **Reanimated 4 + `react-native-worklets`**, **`@shopify/react-native-skia`** (shaders SkSL),
+  **`react-native-pulsar`** (hápticos continuos), **`expo-audio`** (plugin con `enableBackgroundPlayback: false`: no toca la sesión de audio de
+  la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados). Agregarlos o cambiarlos
+  pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
+- Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
+  `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`.
 
 ## Estructura del código
@@ -166,6 +183,7 @@ app/                    Solo rutas (Expo Router). Pantallas finas: arman hooks y
   (tabs)/               NativeTabs: roll, map (+ Feed), camera (abre /capture o /presentation), friends, me; cada una con su Stack
   photo/[id].tsx        visor de una foto revelada; presentation.tsx, capture.tsx, create.tsx, join.tsx, settings.tsx...
   friends/[code].tsx    link de amistad (fuera del grupo protegido; el perfil de un amigo es (tabs)/friends/user/[id])
+  reveal.tsx, roll-started.tsx  el revelado y "Arrancó el rollo" (fullScreenModal; fino, usan `src/features/reveal` y `capture`)
   user/[id].tsx         perfil de cualquier usuario desde fuera de Amigos (miembros, autor de una foto)
   featured/[userId]/[mediaId].tsx  visor de una foto destacada de un perfil
 src/
@@ -184,6 +202,7 @@ src/
   storage/              lo que se guarda en el celular (SecureStore). Sus claves NO se renombran
   test/                 helpers de tests: rutas de la app (routes.ts) y SQLite en memoria
 __tests__/              tests de pantallas con navegación real (renderRouter)
+modules/rollo-symbol/   Módulo local de Expo (Swift): vista nativa de SF Symbols con transición magic replace; wrapper JS con fallback
 ```
 
 Reglas:
@@ -228,7 +247,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 839 tests
+npm test                      # 923 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
