@@ -11,7 +11,7 @@ describe("TripRow", () => {
 
   it("puts the badge in the trailing container, not next to the name", async () => {
     await render(<TripRow trip={live} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} />);
-    expect(within(screen.getByTestId("trip-row-trailing")).getByText("EN VIVO")).toBeTruthy();
+    expect(within(screen.getByTestId("trip-row-trailing")).getByText("LIVE")).toBeTruthy();
   });
 
   it("truncates the name to one line", async () => {
@@ -22,7 +22,7 @@ describe("TripRow", () => {
   it("shows no badge in the trailing container before the roll starts", async () => {
     const upcoming = tripSummary("t", "Tandil", { startsAt: NOW + 3 * DAY, endsAt: NOW + 5 * DAY, revealAt: NOW + 5 * DAY });
     await render(<TripRow trip={upcoming} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} />);
-    expect(screen.queryByText("EN VIVO")).toBeNull();
+    expect(screen.queryByText("LIVE")).toBeNull();
     expect(screen.queryByText("Revelado")).toBeNull();
   });
 });

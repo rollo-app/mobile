@@ -316,7 +316,7 @@ describe("Trip picker", () => {
     expect(await getActiveTripId()).toBe(BARILOCHE);
   });
 
-  it("shows each roll's state: EN VIVO, Revelado, or when it starts", async () => {
+  it("shows each roll's state: LIVE, Revelado, or when it starts", async () => {
     mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
@@ -331,12 +331,12 @@ describe("Trip picker", () => {
     await renderRouter(routes, { initialUrl: "/trips" });
 
     expect(await screen.findByRole("button", { name: "Sur (prueba), en vivo" })).toBeVisible();
-    expect(screen.getByText("EN VIVO")).toBeVisible();
+    expect(screen.getByText("LIVE")).toBeVisible();
     expect(screen.getByRole("button", { name: "Bariloche, revelado" })).toBeVisible();
     expect(screen.getByText("Revelado")).toBeVisible();
     expect(screen.getByRole("button", { name: "Tandil" })).toBeVisible();
     expect(screen.getByText(/^Empieza en \d+ días$/)).toBeVisible();
-    expect(screen.getAllByText(/^(EN VIVO|Revelado)$/)).toHaveLength(2);
+    expect(screen.getAllByText(/^(LIVE|Revelado)$/)).toHaveLength(2);
   });
 
   it("has shortcuts to start a roll or join", async () => {
