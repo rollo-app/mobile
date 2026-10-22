@@ -8,7 +8,7 @@ import { tripRowState } from "./row-state";
 import { rowTint } from "./row-tint";
 import { thumbHashAverageColor, type RGB } from "./thumbhash-color";
 
-const BADGE_LABEL = { live: "EN VIVO", revealed: "Revelado" } as const;
+const BADGE_LABEL = { live: "LIVE", revealed: "Revelado" } as const;
 
 /** A row of "Tus rollos": tinted with the roll's color, with its state as badge or subtitle. */
 export function TripRow({

@@ -11,18 +11,18 @@ describe("Badge", () => {
 
   it("live shows its label and pulses the dot", async () => {
     jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
-    await render(<Badge variant="live" label="EN VIVO" />);
+    await render(<Badge variant="live" label="LIVE" />);
 
-    expect(await screen.findByText("EN VIVO")).toBeVisible();
+    expect(await screen.findByText("LIVE")).toBeVisible();
     expect(screen.getByTestId("badge-dot")).toBeTruthy();
     expect(loop).toHaveBeenCalled();
   });
 
   it("live keeps the dot still with Reduce Motion on", async () => {
     jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
-    await render(<Badge variant="live" label="EN VIVO" />);
+    await render(<Badge variant="live" label="LIVE" />);
 
-    expect(await screen.findByText("EN VIVO")).toBeVisible();
+    expect(await screen.findByText("LIVE")).toBeVisible();
     expect(screen.getByTestId("badge-dot")).toBeTruthy();
     expect(loop).not.toHaveBeenCalled();
   });
