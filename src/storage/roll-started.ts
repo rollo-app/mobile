@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 
-// Spike: whether this phone already showed "Arrancó el rollo" for a roll. Persisted: don't rename.
+// Whether this phone already showed "Arrancó el rollo" for a roll. Persisted: don't rename.
 const seenKey = (tripId: string) => `rollo.rollStartedSeen.${tripId}`;
 
 export async function hasSeenRollStarted(tripId: string): Promise<boolean> {

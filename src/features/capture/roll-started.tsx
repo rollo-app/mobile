@@ -16,7 +16,7 @@ const CAMERA_AT = 900;
 const TEXT_AT = 1500;
 
 /**
- * Spike: the roll started. The lock wiggles, opens (rigid "clac") and turns into the camera
+ * The roll started. The lock wiggles, opens (rigid "clac") and turns into the camera
  * (bounce + success), then "Arrancó el rollo" with today's quota and the way to the first photo.
  */
 export function RollStarted() {
