@@ -174,7 +174,8 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
   pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
-- `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`.
+- `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`; `app.config.ts` solo cambia nombre y
+  bundle id según `APP_VARIANT` (ver Apple).
 
 ## Estructura del código
 
@@ -255,7 +256,7 @@ npx expo run:ios --device     # compila e instala el dev build en el iPhone
 npm start                     # día a día, con el dev build ya instalado
 ```
 
-**Contra el backend local** (todavía no está deployado):
+**Contra el backend local** (sin la variable, la app usa el de producción):
 
 ```bash
 # en ../backend (dev:lan hace que las URLs de subida apunten a la IP de la Mac)
@@ -284,12 +285,36 @@ Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Jua
 
 ## Apple
 
-- Desarrollo: cuenta gratis de Apple (Personal Team). El build vence a los 7 días y se reinstala con
-  el mismo comando. Push notifications, Universal Links y TestFlight **no** funcionan con esta cuenta.
-- Para TestFlight y push se va a usar la cuenta de desarrollador de un amigo (cuenta **individual**: no
-  permite sumar miembros, él tiene que pasar el código de 2FA). Hacer el primer build de TestFlight
-  con tiempo: la primera revisión para testers externos puede tardar.
-- Bundle id: `com.juanifraga.rollo` (con Personal Team puede hacer falta un sufijo como `.dev`).
+- **Dos variantes** (`app.config.ts`, según `APP_VARIANT`), porque el bundle id `com.juanifraga.rollo` ya lo
+  registró el Personal Team gratis y no se puede usar en otra cuenta:
+  - **Desarrollo** (default, `npx expo run:ios --device`): cuenta gratis de Apple (Personal Team `T7Y7X6AGTX`),
+    bundle id `com.juanifraga.rollo`, se llama **"Rollo Dev"** en el celular. El build vence a los 7 días y se
+    reinstala con el mismo comando. Push, Universal Links y TestFlight **no** funcionan con esta cuenta.
+  - **Producción** (EAS, `APP_VARIANT=production` lo pone `eas.json`): cuenta **paga individual de un amigo**
+    (Juani es Admin en App Store Connect; el amigo es el único que acepta los acuerdos/licencias), bundle id
+    **`com.juanifraga.rollo.app`**, se llama "Rollo" en el celular (en la App Store tiene otro nombre porque
+    "Rollo" estaba tomado). Apunta a `https://rollo-api.juanifraga.com`. Esa cuenta tiene otra app ("Contador
+    Truco"): no tocarla.
+  - Las dos pueden convivir instaladas en el mismo iPhone (ambas abren `rollo://`).
+- **Build y TestFlight** (EAS, proyecto `@rollo-app/rollo`). El certificado de distribución y el perfil viven en
+  EAS. Como la cuenta del amigo es individual, Juani no puede entrar al portal con su Apple ID ("no team"): todo
+  se hace con la clave de la API de App Store Connect "EAS" (Admin, `.p8` fuera del repo, que es público), que se
+  pasa por variables de entorno en la terminal:
+
+  ```bash
+  export EXPO_ASC_API_KEY_PATH="/ruta/al/AuthKey_XXXX.p8" EXPO_ASC_KEY_ID=... EXPO_ASC_ISSUER_ID=...
+  export EXPO_APPLE_TEAM_ID=UXHNAR4HYC EXPO_APPLE_TEAM_TYPE=INDIVIDUAL
+  npx eas-cli@latest build -p ios --profile production    # en la nube; sube solo el build number
+  ```
+
+  Al "Do you want to log in to your Apple account?" se contesta que no. `eas submit` no toma esas variables para
+  subir: necesita `ascApiKeyPath`, `ascApiKeyId` y `ascApiKeyIssuerId` en `submit.production.ios` de `eas.json`,
+  que se agregan **solo en local, sin commitear**, antes de `npx eas-cli@latest submit -p ios --profile production`.
+  `ascAppId` (6825843502) es el Apple ID de la app en App Store Connect. El export compliance ya va en el build
+  (`usesNonExemptEncryption: false`).
+- El entitlement de push sigue sacado (`./plugins/without-push-entitlement`) hasta que usemos push.
+- Pendiente para la revisión de la App Store (no para TestFlight): cuenta de prueba para el revisor en el backend,
+  URL de política de privacidad y las etiquetas de privacidad.
 
 ## Estado y plan (octubre 2026)
 
@@ -301,8 +326,15 @@ perfil (grilla, mapa por zonas, perfil público o solo amigos, perfil de cualqui
 con dev build contra el backend local.
 
 Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Rollo,
-la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día, deploy del backend,
-TestFlight y la prueba real.
+la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día,
+testing externo en TestFlight (revisión de Apple) y la prueba real. El backend ya está en producción
+(`rollo-api.juanifraga.com`) y el build 2 (1.0.0) ya se instala por TestFlight (testing interno).
+
+Pendiente (después de enero, no antes del viaje): **migrar el backend a Supabase**. La idea es que Postgres de
+Supabase reemplace a D1 y que las fotos sigan en R2 (gratis y sin costo de egress), con el Worker conectado
+por Hyperdrive o el backend en Supabase. A tener en cuenta: el plan gratis de Supabase pausa el proyecto tras
+7 días sin uso, hay que pasar de SQLite a Postgres y la base queda en una sola región. Se planea y hace en
+`rollo-app/backend`; si cambia el contrato, la app solo regenera `schema.d.ts`.
 
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):
 
