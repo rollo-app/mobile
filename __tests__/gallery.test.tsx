@@ -5,6 +5,7 @@ import { requestPermissionsAsync } from "expo-media-library";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { PermissionDeniedError } from "@/features/gallery/save";
 import * as featuredActions from "@/features/featured/actions";
+import * as likeActions from "@/features/likes/actions";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
@@ -12,9 +13,12 @@ import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/featured/actions");
+jest.mock("@/features/likes/actions");
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(),
   NotificationFeedbackType: { Success: "success" },
+  impactAsync: jest.fn(async () => {}),
+  ImpactFeedbackStyle: { Light: "light" },
 }));
 const mockSaveOne = jest.fn();
 const mockSaveOpts = jest.fn();
@@ -27,6 +31,7 @@ jest.mock("@/features/gallery/save", () => ({
 }));
 const mocked = jest.mocked(actions);
 const featured = jest.mocked(featuredActions);
+const likes = jest.mocked(likeActions);
 const { __camera: camera } = jest.requireMock("@maplibre/maplibre-react-native") as { __camera: { flyTo: jest.Mock } };
 
 const SUR = "11111111-1111-4111-8111-111111111111";
@@ -93,6 +98,8 @@ beforeEach(async () => {
   featured.unfeatureMedia.mockReset().mockResolvedValue(undefined);
   featured.blockFeature.mockReset().mockResolvedValue(undefined);
   featured.unblockFeature.mockReset().mockResolvedValue(undefined);
+  likes.likeMedia.mockReset().mockResolvedValue(undefined);
+  likes.unlikeMedia.mockReset().mockResolvedValue(undefined);
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   await markPresentationSeen(SUR); // the first-open presentation would cover these screens
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
@@ -404,9 +411,9 @@ describe("Photo viewer", () => {
     await openViewer("b");
     await screen.findByText("el glaciar");
     await fireEvent.press(screen.getByLabelText("Foto de Juani"));
-    expect(screen.queryByText("el glaciar")).toBeNull();
+    await waitFor(() => expect(screen.queryByText("el glaciar")).toBeNull());
     await fireEvent.press(screen.getByLabelText("Foto de Juani"));
-    expect(screen.getByText("el glaciar")).toBeVisible();
+    expect(await screen.findByText("el glaciar")).toBeVisible();
   });
 
   it("Ver en el mapa goes to the map focused on the photo", async () => {
@@ -498,5 +505,73 @@ describe("Photo viewer", () => {
     await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
     await fireEvent.press(await screen.findByRole("menuitem", { name: "No dejar que la destaquen" }));
     expect(await screen.findByText("No se pudo cambiar")).toBeVisible();
+  });
+});
+
+describe("Photo viewer: likes", () => {
+  const openOn = async (items: actions.Feed["items"], id: string) => {
+    mocked.fetchFeed.mockResolvedValue(feed(items));
+    await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
+  };
+  const heart = () => screen.findByRole("button", { name: "Me gusta" });
+
+  it("shows the heart with how many people like it, and liking adds yours", async () => {
+    await openOn([item("a", { likeCount: 2 })], "a");
+    const button = await heart();
+    expect(within(button).getByText("2")).toBeVisible();
+    expect(button.props.accessibilityState).toMatchObject({ selected: false });
+
+    await fireEvent.press(button);
+
+    await waitFor(() => expect(within(screen.getByRole("button", { name: "Me gusta" })).getByText("3")).toBeVisible());
+    expect(screen.getByRole("button", { name: "Me gusta" }).props.accessibilityState).toMatchObject({ selected: true });
+    expect(likes.likeMedia).toHaveBeenCalledWith("a");
+  });
+
+  it("pressing it again takes your like away", async () => {
+    await openOn([item("a", { likeCount: 1, likedByMe: true })], "a");
+    await fireEvent.press(await heart());
+    await waitFor(() => expect(likes.unlikeMedia).toHaveBeenCalledWith("a"));
+    await waitFor(() => expect(within(screen.getByRole("button", { name: "Me gusta" })).queryByText("1")).toBeNull());
+  });
+
+  it("puts it back and says why when liking fails", async () => {
+    likes.likeMedia.mockRejectedValue(new Error("No encontramos esa foto"));
+    await openOn([item("a", { likeCount: 2 })], "a");
+    await fireEvent.press(await heart());
+    expect(await screen.findByText("No encontramos esa foto")).toBeVisible();
+    expect(within(screen.getByRole("button", { name: "Me gusta" })).getByText("2")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Me gusta" }).props.accessibilityState).toMatchObject({ selected: false });
+  });
+
+  it("double tap on the photo likes it with the heart, without hiding the overlay", async () => {
+    await openOn([item("a", { likeCount: 0 })], "a");
+    await heart();
+    await fireEvent.press(screen.getByLabelText("Foto de Fede"));
+    await fireEvent.press(screen.getByLabelText("Foto de Fede"));
+
+    await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("a"));
+    expect(screen.getByTestId("heart-burst")).toBeTruthy();
+    await waitFor(() => expect(within(screen.getByRole("button", { name: "Me gusta" })).getByText("1")).toBeVisible());
+    // The pending single tap was cancelled: the overlay is still there after the window.
+    await act(async () => jest.advanceTimersByTime(300));
+    expect(screen.getByRole("button", { name: "Me gusta" })).toBeVisible();
+  });
+
+  it("double tap on a photo you already like never takes the like away", async () => {
+    await openOn([item("a", { likeCount: 1, likedByMe: true })], "a");
+    await heart();
+    await fireEvent.press(screen.getByLabelText("Foto de Fede"));
+    await fireEvent.press(screen.getByLabelText("Foto de Fede"));
+    expect(screen.getByTestId("heart-burst")).toBeTruthy();
+    await act(async () => jest.advanceTimersByTime(300));
+    expect(likes.unlikeMedia).not.toHaveBeenCalled();
+    expect(likes.likeMedia).not.toHaveBeenCalled();
+  });
+
+  it("videos have no heart", async () => {
+    await openOn([item("v", { type: "video", durationS: 12 })], "v");
+    await screen.findByRole("button", { name: "Guardar en Fotos" });
+    expect(screen.queryByRole("button", { name: "Me gusta" })).toBeNull();
   });
 });

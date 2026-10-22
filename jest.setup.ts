@@ -405,6 +405,12 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
       h(View, null, h(Text, null, "Se reveló"), h(Text, null, title), h(Text, null, date)),
   };
 });
+// The like heart (Reanimated) is a plain marker while it shows.
+jest.mock("@/features/likes/heart-burst", () => {
+  const { createElement: h } = require("react");
+  const { View } = require("react-native");
+  return { HeartBurst: ({ burst }: { burst: number }) => (burst > 0 ? h(View, { testID: "heart-burst" }) : null) };
+});
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
 jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));

@@ -20,6 +20,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { HeartBurst } from "@/features/likes/heart-burst";
+import { useDoubleTap } from "@/features/likes/use-double-tap";
+import { useToggleLike } from "@/features/likes/use-toggle-like";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { spacing } from "@/ui/theme";
@@ -38,7 +41,10 @@ const HOLD_MS = 200;
 const MIN_SCALE = 0.9;
 const BACKDROP_FADE_DISTANCE = 300;
 
-/** Fullscreen story: days with their photos, outro (the reveal intro is its own screen, `/reveal`). Taps navigate, holding pauses, swiping down closes. */
+/**
+ * Fullscreen story: days with their photos, outro (the reveal intro is its own screen, `/reveal`). Taps navigate,
+ * a double tap on a photo likes it (no counter here), holding pauses, swiping down closes.
+ */
 export function StoryPlayer({
   photos,
   token,
@@ -144,6 +150,26 @@ export function StoryPlayer({
   );
   const segments = daySegments(state.steps, state.index);
 
+  // On a photo a tap waits out the double-tap window before it moves; a double tap likes it and stays.
+  // Day cards, videos and the outro move right away.
+  const likes = useToggleLike();
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  const [burst, setBurst] = useState<{ id: string; n: number }>({ id: "", n: 0 });
+  const taps = useDoubleTap<number>(onPress, () => {
+    const current = stepRef.current;
+    if (current.kind !== "photo" || current.photo.type !== "photo") return;
+    const { id } = current.photo;
+    setBurst((b) => ({ id, n: b.id === id ? b.n + 1 : 1 }));
+    // The story's steps keep the photos they were built with: the like state comes from the latest feed.
+    const latest = photosRef.current.find((p) => p.id === id) ?? current.photo;
+    void likes.like(latest);
+  });
+  const onSurfacePress = (x: number) => {
+    if (step.kind === "photo" && step.photo.type === "photo") taps.tap(x);
+    else onPress(x);
+  };
+
   // Swipe down to close, like Instagram stories: the story follows the finger and shrinks while the black fades out.
   const { height } = useWindowDimensions();
   const drag = useRef(new Animated.Value(0)).current;
@@ -218,7 +244,7 @@ export function StoryPlayer({
           testID="story-surface"
           style={styles.fill}
           delayLongPress={HOLD_MS}
-          onPress={(e) => onPress(e.nativeEvent.locationX)}
+          onPress={(e) => onSurfacePress(e.nativeEvent.locationX)}
           onLongPress={() => {
             held.current = true;
             dispatch({ type: "pause" });
@@ -256,6 +282,7 @@ export function StoryPlayer({
               }}
             />
           )}
+          {step.kind === "photo" && <HeartBurst key={`heart-${step.photo.id}`} burst={burst.id === step.photo.id ? burst.n : 0} />}
           {step.kind === "outro" && (
             <Outro
               stats={step.stats}

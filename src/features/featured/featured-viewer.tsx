@@ -7,6 +7,10 @@ import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
+import { HeartBurst } from "@/features/likes/heart-burst";
+import { LikeButton } from "@/features/likes/like-button";
+import { useDoubleTap } from "@/features/likes/use-double-tap";
+import { useToggleLike } from "@/features/likes/use-toggle-like";
 import { mediaSource, useMediaToken } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
@@ -21,13 +25,21 @@ function Page({
   width,
   height,
   onTap,
+  onDoubleTap,
 }: {
   photo: FeaturedPhoto;
   token: string;
   width: number;
   height: number;
   onTap: () => void;
+  /** A double tap likes it (the heart pops here). */
+  onDoubleTap: (photo: FeaturedPhoto) => void;
 }) {
+  const [burst, setBurst] = useState(0);
+  const taps = useDoubleTap(onTap, () => {
+    setBurst((b) => b + 1);
+    onDoubleTap(photo);
+  });
   return (
     <ScrollView
       style={{ width, height }}
@@ -38,7 +50,7 @@ function Page({
       showsHorizontalScrollIndicator={false}
       showsVerticalScrollIndicator={false}
     >
-      <Pressable accessibilityLabel={featuredLabel(photo)} onPress={onTap} style={{ width, height }}>
+      <Pressable accessibilityLabel={featuredLabel(photo)} onPress={() => taps.tap()} style={{ width, height }}>
         <Image
           source={mediaSource(photo.originalPath, token)}
           placeholder={mediaSource(photo.thumbPath, token)}
@@ -46,6 +58,7 @@ function Page({
           contentFit="contain"
           style={{ width, height }}
         />
+        <HeartBurst burst={burst} />
       </Pressable>
     </ScrollView>
   );
@@ -54,7 +67,7 @@ function Page({
 /**
  * Full-screen pager over someone's featured photos, starting at `mediaId`. It shows who took each one
  * when it isn't the profile's owner, and never the roll or the caption. On your own profile it can take
- * the photo off it. Tap hides or shows the overlay.
+ * the photo off it. Tap hides or shows the overlay; double tap likes the photo.
  */
 export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: string }) {
   const router = useRouter();
@@ -67,6 +80,8 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
   const { photos: loaded, loading } = useFeatured(userId);
   const photos = loaded ?? [];
   const token = useMediaToken(userId);
+  const likes = useToggleLike();
+  const likeTarget = (target: FeaturedPhoto) => ({ id: target.mediaId, likedByMe: target.likedByMe });
 
   const startIndex = useRef<number | null>(null);
   if (startIndex.current === null && photos.length > 0) startIndex.current = Math.max(0, photos.findIndex((p) => p.mediaId === mediaId));
@@ -103,6 +118,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
   }
 
   const error = photo && removeError?.mediaId === photo.mediaId ? removeError.message : null;
+  const likeError = photo && likes.error?.mediaId === photo.mediaId ? likes.error.message : null;
 
   return (
     <View testID="featured-viewer" style={styles.fill}>
@@ -120,7 +136,16 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
           windowSize={3}
           initialNumToRender={1}
           onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
-          renderItem={({ item }) => <Page photo={item} token={token} width={width} height={height} onTap={toggle} />}
+          renderItem={({ item }) => (
+            <Page
+              photo={item}
+              token={token}
+              width={width}
+              height={height}
+              onTap={toggle}
+              onDoubleTap={(target) => void likes.like(likeTarget(target))}
+            />
+          )}
         />
       ) : (
         loading && <ActivityIndicator color="#FFFFFF" style={styles.fill} />
@@ -136,7 +161,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
           >
             <SymbolView name="xmark" size={16} weight="semibold" tintColor="#FFFFFF" />
           </Pressable>
-          {photo && (photo.author || own) && (
+          {photo && (
             <View pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.md }]}>
               {photo.author && (
                 // Closes the viewer and opens the author's profile over the tabs (or Perfil if it's you).
@@ -150,8 +175,14 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                   <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
                 </Pressable>
               )}
-              {own && (
-                <View style={styles.actions}>
+              <View style={styles.actions}>
+                <LikeButton
+                  liked={photo.likedByMe}
+                  count={photo.likeCount}
+                  busy={likes.pending.has(photo.mediaId)}
+                  onPress={() => void likes.toggle(likeTarget(photo))}
+                />
+                {own && (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Sacar de tu perfil"
@@ -163,8 +194,9 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                     {removing ? <ActivityIndicator color="#FFFFFF" /> : <SymbolView name="star.slash" size={15} tintColor="#FFFFFF" />}
                     <Text style={[type.subhead, styles.white]}>Sacar de tu perfil</Text>
                   </Pressable>
-                </View>
-              )}
+                )}
+              </View>
+              {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
               {error && <Text style={[type.footnote, styles.dim]}>{error}</Text>}
             </View>
           )}
