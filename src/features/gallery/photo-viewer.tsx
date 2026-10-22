@@ -11,6 +11,7 @@ import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, u
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
 import { blockFeature, unblockFeature } from "@/features/featured/actions";
+import { useReport } from "@/features/moderation/use-report";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { HeartBurst } from "@/features/likes/heart-burst";
 import { LikeButton } from "@/features/likes/like-button";
@@ -156,6 +157,13 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
     }
   }
 
+  const report = useReport();
+  async function reportPhoto(target: RevealedPhoto) {
+    if (report.busy || !(await report.reportMedia({ mediaId: target.id, tripId }))) return;
+    // The photo left the feed cache: the list shrank under the same index, so the next one is showing. The last one closes.
+    if (current >= photos.length - 1) router.back();
+  }
+
   const state = (photo && saves[photo.id]) || "idle";
   const featuring = !!photo && featured.pending.has(photo.id);
   const featureError = photo && featureTarget === photo.id ? (blockError ?? featured.error) : null;
@@ -268,6 +276,16 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
                     />
                     <Text style={[type.subhead, styles.white]}>{photo.featuredByMe ? "Destacada" : "Destacar"}</Text>
                   </Pressable>
+                )}
+                {!!me && photo.authorUserId !== me.id && (
+                  <MenuView
+                    actions={[{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]}
+                    onPressAction={() => void reportPhoto(photo)}
+                  >
+                    <View accessibilityLabel="Más opciones" style={styles.pill}>
+                      <SymbolView name="ellipsis" size={15} tintColor="#FFFFFF" />
+                    </View>
+                  </MenuView>
                 )}
                 {photo.type === "photo" && !!me && photo.authorUserId === me.id && (
                   <MenuView

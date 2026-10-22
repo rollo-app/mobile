@@ -13,3 +13,6 @@ export const API_URL: string =
 export const EAS_PROJECT_ID: string =
   ((Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId ?? Constants.easConfig?.projectId) ??
   "124fc671-d309-4a16-9606-e4e900286752";
+
+/** Public site with the terms and the privacy policy. */
+export const SITE_URL = "https://rollo.juanifraga.com";

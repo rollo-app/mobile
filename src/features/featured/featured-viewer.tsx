@@ -1,3 +1,4 @@
+import { MenuView } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -12,6 +13,7 @@ import { LikeButton } from "@/features/likes/like-button";
 import { useDoubleTap } from "@/features/likes/use-double-tap";
 import { useToggleLike } from "@/features/likes/use-toggle-like";
 import { mediaSource, useMediaToken } from "@/features/media/revealed";
+import { useReport } from "@/features/moderation/use-report";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { spacing, type } from "@/ui/theme";
@@ -117,6 +119,17 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
     router.back();
   }
 
+  const report = useReport();
+  // The photo's author (the profile's owner when nobody is named): you can't report your own.
+  const reportable = !!photo && !!me && (photo.author?.id ?? userId) !== me.id;
+
+  async function reportPhoto(target: FeaturedPhoto) {
+    if (report.busy || !(await report.reportMedia({ mediaId: target.mediaId }))) return;
+    queryClient.setQueryData<FeaturedPhoto[]>(featuredKey(userId), (list) => list?.filter((p) => p.mediaId !== target.mediaId));
+    // Moves on to the next photo (the list shrank under the same index); the last one closes the viewer.
+    if (current >= photos.length - 1) router.back();
+  }
+
   const error = photo && removeError?.mediaId === photo.mediaId ? removeError.message : null;
   const likeError = photo && likes.error?.mediaId === photo.mediaId ? likes.error.message : null;
 
@@ -182,6 +195,16 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                   busy={likes.pending.has(photo.mediaId)}
                   onPress={() => void likes.toggle(likeTarget(photo))}
                 />
+                {reportable && (
+                  <MenuView
+                    actions={[{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]}
+                    onPressAction={() => void reportPhoto(photo)}
+                  >
+                    <View accessibilityLabel="Más opciones" style={styles.pill}>
+                      <SymbolView name="ellipsis" size={15} tintColor="#FFFFFF" />
+                    </View>
+                  </MenuView>
+                )}
                 {own && (
                   <Pressable
                     accessibilityRole="button"

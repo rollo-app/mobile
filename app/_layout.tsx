@@ -99,6 +99,7 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
+          <Stack.Screen name="blocked" options={{ title: "Bloqueados" }} />
           {/* Someone's profile from a roll or a photo: a push over the tabs (a sheet or viewer closes first). */}
           {/* No title: the name is already in the profile's header. */}
           <Stack.Screen name="user/[id]" options={{ title: "" }} />

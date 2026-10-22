@@ -16,6 +16,7 @@ import MeLayout from "../../app/(tabs)/me/_layout";
 import MeScreen from "../../app/(tabs)/me/index";
 import RootLayout from "../../app/_layout";
 import FriendLinkRoute from "../../app/friends/[code]";
+import BlockedScreen from "../../app/blocked";
 import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
 import CreateScreen from "../../app/create";
@@ -47,6 +48,7 @@ export const routes = {
   "edit-profile": EditProfileScreen,
   settings: SettingsScreen,
   notifications: NotificationsRoute,
+  blocked: BlockedScreen,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
   capture: CaptureScreen,
