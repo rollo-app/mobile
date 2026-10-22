@@ -165,6 +165,9 @@ export function StoryPlayer({
     const latest = photosRef.current.find((p) => p.id === id) ?? current.photo;
     void likes.like(latest);
   });
+  // A tap still waiting out the window belongs to the step it was made on: if the story moves first
+  // (auto-advance, a feed reload), drop it, or it would skip the next step unseen.
+  useEffect(() => taps.cancel(), [state.index, state.steps, taps]);
   const onSurfacePress = (x: number) => {
     if (step.kind === "photo" && step.photo.type === "photo") taps.tap(x);
     else onPress(x);

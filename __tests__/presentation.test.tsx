@@ -4,6 +4,7 @@ import { Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as likeActions from "@/features/likes/actions";
 import * as actions from "@/features/trips/actions";
+import { PHOTO_MS } from "@/features/presentation/story";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
@@ -232,5 +233,21 @@ describe("Presentation: likes", () => {
     expect(screen.queryByTestId("heart-burst")).toBeNull();
     // Two immediate moves: past the video and the next photo, to day 2.
     await screen.findByText("Día 2");
+  });
+
+  it("a tap right before the photo moves on by itself doesn't also skip the next one", async () => {
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await screen.findByText("el viento no perdona");
+
+    // `tap()` already let 300 ms of this photo run: tap ~100 ms before it moves on by itself.
+    await act(async () => jest.advanceTimersByTime(PHOTO_MS - 400));
+    await press();
+    await act(async () => jest.advanceTimersByTime(200));
+    await act(async () => jest.advanceTimersByTime(300));
+
+    // Exactly one step forward: the next photo (b), not day 2.
+    expect(screen.getByLabelText(/^Foto de Juani/)).toBeTruthy();
+    expect(screen.queryByText("Día 2")).toBeNull();
   });
 });
