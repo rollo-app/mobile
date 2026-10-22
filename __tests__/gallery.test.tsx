@@ -1,15 +1,17 @@
 import { act } from "@testing-library/react-native";
-import { Alert, Linking } from "react-native";
+import { Alert, Linking, Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { requestPermissionsAsync } from "expo-media-library";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { PermissionDeniedError } from "@/features/gallery/save";
+import * as featuredActions from "@/features/featured/actions";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
+jest.mock("@/features/featured/actions");
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(),
   NotificationFeedbackType: { Success: "success" },
@@ -24,6 +26,7 @@ jest.mock("@/features/gallery/save", () => ({
   }),
 }));
 const mocked = jest.mocked(actions);
+const featured = jest.mocked(featuredActions);
 const { __camera: camera } = jest.requireMock("@maplibre/maplibre-react-native") as { __camera: { flyTo: jest.Mock } };
 
 const SUR = "11111111-1111-4111-8111-111111111111";
@@ -61,7 +64,7 @@ const item = (id: string, over: Partial<actions.Feed["items"][number]> = {}): ac
   caption: null,
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
+  author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null },
   width: 4000,
   height: 3000,
   files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
@@ -86,6 +89,10 @@ beforeEach(async () => {
   mockSaveOne.mockReset().mockResolvedValue(undefined);
   mocked.fetchTrip.mockResolvedValue(detail());
   mocked.fetchFeed.mockResolvedValue(feed([]));
+  featured.featureMedia.mockReset().mockResolvedValue(undefined);
+  featured.unfeatureMedia.mockReset().mockResolvedValue(undefined);
+  featured.blockFeature.mockReset().mockResolvedValue(undefined);
+  featured.unblockFeature.mockReset().mockResolvedValue(undefined);
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   await markPresentationSeen(SUR); // the first-open presentation would cover these screens
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
@@ -102,7 +109,7 @@ const two = () =>
     item("a", { takenAt: Date.parse("2027-01-12T15:00:00Z") }),
     item("b", {
       takenAt: Date.parse("2027-01-12T16:00:00Z"),
-      author: { id: "m1", name: "Juani", username: null, avatarUrl: null },
+      author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null },
       caption: "el glaciar",
     }),
     item("c", {
@@ -332,10 +339,49 @@ describe("Gallery", () => {
   });
 });
 
+describe("Gallery: featuring from the grid", () => {
+  it("long-press menu on a photo features it and then offers to take it off", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    // One menu per photo; videos can't be featured.
+    expect(screen.getAllByRole("menuitem", { name: "Destacar en tu perfil" })).toHaveLength(2);
+    await fireEvent.press(screen.getAllByRole("menuitem", { name: "Destacar en tu perfil" })[0]!);
+    await waitFor(() => expect(featured.featureMedia).toHaveBeenCalledWith("a"));
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Sacar de tu perfil" }));
+    await waitFor(() => expect(featured.unfeatureMedia).toHaveBeenCalledWith("a"));
+    await waitFor(() => expect(screen.getAllByRole("menuitem", { name: "Destacar en tu perfil" })).toHaveLength(2));
+  });
+
+  it("a photo already featured offers Sacar de tu perfil", async () => {
+    mocked.fetchFeed.mockResolvedValue(feed([item("a", { featuredByMe: true })]));
+    await open();
+    expect(await screen.findByRole("menuitem", { name: "Sacar de tu perfil" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Destacar en tu perfil" })).toBeNull();
+  });
+
+  it("shows the server's error when featuring fails", async () => {
+    featured.featureMedia.mockRejectedValue(new Error("Podés destacar hasta 60 fotos"));
+    mocked.fetchFeed.mockResolvedValue(feed([item("a")]));
+    await open();
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Destacar en tu perfil" }));
+    expect(await screen.findByText("Podés destacar hasta 60 fotos")).toBeVisible();
+    expect(screen.getByRole("menuitem", { name: "Destacar en tu perfil" })).toBeTruthy();
+  });
+
+  it("there is no feature menu while selecting", async () => {
+    mocked.fetchFeed.mockResolvedValue(two());
+    await open();
+    await screen.findAllByRole("menuitem", { name: "Destacar en tu perfil" });
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    expect(screen.queryByRole("menuitem", { name: "Destacar en tu perfil" })).toBeNull();
+  });
+});
+
 describe("Photo viewer", () => {
   const openViewer = async (id = "b") => {
     mocked.fetchFeed.mockResolvedValue(two());
-    await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
+    await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: `/photo/${id}?tripId=${SUR}` });
   };
 
   it("starts on the photo that was tapped with author, time and caption", async () => {
@@ -343,6 +389,15 @@ describe("Photo viewer", () => {
     expect(await screen.findByText("el glaciar")).toBeVisible();
     expect(screen.getByText("Juani")).toBeVisible();
     expect(screen.getByRole("button", { name: "Ver en el mapa" })).toBeVisible();
+  });
+
+  it("tapping the author closes the viewer and opens their profile", async () => {
+    await openViewer("a");
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Fede" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
+    expect(await screen.findByText("Perfil de alguien")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Guardar en Fotos" })).toBeNull();
   });
 
   it("tap hides and shows the overlay", async () => {
@@ -382,5 +437,66 @@ describe("Photo viewer", () => {
     await openViewer("b");
     await fireEvent.press(await screen.findByRole("button", { name: "Guardar en Fotos" }));
     expect(await screen.findByRole("button", { name: "Abrir Ajustes" })).toBeVisible();
+  });
+
+  it("Destacar features the photo and turns into Destacada; again takes it off", async () => {
+    await openViewer("b");
+    await fireEvent.press(await screen.findByRole("button", { name: "Destacar" }));
+    expect(await screen.findByRole("button", { name: "Destacada" })).toBeVisible();
+    expect(featured.featureMedia).toHaveBeenCalledWith("b");
+    await fireEvent.press(screen.getByRole("button", { name: "Destacada" }));
+    expect(await screen.findByRole("button", { name: "Destacar" })).toBeVisible();
+    expect(featured.unfeatureMedia).toHaveBeenCalledWith("b");
+  });
+
+  it("pressing Destacar twice while the request is in flight sends it once", async () => {
+    featured.featureMedia.mockReturnValue(new Promise(() => {}));
+    await openViewer("b");
+    await fireEvent.press(await screen.findByRole("button", { name: "Destacar" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Destacada" }));
+    expect(featured.featureMedia).toHaveBeenCalledTimes(1);
+    expect(featured.unfeatureMedia).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's error inline and goes back to Destacar", async () => {
+    featured.featureMedia.mockRejectedValue(new Error("Quien sacó esta foto no quiere que se destaque"));
+    await openViewer("b");
+    await fireEvent.press(await screen.findByRole("button", { name: "Destacar" }));
+    expect(await screen.findByText("Quien sacó esta foto no quiere que se destaque")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Destacar" })).toBeVisible();
+  });
+
+  it("videos can't be featured", async () => {
+    await openViewer("c");
+    await screen.findByRole("button", { name: "Guardar en Fotos" });
+    expect(screen.queryByRole("button", { name: "Destacar" })).toBeNull();
+  });
+
+  it("someone else's photo has no feature-block option", async () => {
+    await openViewer("a");
+    await screen.findByRole("button", { name: "Destacar" });
+    expect(screen.queryByRole("menuitem", { name: "No dejar que la destaquen" })).toBeNull();
+  });
+
+  it("the author can stop others from featuring it, and allow it again", async () => {
+    const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
+    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine })]));
+    await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
+    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine, featureBlocked: true })]));
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "No dejar que la destaquen" }));
+    expect(featured.blockFeature).toHaveBeenCalledWith("p");
+    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine })]));
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Dejar que la destaquen" }));
+    expect(featured.unblockFeature).toHaveBeenCalledWith("p");
+    expect(await screen.findByRole("menuitem", { name: "No dejar que la destaquen" })).toBeTruthy();
+  });
+
+  it("shows the error inline if blocking fails", async () => {
+    featured.blockFeature.mockRejectedValue(new Error("No se pudo cambiar"));
+    const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
+    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine })]));
+    await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "No dejar que la destaquen" }));
+    expect(await screen.findByText("No se pudo cambiar")).toBeVisible();
   });
 });

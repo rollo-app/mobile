@@ -4,6 +4,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testi
 import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as friendActions from "@/features/friends/actions";
+import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
 import { getActiveTripId } from "@/storage/active-trip";
@@ -135,8 +136,8 @@ describe("Roll", () => {
       revealed: false,
       revealAt: Date.now() + 9 * DAY,
       items: [
-        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", name: "Fede", username: null, avatarUrl: null } },
-        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", name: "Fede", username: null, avatarUrl: null } },
+        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
+        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
       ],
     });
     await renderRouter(routes, { initialUrl: "/roll" });
@@ -235,6 +236,28 @@ describe("Roll board · people and settings", () => {
     share.mockRestore();
   });
 
+  it("tapping a member opens their profile; your own row isn't tappable", async () => {
+    const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
+      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
+      isFriend: false,
+      profileVisibility: "friends",
+      canSee: false,
+      friendCount: 0,
+      mutualCount: 0,
+    });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findByText("En el rollo · 2");
+    expect(screen.queryByRole("button", { name: /^Juani/ })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
+    expect(await screen.findByText("Este perfil es privado")).toBeVisible();
+    expect(fetchUser).toHaveBeenCalledWith("u-m2");
+    fetchUser.mockRestore();
+  });
+
   it("has no 'Tus rollos' row", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
@@ -291,6 +314,29 @@ describe("Trip picker", () => {
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(await getActiveTripId()).toBe(BARILOCHE);
+  });
+
+  it("shows each roll's state: LIVE, Revelado, or when it starts", async () => {
+    mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    await signInAs({
+      trips: [
+        tripSummary(SUR, "Sur (prueba)", { startsAt: now - day, endsAt: now + day, revealAt: now + day, coverThumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI" }),
+        tripSummary(BARILOCHE, "Bariloche", { startsAt: now - 9 * day, endsAt: now - 2 * day, revealAt: now - day, revealed: true }),
+        tripSummary("44444444-4444-4444-8444-444444444444", "Tandil", { startsAt: now + 10 * day, endsAt: now + 12 * day, revealAt: now + 12 * day }),
+      ],
+      active: SUR,
+    });
+    await renderRouter(routes, { initialUrl: "/trips" });
+
+    expect(await screen.findByRole("button", { name: "Sur (prueba), en vivo" })).toBeVisible();
+    expect(screen.getByText("LIVE")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Bariloche, revelado" })).toBeVisible();
+    expect(screen.getByText("Revelado")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Tandil" })).toBeVisible();
+    expect(screen.getByText(/^Empieza en \d+ días$/)).toBeVisible();
+    expect(screen.getAllByText(/^(LIVE|Revelado)$/)).toHaveLength(2);
   });
 
   it("has shortcuts to start a roll or join", async () => {

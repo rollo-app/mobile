@@ -3,13 +3,19 @@ import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/te
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
-import { signInAs, tripSummary } from "@/test/account";
+import { signInAs, tripSummary, USER } from "@/test/account";
 import { pinAvatarKey } from "@/features/map/pin-avatars";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 import { colors } from "@/ui/theme";
+import * as featuredActions from "@/features/featured/actions";
 
 jest.mock("@/features/trips/actions");
+// Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
+jest.mock("@/features/featured/actions");
+beforeEach(() => {
+  jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
+});
 const mocked = jest.mocked(actions);
 const { __camera: camera, __getClusterLeaves: getClusterLeaves, __mapProps: mapProps } = jest.requireMock("@maplibre/maplibre-react-native") as {
   __camera: { flyTo: jest.Mock; easeTo: jest.Mock };
@@ -57,7 +63,7 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   caption: "el viento no perdona",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   durationS: null,
-  author: { id: "m2", name: "Fede", username: null, avatarUrl: null },
+  author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null },
   ...over,
 });
 
@@ -123,7 +129,7 @@ describe("Map", () => {
 
   it("registers the author's photo as a map image and tells the pin to use it once it is ready", async () => {
     mocked.fetchFeed.mockResolvedValue(
-      feed([feedItem({ author: { id: "m2", name: "Fede", username: null, avatarUrl: "/avatars/m2-v1.jpg" } })]),
+      feed([feedItem({ author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: "/avatars/m2-v1.jpg" } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
 
@@ -190,7 +196,7 @@ describe("Map", () => {
 
   it("the people filter names the person on the pill and goes back to everyone", async () => {
     mocked.fetchFeed.mockResolvedValue(
-      feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", name: "Juani", username: null, avatarUrl: null } })]),
+      feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
     expect(await screen.findByLabelText("pin mia")).toBeVisible();
@@ -270,8 +276,8 @@ describe("Map", () => {
   it("tapping a pin with other photos at the same place opens a carousel with all of them, by time", async () => {
     mocked.fetchFeed.mockResolvedValue(
       feed([
-        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", name: "Fede", username: null, avatarUrl: null } }),
-        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", name: "Juani", username: null, avatarUrl: null }, caption: "primera" }),
+        feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null } }),
+        feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null }, caption: "primera" }),
         feedItem({ id: "lejos", lat: -48.5, lng: -72.0, caption: "otra" }),
       ]),
     );
@@ -387,5 +393,36 @@ describe("Map", () => {
     await fireEvent.press(screen.getByRole("button", { name: /^Fede, / }));
     expect(await screen.findByText("Foto")).toBeVisible();
     expect(screen).toHavePathname("/photo/f1");
+  });
+
+  it("tapping the author on the card opens their profile, without opening the photo", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
+    mocked.fetchFeed.mockResolvedValue({
+      ...feed([feedItem({ files: { thumb: "/media/f1/thumb", original: "/media/f1/original" } })]),
+      revealed: true,
+    });
+    await renderRouter(
+      { ...routes, "photo/[id]": () => <Text>Foto</Text>, "user/[id]": () => <Text>Perfil de alguien</Text> },
+      { initialUrl: "/map" },
+    );
+
+    await fireEvent.press(await screen.findByLabelText("pin f1"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Fede" }));
+
+    expect(await screen.findByText("Perfil de alguien")).toBeVisible();
+    expect(screen).toHavePathname("/user/u-m2");
+    expect(screen.queryByText("Foto")).toBeNull();
+  });
+
+  it("tapping your own name on the card goes to Perfil", async () => {
+    await signInAs({ user: { ...USER, id: "u-m1" }, trips: [tripSummary(SUR, "Viaje al sur")] });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchFeed.mockResolvedValue(feed([feedItem({ author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]));
+    await renderRouter(routes, { initialUrl: "/map" });
+
+    await fireEvent.press(await screen.findByLabelText("pin f1"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Juani" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/me"));
   });
 });

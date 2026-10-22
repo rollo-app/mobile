@@ -1,15 +1,14 @@
 import { MenuView } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { Alert } from "react-native";
-import { ProfileHeader } from "@/features/profile/profile-header";
-import { ProfileShowcase } from "@/features/profile/profile-showcase";
+import { userKey } from "@/features/profile/use-user";
 import { formatDateRange } from "@/features/trips/phase";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { tripKey } from "@/features/trips/use-trip-detail";
 import { setActiveTripId } from "@/storage/active-trip";
-import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
+import { Button, ErrorText, Footnote, Row, Section } from "@/ui/components";
 import { addFriendsToTrip, removeFriend, type Friend } from "./actions";
 import { addableTrips } from "./addable-trips";
 import { friendKey, useFriend } from "./use-friend";
@@ -18,10 +17,10 @@ import { friendsKey } from "./use-friends";
 const NO_COMMON = "Todavía no tienen rollos en común.";
 
 /**
- * A friend's profile: their header and showcase, the rolls you share (tap one to open it), a way to add
- * them to one of yours, and removing them as a friend.
+ * What only a friend's profile has: the rolls you share (tap one to open it), a way to add them to one
+ * of yours, and removing them as a friend. Nothing if the server says you aren't friends anymore.
  */
-export function FriendProfileScreen({ userId }: { userId: string }) {
+export function FriendSections({ userId, name }: { userId: string; name: string }) {
   const queryClient = useQueryClient();
   const { profile, notFriend, error, refetch, isRefetching } = useFriend(userId);
   const { trips } = useActiveTrip();
@@ -31,33 +30,17 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
   const [addError, setAddError] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
-  const title = <Stack.Screen options={{ title: profile?.friend.name ?? "" }} />;
-
-  if (notFriend) {
-    return (
-      <Screen grouped>
-        {title}
-        <ErrorText>No es tu amigo</ErrorText>
-      </Screen>
-    );
-  }
+  if (notFriend) return null;
   if (!profile) {
-    return (
-      <Screen grouped>
-        {title}
-        {error ? (
-          <>
-            <ErrorText>{error}</ErrorText>
-            <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
-          </>
-        ) : (
-          <Loading />
-        )}
-      </Screen>
-    );
+    return error ? (
+      <>
+        <ErrorText>{error}</ErrorText>
+        <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
+      </>
+    ) : null;
   }
 
-  const { friend, commonTrips } = profile;
+  const { commonTrips } = profile;
   const addable = addableTrips(trips, commonTrips);
   // The phone's zone: the common rolls don't carry theirs.
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -81,10 +64,10 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
           queryClient.invalidateQueries({ queryKey: tripKey(tripId) }),
         ]);
       } else {
-        setAddError(`No se pudo sumar a ${friend.name}`);
+        setAddError(`No se pudo sumar a ${name}`);
       }
     } catch (e) {
-      setAddError(e instanceof Error ? e.message : `No se pudo sumar a ${friend.name}`);
+      setAddError(e instanceof Error ? e.message : `No se pudo sumar a ${name}`);
     } finally {
       addInFlight.current = false;
       setAdding(false);
@@ -92,7 +75,7 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
   }
 
   function confirmRemove() {
-    Alert.alert(`¿Borrar a ${friend.name} de tus amigos?`, "Ya no vas a poder sumarlo a rollos. Los rollos en los que ya está no cambian.", [
+    Alert.alert(`¿Borrar a ${name} de tus amigos?`, "Ya no vas a poder sumarlo a rollos. Los rollos en los que ya está no cambian.", [
       { text: "Cancelar", style: "cancel" },
       { text: "Borrar amigo", style: "destructive", onPress: () => void remove() },
     ]);
@@ -107,17 +90,14 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
       return;
     }
     queryClient.setQueryData<Friend[]>(friendsKey, (current) => current?.filter((f) => f.id !== userId));
-    // The cached profile isn't removed here: doing it during the dismiss would refetch it, get a 404 and
-    // flash "No es tu amigo". It's garbage-collected once the screen unmounts.
+    // Their profile (and what you can see of it) changed; the friend cache isn't removed here: doing it
+    // during the dismiss would refetch it and get a 404. It's garbage-collected once the screen unmounts.
+    void queryClient.invalidateQueries({ queryKey: userKey(userId), refetchType: "none" });
     router.dismissTo("/friends");
   }
 
   return (
-    <Screen grouped>
-      {title}
-      <ProfileHeader id={friend.id} name={friend.name} username={friend.username} avatarUrl={friend.avatarUrl} bio={friend.bio} />
-      <ProfileShowcase own={false} />
-
+    <>
       {commonTrips.length === 0 && addable.length === 0 ? (
         <Footnote>{NO_COMMON}</Footnote>
       ) : (
@@ -148,6 +128,6 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
         <Row label="Borrar amigo" tone="danger" onPress={confirmRemove} />
       </Section>
       {removeError && <ErrorText>{removeError}</ErrorText>}
-    </Screen>
+    </>
   );
 }

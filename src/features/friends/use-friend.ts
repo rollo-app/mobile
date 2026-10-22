@@ -7,9 +7,10 @@ export const friendKey = (userId: string) => ["friends", userId] as const;
 /**
  * A friend's profile and your rolls in common. `notFriend` when the server says you aren't friends
  * (404: they removed you, or the id is unknown); `error` appears only if there's no data at all.
+ * `enabled: false` asks for nothing (someone who isn't your friend).
  */
-export function useFriend(userId: string) {
-  const query = useQuery({ queryKey: friendKey(userId), queryFn: () => fetchFriend(userId) });
+export function useFriend(userId: string, { enabled = true }: { enabled?: boolean } = {}) {
+  const query = useQuery({ queryKey: friendKey(userId), queryFn: () => fetchFriend(userId), enabled });
   const notFriend = query.error instanceof ApiError && query.error.status === 404;
   const profile = notFriend ? null : (query.data ?? null);
   return {

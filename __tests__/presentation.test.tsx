@@ -1,5 +1,6 @@
 import { act } from "@testing-library/react-native";
 import { router } from "expo-router";
+import { Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
@@ -49,7 +50,7 @@ const item = (id: string, iso: string, author: { id: string; name: string; usern
   caption,
   durationS: null,
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
-  author: { username: null, ...author },
+  author: { username: null, userId: `u-${author.id}`, ...author },
   files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
 });
 
@@ -105,6 +106,20 @@ describe("Presentation", () => {
     await tap(); // b
     await fireEvent.press(await screen.findByTestId("story-surface"), { nativeEvent: { locationX: 10 } });
     await screen.findByText("el viento no perdona");
+  });
+
+  it("tapping the author leaves the presentation and opens their profile, without advancing the story", async () => {
+    await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: "/roll" });
+    await act(async () => router.push("/presentation"));
+    await tap();
+    await tap();
+    await screen.findByText("el viento no perdona");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Perfil de Fede" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
+    expect(await screen.findByText("Perfil de alguien")).toBeVisible();
+    expect(screen.queryByTestId("story-surface")).toBeNull();
   });
 
   it("'Ver de nuevo' restarts the story", async () => {

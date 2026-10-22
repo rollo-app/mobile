@@ -11,13 +11,16 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
+import { Host, Toggle } from "@expo/ui/swift-ui";
+import { accessibilityLabel, disabled as disabledModifier, labelsHidden, tint } from "@expo/ui/swift-ui/modifiers";
 import { SymbolView } from "expo-symbols";
 import { colors, radius, spacing, type } from "./theme";
 
 /** Scrolling screen. `grouped` uses the gray background of iOS grouped lists. */
-export function Screen({ children, grouped }: { children: ReactNode; grouped?: boolean }) {
+export function Screen({ children, grouped, testID }: { children: ReactNode; grouped?: boolean; testID?: string }) {
   return (
     <ScrollView
+      testID={testID}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       style={{ backgroundColor: grouped ? colors.groupedBackground : colors.background }}
@@ -184,6 +187,38 @@ export function Row({
     >
       {content}
     </Pressable>
+  );
+}
+
+/** A grouped-list row with a native switch (on in the brand color: it's what's selected). */
+export function SwitchRow({
+  label,
+  value,
+  onValueChange,
+  disabled,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <View style={styles.row}>
+      <Text style={[type.body, styles.rowLabel]}>{label}</Text>
+      {/* Native SwiftUI toggle in a content-sized host: RN's Switch reserves 51x31 and draws off-center on iOS 26. */}
+      <Host matchContents>
+        <Toggle
+          isOn={value}
+          onIsOnChange={onValueChange}
+          modifiers={[
+            labelsHidden(),
+            tint(colors.tint as string),
+            disabledModifier(!!disabled),
+            accessibilityLabel(label),
+          ]}
+        />
+      </Host>
+    </View>
   );
 }
 

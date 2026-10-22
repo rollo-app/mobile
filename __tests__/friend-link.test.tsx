@@ -5,8 +5,14 @@ import * as profileActions from "@/features/profile/actions";
 import { getPendingFriend, setPendingFriend } from "@/storage/pending-friend";
 import { signInAs, tripSummary, USER } from "@/test/account";
 import { routes } from "@/test/routes";
+import * as featuredActions from "@/features/featured/actions";
 
 jest.mock("@/features/friends/actions");
+// Perfil is mounted too: its featured photos stay loading, so its own update or "Reintentar" stays out of the way.
+jest.mock("@/features/featured/actions");
+beforeEach(() => {
+  jest.mocked(featuredActions).fetchFeatured.mockReturnValue(new Promise(() => {}));
+});
 jest.mock("@/features/profile/actions");
 const friends = jest.mocked(friendActions);
 const profile = jest.mocked(profileActions);

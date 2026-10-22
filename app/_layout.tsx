@@ -83,19 +83,15 @@ function RootStack() {
             }}
           />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
+          {/* Someone's profile from a roll or a photo: a push over the tabs (a sheet or viewer closes first). */}
+          {/* No title: the name is already in the profile's header. */}
+          <Stack.Screen name="user/[id]" options={{ title: "" }} />
+          {/* "Amigos" or "Amigos en común", set by the screen once it knows. */}
+          <Stack.Screen name="user/[id]/friends" options={{ title: "Amigos" }} />
           <Stack.Screen
             name="edit-profile"
             options={{
               title: "Editar perfil",
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.6, 1],
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
-            name="roll-info"
-            options={{
-              title: "Sobre el rollo",
               presentation: "formSheet",
               sheetAllowedDetents: [0.6, 1],
               sheetGrabberVisible: true,
@@ -122,6 +118,10 @@ function RootStack() {
           />
           <Stack.Screen
             name="photo/[id]"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
+          />
+          <Stack.Screen
+            name="featured/[userId]/[mediaId]"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
           />
       </Stack.Protected>

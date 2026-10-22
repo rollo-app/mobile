@@ -17,21 +17,22 @@ import { usePinAvatars } from "@/features/map/use-pin-avatars";
 import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { resolveTap } from "@/features/map/tap";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { rollPhase } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { colors, radius, spacing, tintHex, type } from "@/ui/theme";
+import { colors, layout, radius, spacing, tintHex, type } from "@/ui/theme";
 
 silenceTileNetworkErrors();
 
 // No pins or location: southern Argentina, where the trip is.
 const DEFAULT_REGION = { center: [-72.89, -49.33] as [number, number], zoom: 6 };
-const HEADER_HEIGHT = 44;
+const HEADER_HEIGHT = layout.headerHeight;
 /** Height of the row under the header (segmented control and filter pill). */
-export const CONTROLS_ROW_HEIGHT = 34;
+export const CONTROLS_ROW_HEIGHT = layout.controlsRowHeight;
 const TAB_BAR_GAP = 12;
 // Height of the native tab bar (49 pt + 34 pt home indicator on notch iPhones). If the
 // safe area already includes it, `Math.max` changes nothing; if not, this keeps it from covering what's below.
@@ -64,6 +65,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   const { feed, error, refetch } = useFeed(trip?.id);
   const pending = usePendingItems(trip?.id);
   const { token } = useRevealedPhotos(trip?.id);
+  const openProfile = useOpenProfile();
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
@@ -347,6 +349,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
                 timeZone={detail.trip.timezone}
                 token={token}
                 onOpen={detail.trip.revealed ? (item) => router.push(`/photo/${item.id}`) : undefined}
+                onOpenAuthor={(item) => item.authorUserId && openProfile(item.authorUserId)}
               />
             </View>
           )}

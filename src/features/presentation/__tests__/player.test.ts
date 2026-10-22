@@ -15,9 +15,12 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   width: null,
   height: null,
   thumbhash: null,
-  author: { id: "m1", name: "Cami", username: null, avatarUrl: null },
+  author: { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null },
   thumbPath: "/t",
   originalPath: "/o",
+  authorUserId: "u-m1",
+  featuredByMe: false,
+  featureBlocked: false,
 });
 
 // 0 intro, 1 day, 2 a, 3 b, 4 day, 5 c, 6 outro

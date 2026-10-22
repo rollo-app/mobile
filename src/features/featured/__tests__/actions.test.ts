@@ -1,0 +1,85 @@
+import { setSessionToken } from "@/storage/session";
+import { blockFeature, featureMedia, fetchFeatured, unblockFeature, unfeatureMedia, type FeaturedPhoto } from "../actions";
+
+type Route = [RegExp, number, unknown?];
+function mockApi(routes: Route[]) {
+  const fetchMock = jest.fn(async (req: Request) => {
+    const [, status, body] = routes.find(([re]) => re.test(`${req.method} ${new URL(req.url).pathname}`)) ?? [/./, 404, { error: "no route" }];
+    return new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  });
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
+  return fetchMock;
+}
+const request = (fetchMock: jest.Mock, i = 0) => fetchMock.mock.calls[i]![0] as Request;
+
+const photo: FeaturedPhoto = {
+  mediaId: "m1",
+  takenAt: 1,
+  width: 4000,
+  height: 3000,
+  thumbhash: null,
+  author: null,
+  zone: { lat: -41.075, lng: -71.475 },
+  thumbPath: "/featured/u1/m1/thumb",
+  originalPath: "/featured/u1/m1/original",
+};
+
+beforeEach(() => setSessionToken("tok"));
+
+describe("featureMedia", () => {
+  it("PUTs /me/featured/{mediaId} with the session", async () => {
+    const fetchMock = mockApi([[/^PUT \/me\/featured\/m1$/, 204]]);
+
+    await featureMedia("m1");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(request(fetchMock).headers.get("Authorization")).toBe("Bearer tok");
+  });
+
+  it("propagates the server's message (e.g. the 60 cap)", async () => {
+    mockApi([[/^PUT \/me\/featured\/m1$/, 409, { error: "Podés destacar hasta 60 fotos" }]]);
+    await expect(featureMedia("m1")).rejects.toThrow("Podés destacar hasta 60 fotos");
+  });
+});
+
+describe("unfeatureMedia", () => {
+  it("DELETEs /me/featured/{mediaId}", async () => {
+    const fetchMock = mockApi([[/^DELETE \/me\/featured\/m1$/, 204]]);
+    await unfeatureMedia("m1");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("blockFeature", () => {
+  it("PUTs /media/{mediaId}/feature-block", async () => {
+    const fetchMock = mockApi([[/^PUT \/media\/m1\/feature-block$/, 204]]);
+    await blockFeature("m1");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates a 403 when you didn't take it", async () => {
+    mockApi([[/./, 403, { error: "Solo quien sacó la foto puede hacer esto" }]]);
+    await expect(blockFeature("m1")).rejects.toThrow("Solo quien sacó la foto puede hacer esto");
+  });
+});
+
+describe("unblockFeature", () => {
+  it("DELETEs /media/{mediaId}/feature-block", async () => {
+    const fetchMock = mockApi([[/^DELETE \/media\/m1\/feature-block$/, 204]]);
+    await unblockFeature("m1");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("fetchFeatured", () => {
+  it("GETs /users/{userId}/featured and returns the photos", async () => {
+    const fetchMock = mockApi([[/^GET \/users\/u1\/featured$/, 200, { photos: [photo] }]]);
+
+    expect(await fetchFeatured("u1")).toEqual([photo]);
+    expect(request(fetchMock).headers.get("Authorization")).toBe("Bearer tok");
+  });
+
+  it("propagates the private-profile error", async () => {
+    mockApi([[/^GET \/users\/u1\/featured$/, 403, { error: "Este perfil es privado" }]]);
+    await expect(fetchFeatured("u1")).rejects.toThrow("Este perfil es privado");
+  });
+});

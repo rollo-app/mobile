@@ -20,6 +20,7 @@ export function PinCarousel({
   timeZone,
   token,
   onOpen,
+  onOpenAuthor,
 }: {
   items: MapItem[];
   index: number;
@@ -27,13 +28,21 @@ export function PinCarousel({
   timeZone: string;
   token?: string | null;
   onOpen?: (item: MapItem) => void;
+  /** Tap on a card's author (their profile). */
+  onOpenAuthor?: (item: MapItem) => void;
 }) {
   const { width } = useWindowDimensions();
 
   if (items.length === 1) {
     return (
       <View style={styles.single}>
-        <PinCard item={items[0]!} timeZone={timeZone} token={token} onOpen={onOpen && (() => onOpen(items[0]!))} />
+        <PinCard
+          item={items[0]!}
+          timeZone={timeZone}
+          token={token}
+          onOpen={onOpen && (() => onOpen(items[0]!))}
+          onAuthorPress={onOpenAuthor && (() => onOpenAuthor(items[0]!))}
+        />
       </View>
     );
   }
@@ -54,7 +63,13 @@ export function PinCarousel({
       keyExtractor={(i) => i.id}
       renderItem={({ item }) => (
         <View style={{ width: cardWidth }}>
-          <PinCard item={item} timeZone={timeZone} token={token} onOpen={onOpen && (() => onOpen(item))} />
+          <PinCard
+            item={item}
+            timeZone={timeZone}
+            token={token}
+            onOpen={onOpen && (() => onOpen(item))}
+            onAuthorPress={onOpenAuthor && (() => onOpenAuthor(item))}
+          />
         </View>
       )}
       initialScrollIndex={index}

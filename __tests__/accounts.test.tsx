@@ -10,8 +10,14 @@ import { getSessionToken } from "@/storage/session";
 import { signInAs, tripSummary, USER } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
+import * as featuredActions from "@/features/featured/actions";
 
 jest.mock("@/features/trips/actions");
+// Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
+jest.mock("@/features/featured/actions");
+beforeEach(() => {
+  jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
+});
 jest.mock("@/features/friends/actions");
 jest.mock("expo-image-picker");
 const mocked = jest.mocked(actions);

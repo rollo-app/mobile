@@ -13,7 +13,7 @@ const item = (overrides: Partial<FeedItem> = {}): FeedItem => ({
   caption: null,
   durationS: null,
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
-  author: { id: "m1", name: "Cami", username: null, avatarUrl: null },
+  author: { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null },
   width: 4000,
   height: 3000,
   files: { thumb: "/trips/t/media/a/thumb", original: "/trips/t/media/a/original" },
@@ -35,6 +35,18 @@ describe("revealed photos", () => {
     const [photo] = toRevealedPhotos([item()]);
 
     expect(photo).toMatchObject({ thumbPath: "/trips/t/media/a/thumb", originalPath: "/trips/t/media/a/original" });
+  });
+
+  it("carries whether I featured it, whether its author blocks featuring, and the author's user id", () => {
+    const [photo] = toRevealedPhotos([item({ featuredByMe: true, featureBlocked: true })]);
+
+    expect(photo).toMatchObject({ featuredByMe: true, featureBlocked: true, authorUserId: "u-m1" });
+  });
+
+  it("defaults the featuring flags to false when the server leaves them out", () => {
+    const [photo] = toRevealedPhotos([item()]);
+
+    expect(photo).toMatchObject({ featuredByMe: false, featureBlocked: false });
   });
 });
 

@@ -48,6 +48,14 @@ describe("PinCard", () => {
     expect(screen.getByText("hoy 13:10 · Video · 12 s")).toBeVisible();
   });
 
+  it("before the reveal the author still opens their profile", async () => {
+    const onAuthorPress = jest.fn();
+    await render(<PinCard item={item()} timeZone={TZ} now={NOW} onAuthorPress={onAuthorPress} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Perfil de Cami" }));
+    expect(onAuthorPress).toHaveBeenCalledTimes(1);
+  });
+
   it("a pending one says it is waiting for signal", async () => {
     await render(<PinCard item={item({ pending: true })} timeZone={TZ} now={NOW} />);
     expect(screen.getByText("Esperando señal")).toBeVisible();
@@ -72,12 +80,25 @@ describe("PinCard", () => {
       expect(screen.getByTestId("pin-thumb").props.source).toEqual([]);
     });
 
-    it("tapping the card calls onOpen", async () => {
+    it("tapping the thumbnail calls onOpen", async () => {
       const onOpen = jest.fn();
-      await render(<PinCard item={revealed} timeZone={TZ} now={NOW} token="tok" onOpen={onOpen} />);
+      const onAuthorPress = jest.fn();
+      await render(<PinCard item={revealed} timeZone={TZ} now={NOW} token="tok" onOpen={onOpen} onAuthorPress={onAuthorPress} />);
 
       await fireEvent.press(screen.getByRole("button", { name: /^Cami, / }));
       expect(onOpen).toHaveBeenCalledTimes(1);
+      expect(onAuthorPress).not.toHaveBeenCalled();
+    });
+
+    it("tapping the author's photo or name calls onAuthorPress, not onOpen", async () => {
+      const onOpen = jest.fn();
+      const onAuthorPress = jest.fn();
+      await render(<PinCard item={revealed} timeZone={TZ} now={NOW} token="tok" onOpen={onOpen} onAuthorPress={onAuthorPress} />);
+
+      await fireEvent.press(screen.getByRole("button", { name: "Perfil de Cami" }));
+      await fireEvent.press(screen.getByText("Cami"));
+      expect(onAuthorPress).toHaveBeenCalledTimes(2);
+      expect(onOpen).not.toHaveBeenCalled();
     });
   });
 });

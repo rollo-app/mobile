@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { spacing } from "@/ui/theme";
 import { DayCard } from "./day-card";
 import { isDownwardDrag, shouldDismiss } from "./dismiss";
@@ -62,6 +63,7 @@ export function StoryPlayer({
   const reduceMotion = useReduceMotion();
   const screenReader = useScreenReader();
   const [muted, setMuted] = useState(true);
+  const openProfile = useOpenProfile();
 
   // The story changes only if the feed refreshes underneath: start over rather than point at a stale index.
   const first = useRef(true);
@@ -250,6 +252,11 @@ export function StoryPlayer({
               timeZone={timeZone}
               paused={state.paused}
               muted={muted}
+              // Leaves the presentation (a modal) and opens the author's profile over the tabs.
+              onAuthor={() => {
+                dispatch({ type: "pause" });
+                openProfile(step.photo.authorUserId, { leave: true });
+              }}
             />
           )}
           {step.kind === "outro" && (

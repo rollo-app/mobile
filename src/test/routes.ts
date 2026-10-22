@@ -26,9 +26,11 @@ import NotFound from "../../app/+not-found";
 import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
 import PhotoRoute from "../../app/photo/[id]";
-import RollInfoScreen from "../../app/roll-info";
+import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
 import SettingsScreen from "../../app/settings";
 import TripsScreen from "../../app/trips";
+import UserProfileRoute from "../../app/user/[id]";
+import UserFriendsRoute from "../../app/user/[id]/friends";
 
 
 export const routes = {
@@ -42,11 +44,13 @@ export const routes = {
   settings: SettingsScreen,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
-  "roll-info": RollInfoScreen,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
   presentation: PresentationScreen,
   "photo/[id]": PhotoRoute,
+  "featured/[userId]/[mediaId]": FeaturedRoute,
+  "user/[id]": UserProfileRoute,
+  "user/[id]/friends": UserFriendsRoute,
   "(auth)/_layout": AuthLayout,
   "(auth)/email": EmailScreen,
   "(auth)/code": CodeScreen,

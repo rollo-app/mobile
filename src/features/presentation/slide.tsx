@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/features/profile/avatar";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
 import { formatTime } from "@/features/trips/phase";
@@ -21,43 +21,60 @@ export function Slide({
   timeZone,
   paused,
   muted,
+  onAuthor,
 }: {
   photo: RevealedPhoto;
   token: string;
   timeZone: string;
   paused: boolean;
   muted: boolean;
+  /** Tapping the author's photo or name; it takes the press, so the story's tap zones don't. */
+  onAuthor: () => void;
 }) {
   const placeholder = photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined;
   return (
-    <View style={styles.fill} accessible accessibilityLabel={slideLabel(photo, timeZone)}>
-      <Image
-        style={StyleSheet.absoluteFill}
-        source={mediaSource(photo.thumbPath, token)}
-        placeholder={placeholder}
-        contentFit="cover"
-        blurRadius={60}
-        accessible={false}
-      />
-      <View style={[StyleSheet.absoluteFill, styles.dim]} />
-      {photo.type === "video" ? (
-        <VideoSlide photo={photo} token={token} paused={paused} muted={muted} />
-      ) : (
+    <View style={styles.fill}>
+      {/* The media is one VoiceOver element; the author button stays reachable on its own. */}
+      <View style={StyleSheet.absoluteFill} accessible accessibilityLabel={slideLabel(photo, timeZone)}>
         <Image
           style={StyleSheet.absoluteFill}
-          source={mediaSource(photo.originalPath, token)}
-          placeholder={mediaSource(photo.thumbPath, token)}
-          placeholderContentFit="contain"
-          contentFit="contain"
-          transition={200}
+          source={mediaSource(photo.thumbPath, token)}
+          placeholder={placeholder}
+          contentFit="cover"
+          blurRadius={60}
           accessible={false}
         />
-      )}
-      <View style={styles.caption} pointerEvents="none">
-        <View style={styles.author}>
-          <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
-          <Text style={styles.name}>{photo.author.name}</Text>
-          <Text style={styles.time}>{formatTime(photo.takenAt, timeZone)}</Text>
+        <View style={[StyleSheet.absoluteFill, styles.dim]} />
+        {photo.type === "video" ? (
+          <VideoSlide photo={photo} token={token} paused={paused} muted={muted} />
+        ) : (
+          <Image
+            style={StyleSheet.absoluteFill}
+            source={mediaSource(photo.originalPath, token)}
+            placeholder={mediaSource(photo.thumbPath, token)}
+            placeholderContentFit="contain"
+            contentFit="contain"
+            transition={200}
+            accessible={false}
+          />
+        )}
+      </View>
+      <View style={styles.caption} pointerEvents="box-none">
+        <View style={styles.author} pointerEvents="box-none">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Perfil de ${photo.author.name}`}
+            onPress={onAuthor}
+            // Its own long press keeps a hold on the author from pausing the story behind it.
+            onLongPress={() => {}}
+            style={({ pressed }) => [styles.author, pressed && styles.pressed]}
+          >
+            <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
+            <Text style={styles.name}>{photo.author.name}</Text>
+          </Pressable>
+          <Text style={styles.time} pointerEvents="none">
+            {formatTime(photo.takenAt, timeZone)}
+          </Text>
         </View>
         {photo.caption ? <Text style={styles.quote}>{photo.caption}</Text> : null}
       </View>
@@ -107,6 +124,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
   author: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  pressed: { opacity: 0.6 },
   name: { ...type.headline, color: "#fff" },
   time: { ...type.subhead, color: "rgba(255,255,255,0.7)" },
   quote: { ...type.quote, color: "#fff" },

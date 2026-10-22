@@ -5,6 +5,7 @@ import { usePendingItems } from "@/features/capture/use-pending-items";
 import { FeedRow } from "@/features/feed/feed-row";
 import { groupByDay, newest, type FeedSection } from "@/features/feed/sections";
 import { feedToItems, mergeItems, pendingToItems, type MapItem } from "@/features/map/features";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { deleteMedia } from "@/features/trips/actions";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { feedKey, useFeed } from "@/features/trips/use-feed";
@@ -87,11 +88,20 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
     }
   }, [refetch]);
 
+  const openProfile = useOpenProfile();
+  const openAuthor = useCallback((item: MapItem) => item.authorUserId && openProfile(item.authorUserId), [openProfile]);
+
   const renderItem = useCallback(
     ({ item }: { item: MapItem }) => (
-      <FeedRow item={item} timeZone={timeZone} onPress={onOpenOnMap} onDelete={isAdmin ? confirmRemove : undefined} />
+      <FeedRow
+        item={item}
+        timeZone={timeZone}
+        onPress={onOpenOnMap}
+        onAuthorPress={openAuthor}
+        onDelete={isAdmin ? confirmRemove : undefined}
+      />
     ),
-    [timeZone, onOpenOnMap, isAdmin, confirmRemove],
+    [timeZone, onOpenOnMap, openAuthor, isAdmin, confirmRemove],
   );
 
   const renderSectionHeader = useCallback(
