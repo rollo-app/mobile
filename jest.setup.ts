@@ -267,6 +267,15 @@ jest.mock("@expo/ui/swift-ui", () => {
       h(View, { accessibilityLabel: title, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
     Stepper: ({ label, value }: any) =>
       h(View, { accessibilityLabel: label, accessibilityValue: { text: String(value) } }, h(RNText, null, label)),
+    Toggle: ({ isOn, onIsOnChange, modifiers }: any) =>
+      h(View, {
+        accessible: true,
+        accessibilityRole: "switch",
+        accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel,
+        accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled },
+        value: !!isOn,
+        onValueChange: onIsOnChange,
+      }),
     Picker: ({ selection, onSelectionChange, children }: any) =>
       h(
         View,
@@ -290,6 +299,10 @@ jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   tag: (tag: string) => ({ tag }),
   pickerStyle: (style: string) => ({ style }),
   foregroundStyle: (style: unknown) => ({ foregroundStyle: style }),
+  tint: (tint: unknown) => ({ tint }),
+  labelsHidden: () => ({ labelsHidden: true }),
+  disabled: (disabled = true) => ({ disabled }),
+  accessibilityLabel: (accessibilityLabel: string) => ({ accessibilityLabel }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).
