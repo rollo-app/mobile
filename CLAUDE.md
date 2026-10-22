@@ -125,7 +125,8 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 - **Development build** (`expo-dev-client`): Expo Go de la App Store está trabado en un SDK viejo.
 - Cliente de la API **generado del contrato**: `openapi-typescript` → `src/api/schema.d.ts` (no editar
   a mano) + `openapi-fetch`. `unwrap()` convierte el `{ error }` del server en `ApiError`.
-- `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`.
+- `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`; `app.config.ts` solo cambia nombre y
+  bundle id según `APP_VARIANT` (ver Apple).
 
 ## Estructura del código
 
@@ -201,7 +202,7 @@ npx expo run:ios --device     # compila e instala el dev build en el iPhone
 npm start                     # día a día, con el dev build ya instalado
 ```
 
-**Contra el backend local** (todavía no está deployado):
+**Contra el backend local** (sin la variable, la app usa el de producción):
 
 ```bash
 # en ../backend (dev:lan hace que las URLs de subida apunten a la IP de la Mac)
@@ -219,12 +220,30 @@ Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en
 
 ## Apple
 
-- Desarrollo: cuenta gratis de Apple (Personal Team). El build vence a los 7 días y se reinstala con
-  el mismo comando. Push notifications, Universal Links y TestFlight **no** funcionan con esta cuenta.
-- Para TestFlight y push se va a usar la cuenta de desarrollador de un amigo (cuenta **individual**: no
-  permite sumar miembros, él tiene que pasar el código de 2FA). Hacer el primer build de TestFlight
-  con tiempo: la primera revisión para testers externos puede tardar.
-- Bundle id: `com.juanifraga.rollo` (con Personal Team puede hacer falta un sufijo como `.dev`).
+- **Dos variantes** (`app.config.ts`, según `APP_VARIANT`), porque el bundle id `com.juanifraga.rollo` ya lo
+  registró el Personal Team gratis y no se puede usar en otra cuenta:
+  - **Desarrollo** (default, `npx expo run:ios --device`): cuenta gratis de Apple (Personal Team `T7Y7X6AGTX`),
+    bundle id `com.juanifraga.rollo`, se llama **"Rollo Dev"** en el celular. El build vence a los 7 días y se
+    reinstala con el mismo comando. Push, Universal Links y TestFlight **no** funcionan con esta cuenta.
+  - **Producción** (EAS, `APP_VARIANT=production` lo pone `eas.json`): cuenta **paga individual de un amigo**
+    (Juani es Admin en App Store Connect; el amigo es el único que acepta los acuerdos/licencias), bundle id
+    **`com.juanifraga.rollo.app`**, se llama "Rollo" en el celular (en la App Store tiene otro nombre porque
+    "Rollo" estaba tomado). Apunta a `https://rollo-api.juanifraga.com`. Esa cuenta tiene otra app ("Contador
+    Truco"): no tocarla.
+  - Las dos pueden convivir instaladas en el mismo iPhone (ambas abren `rollo://`).
+- **Build y TestFlight** (EAS, la clave de la API de App Store Connect "EAS" ya está cargada en las credenciales
+  de EAS; el `.p8` no va al repo):
+
+  ```bash
+  npx eas-cli build -p ios --profile production      # build en la nube, sube solo el build number
+  npx eas-cli submit -p ios --profile production     # lo manda a TestFlight
+  ```
+
+  `submit.production.ios.ascAppId` de `eas.json` es el Apple ID de la app (App Store Connect → la app →
+  Información de la app). El export compliance ya va en el build (`usesNonExemptEncryption: false`).
+- El entitlement de push sigue sacado (`./plugins/without-push-entitlement`) hasta que usemos push.
+- Pendiente para la revisión de la App Store (no para TestFlight): cuenta de prueba para el revisor en el backend,
+  URL de política de privacidad y las etiquetas de privacidad.
 
 ## Estado y plan (octubre 2026)
 
@@ -235,8 +254,8 @@ Feed, identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa �
 con dev build contra el backend local.
 
 Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Rollo,
-la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día, deploy del backend,
-TestFlight y la prueba real.
+la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día,
+el primer build de TestFlight y la prueba real. El backend ya está en producción (`rollo-api.juanifraga.com`).
 
 Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre**, solo arreglos):
 
