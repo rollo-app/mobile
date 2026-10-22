@@ -72,6 +72,27 @@ describe("Featured viewer", () => {
     expect(screen).toHavePathname("/featured/u1/p2");
   });
 
+  it("tapping the author closes the viewer and opens their profile", async () => {
+    await openFromProfile("Foto de Cami");
+
+    await fireEvent.press(viewer().getByRole("button", { name: "Perfil de Cami" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u2"));
+    expect(screen.queryByTestId("featured-viewer")).toBeNull();
+  });
+
+  it("tapping yourself as the author on someone else's profile opens your Perfil", async () => {
+    jest.mocked(friendActions).fetchFriend.mockResolvedValue({ friend: { ...CAMI, bio: null }, commonTrips: [] });
+    featured.fetchFeatured.mockImplementation(async (userId) =>
+      userId === "u2" ? [featuredPhoto("p2", { author: JUANI }, "u2")] : [],
+    );
+    await renderRouter(routes, { initialUrl: "/featured/u2/p2" });
+
+    await fireEvent.press(await viewer().findByRole("button", { name: "Perfil de Juani" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/me"));
+  });
+
   it("someone else's featured photos have no 'Sacar de tu perfil'", async () => {
     jest.mocked(friendActions).fetchFriend.mockResolvedValue({ friend: { ...CAMI, bio: null }, commonTrips: [] });
     featured.fetchFeatured.mockImplementation(async (userId) =>

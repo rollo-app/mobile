@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
 import { mediaSource, useMediaToken } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { spacing, type } from "@/ui/theme";
 import { unfeatureMedia, type FeaturedPhoto } from "./actions";
 import { featuredLabel } from "./featured-grid";
@@ -61,6 +62,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
   const { width, height } = useWindowDimensions();
   const queryClient = useQueryClient();
   const { me } = useMe();
+  const openProfile = useOpenProfile();
   const own = !!me && me.id === userId;
   const { photos: loaded, loading } = useFeatured(userId);
   const photos = loaded ?? [];
@@ -137,10 +139,16 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
           {photo && (photo.author || own) && (
             <View pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.md }]}>
               {photo.author && (
-                <View style={styles.authorRow}>
+                // Closes the viewer and opens the author's profile over the tabs (or Perfil if it's you).
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Perfil de ${photo.author.name}`}
+                  onPress={() => photo.author && openProfile(photo.author.id, { leave: true })}
+                  style={({ pressed }) => [styles.authorRow, pressed && styles.pressed]}
+                >
                   <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
                   <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
-                </View>
+                </Pressable>
               )}
               {own && (
                 <View style={styles.actions}>
@@ -188,7 +196,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     backgroundColor: "rgba(0,0,0,0.55)",
   },
-  authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, alignSelf: "flex-start" },
+  pressed: { opacity: 0.6 },
   white: { color: "#FFFFFF" },
   dim: { color: "rgba(255,255,255,0.7)" },
   actions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
