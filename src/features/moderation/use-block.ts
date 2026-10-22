@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import { friendsKey } from "@/features/friends/use-friends";
 import { userKey } from "@/features/profile/use-user";
+import { myTripsKey } from "@/features/trips/use-active-trip";
 import { blockUser, unblockUser } from "./actions";
 import { blockedKey } from "./use-blocked";
 
@@ -23,7 +24,7 @@ export function useBlock(userId: string, name: string) {
       setBusy(false);
     }
     await Promise.all(
-      [userKey(userId), friendsKey, blockedKey, ["feed"], ["featured"], ["trip"]].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      [userKey(userId), friendsKey, blockedKey, myTripsKey, ["userFriends"], ["feed"], ["featured"], ["trip"]].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
     );
   }
 

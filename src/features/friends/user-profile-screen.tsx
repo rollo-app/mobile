@@ -37,7 +37,7 @@ export function UserProfileScreen({ userId }: { userId: string }) {
   const { user, isFriend, canSee, friendCount, mutualCount, blockedByMe, reportedByMe } = profile;
   return (
     <Screen grouped>
-      {me?.id !== userId && (
+      {me && me.id !== userId && (
         <Stack.Screen
           options={{
             headerRight: () => <ProfileMenu userId={userId} name={user.name} reported={reportedByMe} blocked={blockedByMe} />,

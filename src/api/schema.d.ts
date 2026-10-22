@@ -208,7 +208,7 @@ export interface paths {
         post?: never;
         /**
          * Delete your account
-         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
+         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your reports and blocks (made and received) are deleted too. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
          */
         delete: {
             parameters: {
@@ -992,7 +992,7 @@ export interface paths {
         get?: never;
         /**
          * Block a user
-         * @description Idempotent and one-directional. Also removes the friendship in both directions. Does not remove anyone from a rollo.
+         * @description Idempotent and one-directional. Also removes the friendship in both directions. Does not remove anyone from a rollo. Also removes the blocked user's photos from your featured list. A new block is emailed to support (at most 10 reports and blocks per user per 24 hours are emailed).
          */
         put: {
             parameters: {
@@ -1091,7 +1091,7 @@ export interface paths {
         put?: never;
         /**
          * Report a photo or a person
-         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views. 404 if the photo is not one the reporter can see; 400 if it is theirs.
+         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos). At most 10 reports and blocks per user per 24 hours are emailed to support; the rest are stored without email. 404 if the photo is not one the reporter can see; 400 if it is theirs.
          */
         post: {
             parameters: {

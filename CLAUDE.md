@@ -158,7 +158,7 @@ Decisiones de producto:
   - **Alerta nativa** (`Alert`) solo para algo grave e irreversible (por ej. el rollo se reveló con fotos
     tuyas sin subir) o para confirmar una acción destructiva (borrar como admin).
   - Si un momento puntual necesita una confirmación fugaz, usar `burnt` (HUD nativo tipo AirPods), no un
-    toast hecho a mano.
+    toast hecho a mano. También para los errores de denunciar y bloquear (`Burnt.alert`).
 
 El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 
@@ -195,7 +195,7 @@ src/
                           __tests__/      tests de esa lógica, al lado del código
                         Dominios: auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
-                        (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications, roll (tablero).
+                        (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications, roll (tablero), moderation (denunciar y bloquear: menú en Feed, visores y perfil de otro, Ajustes → Bloqueados; los errores van con `burnt`).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, SwitchRow, Button,
                         Field, Body, Footnote, ErrorText, Loading
   api/                  cliente generado del contrato (schema.d.ts NO se edita a mano) + client.ts
@@ -247,7 +247,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 923 tests
+npm test                      # 953 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
