@@ -5,7 +5,7 @@ import { Row } from "@/ui/components";
 
 /**
  * Spike (dev only): replay the animated moments. "Ver revelado" plays the presentation of the active
- * roll if it's revealed, or switches to the first revealed one; "Ver candado" opens the lock → camera.
+ * roll if it's revealed (always with the intro), or switches to the first revealed one; "Ver candado" opens the lock → camera.
  */
 export function DevMomentRows() {
   const { trip, trips } = useActiveTrip();
@@ -14,7 +14,7 @@ export function DevMomentRows() {
   async function openReveal() {
     if (!revealed) return;
     if (revealed.id !== trip?.id) await setActiveTripId(revealed.id);
-    router.push("/presentation");
+    router.push({ pathname: "/presentation", params: { forceIntro: "1" } });
   }
 
   return (

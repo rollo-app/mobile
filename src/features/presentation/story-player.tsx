@@ -48,6 +48,8 @@ export function StoryPlayer({
   timeZone,
   title,
   revealDate,
+  skipIntro = false,
+  onIntroStart,
   onClose,
 }: {
   photos: RevealedPhoto[];
@@ -55,9 +57,16 @@ export function StoryPlayer({
   timeZone: string;
   title: string;
   revealDate: string;
+  /** Start straight at the first day: the intro was already seen on this phone. */
+  skipIntro?: boolean;
+  /** Called once when the intro begins playing. */
+  onIntroStart?: () => void;
   onClose: () => void;
 }) {
-  const steps = useMemo(() => buildStory(photos, timeZone), [photos, timeZone]);
+  const steps = useMemo(() => {
+    const all = buildStory(photos, timeZone);
+    return skipIntro ? all.filter((s) => s.kind !== "intro") : all;
+  }, [photos, timeZone, skipIntro]);
   const [state, dispatch] = useReducer(playerReducer, steps, initialPlayer);
   const step = state.steps[state.index]!;
   const { width } = useWindowDimensions();
@@ -101,6 +110,16 @@ export function StoryPlayer({
     anim.start(({ finished }) => finished && dispatch({ type: "next" }));
     return () => anim.stop();
   }, [state.index, state.paused, step, progress, screenReader]);
+
+  const introStarted = useRef(false);
+  const onIntroStartRef = useRef(onIntroStart);
+  onIntroStartRef.current = onIntroStart;
+  useEffect(() => {
+    if (step.kind === "intro" && !introStarted.current) {
+      introStarted.current = true;
+      onIntroStartRef.current?.();
+    }
+  }, [step]);
 
   // Soft haptic on each new day.
   useEffect(() => {

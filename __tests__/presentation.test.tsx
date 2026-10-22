@@ -4,6 +4,7 @@ import { Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
+import { hasSeenRevealIntro, markRevealIntroSeen } from "@/storage/reveal-intro";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
@@ -146,6 +147,27 @@ describe("Presentation", () => {
     await act(async () => router.push("/presentation"));
     await fireEvent.press(await screen.findByLabelText("Cerrar presentación"));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("plays the reveal intro the first time and remembers it as soon as it starts", async () => {
+    expect(await hasSeenRevealIntro(SUR)).toBe(false);
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await screen.findByText("Se reveló");
+    await act(async () => {});
+    expect(await hasSeenRevealIntro(SUR)).toBe(true);
+  });
+
+  it("skips the intro and starts at the stories once it was seen", async () => {
+    await markRevealIntroSeen(SUR);
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await screen.findByText("Día 1");
+    expect(screen.queryByText("Se reveló")).toBeNull();
+  });
+
+  it("forceIntro plays the intro even when it was seen", async () => {
+    await markRevealIntroSeen(SUR);
+    await renderRouter(routes, { initialUrl: "/presentation?forceIntro=1" });
+    await screen.findByText("Se reveló");
   });
 
   it("explains when there are no photos to show", async () => {
