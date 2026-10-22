@@ -34,7 +34,7 @@ describe("TripSwitcher", () => {
   });
 
   it("applies a custom width ratio", async () => {
-    await render(<Probe ratio={0.32} />);
-    expect(maxWidthOf()).toBe(Number(screen.getByTestId("w").props.children) * 0.32);
+    await render(<Probe ratio={0.45} />);
+    expect(maxWidthOf()).toBe(Number(screen.getByTestId("w").props.children) * 0.45);
   });
 });

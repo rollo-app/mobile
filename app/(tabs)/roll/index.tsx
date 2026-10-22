@@ -26,10 +26,13 @@ export default function RollScreen() {
   const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
   if (hasNoTrips(loaded, trip)) return <Welcome />;
+  const gallery = trip && phase === "revealed";
+  // The gallery's right toolbar (select + menu) is wider, so its title gets less room.
+  const maxWidthRatio = gallery ? 0.45 : 0.5;
   return (
     <>
-      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.name} /> }} />}
-      {trip && phase === "revealed" ? <GalleryScreen tripId={trip.id} /> : <RollBoard />}
+      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.name} maxWidthRatio={maxWidthRatio} /> }} />}
+      {gallery ? <GalleryScreen tripId={trip.id} /> : <RollBoard />}
     </>
   );
 }

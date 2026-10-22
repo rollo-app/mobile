@@ -1,6 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
-import { Text } from "react-native";
+import { Dimensions, StyleSheet, Text } from "react-native";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { hasSeenPresentation, markPresentationSeen } from "@/storage/presentation";
@@ -83,9 +83,9 @@ describe("revealed roll", () => {
     await renderRouter(testRoutes, { initialUrl: "/roll" });
     await screen.findByText("Este rollo no tiene fotos");
 
-    const button = screen.getAllByLabelText(/, cambiar de rollo$/)[0];
+    const button = screen.getAllByLabelText(/, cambiar de rollo$/)[0]!;
     const style = StyleSheet.flatten(typeof button.props.style === "function" ? button.props.style({ pressed: false }) : button.props.style);
-    expect(style.maxWidth).toBe(Dimensions.get("window").width * 0.32);
+    expect(style.maxWidth).toBe(Dimensions.get("window").width * 0.45);
   });
 
   it("the Rollo tab shows the gallery instead of the board", async () => {
@@ -97,12 +97,13 @@ describe("revealed roll", () => {
     expect(screen.queryByText("Fechas")).toBeNull();
   });
 
-  it("the gallery has a 'Sobre el rollo' button that opens the invite and the members", async () => {
+  it("the gallery has a 'Sobre el rollo' menu action that opens the invite and the members", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await markPresentationSeen(SUR);
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Sobre el rollo" }));
+    expect(screen.queryByRole("button", { name: "Sobre el rollo" })).toBeNull();
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Sobre el rollo" }));
 
     expect(screen).toHavePathname("/roll-info");
     expect(await screen.findByText("Invitar")).toBeVisible();
@@ -126,7 +127,7 @@ describe("revealed roll", () => {
     await markPresentationSeen(SUR);
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Sobre el rollo" }));
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Sobre el rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Fede" }));
 
     await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
