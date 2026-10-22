@@ -1,8 +1,11 @@
+import { useMemo } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import { spacing } from "@/ui/theme";
 
 /** Instagram-style segments for the current day: done ones full, the current one fills with `progress`. */
 export function ProgressBar({ count, current, progress }: { count: number; current: number; progress: Animated.Value }) {
+  // One animated position drives every segment, so none is ever a static width React could fail to update.
+  const position = useMemo(() => Animated.add(new Animated.Value(current), progress), [current, progress]);
   return (
     <View style={styles.row} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {Array.from({ length: count }, (_, i) => (
@@ -10,11 +13,9 @@ export function ProgressBar({ count, current, progress }: { count: number; curre
           <Animated.View
             style={[
               styles.fill,
-              i < current
-                ? { width: "100%" }
-                : i === current
-                  ? { width: progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) }
-                  : { width: "0%" },
+              {
+                width: position.interpolate({ inputRange: [i, i + 1], outputRange: ["0%", "100%"], extrapolate: "clamp" }),
+              },
             ]}
           />
         </View>
