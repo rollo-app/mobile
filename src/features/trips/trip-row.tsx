@@ -39,15 +39,19 @@ export function TripRow({
     >
       {tint && <Gradient color={tint} />}
       <View style={styles.text}>
-        <View style={styles.title}>
-          <Text style={[type.body, styles.name, { color: colors.label }]} numberOfLines={1}>
-            {trip.name}
-          </Text>
-          {state.badge && <Badge variant={state.badge === "live" ? "live" : "neutral"} label={BADGE_LABEL[state.badge]} />}
-        </View>
-        <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{state.subtitle}</Text>
+        <Text style={[type.body, { color: colors.label }]} numberOfLines={1}>
+          {trip.name}
+        </Text>
+        <Text style={[type.footnote, { color: colors.secondaryLabel }]} numberOfLines={1}>
+          {state.subtitle}
+        </Text>
       </View>
-      {selected && <SymbolView name="checkmark" size={16} weight="semibold" tintColor={colors.tint as string} />}
+      {(state.badge || selected) && (
+        <View testID="trip-row-trailing" style={styles.trailing}>
+          {state.badge && <Badge variant={state.badge === "live" ? "live" : "neutral"} label={BADGE_LABEL[state.badge]} />}
+          {selected && <SymbolView name="checkmark" size={16} weight="semibold" tintColor={colors.tint as string} />}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -75,6 +79,5 @@ const styles = StyleSheet.create({
   gradient: { position: "absolute", top: 0, bottom: 0, left: 0, right: "15%", flexDirection: "row" },
   strip: { flex: 1 },
   text: { flex: 1, gap: 2 },
-  title: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  name: { flexShrink: 1 },
+  trailing: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
 });
