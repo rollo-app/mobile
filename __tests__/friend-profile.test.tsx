@@ -47,8 +47,8 @@ const detail = (id: string, name: string, revealed: boolean): tripActions.TripDe
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" },
-  members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" }],
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false },
+  members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 0,
 });
@@ -68,6 +68,8 @@ let fetchUserFriends: jest.SpyInstance;
 const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserProfile> = {}): profileActions.UserProfile => ({
   user: friend,
   isFriend: true,
+  blockedByMe: false,
+  reportedByMe: false,
   profileVisibility: "friends",
   canSee: true,
   friendCount: 12,
@@ -280,7 +282,7 @@ describe("Profile of someone who isn't your friend", () => {
   });
 
   it("public: their description and featured photos, still without friend actions", async () => {
-    fetchUser.mockResolvedValue(userProfile({ ...lu, bio: "Sacando fotos del cielo" }, { isFriend: false, profileVisibility: "public" }));
+    fetchUser.mockResolvedValue(userProfile({ ...lu, bio: "Sacando fotos del cielo" }, { isFriend: false, blockedByMe: false, reportedByMe: false, profileVisibility: "public" }));
     jest.mocked(featuredActions).fetchFeatured.mockImplementation(async (id) => (id === "u9" ? [featuredPhoto("p1", {}, "u9")] : []));
     await renderRouter(routes, { initialUrl: "/user/u9" });
 
