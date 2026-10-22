@@ -9,6 +9,8 @@ import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 import { tabBar } from "@/test/tab-bar";
 import * as featuredActions from "@/features/featured/actions";
+import * as profileActions from "@/features/profile/actions";
+import { featuredPhoto } from "@/test/featured";
 
 jest.mock("@/features/friends/actions");
 // Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
@@ -57,6 +59,18 @@ const myTrips = [
 ];
 
 let alert: jest.SpyInstance;
+let fetchUser: jest.SpyInstance;
+
+/** `GET /users/{id}` for someone: by default a friend you can see. */
+const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserProfile> = {}): profileActions.UserProfile => ({
+  user: friend,
+  isFriend: true,
+  profileVisibility: "friends",
+  canSee: true,
+  ...over,
+});
+
+const lu: actions.Friend = { id: "u9", name: "Lu", username: "lu", avatarUrl: "/avatars/u9/1.jpg", bio: null };
 
 beforeEach(async () => {
   await signInAs({ trips: myTrips, active: "t1" });
@@ -66,9 +80,17 @@ beforeEach(async () => {
   // The Mapa tab mounts too: keep its feed loading so its own "Reintentar" stays out of the way.
   trips.fetchFeed.mockReturnValue(new Promise(() => {}));
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  fetchUser = jest
+    .spyOn(profileActions, "fetchUser")
+    .mockImplementation(async (id: string) => userProfile(id === "u3" ? tomi : cami));
+  jest.mocked(featuredActions).fetchFeatured.mockClear();
+  mocked.fetchFriend.mockClear();
 });
 
-afterEach(() => alert.mockRestore());
+afterEach(() => {
+  alert.mockRestore();
+  fetchUser.mockRestore();
+});
 
 const confirmRemoval = () => {
   const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
@@ -177,19 +199,8 @@ describe("Friend profile", () => {
     expect(screen.queryByText("Sumar a un rollo")).toBeNull();
   });
 
-  it("someone who isn't your friend shows only 'No es tu amigo'", async () => {
-    mocked.fetchFriend.mockRejectedValue(new ApiError(404, "Not found"));
-    await renderRouter(routes, { initialUrl: "/friends/user/u9" });
-
-    expect(await screen.findByText("No es tu amigo")).toBeVisible();
-    expect(screen.queryByText("Todavía no destacó fotos.")).toBeNull();
-    expect(screen.queryByText("Rollos en común")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Borrar amigo" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
-  });
-
   it("shows a retry when the profile can't be loaded", async () => {
-    mocked.fetchFriend.mockRejectedValueOnce(new ApiError(0, "Sin conexión"));
+    fetchUser.mockRejectedValueOnce(new ApiError(0, "Sin conexión"));
     await renderRouter(routes, { initialUrl: "/friends/user/u2" });
 
     expect(await screen.findByText("Sin conexión")).toBeVisible();
@@ -234,5 +245,54 @@ describe("Friend profile", () => {
 
     expect(await screen.findByText("No se pudo borrar")).toBeVisible();
     expect(screen).toHavePathname("/friends/user/u2");
+  });
+});
+
+describe("Profile of someone who isn't your friend", () => {
+  it("private: only their name, @ and photo, says it's private and offers no friend actions", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByText("Este perfil es privado")).toBeVisible();
+    expect(fetchUser).toHaveBeenCalledWith("u9");
+    expect(screen.getByText("@lu")).toBeVisible();
+    expect(screen.getAllByText("Lu").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Rollos en común")).toBeNull();
+    expect(screen.queryByText("Sumar a un rollo")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Borrar amigo" })).toBeNull();
+    expect(mocked.fetchFriend).not.toHaveBeenCalled();
+    expect(featuredActions.fetchFeatured).not.toHaveBeenCalledWith("u9");
+  });
+
+  it("public: their description and featured photos, still without friend actions", async () => {
+    fetchUser.mockResolvedValue(userProfile({ ...lu, bio: "Sacando fotos del cielo" }, { isFriend: false, profileVisibility: "public" }));
+    jest.mocked(featuredActions).fetchFeatured.mockImplementation(async (id) => (id === "u9" ? [featuredPhoto("p1", {}, "u9")] : []));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByText("Sacando fotos del cielo")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Foto destacada" })).toBeVisible();
+    expect(screen.queryByText("Este perfil es privado")).toBeNull();
+    expect(screen.queryByText("Rollos en común")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Borrar amigo" })).toBeNull();
+    expect(mocked.fetchFriend).not.toHaveBeenCalled();
+  });
+
+  it("a friend opened from outside Amigos shows the friend profile with their rolls in common", async () => {
+    await renderRouter(routes, { initialUrl: "/user/u2" });
+
+    expect(await screen.findByText("Rollos en común")).toBeVisible();
+    expect(mocked.fetchFriend).toHaveBeenCalledWith("u2");
+    expect(screen.getByRole("button", { name: "Borrar amigo" })).toBeVisible();
+  });
+
+  it("someone who removed you meanwhile shows as a non-friend, without friend actions", async () => {
+    mocked.fetchFriend.mockRejectedValue(new ApiError(404, "Not found"));
+    await renderRouter(routes, { initialUrl: "/friends/user/u2" });
+
+    expect(await screen.findByText("@cami")).toBeVisible();
+    await waitFor(() => expect(mocked.fetchFriend).toHaveBeenCalled());
+    expect(screen.queryByText("Rollos en común")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Borrar amigo" })).toBeNull();
+    expect(screen.queryByText("No es tu amigo")).toBeNull();
   });
 });

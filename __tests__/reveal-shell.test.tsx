@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { Text } from "react-native";
+import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { hasSeenPresentation, markPresentationSeen } from "@/storage/presentation";
 import { getActiveTripId } from "@/storage/active-trip";
@@ -70,6 +71,28 @@ describe("revealed roll", () => {
     expect(screen.getByText("HUB5FT")).toBeVisible();
     expect(screen.getByText("En el rollo · 1")).toBeVisible();
     expect(screen.queryByRole("button", { name: /^Mapa sin señal/ })).toBeNull();
+  });
+
+  it("tapping a member in 'Sobre el rollo' closes the sheet and opens their profile", async () => {
+    const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
+      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
+      isFriend: false,
+      profileVisibility: "friends",
+      canSee: false,
+    });
+    const base = detail();
+    const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const };
+    mocked.fetchTrip.mockResolvedValue({ ...base, members: [...base.members, fede] });
+    await markPresentationSeen(SUR);
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Sobre el rollo" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Fede" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
+    expect(await screen.findByText("Este perfil es privado")).toBeVisible();
+    expect(screen.queryByText("En el rollo · 2")).toBeNull();
+    fetchUser.mockRestore();
   });
 
   it("opens the presentation automatically the first time, and only once", async () => {

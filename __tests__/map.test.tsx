@@ -3,7 +3,7 @@ import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/te
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
-import { signInAs, tripSummary } from "@/test/account";
+import { signInAs, tripSummary, USER } from "@/test/account";
 import { pinAvatarKey } from "@/features/map/pin-avatars";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
@@ -393,5 +393,36 @@ describe("Map", () => {
     await fireEvent.press(screen.getByRole("button", { name: /^Fede, / }));
     expect(await screen.findByText("Foto")).toBeVisible();
     expect(screen).toHavePathname("/photo/f1");
+  });
+
+  it("tapping the author on the card opens their profile, without opening the photo", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
+    mocked.fetchFeed.mockResolvedValue({
+      ...feed([feedItem({ files: { thumb: "/media/f1/thumb", original: "/media/f1/original" } })]),
+      revealed: true,
+    });
+    await renderRouter(
+      { ...routes, "photo/[id]": () => <Text>Foto</Text>, "user/[id]": () => <Text>Perfil de alguien</Text> },
+      { initialUrl: "/map" },
+    );
+
+    await fireEvent.press(await screen.findByLabelText("pin f1"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Fede" }));
+
+    expect(await screen.findByText("Perfil de alguien")).toBeVisible();
+    expect(screen).toHavePathname("/user/u-m2");
+    expect(screen.queryByText("Foto")).toBeNull();
+  });
+
+  it("tapping your own name on the card goes to Perfil", async () => {
+    await signInAs({ user: { ...USER, id: "u-m1" }, trips: [tripSummary(SUR, "Viaje al sur")] });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchFeed.mockResolvedValue(feed([feedItem({ author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]));
+    await renderRouter(routes, { initialUrl: "/map" });
+
+    await fireEvent.press(await screen.findByLabelText("pin f1"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Juani" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/me"));
   });
 });

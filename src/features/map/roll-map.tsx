@@ -17,6 +17,7 @@ import { usePinAvatars } from "@/features/map/use-pin-avatars";
 import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { resolveTap } from "@/features/map/tap";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { rollPhase } from "@/features/trips/phase";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -64,6 +65,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   const { feed, error, refetch } = useFeed(trip?.id);
   const pending = usePendingItems(trip?.id);
   const { token } = useRevealedPhotos(trip?.id);
+  const openProfile = useOpenProfile();
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
@@ -347,6 +349,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
                 timeZone={detail.trip.timezone}
                 token={token}
                 onOpen={detail.trip.revealed ? (item) => router.push(`/photo/${item.id}`) : undefined}
+                onOpenAuthor={(item) => item.authorUserId && openProfile(item.authorUserId)}
               />
             </View>
           )}

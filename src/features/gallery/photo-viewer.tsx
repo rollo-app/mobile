@@ -13,6 +13,7 @@ import { useMe } from "@/features/auth/use-me";
 import { blockFeature, unblockFeature } from "@/features/featured/actions";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { Avatar } from "@/features/profile/avatar";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatPinTime } from "@/features/map/pin-time";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -89,6 +90,7 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
   const { me } = useMe();
+  const openProfile = useOpenProfile();
   const queryClient = useQueryClient();
   const featured = useToggleFeatured();
   // Which photo the last feature/block attempt was for, so its error shows only on that page.
@@ -182,8 +184,16 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
           {photo && (
             <View pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.md }]}>
               <View style={styles.authorRow}>
-                <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
-                <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
+                {/* Closes the viewer and opens the author's profile over the tabs (or Perfil if it's you). */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Perfil de ${photo.author.name}`}
+                  onPress={() => openProfile(photo.authorUserId, { leave: true })}
+                  style={({ pressed }) => [styles.authorRow, pressed && styles.pressed]}
+                >
+                  <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
+                  <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
+                </Pressable>
                 <Text style={[type.subhead, styles.dim]}>{formatPinTime(photo.takenAt, timeZone)}</Text>
               </View>
               {photo.caption ? <Text style={[type.quote, styles.white]}>{photo.caption}</Text> : null}
@@ -284,6 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
   },
   authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  pressed: { opacity: 0.5 },
   white: { color: "#FFFFFF" },
   dim: { color: "rgba(255,255,255,0.7)" },
   actions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },

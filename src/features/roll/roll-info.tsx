@@ -21,7 +21,7 @@ export function RollInfo() {
       {trip && detail && (
         <>
           <UploadStatusSection tripId={trip.id} timeZone={detail.trip.timezone} />
-          <RollPeople detail={detail} />
+          <RollPeople detail={detail} inSheet />
         </>
       )}
     </Screen>

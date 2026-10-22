@@ -1,10 +1,10 @@
 import { act } from "@testing-library/react-native";
-import { ActionSheetIOS, Alert } from "react-native";
+import { ActionSheetIOS, Alert, Text } from "react-native";
 import * as sections from "@/features/feed/sections";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
-import { signInAs, tripSummary } from "@/test/account";
+import { signInAs, tripSummary, USER } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 import * as featuredActions from "@/features/featured/actions";
@@ -152,6 +152,29 @@ describe("Feed", () => {
     await waitFor(() => expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33], zoom: 15 })));
     // The list is gone, so the caption on screen is the pin's card.
     expect(await screen.findByText("el viento no perdona")).toBeVisible();
+  });
+
+  it("tapping the author's photo or name opens their profile instead of the map", async () => {
+    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: "/map?view=feed" });
+
+    const author = await screen.findByRole("button", { name: "Perfil de Fede" });
+    camera.flyTo.mockClear();
+    await fireEvent.press(author);
+
+    expect(await screen.findByText("Perfil de alguien")).toBeVisible();
+    expect(screen).toHavePathname("/user/u-m2");
+    expect(camera.flyTo).not.toHaveBeenCalled();
+  });
+
+  it("tapping your own name (also on an unuploaded photo) goes to Perfil", async () => {
+    await signInAs({ user: { ...USER, id: "u-m1" }, trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
+    await queue.enqueue(queued());
+    await renderRouter(routes, { initialUrl: "/map?view=feed" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Juani" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/me"));
   });
 
   it("a row without a location is not tappable", async () => {

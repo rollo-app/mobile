@@ -1,5 +1,5 @@
 import { act } from "@testing-library/react-native";
-import { Alert, Linking } from "react-native";
+import { Alert, Linking, Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { requestPermissionsAsync } from "expo-media-library";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
@@ -381,7 +381,7 @@ describe("Gallery: featuring from the grid", () => {
 describe("Photo viewer", () => {
   const openViewer = async (id = "b") => {
     mocked.fetchFeed.mockResolvedValue(two());
-    await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
+    await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: `/photo/${id}?tripId=${SUR}` });
   };
 
   it("starts on the photo that was tapped with author, time and caption", async () => {
@@ -389,6 +389,15 @@ describe("Photo viewer", () => {
     expect(await screen.findByText("el glaciar")).toBeVisible();
     expect(screen.getByText("Juani")).toBeVisible();
     expect(screen.getByRole("button", { name: "Ver en el mapa" })).toBeVisible();
+  });
+
+  it("tapping the author closes the viewer and opens their profile", async () => {
+    await openViewer("a");
+    await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Fede" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
+    expect(await screen.findByText("Perfil de alguien")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Guardar en Fotos" })).toBeNull();
   });
 
   it("tap hides and shows the overlay", async () => {

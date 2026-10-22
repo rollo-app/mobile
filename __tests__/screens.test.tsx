@@ -4,6 +4,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testi
 import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as friendActions from "@/features/friends/actions";
+import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
 import { getActiveTripId } from "@/storage/active-trip";
@@ -233,6 +234,26 @@ describe("Roll board · people and settings", () => {
 
     expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo con el código HUB5FT' });
     share.mockRestore();
+  });
+
+  it("tapping a member opens their profile; your own row isn't tappable", async () => {
+    const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
+      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
+      isFriend: false,
+      profileVisibility: "friends",
+      canSee: false,
+    });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findByText("En el rollo · 2");
+    expect(screen.queryByRole("button", { name: /^Juani/ })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
+    expect(await screen.findByText("Este perfil es privado")).toBeVisible();
+    expect(fetchUser).toHaveBeenCalledWith("u-m2");
+    fetchUser.mockRestore();
   });
 
   it("has no 'Tus rollos' row", async () => {

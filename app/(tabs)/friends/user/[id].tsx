@@ -1,8 +1,8 @@
 import { useLocalSearchParams } from "expo-router";
-import { FriendProfileScreen } from "@/features/friends/friend-profile-screen";
+import { UserProfileScreen } from "@/features/friends/user-profile-screen";
 
-/** A friend's profile, inside the Amigos tab. */
+/** Someone's profile, inside the Amigos tab (a friend from the list). */
 export default function FriendProfileRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return <FriendProfileScreen userId={id} />;
+  return <UserProfileScreen userId={id} />;
 }

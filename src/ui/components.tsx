@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -184,6 +185,32 @@ export function Row({
     >
       {content}
     </Pressable>
+  );
+}
+
+/** A grouped-list row with a native switch (on in the brand color: it's what's selected). */
+export function SwitchRow({
+  label,
+  value,
+  onValueChange,
+  disabled,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <View style={styles.row}>
+      <Text style={[type.body, styles.rowLabel]}>{label}</Text>
+      <Switch
+        accessibilityLabel={label}
+        value={value}
+        onValueChange={onValueChange}
+        disabled={disabled}
+        trackColor={{ true: colors.tint }}
+      />
+    </View>
   );
 }
 

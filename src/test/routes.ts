@@ -30,6 +30,7 @@ import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
 import RollInfoScreen from "../../app/roll-info";
 import SettingsScreen from "../../app/settings";
 import TripsScreen from "../../app/trips";
+import UserProfileRoute from "../../app/user/[id]";
 
 
 export const routes = {
@@ -49,6 +50,7 @@ export const routes = {
   presentation: PresentationScreen,
   "photo/[id]": PhotoRoute,
   "featured/[userId]/[mediaId]": FeaturedRoute,
+  "user/[id]": UserProfileRoute,
   "(auth)/_layout": AuthLayout,
   "(auth)/email": EmailScreen,
   "(auth)/code": CodeScreen,

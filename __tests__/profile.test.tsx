@@ -84,6 +84,53 @@ describe("Perfil", () => {
   });
 });
 
+describe("Ajustes: Perfil público", () => {
+  it("is off by default and explains who sees your profile", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    const toggle = await screen.findByRole("switch", { name: "Perfil público" });
+    expect(toggle.props.value).toBe(false);
+    expect(screen.getByText("Si está apagado, solo tus amigos ven tus fotos destacadas y tu descripción.")).toBeVisible();
+  });
+
+  it("turning it on saves profileVisibility public with PATCH /me", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    const update = jest.spyOn(profileActions, "updateProfile").mockResolvedValue({ ...USER, profileVisibility: "public" });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent(await screen.findByRole("switch", { name: "Perfil público" }), "valueChange", true);
+
+    expect(update).toHaveBeenCalledWith({ profileVisibility: "public" });
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Perfil público" }).props.value).toBe(true));
+    expect(queryClient.getQueryData<typeof USER>(["me"])?.profileVisibility).toBe("public");
+  });
+
+  it("turning it off saves profileVisibility friends", async () => {
+    await signInAs({ user: { ...USER, profileVisibility: "public" }, trips: [tripSummary(SUR, "Viaje al sur")] });
+    const update = jest.spyOn(profileActions, "updateProfile").mockResolvedValue({ ...USER, profileVisibility: "friends" });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    const toggle = await screen.findByRole("switch", { name: "Perfil público" });
+    expect(toggle.props.value).toBe(true);
+    await fireEvent(toggle, "valueChange", false);
+
+    expect(update).toHaveBeenCalledWith({ profileVisibility: "friends" });
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Perfil público" }).props.value).toBe(false));
+  });
+
+  it("if saving fails it shows the error inline and the switch goes back", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    jest.spyOn(profileActions, "updateProfile").mockRejectedValue(new Error("No hay conexión"));
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent(await screen.findByRole("switch", { name: "Perfil público" }), "valueChange", true);
+
+    expect(await screen.findByText("No hay conexión")).toBeVisible();
+    expect(screen.getByRole("switch", { name: "Perfil público" }).props.value).toBe(false);
+  });
+});
+
 describe("Editar perfil: descripción", () => {
   beforeEach(() => signInAs({ user: { ...USER, bio: "Hola" }, trips: [tripSummary(SUR, "Viaje al sur")] }));
 
@@ -197,6 +244,7 @@ describe("Perfil: fotos destacadas", () => {
 
   it("on a friend's profile the badge shows on the photos the friend didn't take", async () => {
     jest.mocked(friendActions).fetchFriend.mockResolvedValue({ friend: { ...CAMI, bio: null }, commonTrips: [] });
+    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null }, isFriend: true, profileVisibility: "friends", canSee: true });
     featured.fetchFeatured.mockImplementation(async (userId) =>
       userId === "u2"
         ? [

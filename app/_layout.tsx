@@ -83,6 +83,8 @@ function RootStack() {
             }}
           />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
+          {/* Someone's profile from a roll or a photo: a push over the tabs (a sheet or viewer closes first). */}
+          <Stack.Screen name="user/[id]" options={{ title: "" }} />
           <Stack.Screen
             name="edit-profile"
             options={{
