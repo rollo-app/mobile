@@ -1,4 +1,4 @@
-import { zoneBounds, zoneFeatures, zonesOf } from "../zones";
+import { ZONE_CLUSTER_PROPERTIES, ZONE_PHOTOS, zoneBounds, zoneFeatures, zonesOf } from "../zones";
 
 const at = (lat: number, lng: number) => ({ zone: { lat, lng } });
 const nowhere = { zone: null };
@@ -48,5 +48,15 @@ describe("zoneBounds", () => {
 
   it("is null without zones", () => {
     expect(zoneBounds([])).toBeNull();
+  });
+});
+
+describe("zone clusters", () => {
+  it("a cluster adds up the photos of its zones, not how many zones it has", () => {
+    expect(ZONE_CLUSTER_PROPERTIES).toEqual({ total: ["+", ["get", "count"]] });
+  });
+
+  it("the number shown is the cluster's total, or the zone's own count", () => {
+    expect(ZONE_PHOTOS).toEqual(["coalesce", ["get", "total"], ["get", "count"]]);
   });
 });

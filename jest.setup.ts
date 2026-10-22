@@ -94,6 +94,9 @@ jest.mock("@maplibre/maplibre-react-native", () => {
   const getClusterLeaves = jest.fn();
   const mapProps: { current: any } = { current: null };
   const imagesProps: { current: any } = { current: null };
+  // Last props of each source and layer, by id (so tests can check clustering and expressions).
+  const sourceProps: Record<string, any> = {};
+  const layerProps: Record<string, any> = {};
   // How many times a Map has mounted (tests reset it): a remount reloads the style and loses the camera.
   const mapMounts = { current: 0 };
   return {
@@ -102,6 +105,8 @@ jest.mock("@maplibre/maplibre-react-native", () => {
     __getClusterLeaves: getClusterLeaves,
     __mapProps: mapProps,
     __imagesProps: imagesProps,
+    __sourceProps: sourceProps,
+    __layerProps: layerProps,
     // The map lets you tap "the void"; the pin source renders a button per pin (so screens can be tested without native).
     Map: (props: any) => {
       const { children, onPress, onDidFinishLoadingMap } = props;
@@ -124,7 +129,9 @@ jest.mock("@maplibre/maplibre-react-native", () => {
     },
     ViewAnnotation: View,
     // With 2+ photos it adds a "cluster" whose leaves are the first two.
-    GeoJSONSource: ({ data, onPress, ref }: any) => {
+    GeoJSONSource: (props: any) => {
+      const { data, onPress, ref } = props;
+      sourceProps[props.id] = props;
       React.useImperativeHandle(ref, () => ({
         getClusterLeaves,
       }));
@@ -149,9 +156,13 @@ jest.mock("@maplibre/maplibre-react-native", () => {
             onPress: () => onPress({ nativeEvent: { features: [f] }, stopPropagation: () => {} }),
           }),
         ),
+        props.children,
       );
     },
-    Layer: View,
+    Layer: (props: any) => {
+      layerProps[props.id] = props;
+      return React.createElement(View, props);
+    },
     Images: (props: any) => {
       imagesProps.current = props;
       return null;

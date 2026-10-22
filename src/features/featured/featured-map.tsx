@@ -4,7 +4,7 @@ import { StyleSheet, Text, useColorScheme, View } from "react-native";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
 import { writeStyleFile } from "@/features/map/style-file";
 import { colors, radius, spacing, type } from "@/ui/theme";
-import { zoneBounds, zoneFeatures, type FeaturedZone } from "./zones";
+import { ZONE_CLUSTER_PROPERTIES, ZONE_PHOTOS, zoneBounds, zoneFeatures, type FeaturedZone } from "./zones";
 
 silenceTileNetworkErrors();
 
@@ -15,6 +15,8 @@ const SINGLE_ZOOM = 9;
 const HEIGHT = 340;
 const PADDING = { top: 48, right: 48, bottom: 48, left: 48 };
 const FONT = ["Noto Sans Bold"];
+/** Wider than the biggest circle (24 pt): two circles merge before they overlap. */
+const CLUSTER_RADIUS = 50;
 
 function initialView(zones: FeaturedZone[]): InitialViewState {
   const [w, s, e, n] = zoneBounds(zones)!;
@@ -24,7 +26,8 @@ function initialView(zones: FeaturedZone[]): InitialViewState {
 
 /**
  * Where a profile's featured photos were taken, as ~5 km zones: a circle per zone with how many photos
- * it has, never a pin per photo. It frames all zones. Neutral circles (like the roll map's clusters):
+ * it has, never a pin per photo. Nearby zones merge into one circle with the sum of their photos when
+ * zooming out (clustered like the roll map's pins). It frames all zones. Neutral circles (like the roll map's clusters):
  * cobalt is only for actions and selection.
  */
 export function FeaturedMap({ zones }: { zones: FeaturedZone[] }) {
@@ -38,13 +41,20 @@ export function FeaturedMap({ zones }: { zones: FeaturedZone[] }) {
       <View style={styles.map}>
         <Map key={styleUri} style={StyleSheet.absoluteFill} mapStyle={styleUri} logo={false} attribution={false} compass={false} touchRotate={false} touchPitch={false}>
           <Camera initialViewState={view} maxZoom={MAX_ZOOM} />
-          <GeoJSONSource id="featured-zones" data={data}>
+          <GeoJSONSource
+            id="featured-zones"
+            data={data}
+            cluster
+            clusterRadius={CLUSTER_RADIUS}
+            clusterMaxZoom={MAX_ZOOM}
+            clusterProperties={ZONE_CLUSTER_PROPERTIES}
+          >
             <Layer
               id="featured-zones-circle"
               type="circle"
               paint={{
                 "circle-color": "#1C1C1E",
-                "circle-radius": ["step", ["get", "count"], 16, 5, 20, 20, 24],
+                "circle-radius": ["step", ZONE_PHOTOS, 16, 5, 20, 20, 24],
                 "circle-stroke-width": 2,
                 "circle-stroke-color": "#FFFFFF",
               }}
@@ -53,7 +63,7 @@ export function FeaturedMap({ zones }: { zones: FeaturedZone[] }) {
               id="featured-zones-count"
               type="symbol"
               layout={{
-                "text-field": ["to-string", ["get", "count"]],
+                "text-field": ["to-string", ZONE_PHOTOS],
                 "text-font": FONT,
                 "text-size": 14,
                 "text-allow-overlap": true,

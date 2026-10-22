@@ -1,3 +1,4 @@
+import type { GeoJSONSourceSpecification } from "@maplibre/maplibre-react-native";
 import type { FeaturedPhoto } from "./actions";
 
 /** A ~5 km zone (the center of its cell, as the server sends it) and how many featured photos are in it. */
@@ -17,6 +18,15 @@ export function zonesOf(photos: Pick<FeaturedPhoto, "zone">[]): FeaturedZone[] {
   }
   return [...zones.values()].sort((a, b) => b.count - a.count);
 }
+
+/**
+ * When zooming out, nearby zones merge into one circle (MapLibre clusters): it adds up their photos in
+ * `total`, since `point_count` would be how many zones it has.
+ */
+export const ZONE_CLUSTER_PROPERTIES: GeoJSONSourceSpecification["clusterProperties"] = { total: ["+", ["get", "count"]] };
+
+/** How many photos a circle stands for: a cluster's `total`, or a single zone's own `count`. */
+export const ZONE_PHOTOS: ["coalesce", ["get", string], ["get", string]] = ["coalesce", ["get", "total"], ["get", "count"]];
 
 /** One point per zone for the map source: only its id and count. */
 export function zoneFeatures(zones: FeaturedZone[]): ZoneCollection {

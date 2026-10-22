@@ -14,6 +14,10 @@ jest.mock("@/features/trips/actions");
 jest.mock("@/features/friends/actions");
 jest.mock("@/features/featured/actions");
 const featured = jest.mocked(featuredActions);
+const { __sourceProps: sourceProps, __layerProps: layerProps } = jest.requireMock("@maplibre/maplibre-react-native") as {
+  __sourceProps: Record<string, any>;
+  __layerProps: Record<string, any>;
+};
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const BIO = "Viajando por el sur";
@@ -219,6 +223,22 @@ describe("Perfil: fotos destacadas", () => {
       `pin zone:${CHALTEN.lat},${CHALTEN.lng}`,
     ]);
     expect(showcase().queryByLabelText(/^pin p\d/)).toBeNull();
+  });
+
+  it("Mapa merges nearby zones when zooming out, showing the sum of their photos", async () => {
+    featured.fetchFeatured.mockResolvedValue([featuredPhoto("p1"), featuredPhoto("p2"), featuredPhoto("p3", { zone: CHALTEN })]);
+    await renderRouter(routes, { initialUrl: "/me" });
+    await showcase().findAllByRole("button", { name: "Foto destacada" });
+
+    await fireEvent.press(showcase().getByRole("button", { name: "Mapa" }));
+
+    const source = sourceProps["featured-zones"];
+    expect(source.cluster).toBe(true);
+    expect(source.clusterRadius).toBeGreaterThan(0);
+    expect(source.clusterProperties).toEqual({ total: ["+", ["get", "count"]] });
+    const shown = ["coalesce", ["get", "total"], ["get", "count"]];
+    expect(layerProps["featured-zones-count"].layout["text-field"]).toEqual(["to-string", shown]);
+    expect(layerProps["featured-zones-circle"].paint["circle-radius"][1]).toEqual(shown);
   });
 
   it("Mapa without zones shows its empty state", async () => {
