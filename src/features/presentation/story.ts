@@ -1,5 +1,6 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
 import { formatDate } from "@/features/trips/phase";
+import { DARKROOM_INTRO_MS, USE_DARKROOM_INTRO } from "./intro-flag";
 
 export type StoryStats = {
   photos: number;
@@ -20,7 +21,7 @@ export const PHOTO_MS = 4000;
 export const DAY_CARD_MS = 2000;
 export const MAX_VIDEO_MS = 15_000;
 /** The focus-in: ~2.5 s of reveal plus the roll title. */
-export const INTRO_MS = 5500;
+export const INTRO_MS = USE_DARKROOM_INTRO ? DARKROOM_INTRO_MS : 5500;
 
 const DAY_MS = 86_400_000;
 const localDay = (ms: number, timeZone: string) => new Intl.DateTimeFormat("en-CA", { timeZone }).format(ms);

@@ -25,7 +25,9 @@ import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { spacing } from "@/ui/theme";
 import { DayCard } from "./day-card";
 import { isDownwardDrag, shouldDismiss } from "./dismiss";
+import { DarkroomIntro } from "./darkroom-intro";
 import { Intro } from "./intro";
+import { USE_DARKROOM_INTRO } from "./intro-flag";
 import { Outro } from "./outro";
 import { initialPlayer, playerReducer } from "./player";
 import { ProgressBar } from "./progress-bar";
@@ -234,15 +236,24 @@ export function StoryPlayer({
             else dispatch({ type: name === "increment" ? "next" : "prev" });
           }}
         >
-          {step.kind === "intro" && (
-            <Intro
-              photos={photos}
-              token={token}
-              title={title}
-              date={revealDate}
-              reduceMotion={reduceMotion}
-            />
-          )}
+          {step.kind === "intro" &&
+            (USE_DARKROOM_INTRO ? (
+              <DarkroomIntro
+                photos={photos}
+                token={token}
+                title={title}
+                date={revealDate}
+                reduceMotion={reduceMotion}
+              />
+            ) : (
+              <Intro
+                photos={photos}
+                token={token}
+                title={title}
+                date={revealDate}
+                reduceMotion={reduceMotion}
+              />
+            ))}
           {step.kind === "day" && <DayCard step={step} />}
           {step.kind === "photo" && (
             <Slide

@@ -393,3 +393,9 @@ jest.mock("expo-video", () => {
   return { useVideoPlayer: jest.fn(() => ({ loop: false })), VideoView: View };
 });
 
+
+// Spike (revelado + candado): native animation, haptics and audio modules are mocked out.
+jest.mock("@/features/presentation/darkroom-intro", () => ({ DarkroomIntro: jest.requireActual("@/features/presentation/intro").Intro }));
+jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
+jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
+jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));
