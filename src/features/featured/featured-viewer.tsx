@@ -1,3 +1,4 @@
+import { MenuView } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -8,6 +9,7 @@ import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, u
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
 import { mediaSource, useMediaToken } from "@/features/media/revealed";
+import { useReport } from "@/features/moderation/use-report";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { spacing, type } from "@/ui/theme";
@@ -102,6 +104,17 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
     router.back();
   }
 
+  const report = useReport();
+  // The photo's author (the profile's owner when nobody is named): you can't report your own.
+  const reportable = !!photo && !!me && (photo.author?.id ?? userId) !== me.id;
+
+  async function reportPhoto(target: FeaturedPhoto) {
+    if (report.busy || !(await report.reportMedia({ mediaId: target.mediaId }))) return;
+    queryClient.setQueryData<FeaturedPhoto[]>(featuredKey(userId), (list) => list?.filter((p) => p.mediaId !== target.mediaId));
+    // Moves on to the next photo (the list shrank under the same index); the last one closes the viewer.
+    if (current >= photos.length - 1) router.back();
+  }
+
   const error = photo && removeError?.mediaId === photo.mediaId ? removeError.message : null;
 
   return (
@@ -136,7 +149,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
           >
             <SymbolView name="xmark" size={16} weight="semibold" tintColor="#FFFFFF" />
           </Pressable>
-          {photo && (photo.author || own) && (
+          {photo && (photo.author || own || reportable) && (
             <View pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.md }]}>
               {photo.author && (
                 // Closes the viewer and opens the author's profile over the tabs (or Perfil if it's you).
@@ -150,8 +163,19 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                   <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
                 </Pressable>
               )}
-              {own && (
+              {(own || reportable) && (
                 <View style={styles.actions}>
+                  {reportable && (
+                    <MenuView
+                      actions={[{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]}
+                      onPressAction={() => void reportPhoto(photo)}
+                    >
+                      <View accessibilityLabel="Más opciones" style={styles.pill}>
+                        <SymbolView name="ellipsis" size={15} tintColor="#FFFFFF" />
+                      </View>
+                    </MenuView>
+                  )}
+                  {own && (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Sacar de tu perfil"
@@ -163,6 +187,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                     {removing ? <ActivityIndicator color="#FFFFFF" /> : <SymbolView name="star.slash" size={15} tintColor="#FFFFFF" />}
                     <Text style={[type.subhead, styles.white]}>Sacar de tu perfil</Text>
                   </Pressable>
+                  )}
                 </View>
               )}
               {error && <Text style={[type.footnote, styles.dim]}>{error}</Text>}
