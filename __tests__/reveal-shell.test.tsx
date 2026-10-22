@@ -4,7 +4,7 @@ import { Text } from "react-native";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { hasSeenPresentation, markPresentationSeen } from "@/storage/presentation";
-import { getActiveTripId } from "@/storage/active-trip";
+import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
@@ -50,6 +50,33 @@ beforeEach(async () => {
 });
 
 describe("revealed roll", () => {
+  it("the header title follows the active trip when it switches to a revealed one", async () => {
+    const upcoming = detail({ revealed: false, startsAt: Date.now() + DAY, endsAt: Date.now() + 2 * DAY, revealAt: Date.now() + 3 * DAY });
+    mocked.fetchTrip.mockImplementation(async (id: string) =>
+      id === SUR ? upcoming : detail({ id: OTRO, name: "Bariloche" }),
+    );
+    await markPresentationSeen(OTRO);
+    await setActiveTripId(OTRO);
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    // The Rollo tab's header comes first in the tree (the Mapa tab has its own title).
+    const rollTitle = () => screen.getAllByLabelText(/, cambiar de rollo$/)[0]?.props.accessibilityLabel;
+    // Open the revealed trip first so its detail is cached and the switch back to it is instant.
+    await screen.findByText("Este rollo no tiene fotos");
+
+    await act(async () => {
+      await setActiveTripId(SUR);
+    });
+    await waitFor(() => expect(screen.queryByText("Fechas")).not.toBeNull());
+    expect(rollTitle()).toBe("Viaje al sur, cambiar de rollo");
+
+    await act(async () => {
+      await setActiveTripId(OTRO);
+    });
+
+    await waitFor(() => expect(screen.queryByText("Este rollo no tiene fotos")).not.toBeNull());
+    expect(rollTitle()).toBe("Bariloche, cambiar de rollo");
+  });
+
   it("the Rollo tab shows the gallery instead of the board", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await markPresentationSeen(SUR);

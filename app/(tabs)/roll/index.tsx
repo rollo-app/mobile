@@ -26,8 +26,12 @@ export default function RollScreen() {
   const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
   if (hasNoTrips(loaded, trip)) return <Welcome />;
-  if (trip && phase === "revealed") return <GalleryScreen tripId={trip.id} />;
-  return <RollBoard />;
+  return (
+    <>
+      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.name} /> }} />}
+      {trip && phase === "revealed" ? <GalleryScreen tripId={trip.id} /> : <RollBoard />}
+    </>
+  );
 }
 
 function RollBoard() {
@@ -49,7 +53,6 @@ function RollBoard() {
 
   return (
     <Screen grouped>
-      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.name} /> }} />}
       {error ? (
         <>
           <ErrorText>{error}</ErrorText>
