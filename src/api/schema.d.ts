@@ -1876,7 +1876,7 @@ export interface paths {
         get?: never;
         /**
          * Don't let others feature this photo (author only)
-         * @description Removes it from everyone else's profile and stops new ones (they get 409). You can still feature it yourself. Idempotent. 403 if you did not take it; 404 if it does not exist or you are not an active member of its rollo.
+         * @description Removes it from everyone else's profile and stops new ones (they get 409). You can still feature it yourself. Idempotent. Works even if you left the rollo or were removed from it. 403 if you did not take it; 404 if it does not exist or you neither took it nor are an active member of its rollo.
          */
         put: {
             parameters: {
@@ -1928,7 +1928,7 @@ export interface paths {
         post?: never;
         /**
          * Let others feature this photo again (author only)
-         * @description Idempotent. Photos removed from other profiles while it was blocked do not come back.
+         * @description Idempotent. Works even if you left the rollo or were removed from it. Photos removed from other profiles while it was blocked do not come back.
          */
         delete: {
             parameters: {
@@ -2098,7 +2098,7 @@ export interface paths {
         };
         /**
          * A user's featured photos
-         * @description Most recently featured first. Only if you can see the profile (it is you, a friend, or it is public); otherwise 403. Each photo carries a ~5 km zone instead of its location, and its author when it is not the owner; never the rollo or the caption. Photos that were deleted, blocked by their author, or whose rollo the owner left do not show up.
+         * @description Newest photo first (by when it was taken). Only if you can see the profile (it is you, a friend, or it is public); otherwise 403. Each photo carries a ~5 km zone instead of its location, and its author when it is not the owner; never the rollo or the caption. Photos that were deleted, blocked by their author, or whose rollo the owner left do not show up.
          */
         get: {
             parameters: {
