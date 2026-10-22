@@ -29,18 +29,16 @@ import Animated, {
 import type { RevealedPhoto } from "@/features/media/revealed";
 import { thumbHashAverageColor } from "@/features/trips/thumbhash-color";
 import { spacing, type } from "@/ui/theme";
+import { cellFill } from "./cell-fill";
 import { DEVELOP_SKSL, GRAIN_SKSL } from "./darkroom-shaders";
+import { sampleEvenly } from "./sample-evenly";
 import { playShutter, prepareShutter, releaseShutter } from "./shutter-sound";
-import { sampleEvenly } from "./upcoming";
+import { REVEAL_TIMELINE } from "./timeline";
 import { useSkiaThumbs } from "./use-skia-thumbs";
 
-// Timeline (ms from mount).
-const DEVELOP_AT = 1200;
-const HIT_AT = 5000;
-const TITLE_AT = 5400;
+const { developAt: DEVELOP_AT, hitAt: HIT_AT, titleAt: TITLE_AT, cellMs: CELL_MS } = REVEAL_TIMELINE;
 const DEVELOP_MS = HIT_AT - DEVELOP_AT;
 /** Each cell takes CELL_MS to develop; their starts spread over STAGGER_MS. */
-const CELL_MS = 2400;
 const STAGGER_MS = DEVELOP_MS - CELL_MS;
 
 const COLUMNS = 3;
@@ -75,10 +73,10 @@ const DEVELOP_HAPTICS: Pattern = {
 };
 
 /**
- * Spike of the reveal intro: a darkroom. Red safelight and grain ("Revelando {rollo}"), the roll's
- * photos develop on one Skia canvas (noise threshold from the edges, sepia → color, blur 20 → 0)
- * while the haptics grow, a hit (heavy + success, shutter sound) washes the red to white, and the
- * title shows. Same props as `Intro`; the story player moves on after `DARKROOM_INTRO_MS`.
+ * The reveal: a darkroom. Red safelight and grain ("Revelando {rollo}"), the roll's photos develop
+ * on one Skia canvas (noise threshold from the edges, sepia → color, blur 20 → 0) while the haptics
+ * grow, a hit (heavy + success, shutter sound) washes the red to white, and the title shows. Timed
+ * by `REVEAL_TIMELINE`; `RevealScreen` moves on after `totalMs`.
  */
 export function DarkroomIntro({
   photos,
@@ -240,6 +238,7 @@ function DevelopingCell({
   }));
   const blur = useDerivedValue(() => 20 * (1 - progress.value));
   const bounds = rect(0, 0, size, size);
+  const fill = cellFill(!!effect, !!image);
 
   return (
     <Group
@@ -251,11 +250,15 @@ function DevelopingCell({
         </Paint>
       }
     >
-      {image && effect ? (
+      {fill === "develop" && image && effect ? (
         <Rect rect={bounds}>
           <Shader source={effect} uniforms={uniforms}>
             <ImageShader image={image} fit="cover" rect={bounds} />
           </Shader>
+        </Rect>
+      ) : fill === "image" && image ? (
+        <Rect rect={bounds}>
+          <ImageShader image={image} fit="cover" rect={bounds} />
         </Rect>
       ) : (
         <Rect rect={bounds} color={Skia.Color(`rgb(${base.map((c) => Math.round(c * 255)).join(",")})`)} />

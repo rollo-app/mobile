@@ -108,7 +108,7 @@ function RootStack() {
             }}
           />
           <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
-          {/* Spike: the lock → camera moment when a roll starts. */}
+          {/* The lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen
             name="reveal"

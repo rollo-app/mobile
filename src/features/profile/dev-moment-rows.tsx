@@ -4,7 +4,7 @@ import { setActiveTripId } from "@/storage/active-trip";
 import { Row } from "@/ui/components";
 
 /**
- * Spike (dev only): replay the animated moments. "Ver revelado" plays the reveal of the active
+ * Dev only: replay the animated moments. "Ver revelado" plays the reveal of the active
  * roll if it's revealed (always, seen or not), or switches to the first revealed one; "Ver candado" opens the lock → camera.
  */
 export function DevMomentRows() {

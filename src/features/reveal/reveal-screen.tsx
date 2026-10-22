@@ -3,21 +3,20 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useRevealedPhotos } from "@/features/media/revealed";
-import { DarkroomIntro } from "@/features/presentation/darkroom-intro";
-import { Intro } from "@/features/presentation/intro";
-import { REVEAL_INTRO_MS, USE_DARKROOM_INTRO } from "@/features/presentation/intro-flag";
 import { useReduceMotion } from "@/features/presentation/use-accessibility";
 import { formatDate } from "@/features/trips/phase";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { markRevealIntroSeen } from "@/storage/reveal-intro";
+import { DarkroomIntro } from "./darkroom-intro";
+import { REVEAL_TIMELINE } from "./timeline";
 
-/** The screen's own background, painted from the first frame: the darkroom's red-black, or black for the mosaic. */
-export const REVEAL_BACKGROUND = USE_DARKROOM_INTRO ? "#1a0000" : "#000000";
+/** The screen's own background, painted from the first frame: the darkroom's red-black. */
+export const REVEAL_BACKGROUND = "#1a0000";
 
 /**
  * The reveal of the active roll, full screen and on its own (the stories never contain it): the
- * darkroom intro (or the original mosaic). It always plays, and remembers it was seen as it starts.
+ * darkroom (`DarkroomIntro`). It always plays, and remembers it was seen as it starts.
  * When it ends, or with a tap anywhere, it replaces itself with the stories (`/presentation`).
  * Without photos or on an error it goes straight there, where that state is explained.
  */
@@ -45,23 +44,22 @@ export function RevealScreen() {
   useEffect(() => {
     if (!ready || !tripId) return;
     void markRevealIntroSeen(tripId);
-    const timer = setTimeout(toStories, REVEAL_INTRO_MS);
+    const timer = setTimeout(toStories, REVEAL_TIMELINE.totalMs);
     return () => clearTimeout(timer);
   }, [ready, tripId, toStories]);
 
   if (!ready) return <View style={styles.root} />;
 
-  const props = {
-    photos,
-    token,
-    title: detail.trip.name,
-    date: formatDate(detail.trip.revealAt, detail.trip.timezone),
-    reduceMotion,
-  };
   return (
     <Pressable testID="reveal-surface" style={styles.root} accessibilityHint="Tocá para ver las fotos" onPress={toStories}>
       <StatusBar style="light" />
-      {USE_DARKROOM_INTRO ? <DarkroomIntro {...props} /> : <Intro {...props} />}
+      <DarkroomIntro
+        photos={photos}
+        token={token}
+        title={detail.trip.name}
+        date={formatDate(detail.trip.revealAt, detail.trip.timezone)}
+        reduceMotion={reduceMotion}
+      />
     </Pressable>
   );
 }

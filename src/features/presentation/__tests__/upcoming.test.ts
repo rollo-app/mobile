@@ -1,6 +1,6 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
 import { buildStory } from "../story";
-import { sampleEvenly, upcomingPhotos } from "../upcoming";
+import { upcomingPhotos } from "../upcoming";
 
 const photo = (id: string, iso: string): RevealedPhoto => ({
   id,
@@ -40,18 +40,5 @@ describe("upcomingPhotos", () => {
 
   it("from the first day card it starts with the first photos", () => {
     expect(upcomingPhotos(steps, 0, 3).map((p) => p.id)).toEqual(["a", "b", "c"]);
-  });
-});
-
-describe("sampleEvenly", () => {
-  it("keeps everything when it fits", () => {
-    expect(sampleEvenly([1, 2, 3], 5)).toEqual([1, 2, 3]);
-  });
-
-  it("spreads the picks over the whole list", () => {
-    const picked = sampleEvenly(Array.from({ length: 200 }, (_, i) => i), 30);
-    expect(picked).toHaveLength(30);
-    expect(picked[0]).toBe(0);
-    expect(picked.at(-1)).toBeGreaterThan(180);
   });
 });

@@ -1,5 +1,5 @@
 /**
- * SkSL sources for the darkroom intro (spike). Kept as plain strings so they can be compiled by
+ * SkSL sources for the darkroom reveal. Kept as plain strings so they can be compiled by
  * Skia on the phone and checked with CanvasKit on the computer.
  */
 

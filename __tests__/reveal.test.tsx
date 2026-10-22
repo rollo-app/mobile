@@ -9,7 +9,7 @@ import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
 // A short intro, so the hand-over to the stories happens within the test's wait.
-jest.mock("@/features/presentation/intro-flag", () => ({ ...jest.requireActual("@/features/presentation/intro-flag"), REVEAL_INTRO_MS: 600 }));
+jest.mock("@/features/reveal/timeline", () => ({ REVEAL_TIMELINE: { ...jest.requireActual("@/features/reveal/timeline").REVEAL_TIMELINE, totalMs: 600 } }));
 jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(), ImpactFeedbackStyle: { Light: "light" } }));
 jest.mock("expo-video", () => ({
   useVideoPlayer: () => ({ play: jest.fn(), pause: jest.fn(), muted: true, loop: false }),
