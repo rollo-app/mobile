@@ -16,28 +16,15 @@ import { accessibilityLabel, disabled as disabledModifier, labelsHidden, tint } 
 import { SymbolView } from "expo-symbols";
 import { colors, radius, spacing, type } from "./theme";
 
-/**
- * Scrolling screen. `grouped` uses the gray background of iOS grouped lists. `insetTop` leaves room
- * for controls drawn over its top, under the navigation header.
- */
-export function Screen({
-  children,
-  grouped,
-  insetTop,
-  testID,
-}: {
-  children: ReactNode;
-  grouped?: boolean;
-  insetTop?: number;
-  testID?: string;
-}) {
+/** Scrolling screen. `grouped` uses the gray background of iOS grouped lists. */
+export function Screen({ children, grouped, testID }: { children: ReactNode; grouped?: boolean; testID?: string }) {
   return (
     <ScrollView
       testID={testID}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       style={{ backgroundColor: grouped ? colors.groupedBackground : colors.background }}
-      contentContainerStyle={insetTop ? [styles.screen, { paddingTop: spacing.md + insetTop }] : styles.screen}
+      contentContainerStyle={styles.screen}
     >
       {children}
     </ScrollView>

@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, type ColorValue } from "react-native";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
 import { RevealedRollScreen } from "@/features/roll/revealed-roll-screen";
 import { RollDates } from "@/features/roll/roll-dates";
@@ -30,13 +30,37 @@ export default function RollScreen() {
   const revealed = trip && phase === "revealed";
   // The gallery's right toolbar (select + menu) is wider, so its title gets less room.
   const maxWidthRatio = revealed && view !== "roll" ? 0.45 : 0.5;
+  // Revealed, the header is solid with the screen's background so it reads as one block with the
+  // "Galería | Rollo" row under it. Set here (not in the revealed screen) so that switching to a trip
+  // that isn't revealed clears them: undefined goes back to the stack's default header.
+  const header = revealed ? solidHeader(view === "roll" ? colors.groupedBackground : colors.background) : defaultHeader;
   return (
     <>
-      {trip && <Stack.Screen options={{ headerTitle: () => <TripSwitcher name={trip.name} maxWidthRatio={maxWidthRatio} /> }} />}
+      {trip && (
+        <Stack.Screen
+          options={{ ...header, headerTitle: () => <TripSwitcher name={trip.name} maxWidthRatio={maxWidthRatio} /> }}
+        />
+      )}
       {revealed ? <RevealedRollScreen tripId={trip.id} /> : <RollBoard />}
     </>
   );
 }
+
+const solidHeader = (backgroundColor: ColorValue) => ({
+  headerTransparent: false,
+  headerStyle: { backgroundColor },
+  headerShadowVisible: false,
+  headerBlurEffect: "none" as const,
+  headerLargeTitle: false,
+});
+
+const defaultHeader = {
+  headerTransparent: undefined,
+  headerStyle: undefined,
+  headerShadowVisible: undefined,
+  headerBlurEffect: undefined,
+  headerLargeTitle: undefined,
+};
 
 function RollBoard() {
   const { trip } = useActiveTrip();

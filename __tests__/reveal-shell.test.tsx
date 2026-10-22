@@ -9,7 +9,9 @@ import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 import { RollDates } from "@/features/roll/roll-dates";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
-import { layout, spacing } from "@/ui/theme";
+import { colors, spacing } from "@/ui/theme";
+// The navigation bar is drawn natively: its options are read from the container instead.
+import { navigationRef } from "expo-router/build/global-state/navigationRef";
 
 jest.mock("@/features/trips/actions");
 // Pass-throughs, so the tests can see which screens render the shared dates and the uploads.
@@ -172,25 +174,57 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(screen.queryByText("Fechas")).toBeNull();
   });
 
-  // jest has no safe area (insets.top is 0), so the row's top is just the navigation bar's height.
-  it("puts the Galería | Rollo row right below the navigation header, and the gallery starts below it", async () => {
+  // The header is opaque, so the row sits in the normal flow right under it, and nothing pads the views' tops.
+  it("puts the Galería | Rollo row in the flow under the header, and the gallery right below it", async () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: "/roll" });
     const list = await screen.findByTestId("gallery-list");
 
     const row = StyleSheet.flatten(screen.getByTestId("revealed-roll-controls").props.style);
-    expect(row).toMatchObject({ position: "absolute", top: layout.headerHeight, paddingTop: spacing.sm });
-    expect(row.backgroundColor).toBeTruthy();
-    expect(StyleSheet.flatten(list.props.contentContainerStyle).paddingTop).toBe(layout.controlsRowHeight + 2 * spacing.sm);
+    expect(row).toMatchObject({ paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.background });
+    expect(row.position).toBeUndefined();
+    expect(row.top).toBeUndefined();
+    expect(StyleSheet.flatten(list.props.contentContainerStyle).paddingTop).toBeUndefined();
   });
 
-  it("'Rollo' also starts below the Galería | Rollo row", async () => {
+  it("'Rollo' starts right below the row, on the grouped background", async () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
     await screen.findByText("Invitar");
 
+    const row = StyleSheet.flatten(screen.getByTestId("revealed-roll-controls").props.style);
+    expect(row.backgroundColor).toBe(colors.groupedBackground);
     const overview = StyleSheet.flatten(screen.getByTestId("roll-overview").props.contentContainerStyle);
-    expect(overview.paddingTop).toBe(layout.controlsRowHeight + 2 * spacing.sm + spacing.md);
+    expect(overview).toMatchObject({ padding: spacing.md });
+    expect(overview.paddingTop).toBeUndefined();
+  });
+
+  it("after the reveal the header is solid with the same background as the row, without a hairline", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await screen.findByTestId("gallery-list");
+
+    await waitFor(() =>
+      expect(navigationRef.getCurrentOptions()).toEqual(
+        expect.objectContaining({
+          headerTransparent: false,
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
+          headerBlurEffect: "none",
+          headerLargeTitle: false,
+        }),
+      ),
+    );
+  });
+
+  it("before the reveal the header keeps its default look", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await screen.findByText("Fechas");
+
+    const options = navigationRef.getCurrentOptions() as Record<string, unknown>;
+    for (const key of ["headerTransparent", "headerStyle", "headerShadowVisible", "headerBlurEffect", "headerLargeTitle"])
+      expect(options[key]).toBeUndefined();
   });
 
   it("the gallery menu no longer has 'Sobre el rollo'", async () => {
