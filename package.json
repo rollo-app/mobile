@@ -53,10 +53,13 @@
     "@types/react": "~19.3.0",
     "jest": "^30.5.2",
     "jest-expo": "~58.0.11",
+    "marked": "^18.1.1",
     "openapi-typescript": "^7.13.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "site:build": "node scripts/build-site.mjs",
+    "site:deploy": "npm run site:build && npx wrangler@4 deploy --config site/wrangler.jsonc",
     "start": "expo start",
     "ios": "expo run:ios",
     "android": "expo run:android",

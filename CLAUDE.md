@@ -274,6 +274,14 @@ Para entrar a un rollo revelado del seed: login con `juani@rollo.test` (está en
 descripciones corta / de 150 / de 3 renglones, `nuevo@rollo.test` vacío, `rocio@rollo.test` sin @usuario), cada rollo con su código y etapa, y un
 link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de nuevo lo renueva). El detalle está en el CLAUDE.md del backend.
 
+## Sitio público
+
+`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): inicio + soporte, `/privacidad`
+y `/terminos`. Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
+se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/`. `npm run site:build` para verlo,
+`npm run site:deploy` para publicarlo. Son las URLs de privacidad, soporte y marketing de App Store Connect.
+Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Juani).
+
 ## Apple
 
 - Desarrollo: cuenta gratis de Apple (Personal Team). El build vence a los 7 días y se reinstala con
