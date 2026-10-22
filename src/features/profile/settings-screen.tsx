@@ -8,7 +8,7 @@ import { ErrorText, Row, Screen, Section, SwitchRow } from "@/ui/components";
 import { DevMomentRows } from "./dev-moment-rows";
 import { useProfileVisibility } from "./use-profile-visibility";
 
-/** Ajustes: the account and this phone (Editar perfil, who sees your profile, offline map, sign out, delete account). */
+/** Ajustes: the account and this phone (Editar perfil, Notificaciones, who sees your profile, offline map, sign out, delete account). */
 export function SettingsScreen() {
   const visibility = useProfileVisibility();
   const [accountError, setAccountError] = useState<string | null>(null);
@@ -40,6 +40,7 @@ export function SettingsScreen() {
     <Screen grouped>
       <Section>
         <Row label="Editar perfil" onPress={() => router.push("/edit-profile")} />
+        <Row label="Notificaciones" onPress={() => router.push("/notifications")} />
       </Section>
 
       <Section footer="Si está apagado, solo tus amigos ven tus fotos destacadas y tu lista de amigos.">

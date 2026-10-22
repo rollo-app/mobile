@@ -88,6 +88,7 @@ function RootStack() {
             }}
           />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
+          <Stack.Screen name="notifications" options={{ title: "Notificaciones" }} />
           {/* "¿Te avisamos…?", once, after creating or joining a roll. */}
           <Stack.Screen
             name="push-primer"

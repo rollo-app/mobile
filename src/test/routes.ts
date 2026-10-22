@@ -23,6 +23,7 @@ import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
 import NotFound from "../../app/+not-found";
+import NotificationsRoute from "../../app/notifications";
 import OfflineMapsScreen from "../../app/offline-maps";
 import PushPrimerRoute from "../../app/push-primer";
 import PresentationScreen from "../../app/presentation";
@@ -45,6 +46,7 @@ export const routes = {
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
   settings: SettingsScreen,
+  notifications: NotificationsRoute,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
   capture: CaptureScreen,

@@ -1,6 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
-import { Text } from "react-native";
+import { Linking, Text } from "react-native";
 import { router } from "expo-router";
 import { signIn } from "@/features/auth/session";
 import * as friendActions from "@/features/friends/actions";
@@ -239,5 +239,109 @@ describe("tapping a push", () => {
     await act(async () => signIn("session-token"));
 
     await waitFor(() => expect(screen).toHavePathname("/user/u2"));
+  });
+});
+
+describe("Ajustes: Notificaciones", () => {
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true };
+  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto"];
+
+  beforeEach(() => {
+    push.fetchNotificationSettings.mockResolvedValue(ALL_ON);
+    push.updateNotificationSettings.mockImplementation(async (patch) => ({ ...ALL_ON, ...patch }));
+  });
+
+  it("the row 'Notificaciones' in Ajustes comes right after 'Editar perfil' and opens the screen", async () => {
+    permission(true, true, "granted");
+    await renderRouter(testRoutes, { initialUrl: "/settings" });
+
+    const rows = (await screen.findAllByRole("button")).map((b) => b.props.accessibilityLabel);
+    expect(rows.indexOf("Notificaciones")).toBe(rows.indexOf("Editar perfil") + 1);
+    await fireEvent.press(screen.getByRole("button", { name: "Notificaciones" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/notifications"));
+    expect(await screen.findByRole("switch", { name: "Te suman a un rollo" })).toBeVisible();
+  });
+
+  it("shows a switch per event with its explanation, from the server", async () => {
+    permission(true, true, "granted");
+    push.fetchNotificationSettings.mockResolvedValue({ ...ALL_ON, photoLiked: false });
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    for (const label of LABELS) expect(await screen.findByRole("switch", { name: label })).toBeVisible();
+    expect(screen.getByRole("switch", { name: "Les gusta tu foto" }).props.value).toBe(false);
+    expect(screen.getByRole("switch", { name: "Te suman a un rollo" }).props.value).toBe(true);
+    expect(screen.getByText("Cuando alguien te agrega a un rollo.")).toBeVisible();
+    expect(screen.getByText("Cuando alguien acepta tu link de amistad.")).toBeVisible();
+    expect(screen.getByText("Cuando empieza un rollo en el que estás.")).toBeVisible();
+    expect(screen.getByText("Cuando se revelan las fotos de un rollo tuyo.")).toBeVisible();
+    expect(screen.getByText("Cuando alguien pone una foto tuya en su perfil.")).toBeVisible();
+    expect(screen.getByText("Cuando a alguien le gusta una foto tuya.")).toBeVisible();
+    // With permission there's no banner.
+    expect(screen.queryByText("Las notificaciones están desactivadas")).toBeNull();
+  });
+
+  it("a switch saves only its own key and moves at once", async () => {
+    permission(true, true, "granted");
+    let resolve!: (v: typeof ALL_ON) => void;
+    push.updateNotificationSettings.mockReturnValue(new Promise((r) => (resolve = r)));
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    await fireEvent(await screen.findByRole("switch", { name: "Arranca un rollo" }), "valueChange", false);
+
+    expect(push.updateNotificationSettings).toHaveBeenCalledWith({ tripStarted: false });
+    expect(screen.getByRole("switch", { name: "Arranca un rollo" }).props.value).toBe(false);
+    await act(async () => resolve({ ...ALL_ON, tripStarted: false }));
+    expect(screen.getByRole("switch", { name: "Arranca un rollo" }).props.value).toBe(false);
+  });
+
+  it("if saving fails the switch goes back and the error shows inline", async () => {
+    permission(true, true, "granted");
+    push.updateNotificationSettings.mockRejectedValue(new Error("Sin conexión"));
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    await fireEvent(await screen.findByRole("switch", { name: "Destacan tu foto" }), "valueChange", false);
+
+    expect(await screen.findByText("Sin conexión")).toBeVisible();
+    expect(screen.getByRole("switch", { name: "Destacan tu foto" }).props.value).toBe(true);
+  });
+
+  it("if loading fails it offers to retry", async () => {
+    permission(true, true, "granted");
+    push.fetchNotificationSettings.mockRejectedValueOnce(new Error("Sin conexión"));
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Reintentar" }));
+
+    expect(await screen.findByRole("switch", { name: "Nuevos amigos" })).toBeVisible();
+  });
+
+  it("never asked: the banner asks for the permission and registers the token", async () => {
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    expect(await screen.findByText("Las notificaciones están desactivadas")).toBeVisible();
+    expect(screen.getByText("Vas a ver estos ajustes, pero los avisos no van a llegar hasta que las actives.")).toBeVisible();
+    expect(await screen.findByRole("switch", { name: "Nuevos amigos" })).toBeVisible();
+    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+
+    permission(true, true, "granted");
+    await fireEvent.press(screen.getByRole("button", { name: "Activar notificaciones" }));
+
+    await waitFor(() => expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(push.registerPushToken).toHaveBeenCalledWith(TOKEN));
+    await waitFor(() => expect(screen.queryByText("Las notificaciones están desactivadas")).toBeNull());
+  });
+
+  it("denied: the banner opens iOS Settings and asks nothing", async () => {
+    permission(false, false, "denied");
+    const openSettings = jest.spyOn(Linking, "openSettings").mockResolvedValue();
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    expect(await screen.findByText("Las notificaciones están desactivadas")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Activar notificaciones" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Abrir Ajustes de iOS" }));
+
+    expect(openSettings).toHaveBeenCalled();
+    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
   });
 });
