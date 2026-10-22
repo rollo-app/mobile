@@ -27,12 +27,15 @@ export async function syncPushToken(): Promise<void> {
   }
 }
 
-/** Before signing out: this phone stops getting the account's pushes. Best effort, never throws. */
-export async function forgetPushToken(): Promise<void> {
+/**
+ * Before signing out: this phone stops getting the account's pushes. Best effort, never throws.
+ * `session` is the session to send it with when it's no longer the saved one (a 401 already closed it).
+ */
+export async function forgetPushToken(session?: string): Promise<void> {
   try {
     const token = registered ?? (await currentToken());
     registered = null;
-    if (token) await unregisterPushToken(token);
+    if (token) await unregisterPushToken(token, session);
   } catch {
     // The server drops dead tokens on its own, and the next account to register it takes it over.
   }

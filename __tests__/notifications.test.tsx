@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { Text } from "react-native";
+import { router } from "expo-router";
 import { signIn } from "@/features/auth/session";
 import * as friendActions from "@/features/friends/actions";
 import * as pushActions from "@/features/notifications/actions";
@@ -59,6 +60,7 @@ beforeEach(async () => {
   trips.joinTrip.mockResolvedValue(detail().trip);
   trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [] } as never);
   push.registerPushToken.mockResolvedValue();
+  trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(OTRO, "Bariloche")] });
   friends.fetchFriends.mockResolvedValue([]);
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(OTRO, "Bariloche")], active: SUR });
 });
@@ -176,6 +178,23 @@ describe("permission primer", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Ahora no" }));
     await waitFor(() => expect(screen).toHavePathname("/add-friends"));
+  });
+
+  it("after creating a roll with friends, swiping the primer away still opens 'Sumar amigos'", async () => {
+    friends.fetchFriends.mockResolvedValue([{ id: "u2", name: "Cami", username: "cami", avatarUrl: null }] as never);
+    trips.createTrip.mockResolvedValue(detail().trip as never);
+    await renderRouter(testRoutes, { initialUrl: "/create" });
+
+    await fireEvent.changeText(await screen.findByPlaceholderText("Nombre del rollo"), "Bariloche");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled());
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+    await screen.findByRole("button", { name: "Ahora no" });
+
+    // A swipe down on the native sheet pops it without touching its buttons.
+    await act(async () => router.back());
+
+    await waitFor(() => expect(screen).toHavePathname("/add-friends"));
+    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
   });
 });
 
