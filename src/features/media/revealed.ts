@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Schemas } from "@/api/client";
 import { API_URL } from "@/config";
 import { getSession } from "@/features/auth/session";
@@ -81,8 +81,11 @@ export function useRevealedPhotos(tripId: string | undefined) {
     };
   }, [tripId]);
 
+  // Memoized on the feed so screens' derived lists (and memoized grid cells) don't rebuild on every render.
+  const photos = useMemo(() => (feed ? toRevealedPhotos(feed.items) : []), [feed]);
+
   return {
-    photos: feed ? toRevealedPhotos(feed.items) : [],
+    photos,
     token,
     error,
     loading,

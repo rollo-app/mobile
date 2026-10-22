@@ -1,8 +1,9 @@
+import { MenuView } from "@expo/ui/community/menu";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
@@ -48,22 +50,40 @@ type Bar =
 const formatDuration = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
 
-const Cell = memo(function Cell({
-  photo,
-  token,
-  size,
-  selecting,
-  selected,
-  onPress,
-}: {
+type CellProps = {
   photo: RevealedPhoto;
   token: string | null;
   size: number;
   selecting: boolean;
   selected: boolean;
   onPress: (photo: RevealedPhoto) => void;
-}) {
+  onToggleFeatured: (photo: RevealedPhoto) => void;
+};
+
+/**
+ * The feed is rebuilt into new photo objects on every change (featuring one photo included), so cells
+ * compare what they draw instead of the object: toggling one photo re-renders only that cell.
+ */
+function sameCell(a: CellProps, b: CellProps) {
   return (
+    a.photo.id === b.photo.id &&
+    a.photo.thumbPath === b.photo.thumbPath &&
+    a.photo.thumbhash === b.photo.thumbhash &&
+    a.photo.type === b.photo.type &&
+    a.photo.durationS === b.photo.durationS &&
+    a.photo.author.name === b.photo.author.name &&
+    a.photo.featuredByMe === b.photo.featuredByMe &&
+    a.token === b.token &&
+    a.size === b.size &&
+    a.selecting === b.selecting &&
+    a.selected === b.selected &&
+    a.onPress === b.onPress &&
+    a.onToggleFeatured === b.onToggleFeatured
+  );
+}
+
+const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPress, onToggleFeatured }: CellProps) {
+  const cell = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${photo.type === "video" ? "Video" : "Foto"} de ${photo.author.name}`}
@@ -104,7 +124,23 @@ const Cell = memo(function Cell({
       )}
     </Pressable>
   );
-});
+  // Long press opens the native context menu; videos can't be featured, and selecting has its own taps.
+  if (selecting || photo.type !== "photo") return cell;
+  return (
+    <MenuView
+      shouldOpenOnLongPress
+      style={{ width: size, height: size }}
+      actions={[
+        photo.featuredByMe
+          ? { id: "unfeature", title: "Sacar de tu perfil", image: "star.slash" }
+          : { id: "feature", title: "Destacar en tu perfil", image: "star" },
+      ]}
+      onPressAction={() => onToggleFeatured(photo)}
+    >
+      {cell}
+    </MenuView>
+  );
+}, sameCell);
 
 /** Revealed roll: grid grouped by day, filter by person, and downloads to Photos. */
 export function GalleryScreen({ tripId }: { tripId: string }) {
@@ -114,6 +150,9 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
   const { photos, token, error, loading, refetch } = useRevealedPhotos(tripId);
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
+  const { toggle: toggleFeatured, error: featureError } = useToggleFeatured();
+  const [featureErrorDismissed, setFeatureErrorDismissed] = useState(false);
+  useEffect(() => setFeatureErrorDismissed(false), [featureError]);
 
   const [authorId, setAuthorId] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
@@ -150,6 +189,11 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
       }
     },
     [selecting, router, tripId],
+  );
+
+  const onToggleFeatured = useCallback(
+    (photo: RevealedPhoto) => void toggleFeatured(photo, tripId),
+    [toggleFeatured, tripId],
   );
 
   const allSelected = shown.length > 0 && shown.every((p) => selected.has(p.id));
@@ -307,6 +351,7 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
                 selecting={selecting}
                 selected={selected.has(photo.id)}
                 onPress={onCellPress}
+                onToggleFeatured={onToggleFeatured}
               />
             ))}
           </View>
@@ -327,6 +372,18 @@ export function GalleryScreen({ tripId }: { tripId: string }) {
       {/* Large title that collapses with the list (contentInsetAdjustmentBehavior), like Photos. Switching rolls lives in Perfil. */}
       <Stack.Screen options={{ title: "Galería", headerLargeTitle: true }} />
       {toolbar}
+      {!bar && !selecting && featureError && !featureErrorDismissed && (
+        <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
+          <View style={styles.barRow}>
+            <View style={{ flex: 1 }}>
+              <ErrorText>{featureError}</ErrorText>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Listo" onPress={() => setFeatureErrorDismissed(true)}>
+              <Text style={[type.subhead, styles.action]}>Listo</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
       {(bar || selecting) && (
         <View style={[styles.bar, { paddingBottom: insets.bottom + spacing.sm }]}>
           {bar?.kind === "progress" ? (
