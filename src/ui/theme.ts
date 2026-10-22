@@ -32,6 +32,13 @@ export const colors = {
 
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 20, xl: 32 } as const;
 
+/**
+ * Fixed sizes for controls drawn over a screen, under its (translucent) navigation header.
+ * `headerHeight` is the iOS navigation bar without the status bar: add `insets.top`.
+ * `controlsRowHeight` is the row of controls under the header (segmented control, filter pill).
+ */
+export const layout = { headerHeight: 44, controlsRowHeight: 34 } as const;
+
 export const radius = { sm: 10, md: 14, lg: 22, full: 9999 } as const;
 
 /** Apple's text ramp (default Dynamic Type sizes). */

@@ -9,14 +9,17 @@ import { RollDates } from "./roll-dates";
 import { RollPeople } from "./roll-people";
 import { rollSummary } from "./summary";
 
-/** The "Rollo" segment of a revealed roll: what the board showed, without today's quota or the contact sheet. */
-export function RollOverview({ tripId }: { tripId: string }) {
+/**
+ * The "Rollo" segment of a revealed roll: what the board showed, without today's quota or the contact sheet.
+ * `contentInsetTop` leaves room for the "Galería | Rollo" row drawn over its top.
+ */
+export function RollOverview({ tripId, contentInsetTop }: { tripId: string; contentInsetTop?: number }) {
   const { detail, error, refetch, isRefetching } = useTripDetail(tripId);
   const { photos } = useRevealedPhotos(tripId);
   const phase = useRollPhase(detail);
 
   return (
-    <Screen grouped>
+    <Screen grouped insetTop={contentInsetTop} testID="roll-overview">
       {error && (
         <>
           <ErrorText>{error}</ErrorText>

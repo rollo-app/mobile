@@ -19,7 +19,7 @@ import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
-import { colors, spacing, type } from "@/ui/theme";
+import { colors, layout, spacing, type } from "@/ui/theme";
 import { authorsOf, chunkRows, filterByAuthor, groupByDay } from "./group";
 import { PermissionNotice } from "./permission-notice";
 import {
@@ -144,9 +144,18 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPre
 
 /**
  * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
- * its header buttons while it stays mounted behind another view.
+ * its header buttons while it stays mounted behind another view. `contentInsetTop` leaves room for
+ * controls drawn over its top, under the navigation header (like `FeedList`'s).
  */
-export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId: string; toolbar?: boolean }) {
+export function GalleryScreen({
+  tripId,
+  toolbar: showToolbar = true,
+  contentInsetTop = 0,
+}: {
+  tripId: string;
+  toolbar?: boolean;
+  contentInsetTop?: number;
+}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -296,7 +305,9 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
   );
 
   let body;
-  if (loading) body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
+  // Not a scroll view, so nothing insets it: it goes below the header and the controls drawn over the top.
+  if (loading)
+    body = <ActivityIndicator style={{ marginTop: insets.top + layout.headerHeight + contentInsetTop + spacing.xl }} />;
   else if (error && photos.length === 0)
     body = (
       <View style={styles.center}>
@@ -318,7 +329,7 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
         keyExtractor={(row) => row[0]!.id}
         stickySectionHeadersEnabled={false}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
+        contentContainerStyle={{ paddingTop: contentInsetTop, paddingBottom: insets.bottom + 90 }}
         extraData={[selecting, selected, token]}
         ListHeaderComponent={
           author ? (

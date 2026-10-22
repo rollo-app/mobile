@@ -9,6 +9,7 @@ import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 import { RollDates } from "@/features/roll/roll-dates";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
+import { layout, spacing } from "@/ui/theme";
 
 jest.mock("@/features/trips/actions");
 // Pass-throughs, so the tests can see which screens render the shared dates and the uploads.
@@ -169,6 +170,27 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(screen.getByRole("button", { name: "Rollo" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Seleccionar" })).toBeTruthy();
     expect(screen.queryByText("Fechas")).toBeNull();
+  });
+
+  // jest has no safe area (insets.top is 0), so the row's top is just the navigation bar's height.
+  it("puts the Galería | Rollo row right below the navigation header, and the gallery starts below it", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    const list = await screen.findByTestId("gallery-list");
+
+    const row = StyleSheet.flatten(screen.getByTestId("revealed-roll-controls").props.style);
+    expect(row).toMatchObject({ position: "absolute", top: layout.headerHeight, paddingTop: spacing.sm });
+    expect(row.backgroundColor).toBeTruthy();
+    expect(StyleSheet.flatten(list.props.contentContainerStyle).paddingTop).toBe(layout.controlsRowHeight + 2 * spacing.sm);
+  });
+
+  it("'Rollo' also starts below the Galería | Rollo row", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+    await screen.findByText("Invitar");
+
+    const overview = StyleSheet.flatten(screen.getByTestId("roll-overview").props.contentContainerStyle);
+    expect(overview.paddingTop).toBe(layout.controlsRowHeight + 2 * spacing.sm + spacing.md);
   });
 
   it("the gallery menu no longer has 'Sobre el rollo'", async () => {
