@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { StyleSheet, Text, useColorScheme, View } from "react-native";
 import { CACHE_MAX_AGE, connectAppState, persister, queryClient } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
+import { REVEAL_BACKGROUND } from "@/features/reveal/reveal-screen";
 import { useRevealTap } from "@/features/notifications/use-reveal-tap";
 import { useOfflineMapSync } from "@/features/map/use-offline-map-sync";
 import { useRedeemPendingFriend } from "@/features/friends/use-pending-friend";
@@ -109,6 +110,10 @@ function RootStack() {
           <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
           {/* Spike: the lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          <Stack.Screen
+            name="reveal"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: REVEAL_BACKGROUND } }}
+          />
           <Stack.Screen
             name="presentation"
             options={{

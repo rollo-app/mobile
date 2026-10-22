@@ -25,15 +25,12 @@ import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { spacing } from "@/ui/theme";
 import { DayCard } from "./day-card";
 import { isDownwardDrag, shouldDismiss } from "./dismiss";
-import { DarkroomIntro } from "./darkroom-intro";
-import { Intro } from "./intro";
-import { USE_DARKROOM_INTRO } from "./intro-flag";
 import { Outro } from "./outro";
 import { initialPlayer, playerReducer } from "./player";
 import { ProgressBar } from "./progress-bar";
 import { Slide } from "./slide";
 import { buildStory, daySegments, stepDuration } from "./story";
-import { useReduceMotion, useScreenReader } from "./use-accessibility";
+import { useScreenReader } from "./use-accessibility";
 import { upcomingPhotos } from "./upcoming";
 
 const TAP_BACK_FRACTION = 0.35;
@@ -41,52 +38,50 @@ const HOLD_MS = 200;
 const MIN_SCALE = 0.9;
 const BACKDROP_FADE_DISTANCE = 300;
 
-/** Fullscreen story: intro, days with their photos, outro. Taps navigate, holding pauses, swiping down closes. */
+/** Fullscreen story: days with their photos, outro (the reveal intro is its own screen, `/reveal`). Taps navigate, holding pauses, swiping down closes. */
 export function StoryPlayer({
   photos,
   token,
   timeZone,
-  title,
-  revealDate,
-  skipIntro = false,
-  onIntroStart,
   onClose,
 }: {
   photos: RevealedPhoto[];
   token: string;
   timeZone: string;
-  title: string;
-  revealDate: string;
-  /** Start straight at the first day: the intro was already seen on this phone. */
-  skipIntro?: boolean;
-  /** Called once when the intro begins playing. */
-  onIntroStart?: () => void;
   onClose: () => void;
 }) {
-  const steps = useMemo(() => {
-    const all = buildStory(photos, timeZone);
-    return skipIntro ? all.filter((s) => s.kind !== "intro") : all;
-  }, [photos, timeZone, skipIntro]);
+  // A refetch hands over a new array with the same photos: rebuild the story only when the photos really change,
+  // otherwise the story would start over under the viewer.
+  const photoKey = photos.map((p) => p.id).join(",");
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
+  const steps = useMemo(
+    () => buildStory(photosRef.current, timeZone),
+    [photoKey, timeZone], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const [state, dispatch] = useReducer(playerReducer, steps, initialPlayer);
   const step = state.steps[state.index]!;
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const reduceMotion = useReduceMotion();
   const screenReader = useScreenReader();
   const [muted, setMuted] = useState(true);
   const openProfile = useOpenProfile();
 
   // The story changes only if the feed refreshes underneath: start over rather than point at a stale index.
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) first.current = false;
-    else dispatch({ type: "load", steps });
-  }, [steps]);
-
   // Auto-advance: one linear animation per step, resumed from where it was after a pause.
   const progress = useRef(new Animated.Value(0)).current;
   const value = useRef(0);
   const lastIndex = useRef(-1);
+
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) first.current = false;
+    else {
+      // Starting over also restarts the step's clock (same index 0, but a fresh step).
+      lastIndex.current = -1;
+      dispatch({ type: "load", steps });
+    }
+  }, [steps]);
   useEffect(() => {
     const id = progress.addListener(({ value: v }) => {
       value.current = v;
@@ -110,16 +105,6 @@ export function StoryPlayer({
     anim.start(({ finished }) => finished && dispatch({ type: "next" }));
     return () => anim.stop();
   }, [state.index, state.paused, step, progress, screenReader]);
-
-  const introStarted = useRef(false);
-  const onIntroStartRef = useRef(onIntroStart);
-  onIntroStartRef.current = onIntroStart;
-  useEffect(() => {
-    if (step.kind === "intro" && !introStarted.current) {
-      introStarted.current = true;
-      onIntroStartRef.current?.();
-    }
-  }, [step]);
 
   // Soft haptic on each new day.
   useEffect(() => {
@@ -255,24 +240,6 @@ export function StoryPlayer({
             else dispatch({ type: name === "increment" ? "next" : "prev" });
           }}
         >
-          {step.kind === "intro" &&
-            (USE_DARKROOM_INTRO ? (
-              <DarkroomIntro
-                photos={photos}
-                token={token}
-                title={title}
-                date={revealDate}
-                reduceMotion={reduceMotion}
-              />
-            ) : (
-              <Intro
-                photos={photos}
-                token={token}
-                title={title}
-                date={revealDate}
-                reduceMotion={reduceMotion}
-              />
-            ))}
           {step.kind === "day" && <DayCard step={step} />}
           {step.kind === "photo" && (
             <Slide

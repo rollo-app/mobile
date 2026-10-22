@@ -23,7 +23,7 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   featureBlocked: false,
 });
 
-// 0 intro, 1 day, 2 a, 3 b, 4 day, 5 c, 6 outro
+// 0 day, 1 a, 2 b, 3 day, 4 c, 5 outro
 const steps = buildStory(
   [photo("a", "2027-01-12T15:00:00Z"), photo("b", "2027-01-12T16:00:00Z"), photo("c", "2027-01-13T15:00:00Z")],
   TZ,
@@ -31,26 +31,26 @@ const steps = buildStory(
 const at = (index: number, paused = false) => ({ steps, index, paused });
 
 describe("playerReducer", () => {
-  it("starts at the intro, playing", () => {
+  it("starts at the first day card, playing", () => {
     expect(initialPlayer(steps)).toEqual({ steps, index: 0, paused: false });
   });
 
   it("next moves one step ahead and stops at the outro", () => {
-    expect(playerReducer(at(2), { type: "next" }).index).toBe(3);
-    expect(playerReducer(at(6), { type: "next" }).index).toBe(6);
+    expect(playerReducer(at(1), { type: "next" }).index).toBe(2);
+    expect(playerReducer(at(5), { type: "next" }).index).toBe(5);
   });
 
   it("prev goes to the previous photo, skipping day cards", () => {
-    expect(playerReducer(at(5), { type: "prev" }).index).toBe(3);
-    expect(playerReducer(at(3), { type: "prev" }).index).toBe(2);
+    expect(playerReducer(at(4), { type: "prev" }).index).toBe(2);
+    expect(playerReducer(at(2), { type: "prev" }).index).toBe(1);
   });
 
   it("prev from outro goes to the last photo", () => {
-    expect(playerReducer(at(6), { type: "prev" }).index).toBe(5);
+    expect(playerReducer(at(5), { type: "prev" }).index).toBe(4);
   });
 
-  it("prev from the first photo restarts the intro", () => {
-    expect(playerReducer(at(2), { type: "prev" }).index).toBe(0);
+  it("prev from the first photo goes back to the first day card", () => {
+    expect(playerReducer(at(1), { type: "prev" }).index).toBe(0);
   });
 
   it("pause and resume only toggle the pause flag", () => {
@@ -63,7 +63,7 @@ describe("playerReducer", () => {
   });
 
   it("restart goes back to the beginning", () => {
-    expect(playerReducer(at(6), { type: "restart" })).toEqual(at(0));
+    expect(playerReducer(at(5), { type: "restart" })).toEqual(at(0));
   });
 
   it("a story with new steps resets to the start", () => {

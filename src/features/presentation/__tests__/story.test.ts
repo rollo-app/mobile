@@ -26,14 +26,15 @@ const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto =>
 });
 
 describe("buildStory", () => {
-  it("starts with the intro and ends with the outro", () => {
+  it("starts at the first day card (the reveal intro is its own screen) and ends with the outro", () => {
     const steps = buildStory([photo("2027-01-12T15:00:00Z")], TZ);
-    expect(steps[0]).toEqual({ kind: "intro" });
+    expect(steps[0]!.kind).toBe("day");
+    expect(steps.some((s) => (s.kind as string) === "intro")).toBe(false);
     expect(steps.at(-1)!.kind).toBe("outro");
   });
 
-  it("is just intro and outro when there is nothing to show", () => {
-    expect(buildStory([], TZ).map((s) => s.kind)).toEqual(["intro", "outro"]);
+  it("is just the outro when there is nothing to show", () => {
+    expect(buildStory([], TZ).map((s) => s.kind)).toEqual(["outro"]);
   });
 
   it("puts a day card before each day's photos, in chronological order", () => {
@@ -42,7 +43,6 @@ describe("buildStory", () => {
     const a1 = photo("2027-01-12T15:00:00Z");
     const steps = buildStory([b, a2, a1], TZ);
     expect(steps.map((s) => (s.kind === "photo" ? s.photo.id : s.kind))).toEqual([
-      "intro",
       "day",
       a1.id,
       a2.id,
@@ -109,7 +109,7 @@ describe("stepDuration", () => {
       [photo("2027-01-12T15:00:00Z"), photo("2027-01-12T16:00:00Z", { type: "video", durationS: 6 })],
       TZ,
     );
-    const [, day, ph, vid] = steps;
+    const [day, ph, vid] = steps;
     expect(stepDuration(day!)).toBe(2000);
     expect(stepDuration(ph!)).toBe(4000);
     expect(stepDuration(vid!)).toBe(6000);
@@ -127,19 +127,19 @@ describe("daySegments", () => {
     [photo("2027-01-12T15:00:00Z"), photo("2027-01-12T16:00:00Z"), photo("2027-01-13T15:00:00Z")],
     TZ,
   );
-  // 0 intro, 1 day, 2 p, 3 p, 4 day, 5 p, 6 outro
+  // 0 day, 1 p, 2 p, 3 day, 4 p, 5 outro
 
   it("counts the current day's photos and the position inside them", () => {
-    expect(daySegments(steps, 3)).toEqual({ count: 2, current: 1 });
-    expect(daySegments(steps, 5)).toEqual({ count: 1, current: 0 });
+    expect(daySegments(steps, 2)).toEqual({ count: 2, current: 1 });
+    expect(daySegments(steps, 4)).toEqual({ count: 1, current: 0 });
   });
 
-  it("shows the next day's bar empty while its card is on screen", () => {
-    expect(daySegments(steps, 4)).toEqual({ count: 1, current: -1 });
+  it("shows the day's bar empty while its card is on screen", () => {
+    expect(daySegments(steps, 0)).toEqual({ count: 2, current: -1 });
+    expect(daySegments(steps, 3)).toEqual({ count: 1, current: -1 });
   });
 
-  it("has no segments in the intro and the outro", () => {
-    expect(daySegments(steps, 0)).toBeNull();
-    expect(daySegments(steps, 6)).toBeNull();
+  it("has no segments in the outro", () => {
+    expect(daySegments(steps, 5)).toBeNull();
   });
 });

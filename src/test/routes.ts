@@ -25,6 +25,7 @@ import JoinScreen from "../../app/join";
 import NotFound from "../../app/+not-found";
 import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
+import RevealRoute from "../../app/reveal";
 import RollStartedScreen from "../../app/roll-started";
 import PhotoRoute from "../../app/photo/[id]";
 import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
@@ -48,6 +49,7 @@ export const routes = {
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
   presentation: PresentationScreen,
+  reveal: RevealRoute,
   "roll-started": RollStartedScreen,
   "photo/[id]": PhotoRoute,
   "featured/[userId]/[mediaId]": FeaturedRoute,

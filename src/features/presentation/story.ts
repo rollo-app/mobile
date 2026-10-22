@@ -1,6 +1,5 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
 import { formatDate } from "@/features/trips/phase";
-import { DARKROOM_INTRO_MS, USE_DARKROOM_INTRO } from "./intro-flag";
 
 export type StoryStats = {
   photos: number;
@@ -12,7 +11,6 @@ export type StoryStats = {
 };
 
 export type StoryStep =
-  | { kind: "intro" }
   | { kind: "day"; day: string; number: number; title: string; date: string; count: number }
   | { kind: "photo"; photo: RevealedPhoto }
   | { kind: "outro"; stats: StoryStats };
@@ -20,8 +18,6 @@ export type StoryStep =
 export const PHOTO_MS = 4000;
 export const DAY_CARD_MS = 2000;
 export const MAX_VIDEO_MS = 15_000;
-/** The focus-in: ~2.5 s of reveal plus the roll title. */
-export const INTRO_MS = USE_DARKROOM_INTRO ? DARKROOM_INTRO_MS : 5500;
 
 const DAY_MS = 86_400_000;
 const localDay = (ms: number, timeZone: string) => new Intl.DateTimeFormat("en-CA", { timeZone }).format(ms);
@@ -31,8 +27,9 @@ const dayNumber = (day: string) => {
 };
 
 /**
- * The presentation sequence: the intro (the focus-in), then for each day a card followed by its
- * photos in chronological order, and the outro with the numbers. Days are cut in the roll's zone.
+ * The presentation sequence: for each day a card followed by its photos in chronological order,
+ * and the outro with the numbers. Days are cut in the roll's zone. The reveal intro isn't part of
+ * it: it's its own screen (`/reveal`) that hands over to the stories.
  */
 export function buildStory(photos: RevealedPhoto[], timeZone: string): StoryStep[] {
   const sorted = [...photos].sort((a, b) => a.takenAt - b.takenAt);
@@ -44,7 +41,7 @@ export function buildStory(photos: RevealedPhoto[], timeZone: string): StoryStep
   const days = [...byDay.keys()].sort();
   const first = days[0] ? dayNumber(days[0]) : 0;
 
-  const steps: StoryStep[] = [{ kind: "intro" }];
+  const steps: StoryStep[] = [];
   for (const day of days) {
     const list = byDay.get(day)!;
     const number = dayNumber(day) - first + 1;
@@ -84,8 +81,6 @@ function computeStats(sorted: RevealedPhoto[], days: number): StoryStats {
 /** How long a step stays on screen by itself; null = until the user acts. */
 export function stepDuration(step: StoryStep): number | null {
   switch (step.kind) {
-    case "intro":
-      return INTRO_MS;
     case "day":
       return DAY_CARD_MS;
     case "photo":
@@ -99,11 +94,11 @@ export function stepDuration(step: StoryStep): number | null {
 
 /**
  * The segmented progress bar for the step at `index`: one segment per photo of its day, `current`
- * being the one on screen (-1 on the day card, before the first). null in the intro and the outro.
+ * being the one on screen (-1 on the day card, before the first). null in the outro.
  */
 export function daySegments(steps: StoryStep[], index: number): { count: number; current: number } | null {
   const step = steps[index];
-  if (!step || step.kind === "intro" || step.kind === "outro") return null;
+  if (!step || step.kind === "outro") return null;
   if (step.kind === "day") return { count: step.count, current: -1 };
   let start = index;
   while (start > 0 && steps[start - 1]!.kind === "photo") start--;
