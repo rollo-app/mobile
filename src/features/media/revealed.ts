@@ -65,21 +65,30 @@ export function mediaSource(path: string, token: string, baseUrl: string = API_U
 }
 
 /**
+ * The session token to load media with (`mediaSource`), read again whenever `key` changes; null until
+ * it's read or while `key` is undefined. It stays in the keychain: read into memory, never into the
+ * persisted query cache.
+ */
+export function useMediaToken(key: string | undefined) {
+  const [token, setToken] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    setToken(null);
+    if (key) getSession().then((t) => active && setToken(t));
+    return () => {
+      active = false;
+    };
+  }, [key]);
+  return token;
+}
+
+/**
  * Revealed photos of a roll plus the token needed to load them (`mediaSource`).
  * Before the reveal `photos` is empty: the feed has no files.
  */
 export function useRevealedPhotos(tripId: string | undefined) {
   const { feed, error, loading, refetch, isRefetching } = useFeed(tripId);
-  // The token stays in the keychain: it's read into memory, never into the persisted query cache.
-  const [token, setToken] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    setToken(null);
-    if (tripId) getSession().then((t) => active && setToken(t));
-    return () => {
-      active = false;
-    };
-  }, [tripId]);
+  const token = useMediaToken(tripId);
 
   // Memoized on the feed so screens' derived lists (and memoized grid cells) don't rebuild on every render.
   const photos = useMemo(() => (feed ? toRevealedPhotos(feed.items) : []), [feed]);

@@ -26,6 +26,7 @@ import NotFound from "../../app/+not-found";
 import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
 import PhotoRoute from "../../app/photo/[id]";
+import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
 import RollInfoScreen from "../../app/roll-info";
 import SettingsScreen from "../../app/settings";
 import TripsScreen from "../../app/trips";
@@ -47,6 +48,7 @@ export const routes = {
   "offline-maps": OfflineMapsScreen,
   presentation: PresentationScreen,
   "photo/[id]": PhotoRoute,
+  "featured/[userId]/[mediaId]": FeaturedRoute,
   "(auth)/_layout": AuthLayout,
   "(auth)/email": EmailScreen,
   "(auth)/code": CodeScreen,

@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 import { avatarColor, avatarUri, initialOf } from "./avatar-style";
 
-export type AvatarSize = 40 | 72;
+export type AvatarSize = 22 | 40 | 72;
 
 type Props = {
   /** Person's id (user or member): the color of the placeholder comes from it. */

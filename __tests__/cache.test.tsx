@@ -5,8 +5,14 @@ import * as friendActions from "@/features/friends/actions";
 import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
+import * as featuredActions from "@/features/featured/actions";
 
 jest.mock("@/features/trips/actions");
+// Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
+jest.mock("@/features/featured/actions");
+beforeEach(() => {
+  jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
+});
 // The Amigos tab is mounted too: its list loads fine so its own "Reintentar" stays out of the way.
 jest.mock("@/features/friends/actions");
 const mocked = jest.mocked(actions);

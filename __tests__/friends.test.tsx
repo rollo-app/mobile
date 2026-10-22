@@ -6,8 +6,14 @@ import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 import { tabBar } from "@/test/tab-bar";
+import * as featuredActions from "@/features/featured/actions";
 
 jest.mock("@/features/friends/actions");
+// Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
+jest.mock("@/features/featured/actions");
+beforeEach(() => {
+  jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
+});
 jest.mock("@/features/trips/actions");
 const mocked = jest.mocked(actions);
 const trips = jest.mocked(tripActions);

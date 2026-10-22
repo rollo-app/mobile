@@ -8,8 +8,14 @@ import { pinAvatarKey } from "@/features/map/pin-avatars";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 import { colors } from "@/ui/theme";
+import * as featuredActions from "@/features/featured/actions";
 
 jest.mock("@/features/trips/actions");
+// Perfil is mounted too: nobody has featured photos, so its own "Reintentar" stays out of the way.
+jest.mock("@/features/featured/actions");
+beforeEach(() => {
+  jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
+});
 const mocked = jest.mocked(actions);
 const { __camera: camera, __getClusterLeaves: getClusterLeaves, __mapProps: mapProps } = jest.requireMock("@maplibre/maplibre-react-native") as {
   __camera: { flyTo: jest.Mock; easeTo: jest.Mock };

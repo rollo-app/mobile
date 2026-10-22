@@ -116,7 +116,8 @@ export function FriendProfileScreen({ userId }: { userId: string }) {
     <Screen grouped>
       {title}
       <ProfileHeader id={friend.id} name={friend.name} username={friend.username} avatarUrl={friend.avatarUrl} bio={friend.bio} />
-      <ProfileShowcase own={false} />
+      {/* Friends always see each other's featured photos. */}
+      <ProfileShowcase own={false} userId={userId} canSee />
 
       {commonTrips.length === 0 && addable.length === 0 ? (
         <Footnote>{NO_COMMON}</Footnote>

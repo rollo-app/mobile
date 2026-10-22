@@ -13,9 +13,11 @@ export default function MeScreen() {
         <Stack.Toolbar.Button icon="gearshape" accessibilityLabel="Ajustes" onPress={() => router.push("/settings")} />
       </Stack.Toolbar>
       {me && (
-        <ProfileHeader id={me.id} name={me.name ?? ""} username={me.username} avatarUrl={me.avatarUrl} bio={me.bio} />
+        <>
+          <ProfileHeader id={me.id} name={me.name ?? ""} username={me.username} avatarUrl={me.avatarUrl} bio={me.bio} />
+          <ProfileShowcase own userId={me.id} canSee />
+        </>
       )}
-      <ProfileShowcase own />
     </Screen>
   );
 }

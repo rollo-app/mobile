@@ -124,6 +124,10 @@ function RootStack() {
             name="photo/[id]"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
           />
+          <Stack.Screen
+            name="featured/[userId]/[mediaId]"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
+          />
       </Stack.Protected>
     </Stack>
   );

@@ -1,0 +1,39 @@
+import type { FeaturedPhoto } from "./actions";
+
+/** A ~5 km zone (the center of its cell, as the server sends it) and how many featured photos are in it. */
+export type FeaturedZone = { id: string; lat: number; lng: number; count: number };
+
+export type ZoneCollection = GeoJSON.FeatureCollection<GeoJSON.Point, { id: string; count: number }>;
+
+/** Groups photos by their zone and counts them, biggest zone first. Photos without a zone are left out. */
+export function zonesOf(photos: Pick<FeaturedPhoto, "zone">[]): FeaturedZone[] {
+  const zones = new Map<string, FeaturedZone>();
+  for (const { zone } of photos) {
+    if (!zone) continue;
+    const id = `zone:${zone.lat},${zone.lng}`;
+    const found = zones.get(id);
+    if (found) found.count += 1;
+    else zones.set(id, { id, lat: zone.lat, lng: zone.lng, count: 1 });
+  }
+  return [...zones.values()].sort((a, b) => b.count - a.count);
+}
+
+/** One point per zone for the map source: only its id and count. */
+export function zoneFeatures(zones: FeaturedZone[]): ZoneCollection {
+  return {
+    type: "FeatureCollection",
+    features: zones.map((z) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [z.lng, z.lat] },
+      properties: { id: z.id, count: z.count },
+    })),
+  };
+}
+
+/** [west, south, east, north] over all zones, or null without any. */
+export function zoneBounds(zones: FeaturedZone[]): [number, number, number, number] | null {
+  if (zones.length === 0) return null;
+  const lngs = zones.map((z) => z.lng);
+  const lats = zones.map((z) => z.lat);
+  return [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)];
+}
