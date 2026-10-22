@@ -282,7 +282,7 @@ describe("Perfil: fotos destacadas", () => {
 
   it("on a friend's profile the badge shows on the photos the friend didn't take", async () => {
     jest.mocked(friendActions).fetchFriend.mockResolvedValue({ friend: { ...CAMI, bio: null }, commonTrips: [] });
-    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null }, isFriend: true, profileVisibility: "friends", canSee: true, friendCount: 0, mutualCount: 0 });
+    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null }, isFriend: true, blockedByMe: false, reportedByMe: false, profileVisibility: "friends", canSee: true, friendCount: 0, mutualCount: 0 });
     featured.fetchFeatured.mockImplementation(async (userId) =>
       userId === "u2"
         ? [

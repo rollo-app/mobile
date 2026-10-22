@@ -365,15 +365,17 @@ jest.mock("expo-background-task", () => ({
   Object.defineProperty(Stack, "Toolbar", { value: Toolbar, configurable: true });
 }
 
-// Local notifications are native: tests get a mock they can inspect.
+// Notifications are native: tests get a mock they can inspect. Permission starts "never asked".
 jest.mock("expo-notifications", () => ({
-  SchedulableTriggerInputTypes: { DATE: "date" },
   setNotificationHandler: jest.fn(),
-  scheduleNotificationAsync: jest.fn(async () => "id"),
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
-  getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
-  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
-  useLastNotificationResponse: jest.fn(() => null),
+  getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true, status: "undetermined" })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true, status: "granted" })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ type: "expo", data: "ExponentPushToken[test-token]" })),
+  getLastNotificationResponseAsync: jest.fn(async () => null),
+  clearLastNotificationResponseAsync: jest.fn(async () => {}),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
 // Saving to Photos is native (expo-media-library): in tests the permission is granted and the album doesn't exist.

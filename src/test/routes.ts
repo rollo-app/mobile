@@ -24,6 +24,7 @@ import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
 import NotFound from "../../app/+not-found";
 import OfflineMapsScreen from "../../app/offline-maps";
+import PushPrimerRoute from "../../app/push-primer";
 import PresentationScreen from "../../app/presentation";
 import RevealRoute from "../../app/reveal";
 import RollStartedScreen from "../../app/roll-started";
@@ -48,6 +49,7 @@ export const routes = {
   "friends/[code]": FriendLinkRoute,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
+  "push-primer": PushPrimerRoute,
   presentation: PresentationScreen,
   reveal: RevealRoute,
   "roll-started": RollStartedScreen,

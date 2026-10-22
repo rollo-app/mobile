@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { fetchFriends } from "@/features/friends/actions";
 import { friendsKey } from "@/features/friends/use-friends";
-import { requestRevealPermission } from "@/features/notifications/reveal";
+import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { createTrip } from "@/features/trips/actions";
 import { canCreate, defaultStart } from "@/features/trips/create-form";
 import { myTripsKey } from "@/features/trips/use-active-trip";
@@ -56,24 +56,26 @@ export default function CreateScreen() {
       });
       await queryClient.invalidateQueries({ queryKey: myTripsKey });
       router.dismissTo("/roll");
-      void requestRevealPermission();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el rollo");
       return;
     } finally {
       setLoading(false);
     }
-    await offerFriends();
+    await offerNext();
   }
 
-  // The roll exists and is active by now: if you have friends, offer to add them. Failing here shows nothing.
-  async function offerFriends() {
+  // The roll exists and is active by now. Notifications are offered first (once), then, if you have
+  // friends, adding them. Failing to load friends shows nothing: they can be added later from the board.
+  async function offerNext() {
+    let hasFriends = false;
     try {
       const friends = await queryClient.ensureQueryData({ queryKey: friendsKey, queryFn: fetchFriends });
-      if (friends.length > 0) router.push("/add-friends");
+      hasFriends = friends.length > 0;
     } catch {
-      // Without friends loaded, the roll stays as is; they can be added later from the board.
+      // Without friends loaded, the roll stays as is.
     }
+    await offerPushAfterJoining(hasFriends ? "/add-friends" : undefined);
   }
 
   return (

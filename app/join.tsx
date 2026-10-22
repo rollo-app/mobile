@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator } from "react-native";
-import { requestRevealPermission } from "@/features/notifications/reveal";
+import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { joinTrip } from "@/features/trips/actions";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
@@ -22,7 +22,7 @@ export default function JoinScreen() {
       await joinTrip({ code });
       await queryClient.invalidateQueries({ queryKey: myTripsKey });
       router.dismissTo("/roll");
-      void requestRevealPermission();
+      void offerPushAfterJoining();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo entrar al rollo");
     } finally {

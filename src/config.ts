@@ -8,3 +8,8 @@ export const API_URL: string =
   process.env.EXPO_PUBLIC_API_URL ??
   (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
   "https://rollo-api.juanifraga.com";
+
+/** EAS project, needed to get an Expo push token. */
+export const EAS_PROJECT_ID: string =
+  ((Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId ?? Constants.easConfig?.projectId) ??
+  "124fc671-d309-4a16-9606-e4e900286752";

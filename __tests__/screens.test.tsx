@@ -8,6 +8,7 @@ import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
 import { getActiveTripId } from "@/storage/active-trip";
+import { markPushPrimerSeen } from "@/storage/push-primer";
 import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
@@ -38,10 +39,10 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
 
 const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail => ({
   trip: trip(),
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
-    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member" },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", blockedByMe: false },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 12,
@@ -240,6 +241,8 @@ describe("Roll board · people and settings", () => {
     const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
       user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
       isFriend: false,
+      blockedByMe: false,
+      reportedByMe: false,
       profileVisibility: "friends",
       canSee: false,
       friendCount: 0,
@@ -360,7 +363,11 @@ describe("Trip picker", () => {
 });
 
 describe("Join", () => {
-  beforeEach(() => signInAs({ trips: [] }));
+  // The one-time notifications primer has its own tests (notifications.test.tsx).
+  beforeEach(async () => {
+    await signInAs({ trips: [] });
+    await markPushPrimerSeen();
+  });
 
   it("the button stays disabled until there is a 6-character code", async () => {
     await renderRouter(routes, { initialUrl: "/join" });
@@ -418,6 +425,7 @@ describe("Join roll header", () => {
 describe("Create roll", () => {
   beforeEach(async () => {
     await signInAs({ trips: [] });
+    await markPushPrimerSeen();
     friends.fetchFriends.mockResolvedValue([]);
   });
 

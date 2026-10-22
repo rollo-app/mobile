@@ -44,7 +44,7 @@ function tripDetail(photosLeft: number): actions.TripDetail {
       dailyPhotoLimit: 10,
       dailyVideoLimit: 3,
     },
-    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" },
+    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
     members: [],
     today: { date: localDay(Date.now(), TZ), photosLeft, videosLeft: 3 },
     totalUploaded: 0,

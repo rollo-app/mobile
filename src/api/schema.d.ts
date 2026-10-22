@@ -208,7 +208,7 @@ export interface paths {
         post?: never;
         /**
          * Delete your account
-         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
+         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your reports and blocks (made and received), push tokens, settings and likes (yours, and the ones on your photos) are deleted too. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
          */
         delete: {
             parameters: {
@@ -447,6 +447,197 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/me/push-tokens/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register this phone's push token
+         * @description Registers an Expo push token (ExponentPushToken[...] or ExpoPushToken[...], URL-encoded in the path) for your account. Idempotent: calling it again only refreshes when it was last seen. A token belongs to one account at a time: if another account had it (same phone, another account), it moves to yours. 400 if it is not an Expo push token.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Token registered */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Unregister a push token
+         * @description Stops sending pushes to this token for your account (call it when signing out). Idempotent; another account's token is left alone.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Token removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your settings
+         * @description Your notification preferences, one per kind of push. Every one is on by default.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Your settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserSettings"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change your settings
+         * @description Send any subset of the notification preferences; the ones left out do not change. Unknown keys or non-boolean values are a 400. Returns the full settings.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateUserSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description Settings updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserSettings"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/avatars/{userId}/{file}": {
@@ -929,6 +1120,220 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Users you blocked
+         * @description Ordered by name.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Blocked users */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Blocks"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/blocks/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Block a user
+         * @description Idempotent and one-directional. Also removes the friendship in both directions. Does not remove anyone from a rollo. Also removes the blocked user's photos from your featured list. A new block is emailed to support (at most 10 reports and blocks per user per 24 hours are emailed).
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Blocked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Unblock a user
+         * @description Only removes your own block; a block the other user made on you stays. Also 204 if you had not blocked them. Friendship is not restored.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Unblocked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report a photo or a person
+         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos). At most 10 reports and blocks per user per 24 hours are emailed to support; the rest are stored without email. 404 if the photo is not one the reporter can see; 400 if it is theirs.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateReportRequest"];
+                };
+            };
+            responses: {
+                /** @description Reported */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1729,7 +2134,7 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo and whether its author blocked featuring. Every item carries the author's user id (`author.userId`).
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
          */
         get: {
             parameters: {
@@ -2157,7 +2562,7 @@ export interface paths {
         };
         /**
          * A user's featured photos
-         * @description Newest photo first (by when it was taken). Only if you can see the profile (it is you, a friend, or it is public); otherwise 403. Each photo carries a ~5 km zone instead of its location, and its author when it is not the owner; never the rollo or the caption. Photos that were deleted, blocked by their author, or whose rollo the owner left do not show up.
+         * @description Newest photo first (by when it was taken). Only if you can see the profile (it is you, a friend, or it is public); otherwise 403. Each photo carries a ~5 km zone instead of its location, its author when it is not the owner, and its likes; never the rollo or the caption. Photos you reported or by authors you blocked, and photos that were deleted, blocked by their author, or whose rollo the owner left do not show up.
          */
         get: {
             parameters: {
@@ -2295,6 +2700,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/{mediaId}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Like a photo
+         * @description Idempotent. Whoever can see the photo can like it: an active member of its rollo once it is revealed, or anyone who can see a profile where it is featured. Otherwise 404 (also with a block with its author); 400 for a video. Notifies the author (`photoLiked`) at most once every 30 minutes per photo: the likes in between are counted and added to the next push ("A Cami y 3 más les gustó tu foto").
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Remove your like from a photo
+         * @description Idempotent: 204 also if you did not like it (or the photo does not exist). Never notifies.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Not liked anymore */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2410,6 +2913,39 @@ export interface components {
         };
         /** @enum {string} */
         Role: "admin" | "member";
+        UserSettings: {
+            notifications: components["schemas"]["NotificationSettings"];
+        };
+        NotificationSettings: {
+            /** @description Someone adds you to a rollo */
+            addedToTrip: boolean;
+            /** @description Someone redeems your friend link */
+            newFriend: boolean;
+            /** @description A rollo you are in starts */
+            tripStarted: boolean;
+            /** @description A rollo you are in is revealed */
+            tripRevealed: boolean;
+            /** @description Someone features a photo of yours on their profile */
+            photoFeatured: boolean;
+            /** @description Someone likes a photo of yours */
+            photoLiked: boolean;
+        };
+        UpdateUserSettingsRequest: {
+            notifications?: {
+                /** @description Someone adds you to a rollo */
+                addedToTrip?: boolean;
+                /** @description Someone redeems your friend link */
+                newFriend?: boolean;
+                /** @description A rollo you are in starts */
+                tripStarted?: boolean;
+                /** @description A rollo you are in is revealed */
+                tripRevealed?: boolean;
+                /** @description Someone features a photo of yours on their profile */
+                photoFeatured?: boolean;
+                /** @description Someone likes a photo of yours */
+                photoLiked?: boolean;
+            };
+        };
         UsernameAvailability: {
             /** @description true if nobody else has it (also true if it is yours) */
             available: boolean;
@@ -2420,8 +2956,12 @@ export interface components {
             user: components["schemas"]["PublicUser"];
             /** @description Whether you and this user are friends (false for yourself) */
             isFriend: boolean;
+            /** @description Whether you blocked this user */
+            blockedByMe: boolean;
+            /** @description Whether you reported this user (their profile, not a photo) */
+            reportedByMe: boolean;
             profileVisibility: components["schemas"]["ProfileVisibility"];
-            /** @description Whether you can see the featured photos and the full friend list: it is you, a friend, or the profile is public */
+            /** @description Whether you can see the featured photos and the full friend list: it is you, a friend, or the profile is public, and neither of you blocked the other */
             canSee: boolean;
             /** @description How many friends this user has (always public) */
             friendCount: number;
@@ -2537,6 +3077,18 @@ export interface components {
             endsAt: number;
             revealed: boolean;
         };
+        Blocks: {
+            blocked: components["schemas"]["Friend"][];
+        };
+        CreateReportRequest: {
+            reason: components["schemas"]["ReportReason"];
+            /** @description Photo or video to report */
+            mediaId?: string;
+            /** @description Person to report */
+            userId?: string;
+        };
+        /** @enum {string} */
+        ReportReason: "offensive" | "abuse" | "other";
         ClaimResponse: {
             /** @description Permission to redeem this link while signed in. Valid for 24 hours */
             claimToken: string;
@@ -2610,6 +3162,8 @@ export interface components {
             username: string | null;
             avatarUrl: string | null;
             role: components["schemas"]["Role"];
+            /** @description Whether you blocked this member */
+            blockedByMe: boolean;
         };
         CreateTripRequest: {
             /** @example Viaje al sur */
@@ -2784,6 +3338,10 @@ export interface components {
             featuredByMe?: boolean;
             /** @description Only after the reveal: the author does not let others feature it (they still can) */
             featureBlocked?: boolean;
+            /** @description Only after the reveal: how many people like it (one counter, also likes from profiles that feature it). Always 0 for videos */
+            likeCount?: number;
+            /** @description Only after the reveal: you like it */
+            likedByMe?: boolean;
         };
         FeaturedPhotos: {
             /** @description Most recently featured first */
@@ -2813,6 +3371,10 @@ export interface components {
             thumbPath: string;
             /** @example /featured/<userId>/<mediaId>/original */
             originalPath: string;
+            /** @description How many people like it (the same counter as in its rollo) */
+            likeCount: number;
+            /** @description You like it */
+            likedByMe: boolean;
         };
         /**
          * @description null if the photo has no GPS

@@ -1,6 +1,7 @@
 import { createApiClient, unwrap, type Schemas } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
+import { forgetPushToken } from "@/features/notifications/push-token";
 import { authedClient, signIn, signOut } from "./session";
 
 export type User = Schemas["User"];
@@ -31,8 +32,12 @@ export async function fetchMe(): Promise<User> {
   return unwrap((await authedClient()).GET("/me"));
 }
 
-/** Logs out. The phone's session is cleared even if the server can't be reached. */
+/**
+ * Logs out. First this phone stops getting the account's pushes (while the session still works);
+ * the phone's session is cleared even if the server can't be reached.
+ */
 export async function logout(): Promise<void> {
+  await forgetPushToken();
   try {
     await unwrap((await authedClient()).POST("/auth/logout"));
   } catch {
