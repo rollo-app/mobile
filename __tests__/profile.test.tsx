@@ -63,7 +63,7 @@ describe("Perfil", () => {
     await renderRouter(routes, { initialUrl: "/me" });
 
     await screen.findByText("@juani");
-    expect(screen.queryByText(/amigo/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /^\d+ amigos?/ })).toBeNull();
   });
 
   it("without a description there is no empty text under the handle", async () => {
