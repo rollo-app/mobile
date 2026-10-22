@@ -316,6 +316,29 @@ describe("Trip picker", () => {
     expect(await getActiveTripId()).toBe(BARILOCHE);
   });
 
+  it("shows each roll's state: EN VIVO, Revelado, or when it starts", async () => {
+    mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    await signInAs({
+      trips: [
+        tripSummary(SUR, "Sur (prueba)", { startsAt: now - day, endsAt: now + day, revealAt: now + day, coverThumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI" }),
+        tripSummary(BARILOCHE, "Bariloche", { startsAt: now - 9 * day, endsAt: now - 2 * day, revealAt: now - day, revealed: true }),
+        tripSummary("44444444-4444-4444-8444-444444444444", "Tandil", { startsAt: now + 10 * day, endsAt: now + 12 * day, revealAt: now + 12 * day }),
+      ],
+      active: SUR,
+    });
+    await renderRouter(routes, { initialUrl: "/trips" });
+
+    expect(await screen.findByRole("button", { name: "Sur (prueba), en vivo" })).toBeVisible();
+    expect(screen.getByText("EN VIVO")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Bariloche, revelado" })).toBeVisible();
+    expect(screen.getByText("Revelado")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Tandil" })).toBeVisible();
+    expect(screen.getByText(/^Empieza en \d+ días$/)).toBeVisible();
+    expect(screen.getAllByText(/^(EN VIVO|Revelado)$/)).toHaveLength(2);
+  });
+
   it("has shortcuts to start a roll or join", async () => {
     await saveTrip(SUR, "Viaje al sur");
     await renderRouter(routes, { initialUrl: "/trips" });

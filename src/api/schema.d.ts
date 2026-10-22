@@ -2405,6 +2405,8 @@ export interface components {
             revealed: boolean;
             role: components["schemas"]["Role"];
             totalUploaded: number;
+            /** @description ThumbHash of the most recently taken uploaded photo or video of the rollo (null if none); the app derives the rollo's color from it */
+            coverThumbhash: string | null;
         };
         /** @enum {string} */
         Role: "admin" | "member";
