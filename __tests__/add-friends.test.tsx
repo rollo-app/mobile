@@ -14,9 +14,9 @@ const trips = jest.mocked(tripActions);
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
 
-const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null };
-const tomi: friendActions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null };
-const fede: friendActions.Friend = { id: "u5", name: "Fede", username: "fede.s", avatarUrl: null };
+const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
+const tomi: friendActions.Friend = { id: "u3", name: "Tomi", username: "tomi", avatarUrl: null, bio: null };
+const fede: friendActions.Friend = { id: "u5", name: "Fede", username: "fede.s", avatarUrl: null, bio: null };
 
 const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" = "admin"): tripActions.TripDetail => ({
   trip: {

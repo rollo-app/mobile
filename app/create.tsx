@@ -4,6 +4,8 @@ import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { fetchFriends } from "@/features/friends/actions";
+import { friendsKey } from "@/features/friends/use-friends";
 import { requestRevealPermission } from "@/features/notifications/reveal";
 import { createTrip } from "@/features/trips/actions";
 import { canCreate, defaultStart } from "@/features/trips/create-form";
@@ -57,8 +59,20 @@ export default function CreateScreen() {
       void requestRevealPermission();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el rollo");
+      return;
     } finally {
       setLoading(false);
+    }
+    await offerFriends();
+  }
+
+  // The roll exists and is active by now: if you have friends, offer to add them. Failing here shows nothing.
+  async function offerFriends() {
+    try {
+      const friends = await queryClient.ensureQueryData({ queryKey: friendsKey, queryFn: fetchFriends });
+      if (friends.length > 0) router.push("/add-friends");
+    } catch {
+      // Without friends loaded, the roll stays as is; they can be added later from the board.
     }
   }
 

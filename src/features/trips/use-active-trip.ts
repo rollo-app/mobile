@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
-import { getActiveTripId } from "@/storage/active-trip";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getActiveTripId, onActiveTripIdChange } from "@/storage/active-trip";
 import { fetchMyTrips } from "./actions";
 import { pickActiveTrip } from "./active";
 
@@ -9,8 +9,8 @@ export const myTripsKey = ["myTrips"] as const;
 
 /**
  * The trips you're in (from the server, cached and persisted) and the active one: the last one
- * you opened. The saved id is re-read every time the screen gains focus, so changing it from
- * the selector shows up on return.
+ * you opened. Every instance follows `setActiveTripId` / `clearActiveTripId` as they happen (so a switch
+ * made inside the tabs updates the bar too), and the saved id is also re-read whenever the screen gains focus.
  */
 export function useActiveTrip() {
   const query = useQuery({ queryKey: myTripsKey, queryFn: fetchMyTrips });
@@ -25,6 +25,8 @@ export function useActiveTrip() {
       };
     }, []),
   );
+
+  useEffect(() => onActiveTripIdChange((id) => setActiveId({ id, read: true })), []);
 
   // A failed query goes back to "pending" while it retries: once the list has settled it stays loaded,
   // otherwise screens that swap on `loaded` would remount, retry again and loop.

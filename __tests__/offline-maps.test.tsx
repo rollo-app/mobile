@@ -35,8 +35,8 @@ describe("offline map screens", () => {
     jest.mocked(OfflineManager.getPacks).mockResolvedValue([pack] as never);
   });
 
-  it("shows the state in Perfil and opens the zones", async () => {
-    await renderRouter(routes, { initialUrl: "/me" });
+  it("shows the state in Ajustes and opens the zones", async () => {
+    await renderRouter(routes, { initialUrl: "/settings" });
     await fireEvent.press(await screen.findByLabelText("Mapa sin señal, Listo · 1 zona · 5 MB"));
     expect(screen).toHavePathname("/offline-maps");
     expect(await screen.findByText("Viaje al sur · Detallada")).toBeTruthy();

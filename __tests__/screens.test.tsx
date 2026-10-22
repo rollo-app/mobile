@@ -3,6 +3,7 @@ import * as BackgroundTask from "expo-background-task";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
+import * as friendActions from "@/features/friends/actions";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
 import { getActiveTripId } from "@/storage/active-trip";
@@ -11,7 +12,9 @@ import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
+jest.mock("@/features/friends/actions");
 const mocked = jest.mocked(actions);
+const friends = jest.mocked(friendActions);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -111,7 +114,7 @@ describe("Roll", () => {
     await screen.findByLabelText("12 en el rollo");
     for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
     expect(screen.getByText("en 5 días")).toBeVisible();
-    expect(screen.queryByText("Fotos")).toBeNull();
+    expect(screen.queryByText("7 de 10")).toBeNull(); // the quota row (Perfil's "Fotos" segment is mounted too)
   });
 
   it("once it ended it keeps the three dates, marks it ended and counts down to the reveal", async () => {
@@ -123,7 +126,7 @@ describe("Roll", () => {
     for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
     expect(screen.getByText("Terminó")).toBeVisible();
     expect(screen.getByText("en 3 días")).toBeVisible();
-    expect(screen.queryByText("Fotos")).toBeNull();
+    expect(screen.queryByText("7 de 10")).toBeNull(); // the quota row (Perfil's "Fotos" segment is mounted too)
   });
 
   it("the contact sheet shows each photo's ThumbHash, newest to oldest", async () => {
@@ -244,24 +247,33 @@ describe("Roll board · people and settings", () => {
 describe("Me", () => {
   beforeEach(() => saveTrip(SUR, "Viaje al sur"));
 
-  it("is the account and device: profile header, Editar perfil, offline map and sign out, with no email or rollo sections", async () => {
+  it("Perfil shows who you are, with no email or rollo sections", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/me" });
 
-    expect(await screen.findByRole("button", { name: "Editar perfil" })).toBeVisible();
-    expect(screen.getByText("@juani")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+    expect(await screen.findByText("@juani")).toBeVisible();
     expect(screen.queryByText("juani@rollo.test")).toBeNull();
     for (const title of ["Rollo activo", "Invitar"]) expect(screen.queryByText(title)).toBeNull();
     expect(screen.queryByText(/^En el rollo/)).toBeNull();
     expect(screen.queryByText("HUB5FT")).toBeNull();
-    expect(screen.getByRole("button", { name: /^Mapa sin señal/ })).toBeVisible();
     expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
   });
 
-  it("in development, a row triggers the background upload for testing", async () => {
+  it("Ajustes is the account and device: Editar perfil, offline map and sign out, with no rollo sections", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/me" });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    expect(await screen.findByRole("button", { name: "Editar perfil" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Mapa sin señal/ })).toBeVisible();
+    expect(screen.queryByText("juani@rollo.test")).toBeNull();
+    expect(screen.queryByText("HUB5FT")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
+  });
+
+  it("in development, a row in Ajustes triggers the background upload for testing", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Probar subida en segundo plano" }));
 
@@ -347,7 +359,10 @@ describe("Join roll header", () => {
 });
 
 describe("Create roll", () => {
-  beforeEach(() => signInAs({ trips: [] }));
+  beforeEach(async () => {
+    await signInAs({ trips: [] });
+    friends.fetchFriends.mockResolvedValue([]);
+  });
 
   const HOUR = 60 * 60 * 1000;
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -465,5 +480,48 @@ describe("Create roll", () => {
 
     expect(await screen.findByText("Nombre demasiado largo")).toBeVisible();
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
+  });
+
+  describe("offering to add friends", () => {
+    const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
+
+    const create = async () => {
+      mocked.createTrip.mockImplementation(async () => {
+        await saveTrip(SUR, "Sur 2027");
+        return trip();
+      });
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+    };
+
+    it("with friends, opens Sumar amigos on top of the new roll", async () => {
+      friends.fetchFriends.mockResolvedValue([cami]);
+      await create();
+
+      await waitFor(() => expect(screen).toHavePathname("/add-friends"));
+      expect(await screen.findByText("Cami")).toBeVisible();
+      await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+      expect(screen).toHavePathname("/roll");
+    });
+
+    it("with no friends, just lands on the roll", async () => {
+      await create();
+
+      await waitFor(() => expect(screen).toHavePathname("/roll"));
+      await act(async () => {});
+      expect(screen).toHavePathname("/roll");
+    });
+
+    it("if the friends can't be loaded, lands on the roll without an error", async () => {
+      friends.fetchFriends.mockRejectedValue(new Error("Sin señal"));
+      await create();
+
+      await waitFor(() => expect(friends.fetchFriends).toHaveBeenCalled());
+      await act(async () => {});
+      expect(screen).toHavePathname("/roll");
+      expect(screen.queryByText("Sin señal")).toBeNull();
+    });
   });
 });

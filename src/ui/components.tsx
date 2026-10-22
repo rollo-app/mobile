@@ -80,7 +80,7 @@ export function Button({
   );
 }
 
-export function Field({ label, prefix, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
+export function Field({ label, prefix, style, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
   return (
     <View style={styles.field}>
       <Text style={[type.footnote, styles.footnote]}>{label}</Text>
@@ -90,7 +90,7 @@ export function Field({ label, prefix, ...props }: { label: string; /** Fixed te
           <TextInput
             accessibilityLabel={label}
             placeholderTextColor={colors.tertiaryLabel}
-            style={[type.body, styles.prefixedInput]}
+            style={[type.body, styles.prefixedInput, style]}
             {...props}
           />
         </View>
@@ -98,7 +98,7 @@ export function Field({ label, prefix, ...props }: { label: string; /** Fixed te
         <TextInput
           accessibilityLabel={label}
           placeholderTextColor={colors.tertiaryLabel}
-          style={[type.body, styles.input]}
+          style={[type.body, styles.input, style]}
           {...props}
         />
       )}
@@ -145,8 +145,8 @@ export function Row({
   onPress?: () => void;
   /** Spinner in place of the chevron (an action running). */
   loading?: boolean;
-  /** "danger" colors the label red, for destructive actions. */
-  tone?: "danger";
+  /** "danger" colors the label red, for destructive actions; "tint" makes it an action in the brand color. */
+  tone?: "danger" | "tint";
 }) {
   const content = (
     <>
@@ -157,7 +157,7 @@ export function Row({
           <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{detail}</Text>
         </View>
       ) : (
-        <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }]}>{label}</Text>
+        <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }, tone === "tint" && { color: colors.tint }]}>{label}</Text>
       )}
       {value !== undefined && (
         <View style={styles.rowValueBox}>

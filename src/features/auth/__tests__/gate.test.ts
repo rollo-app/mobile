@@ -1,6 +1,6 @@
 import { gateFor } from "../gate";
 
-const user = (name: string | null, username: string | null = "juani") => ({ id: "u1", email: "a@b.c", name, username, avatarUrl: null });
+const user = (name: string | null, username: string | null = "juani") => ({ id: "u1", email: "a@b.c", name, username, avatarUrl: null, bio: null });
 
 describe("gateFor", () => {
   it("waits while the session is being read", () => {

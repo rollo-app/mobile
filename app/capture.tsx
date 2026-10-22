@@ -38,7 +38,7 @@ const MAX_VIDEO_S = 15;
  */
 export default function CaptureScreen() {
   const queryClient = useQueryClient();
-  const { trip } = useActiveTrip();
+  const { trip, loaded } = useActiveTrip();
   const { detail, error: detailError } = useTripDetail(trip?.id);
   const [state, setState] = useState<State>({ kind: "waiting" });
   const [caption, setCaption] = useState("");
@@ -68,7 +68,7 @@ export default function CaptureScreen() {
 
   // Once we know the quota (or that there's no signal to know it), open the camera or show the lock.
   useEffect(() => {
-    if (!trip || started.current || (!detail && !detailError)) return;
+    if (!loaded || !trip || started.current || (!detail && !detailError)) return;
     started.current = true;
     const closed = detail && closedMessage(detail.trip, Date.now());
     if (closed) return setState({ kind: "closed", ...closed });
@@ -79,7 +79,7 @@ export default function CaptureScreen() {
       if (left.current && left.current.photos === 0 && left.current.videos === 0) return setState({ kind: "locked" });
       await openCamera();
     })();
-  }, [trip, detail, detailError, timeZone]);
+  }, [loaded, trip, detail, detailError, timeZone]);
 
   async function retake(shot: Shot) {
     await discard(shot.asset.uri);

@@ -3,6 +3,7 @@ import {
   addFriendsToTrip,
   claimFriendLink,
   createFriendLink,
+  fetchFriend,
   fetchFriends,
   leaveTrip,
   redeemFriend,
@@ -112,5 +113,20 @@ describe("leaveTrip", () => {
   it("propagates the admin message", async () => {
     mockApi([[/./, 409, { error: "Sos el admin: no podés salirte del rollo" }]]);
     await expect(leaveTrip("t1")).rejects.toThrow(/Sos el admin/);
+  });
+});
+
+describe("fetchFriend", () => {
+  it("GETs /friends/<id> and returns the friend and the trips in common", async () => {
+    const profile = { friend: { ...cami, bio: "Hola" }, commonTrips: [{ id: "t1", name: "Sur", startsAt: 1, endsAt: 2, revealed: false }] };
+    const fetchMock = mockApi([[/^GET \/friends\/u2$/, 200, profile]]);
+
+    expect(await fetchFriend("u2")).toEqual(profile);
+    expect(request(fetchMock).headers.get("Authorization")).toBe("Bearer tok");
+  });
+
+  it("propagates a 404 as an ApiError with its status", async () => {
+    mockApi([[/./, 404, { error: "No es tu amigo" }]]);
+    await expect(fetchFriend("u9")).rejects.toMatchObject({ status: 404, message: "No es tu amigo" });
   });
 });

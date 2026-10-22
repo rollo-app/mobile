@@ -51,3 +51,20 @@ export function daysUntil(ms: number, now: number, timeZone: string) {
   if (days <= 0) return "hoy";
   return days === 1 ? "mañana" : `en ${days} días`;
 }
+
+/**
+ * A trip's dates as a range in `timeZone`: "3 ene", "3 – 10 nov", "28 oct – 4 nov", with the year
+ * when the end isn't in the current one ("3 – 12 ene 2027", "28 dic 2026 – 4 ene 2027").
+ */
+export function formatDateRange(startsAt: number, endsAt: number, now: number, timeZone: string) {
+  const [start, end] = [localDay(startsAt, timeZone), localDay(endsAt, timeZone)];
+  const day = (ms: number) => new Date(ms).toLocaleDateString("es-AR", { day: "numeric", timeZone });
+  const month = (ms: number) => new Date(ms).toLocaleDateString("es-AR", { month: "short", timeZone }).replace(".", "");
+  const withYear = end.slice(0, 4) !== localDay(now, timeZone).slice(0, 4);
+  const sameYear = start.slice(0, 4) === end.slice(0, 4);
+  const yearOf = (d: string) => (withYear ? ` ${d.slice(0, 4)}` : "");
+  const endText = `${day(endsAt)} ${month(endsAt)}${yearOf(end)}`;
+  if (start === end) return endText;
+  if (start.slice(0, 7) === end.slice(0, 7)) return `${day(startsAt)} – ${endText}`;
+  return `${day(startsAt)} ${month(startsAt)}${sameYear ? "" : yearOf(start)} – ${endText}`;
+}

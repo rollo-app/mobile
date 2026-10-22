@@ -9,26 +9,23 @@ type Md = Extract<Extract<IconProps, { md: unknown }>["md"], string>;
 export type TabsConfig = {
   roll: { sf: Sf; md: Md; label: string };
   camera: { sf: Sf; md: Md; label: string; target: "/capture" | "/presentation" | "/roll"; badge: string | null };
-  feedHidden: boolean;
 };
 
 /**
  * What the tab bar looks like for each phase. NativeTabs can't add or remove tabs on the fly, so
- * the five stay and the roll, camera and feed tabs change icon, label and behavior after the reveal.
+ * the tabs stay and the roll and camera ones change icon, label and behavior after the reveal.
  */
 export function tabsFor(phase: RollPhase | null, left: { photos: number; videos: number } | null, hasTrip = true): TabsConfig {
   if (!hasTrip) {
     return {
       roll: { sf: { default: "film", selected: "film.fill" }, md: "movie", label: "Rollo" },
       camera: { sf: "lock.fill", md: "lock", label: "Cámara, primero hace falta un rollo", target: "/roll", badge: null },
-      feedHidden: false,
     };
   }
   if (phase === "revealed") {
     return {
       roll: { sf: { default: "square.grid.2x2", selected: "square.grid.2x2.fill" }, md: "grid_view", label: "Galería" },
       camera: { sf: "play.rectangle.fill", md: "slideshow", label: "Presentación", target: "/presentation", badge: null },
-      feedHidden: true,
     };
   }
   // Outside the shooting phase the camera is closed, whatever the quota says.
@@ -43,6 +40,5 @@ export function tabsFor(phase: RollPhase | null, left: { photos: number; videos:
       target: "/capture",
       badge: !closed && left !== null && left.photos > 0 ? String(left.photos) : null,
     },
-    feedHidden: false,
   };
 }

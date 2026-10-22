@@ -22,12 +22,7 @@ export function FriendLinkScreen({ code }: { code: string }) {
     started.current = true;
     openFriendLink(code, accountReady)
       .then((outcome) => {
-        if (outcome === "friends") {
-          router.replace("/roll");
-          router.push("/friends");
-        } else {
-          router.replace("/");
-        }
+        router.replace(outcome === "friends" ? "/friends" : "/");
       })
       .catch((e) => setError(e instanceof Error ? e.message : "No se pudo abrir el link"));
     // The link is opened once, with the account state it arrived with.

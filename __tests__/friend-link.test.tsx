@@ -12,7 +12,7 @@ const friends = jest.mocked(friendActions);
 const profile = jest.mocked(profileActions);
 
 const CODE = "K7M2QX9A";
-const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null };
+const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
 const claimed = (token = "ct1"): friendActions.FriendClaim => ({
   claimToken: token,
   expiresAt: Date.now() + 86_400_000,
@@ -107,6 +107,10 @@ describe("Opening a friend link", () => {
       profile.checkUsername.mockResolvedValue({ available: true, username: "juani" });
     });
 
+    // Finishing the profile mounts the tabs, and the hidden Amigos tab loads its list: let that update
+    // land inside the test that caused it, not in the next one's act().
+    const settle = () => screen.findByText("Cami", { includeHiddenElements: true });
+
     async function completeProfile(friendCode?: string) {
       await fireEvent.changeText(await screen.findByLabelText("Tu nombre"), "Juani");
       expect(await screen.findByText("Disponible")).toBeVisible();
@@ -125,6 +129,7 @@ describe("Opening a friend link", () => {
       await waitFor(() => expect(friends.redeemFriend).toHaveBeenCalledTimes(1));
       expect(friends.redeemFriend).toHaveBeenCalledWith({ claimToken: "ct1" });
       await waitFor(async () => expect(await getPendingFriend()).toBeNull());
+      await settle();
     });
 
     it("still finishes the sign-up if redeeming fails, and drops a pending link the server rejects", async () => {
@@ -137,6 +142,7 @@ describe("Opening a friend link", () => {
 
       await waitFor(() => expect(screen).toHavePathname("/roll"));
       await waitFor(async () => expect(await getPendingFriend()).toBeNull());
+      await settle();
     });
 
     it("keeps the pending link when there was no signal to redeem it", async () => {
@@ -150,6 +156,7 @@ describe("Opening a friend link", () => {
       await waitFor(() => expect(friends.redeemFriend).toHaveBeenCalled());
       await waitFor(() => expect(screen).toHavePathname("/roll"));
       expect(await getPendingFriend()).toEqual({ claimToken: "ct1", creatorName: "Cami" });
+      await settle();
     });
 
     it("the optional 'Te invitó un amigo' field claims the typed code and redeems it at the end", async () => {
@@ -160,6 +167,7 @@ describe("Opening a friend link", () => {
 
       expect(friends.claimFriendLink).toHaveBeenCalledWith(CODE);
       await waitFor(() => expect(friends.redeemFriend).toHaveBeenCalledWith({ claimToken: "ct1" }));
+      await settle();
     });
 
     it("a wrong friend code shows the error inline and doesn't save the profile", async () => {
@@ -183,6 +191,7 @@ describe("Opening a friend link", () => {
       await waitFor(() => expect(screen).toHavePathname("/roll"));
       expect(friends.claimFriendLink).not.toHaveBeenCalled();
       expect(friends.redeemFriend).not.toHaveBeenCalled();
+      await settle();
     });
 
     it("editing an existing profile has no friend field", async () => {
