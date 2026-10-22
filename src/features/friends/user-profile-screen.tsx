@@ -1,8 +1,11 @@
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
+import { useMe } from "@/features/auth/use-me";
+import { ProfileMenu } from "@/features/moderation/profile-menu";
+import { useBlock } from "@/features/moderation/use-block";
 import { ProfileHeader } from "@/features/profile/profile-header";
 import { ProfileShowcase } from "@/features/profile/profile-showcase";
 import { useUser } from "@/features/profile/use-user";
-import { Button, ErrorText, Loading, Screen } from "@/ui/components";
+import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
 import { FriendSections } from "./friend-sections";
 
 /**
@@ -13,6 +16,8 @@ import { FriendSections } from "./friend-sections";
  */
 export function UserProfileScreen({ userId }: { userId: string }) {
   const { profile, error, refetch, isRefetching } = useUser(userId);
+  const { me } = useMe();
+  const block = useBlock(userId, profile?.user.name ?? "");
 
   if (!profile) {
     return (
@@ -29,9 +34,16 @@ export function UserProfileScreen({ userId }: { userId: string }) {
     );
   }
 
-  const { user, isFriend, canSee, friendCount, mutualCount } = profile;
+  const { user, isFriend, canSee, friendCount, mutualCount, blockedByMe, reportedByMe } = profile;
   return (
     <Screen grouped>
+      {me?.id !== userId && (
+        <Stack.Screen
+          options={{
+            headerRight: () => <ProfileMenu userId={userId} name={user.name} reported={reportedByMe} blocked={blockedByMe} />,
+          }}
+        />
+      )}
       <ProfileHeader
         id={user.id}
         name={user.name}
@@ -40,8 +52,17 @@ export function UserProfileScreen({ userId }: { userId: string }) {
         bio={user.bio}
         friends={{ count: friendCount, mutual: mutualCount, canSee, onPress: () => router.push(`/user/${userId}/friends`) }}
       />
-      <ProfileShowcase own={false} userId={userId} canSee={canSee} />
-      {isFriend && <FriendSections userId={userId} name={user.name} />}
+      {reportedByMe && <Footnote>Denunciaste a esta persona</Footnote>}
+      {blockedByMe ? (
+        <Section>
+          <Row label="Desbloquear" loading={block.busy} onPress={block.busy ? undefined : () => void block.unblock()} />
+        </Section>
+      ) : (
+        <>
+          <ProfileShowcase own={false} userId={userId} canSee={canSee} />
+          {isFriend && <FriendSections userId={userId} name={user.name} />}
+        </>
+      )}
     </Screen>
   );
 }

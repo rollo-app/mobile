@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { ActionSheetIOS, Alert } from "react-native";
 import { createQueue } from "@/features/capture/queue";
+import * as moderationActions from "@/features/moderation/actions";
 import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
@@ -19,6 +20,8 @@ beforeEach(() => {
   jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
 });
 jest.mock("@/features/friends/actions");
+// Ajustes asks who you blocked: keep it out of the recorded fetch calls.
+jest.mock("@/features/moderation/actions");
 jest.mock("expo-image-picker");
 const mocked = jest.mocked(actions);
 const picker = jest.mocked(ImagePicker);
@@ -71,6 +74,7 @@ const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions");
 
 beforeEach(() => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
+  jest.mocked(moderationActions).fetchBlocked.mockResolvedValue([]);
   mocked.fetchTrip.mockResolvedValue(tripDetail());
   mocked.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
   mocked.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });

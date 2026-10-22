@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Alert } from "react-native";
 import { deleteAccount, logout } from "@/features/auth/actions";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
+import { useBlocked } from "@/features/moderation/use-blocked";
 import { OfflineMapRow } from "@/features/map/offline-map-row";
 import { ErrorText, Row, Screen, Section, SwitchRow } from "@/ui/components";
 import { DevMomentRows } from "./dev-moment-rows";
@@ -11,6 +12,7 @@ import { useProfileVisibility } from "./use-profile-visibility";
 /** Ajustes: the account and this phone (Editar perfil, who sees your profile, offline map, sign out, delete account). */
 export function SettingsScreen() {
   const visibility = useProfileVisibility();
+  const { blocked } = useBlocked();
   const [accountError, setAccountError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -51,6 +53,12 @@ export function SettingsScreen() {
         <Section title="Desarrollo">
           <Row label="Probar subida en segundo plano" onPress={() => void triggerBackgroundUploadForTesting()} />
           <DevMomentRows />
+        </Section>
+      )}
+
+      {!!blocked?.length && (
+        <Section>
+          <Row label="Bloqueados" onPress={() => router.push("/blocked")} />
         </Section>
       )}
 
