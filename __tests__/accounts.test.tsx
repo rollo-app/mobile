@@ -23,6 +23,17 @@ jest.mock("@/features/friends/actions");
 // Ajustes asks who you blocked: keep it out of the recorded fetch calls.
 jest.mock("@/features/moderation/actions");
 jest.mock("expo-image-picker");
+jest.mock("expo-image-manipulator", () => {
+  const saved = { uri: "file:///cache/cropped.jpg", width: 512, height: 512 };
+  const ctx: Record<string, jest.Mock> = {};
+  ctx.crop = jest.fn(() => ctx);
+  ctx.resize = jest.fn(() => ctx);
+  ctx.renderAsync = jest.fn(async () => ({ saveAsync: jest.fn(async () => saved) }));
+  return { ImageManipulator: { manipulate: jest.fn(() => ctx), __ctx: ctx }, SaveFormat: { JPEG: "jpeg" } };
+});
+const manipulator = jest.requireMock("expo-image-manipulator") as {
+  ImageManipulator: { manipulate: jest.Mock; __ctx: { crop: jest.Mock; resize: jest.Mock } };
+};
 const mocked = jest.mocked(actions);
 const picker = jest.mocked(ImagePicker);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
@@ -202,6 +213,120 @@ describe("Login", () => {
     await fireEvent.changeText(await screen.findByLabelText("Código"), "k7-m0");
 
     expect(screen.getByLabelText("Código").props.value).toBe("K7M");
+  });
+
+  it("the code field has no native length limit, so iOS AutoFill can insert it", async () => {
+    mockApi({ "POST /auth/email/start": json(204) });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    const code = await screen.findByLabelText("Código");
+    expect(code.props.maxLength).toBeUndefined();
+    expect(code.props.textContentType).toBe("oneTimeCode");
+    expect(code.props.autoComplete).toBe("one-time-code");
+  });
+
+  it("an autofilled code with extra text is submitted, and stays in the field if it fails", async () => {
+    let body: unknown;
+    mockApi({
+      "POST /auth/email/start": json(204),
+      "POST /auth/email/verify": async (req) => {
+        body = await req.json();
+        return json(400, { error: "Código incorrecto o vencido" });
+      },
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    await fireEvent.changeText(await screen.findByLabelText("Código"), " k7m-4qx ");
+
+    expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+    expect(body).toEqual(expect.objectContaining({ code: "K7M4QX" }));
+    expect(screen.getByLabelText("Código").props.value).toBe("K7M4QX");
+    expect(screen.getByText("Si el mail se borró, pedí otro código.")).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Reenviar código/ })).toBeVisible();
+  });
+
+  it("after a failed code, an autofilled new one is submitted instead of the old one", async () => {
+    const codes: string[] = [];
+    mockApi({
+      "POST /auth/email/start": json(204),
+      "POST /auth/email/verify": async (req) => {
+        codes.push(((await req.json()) as { code: string }).code);
+        return json(400, { error: "Código incorrecto o vencido" });
+      },
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
+    expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+
+    // AutoFill inserts at the cursor, after the old code.
+    await fireEvent.changeText(screen.getByLabelText("Código"), "K7M4QXA2B3C4");
+
+    await waitFor(() => expect(codes).toEqual(["K7M4QX", "A2B3C4"]));
+    expect(screen.getByLabelText("Código").props.value).toBe("A2B3C4");
+  });
+
+  it("a resent code clears the old one from the field", async () => {
+    mockApi({
+      "POST /auth/email/start": json(204),
+      "POST /auth/email/verify": json(400, { error: "Código incorrecto o vencido" }),
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
+    expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+
+    const realNow = Date.now();
+    const clock = jest.spyOn(Date, "now").mockImplementation(() => realNow + 61_000);
+    try {
+      await waitFor(() => expect(screen.getByRole("button", { name: "Reenviar código" })).toBeEnabled(), { timeout: 3000 });
+      await fireEvent.press(screen.getByRole("button", { name: "Reenviar código" }));
+      await waitFor(() => expect(screen.getByLabelText("Código").props.value).toBe(""));
+      expect(screen.queryByText("Si el mail se borró, pedí otro código.")).toBeNull();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("a failed resend doesn't suggest asking for another code", async () => {
+    mockApi({
+      "POST /auth/email/start": (() => {
+        let n = 0;
+        return () => (++n === 1 ? json(204) : json(429, { error: "Pediste demasiados códigos, esperá un rato" }));
+      })(),
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByLabelText("Código");
+
+    const realNow = Date.now();
+    const clock = jest.spyOn(Date, "now").mockImplementation(() => realNow + 61_000);
+    try {
+      await waitFor(() => expect(screen.getByRole("button", { name: "Reenviar código" })).toBeEnabled(), { timeout: 3000 });
+      await fireEvent.press(screen.getByRole("button", { name: "Reenviar código" }));
+      expect(await screen.findByText("Pediste demasiados códigos, esperá un rato")).toBeVisible();
+      expect(screen.queryByText("Si el mail se borró, pedí otro código.")).toBeNull();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("doesn't suggest asking for another code before anything failed", async () => {
+    mockApi({ "POST /auth/email/start": json(204) });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByLabelText("Código")).toBeVisible();
+    expect(screen.queryByText("Si el mail se borró, pedí otro código.")).toBeNull();
+    expect(screen.getByRole("button", { name: /^Reenviar código/ })).toBeVisible();
   });
 
   it("an expired code shows the server's message and resend still works once the wait is over", async () => {
@@ -445,15 +570,65 @@ describe("Edit profile", () => {
       await act(async () => onSelect(index));
     };
 
-    it("picks from the library with the native 1:1 crop and uploads it", async () => {
+    const cropped = { uri: "file:///cache/cropped.jpg", width: 512, height: 512 };
+
+    it("opens the fast library picker (no native editing) and then our own crop screen", async () => {
       picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [asset] });
-      const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue({ ...USER, avatarUrl: "/avatars/u1/a.jpg" });
+      const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue(USER);
+      upload.mockClear();
       await renderRouter(routes, { initialUrl: "/edit-profile" });
 
       await choose(1);
 
-      expect(picker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true, aspect: [1, 1] }));
-      await waitFor(() => expect(upload).toHaveBeenCalledWith(asset));
+      expect(picker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: false }));
+      await waitFor(() => expect(screen).toHavePathname("/crop-avatar"));
+      expect(screen.getByRole("button", { name: "Elegir" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "Cancelar" })).toBeVisible();
+      expect(upload).not.toHaveBeenCalled();
+    });
+
+    it("Elegir crops the square under the circle to 512×512 and uploads it", async () => {
+      const tall = { uri: "file:///picked.jpg", width: 1200, height: 1600 } as ImagePicker.ImagePickerAsset;
+      picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [tall] });
+      const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue({ ...USER, avatarUrl: "/avatars/u1/a.jpg" });
+      upload.mockClear();
+      manipulator.ImageManipulator.manipulate.mockClear();
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await choose(1);
+      await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
+
+      await waitFor(() => expect(upload).toHaveBeenCalledWith(cropped));
+      expect(manipulator.ImageManipulator.manipulate).toHaveBeenCalledWith("file:///picked.jpg");
+      expect(manipulator.ImageManipulator.__ctx.crop).toHaveBeenLastCalledWith({ originX: 0, originY: 200, width: 1200, height: 1200 });
+      expect(manipulator.ImageManipulator.__ctx.resize).toHaveBeenLastCalledWith({ width: 512, height: 512 });
+      await waitFor(() => expect(screen).toHavePathname("/edit-profile"));
+    });
+
+    it("a library photo without a size skips the crop screen and uploads as is", async () => {
+      const sizeless = { uri: "file:///picked.jpg", width: 0, height: 0 } as ImagePicker.ImagePickerAsset;
+      picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [sizeless] });
+      const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue(USER);
+      upload.mockClear();
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await choose(1);
+
+      await waitFor(() => expect(upload).toHaveBeenCalledWith(sizeless));
+      expect(screen).toHavePathname("/edit-profile");
+    });
+
+    it("Cancelar on the crop screen goes back and uploads nothing", async () => {
+      picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [asset] });
+      const upload = jest.spyOn(profileActions, "uploadAvatar");
+      upload.mockClear();
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await choose(1);
+      await fireEvent.press(await screen.findByRole("button", { name: "Cancelar" }));
+
+      await waitFor(() => expect(screen).toHavePathname("/edit-profile"));
+      expect(upload).not.toHaveBeenCalled();
     });
 
     it("takes a photo with the camera (asking for permission first)", async () => {
@@ -465,7 +640,9 @@ describe("Edit profile", () => {
       await choose(0);
 
       expect(picker.launchCameraAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true, aspect: [1, 1] }));
-      await waitFor(() => expect(upload).toHaveBeenCalled());
+      // The camera keeps its native square crop: no crop screen after it.
+      await waitFor(() => expect(upload).toHaveBeenCalledWith(asset));
+      expect(screen).toHavePathname("/edit-profile");
     });
 
     it("shows the local photo with a spinner until it confirms, and Guardar waits", async () => {
@@ -475,8 +652,9 @@ describe("Edit profile", () => {
       await renderRouter(routes, { initialUrl: "/edit-profile" });
 
       await choose(1);
+      await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
 
-      expect(screen.getByTestId("avatar-image", { includeHiddenElements: true })).toBeTruthy();
+      expect(await screen.findByTestId("avatar-image", { includeHiddenElements: true })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
       await act(async () => finish({ ...USER, avatarUrl: "/avatars/u1/a.jpg" }));
       await waitFor(() => expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled());
@@ -492,6 +670,7 @@ describe("Edit profile", () => {
       await renderRouter(routes, { initialUrl: "/edit-profile" });
 
       await choose(1);
+      await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
       expect(await screen.findByText("No se pudo subir la foto. Probá de nuevo.")).toBeVisible();
 
       await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));

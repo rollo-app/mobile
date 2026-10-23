@@ -1,17 +1,28 @@
 import { useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { meKey } from "@/features/auth/actions";
 import { uploadAvatar } from "./actions";
+import { openCropRequest, type Photo } from "./crop-request";
 
 export type PhotoSource = "camera" | "library";
 
-type Photo = { uri: string; width: number; height: number };
+// The camera's native square crop is quick.
+const CAMERA_OPTIONS = { mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 1 } satisfies ImagePicker.ImagePickerOptions;
+// With allowsEditing the library falls back to the legacy UIImagePickerController, which loads the whole
+// library before showing anything. Without it, iOS uses PHPicker (instant, no photo permission) and we crop.
+const LIBRARY_OPTIONS = { mediaTypes: ["images"], allowsEditing: false, quality: 1 } satisfies ImagePicker.ImagePickerOptions;
 
-const PICKER_OPTIONS = { mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 1 } satisfies ImagePicker.ImagePickerOptions;
+/** Opens our own crop screen; resolves with the cropped photo or null if cancelled. */
+async function cropInApp(photo: Photo): Promise<Photo | null> {
+  const { id, result } = openCropRequest(photo);
+  router.push({ pathname: "/crop-avatar", params: { id } });
+  return result;
+}
 
 /**
- * Picks a profile photo (native square crop) and uploads it right away. Until the server confirms,
+ * Picks a profile photo (camera: native square crop; library: our crop screen) and uploads it right away. Until the server confirms,
  * `localUri` is the photo to show with a spinner; if it fails, `error` says why and `retry` tries again.
  */
 export function useAvatarUpload() {
@@ -55,10 +66,15 @@ export function useAvatarUpload() {
       }
       const result =
         source === "camera"
-          ? await ImagePicker.launchCameraAsync(PICKER_OPTIONS)
-          : await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
+          ? await ImagePicker.launchCameraAsync(CAMERA_OPTIONS)
+          : await ImagePicker.launchImageLibraryAsync(LIBRARY_OPTIONS);
       const asset = result.canceled ? null : result.assets[0];
-      if (asset) await send({ uri: asset.uri, width: asset.width, height: asset.height });
+      if (!asset) return;
+      const photo = { uri: asset.uri, width: asset.width, height: asset.height };
+      // Without a size (iOS can report 0×0) the crop can't be laid out: send it as is.
+      const croppable = photo.width > 0 && photo.height > 0;
+      const ready = source === "camera" || !croppable ? photo : await cropInApp(photo);
+      if (ready) await send(ready);
     },
     [send],
   );

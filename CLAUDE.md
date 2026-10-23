@@ -14,7 +14,7 @@ Decisiones de producto:
 
 - **Solo iOS** en la primera versión. **Con cuentas:** login con **email + código de 6 caracteres (letras y números, vale 5 min)** (sin
   contraseña), obligatorio al abrir la app (`app/(auth)/`: email → código → "Completá tu perfil" si es nueva o
-  no tiene nombre). El perfil es **nombre + foto + descripción opcional** (`bio`, hasta 150 caracteres y 3 renglones; `GET/PATCH /me`, foto con `expo-image-picker` 1:1 →
+  no tiene nombre). El perfil es **nombre + foto + descripción opcional** (`bio`, hasta 150 caracteres y 3 renglones; `GET/PATCH /me`, foto con `expo-image-picker` (cámara: recorte nativo 1:1; galería: PHPicker sin edición + recorte propio en `/crop-avatar`, `avatar-crop.tsx`) →
   512 px JPEG → `POST /me/avatar` → PUT → complete; sin foto, círculo con la inicial y `memberColor`). Además tiene un **nombre de usuario único** (`@usuario`, `PATCH /me`): se pide en "Completá tu perfil" junto al nombre
   (sugerido desde el email, con chequeo de disponibilidad) y se muestra en Perfil, Amigos, miembros y Feed. Crear rollo
   o unirse es solo con el código de 6 (`POST /trips/join`; el server pide nombre en el perfil). **La sesión es un
