@@ -23,6 +23,17 @@ jest.mock("@/features/friends/actions");
 // Ajustes asks who you blocked: keep it out of the recorded fetch calls.
 jest.mock("@/features/moderation/actions");
 jest.mock("expo-image-picker");
+jest.mock("expo-image-manipulator", () => {
+  const saved = { uri: "file:///cache/cropped.jpg", width: 512, height: 512 };
+  const ctx: Record<string, jest.Mock> = {};
+  ctx.crop = jest.fn(() => ctx);
+  ctx.resize = jest.fn(() => ctx);
+  ctx.renderAsync = jest.fn(async () => ({ saveAsync: jest.fn(async () => saved) }));
+  return { ImageManipulator: { manipulate: jest.fn(() => ctx), __ctx: ctx }, SaveFormat: { JPEG: "jpeg" } };
+});
+const manipulator = jest.requireMock("expo-image-manipulator") as {
+  ImageManipulator: { manipulate: jest.Mock; __ctx: { crop: jest.Mock; resize: jest.Mock } };
+};
 const mocked = jest.mocked(actions);
 const picker = jest.mocked(ImagePicker);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
@@ -490,15 +501,52 @@ describe("Edit profile", () => {
       await act(async () => onSelect(index));
     };
 
-    it("picks from the library with the native 1:1 crop and uploads it", async () => {
+    const cropped = { uri: "file:///cache/cropped.jpg", width: 512, height: 512 };
+
+    it("opens the fast library picker (no native editing) and then our own crop screen", async () => {
       picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [asset] });
-      const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue({ ...USER, avatarUrl: "/avatars/u1/a.jpg" });
+      const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue(USER);
+      upload.mockClear();
       await renderRouter(routes, { initialUrl: "/edit-profile" });
 
       await choose(1);
 
-      expect(picker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true, aspect: [1, 1] }));
-      await waitFor(() => expect(upload).toHaveBeenCalledWith(asset));
+      expect(picker.launchImageLibraryAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: false }));
+      await waitFor(() => expect(screen).toHavePathname("/crop-avatar"));
+      expect(screen.getByRole("button", { name: "Elegir" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "Cancelar" })).toBeVisible();
+      expect(upload).not.toHaveBeenCalled();
+    });
+
+    it("Elegir crops the square under the circle to 512×512 and uploads it", async () => {
+      const tall = { uri: "file:///picked.jpg", width: 1200, height: 1600 } as ImagePicker.ImagePickerAsset;
+      picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [tall] });
+      const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue({ ...USER, avatarUrl: "/avatars/u1/a.jpg" });
+      upload.mockClear();
+      manipulator.ImageManipulator.manipulate.mockClear();
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await choose(1);
+      await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
+
+      await waitFor(() => expect(upload).toHaveBeenCalledWith(cropped));
+      expect(manipulator.ImageManipulator.manipulate).toHaveBeenCalledWith("file:///picked.jpg");
+      expect(manipulator.ImageManipulator.__ctx.crop).toHaveBeenLastCalledWith({ originX: 0, originY: 200, width: 1200, height: 1200 });
+      expect(manipulator.ImageManipulator.__ctx.resize).toHaveBeenLastCalledWith({ width: 512, height: 512 });
+      await waitFor(() => expect(screen).toHavePathname("/edit-profile"));
+    });
+
+    it("Cancelar on the crop screen goes back and uploads nothing", async () => {
+      picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [asset] });
+      const upload = jest.spyOn(profileActions, "uploadAvatar");
+      upload.mockClear();
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await choose(1);
+      await fireEvent.press(await screen.findByRole("button", { name: "Cancelar" }));
+
+      await waitFor(() => expect(screen).toHavePathname("/edit-profile"));
+      expect(upload).not.toHaveBeenCalled();
     });
 
     it("takes a photo with the camera (asking for permission first)", async () => {
@@ -510,7 +558,9 @@ describe("Edit profile", () => {
       await choose(0);
 
       expect(picker.launchCameraAsync).toHaveBeenCalledWith(expect.objectContaining({ allowsEditing: true, aspect: [1, 1] }));
-      await waitFor(() => expect(upload).toHaveBeenCalled());
+      // The camera keeps its native square crop: no crop screen after it.
+      await waitFor(() => expect(upload).toHaveBeenCalledWith(asset));
+      expect(screen).toHavePathname("/edit-profile");
     });
 
     it("shows the local photo with a spinner until it confirms, and Guardar waits", async () => {
@@ -520,8 +570,9 @@ describe("Edit profile", () => {
       await renderRouter(routes, { initialUrl: "/edit-profile" });
 
       await choose(1);
+      await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
 
-      expect(screen.getByTestId("avatar-image", { includeHiddenElements: true })).toBeTruthy();
+      expect(await screen.findByTestId("avatar-image", { includeHiddenElements: true })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
       await act(async () => finish({ ...USER, avatarUrl: "/avatars/u1/a.jpg" }));
       await waitFor(() => expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled());
@@ -537,6 +588,7 @@ describe("Edit profile", () => {
       await renderRouter(routes, { initialUrl: "/edit-profile" });
 
       await choose(1);
+      await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
       expect(await screen.findByText("No se pudo subir la foto. Probá de nuevo.")).toBeVisible();
 
       await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));

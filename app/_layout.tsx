@@ -6,6 +6,7 @@ import { StyleSheet, Text, useColorScheme, View } from "react-native";
 import { CACHE_MAX_AGE, connectAppState, persister, queryClient } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
 import { REVEAL_BACKGROUND } from "@/features/reveal/reveal-screen";
+import { CROP_BACKGROUND } from "@/features/profile/avatar-crop";
 import { useRevealTap } from "@/features/notifications/use-reveal-tap";
 import { useOfflineMapSync } from "@/features/map/use-offline-map-sync";
 import { useRedeemPendingFriend } from "@/features/friends/use-pending-friend";
@@ -58,6 +59,11 @@ function RootStack() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {/* A friend link works with or without a session: it routes to the right step itself. */}
       <Stack.Screen name="friends/[code]" options={{ headerShown: false }} />
+      {/* The profile photo crop: "Completá tu perfil" (login gate) and "Editar perfil" (app) both open it. */}
+      <Stack.Screen
+        name="crop-avatar"
+        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: CROP_BACKGROUND } }}
+      />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>
