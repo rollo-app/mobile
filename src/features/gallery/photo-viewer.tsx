@@ -1,10 +1,9 @@
-import { MenuView } from "@expo/ui/community/menu";
+import { MenuView, type MenuAction } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SymbolView } from "expo-symbols";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
@@ -13,7 +12,6 @@ import { useMe } from "@/features/auth/use-me";
 import { blockFeature, unblockFeature } from "@/features/featured/actions";
 import { useReport } from "@/features/moderation/use-report";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
-import { HeartBurst } from "@/features/likes/heart-burst";
 import { LikeButton } from "@/features/likes/like-button";
 import { useDoubleTap } from "@/features/likes/use-double-tap";
 import { useToggleLike } from "@/features/likes/use-toggle-like";
@@ -24,6 +22,7 @@ import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/m
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { feedKey } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
+import { OverlayCornerSymbol, OverlayIconButton, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
 import { spacing, tintHex, type } from "@/ui/theme";
 import { PermissionNotice } from "./permission-notice";
 import { PermissionDeniedError } from "./save";
@@ -54,14 +53,10 @@ function Page({
   width: number;
   height: number;
   onTap: () => void;
-  /** Photos only: a double tap likes it (the heart pops here). */
+  /** Photos only: a double tap likes it (the heart below fills). */
   onDoubleTap: (photo: RevealedPhoto) => void;
 }) {
-  const [burst, setBurst] = useState(0);
-  const taps = useDoubleTap(onTap, () => {
-    setBurst((b) => b + 1);
-    onDoubleTap(photo);
-  });
+  const taps = useDoubleTap(onTap, () => onDoubleTap(photo));
   if (photo.type === "video") {
     return (
       <View style={{ width, height }}>
@@ -87,7 +82,6 @@ function Page({
           contentFit="contain"
           style={{ width, height }}
         />
-        <HeartBurst burst={burst} />
       </Pressable>
     </ScrollView>
   );
@@ -170,6 +164,22 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
   const liking = !!photo && likes.pending.has(photo.id);
   const likeError = photo && likes.error?.mediaId === photo.id ? likes.error.message : null;
   const timeZone = detail?.trip.timezone ?? "America/Argentina/Buenos_Aires";
+  // Someone else's photo can be reported; on your own photo you decide whether others may feature it.
+  const own = !!photo && !!me && photo.authorUserId === me.id;
+  const menu: MenuAction[] = !photo || !me
+    ? []
+    : !own
+      ? [{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]
+      : photo.type === "photo"
+        ? [
+            {
+              id: photo.featureBlocked ? "unblock" : "block",
+              title: photo.featureBlocked ? "Dejar que la destaquen" : "No dejar que la destaquen",
+              image: photo.featureBlocked ? "star" : "star.slash",
+              attributes: { disabled: blocking },
+            },
+          ]
+        : [];
 
   return (
     <View style={styles.fill}>
@@ -209,12 +219,26 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             onPress={() => router.back()}
-            style={[styles.close, { top: insets.top + spacing.sm }]}
+            style={[overlayCorner, styles.close, { top: insets.top + spacing.sm }]}
           >
-            <SymbolView name="xmark" size={16} weight="semibold" tintColor="#FFFFFF" />
+            <OverlayCornerSymbol name="xmark" />
           </Pressable>
+          {photo && menu.length > 0 && (
+            // The author's and moderation options, in the corner opposite the ✕.
+            <View style={[styles.more, { top: insets.top + spacing.sm }]}>
+              <MenuView
+                actions={menu}
+                onPressAction={({ nativeEvent }) => {
+                  if (nativeEvent.event === "report") void reportPhoto(photo);
+                  else void setBlocked(photo, nativeEvent.event === "block");
+                }}
+              >
+                <OverlayMoreButton />
+              </MenuView>
+            </View>
+          )}
           {photo && (
-            <View pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.md }]}>
+            <View testID="viewer-info" pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.sm }]}>
               <View style={styles.authorRow}>
                 {/* Closes the viewer and opens the author's profile over the tabs (or Perfil if it's you). */}
                 <Pressable
@@ -233,77 +257,30 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
                 {photo.type === "photo" && (
                   <LikeButton liked={photo.likedByMe} count={photo.likeCount} busy={liking} onPress={() => void likes.toggle(photo)} />
                 )}
-                {photo.lat !== null && photo.lng !== null && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Ver en el mapa"
-                    onPress={() => router.navigate({ pathname: "/map", params: { focus: photo.id } })}
-                    style={styles.pill}
-                  >
-                    <SymbolView name="map" size={15} tintColor="#FFFFFF" />
-                    <Text style={[type.subhead, styles.white]}>Ver en el mapa</Text>
-                  </Pressable>
-                )}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={state === "saved" ? "Guardada" : "Guardar en Fotos"}
-                  accessibilityState={{ disabled: state === "saving" || state === "saved" || !saver, busy: state === "saving" }}
-                  disabled={state === "saving" || state === "saved" || !saver}
-                  onPress={() => void save(photo)}
-                  style={[styles.pill, state === "saved" && styles.pillDone]}
-                >
-                  {state === "saving" ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <SymbolView name={state === "saved" ? "checkmark" : "square.and.arrow.down"} size={15} tintColor="#FFFFFF" />
-                  )}
-                  <Text style={[type.subhead, styles.white]}>{state === "saved" ? "Guardada ✓" : "Guardar en Fotos"}</Text>
-                </Pressable>
                 {photo.type === "photo" && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={photo.featuredByMe ? "Destacada" : "Destacar"}
-                    accessibilityState={{ selected: photo.featuredByMe, busy: featuring }}
+                  <OverlayIconButton
+                    symbol={photo.featuredByMe ? "star.fill" : "star"}
+                    label={photo.featuredByMe ? "Sacar de tu perfil" : "Destacar"}
+                    // Featured is a selection: cobalt (its dark-scheme value, since the viewer is always black).
+                    tint={photo.featuredByMe ? tintHex.dark : "#FFFFFF"}
                     disabled={featuring}
                     onPress={() => toggleFeatured(photo)}
-                    style={styles.pill}
-                  >
-                    <SymbolView
-                      name={photo.featuredByMe ? "star.fill" : "star"}
-                      size={15}
-                      // The viewer is always black: the dark-scheme cobalt reads on it whatever the system theme.
-                      tintColor={photo.featuredByMe ? tintHex.dark : "#FFFFFF"}
-                    />
-                    <Text style={[type.subhead, styles.white]}>{photo.featuredByMe ? "Destacada" : "Destacar"}</Text>
-                  </Pressable>
+                  />
                 )}
-                {!!me && photo.authorUserId !== me.id && (
-                  <MenuView
-                    actions={[{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]}
-                    onPressAction={() => void reportPhoto(photo)}
-                  >
-                    <View accessibilityLabel="Más opciones" style={styles.pill}>
-                      <SymbolView name="ellipsis" size={15} tintColor="#FFFFFF" />
-                    </View>
-                  </MenuView>
+                {photo.lat !== null && photo.lng !== null && (
+                  <OverlayIconButton
+                    symbol="map"
+                    label="Ver en el mapa"
+                    onPress={() => router.navigate({ pathname: "/map", params: { focus: photo.id } })}
+                  />
                 )}
-                {photo.type === "photo" && !!me && photo.authorUserId === me.id && (
-                  <MenuView
-                    actions={[
-                      {
-                        id: photo.featureBlocked ? "unblock" : "block",
-                        title: photo.featureBlocked ? "Dejar que la destaquen" : "No dejar que la destaquen",
-                        image: photo.featureBlocked ? "star" : "star.slash",
-                        attributes: { disabled: blocking },
-                      },
-                    ]}
-                    onPressAction={({ nativeEvent }) => void setBlocked(photo, nativeEvent.event === "block")}
-                  >
-                    <View accessibilityLabel="Más opciones" style={styles.pill}>
-                      <SymbolView name="ellipsis" size={15} tintColor="#FFFFFF" />
-                    </View>
-                  </MenuView>
-                )}
+                <OverlayIconButton
+                  symbol={state === "saved" ? "checkmark" : "square.and.arrow.down"}
+                  label={state === "saved" ? "Guardada" : "Guardar en Fotos"}
+                  busy={state === "saving"}
+                  disabled={state === "saved" || !saver}
+                  onPress={() => void save(photo)}
+                />
               </View>
               {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
               {featureError && <Text style={[type.footnote, styles.dim]}>{featureError}</Text>}
@@ -319,16 +296,8 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: "#000000" },
-  close: {
-    position: "absolute",
-    left: spacing.md,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  close: { position: "absolute", left: spacing.md },
+  more: { position: "absolute", right: spacing.md },
   info: {
     position: "absolute",
     left: 0,
@@ -343,15 +312,5 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.5 },
   white: { color: "#FFFFFF" },
   dim: { color: "rgba(255,255,255,0.7)" },
-  actions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
-  pillDone: { backgroundColor: "rgba(255,255,255,0.1)" },
+  actions: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
 });

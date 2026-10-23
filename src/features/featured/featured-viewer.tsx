@@ -3,12 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { SymbolView } from "expo-symbols";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
-import { HeartBurst } from "@/features/likes/heart-burst";
 import { LikeButton } from "@/features/likes/like-button";
 import { useDoubleTap } from "@/features/likes/use-double-tap";
 import { useToggleLike } from "@/features/likes/use-toggle-like";
@@ -16,6 +14,7 @@ import { mediaSource, useMediaToken } from "@/features/media/revealed";
 import { useReport } from "@/features/moderation/use-report";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
+import { OverlayCornerSymbol, OverlayIconButton, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
 import { spacing, type } from "@/ui/theme";
 import { unfeatureMedia, type FeaturedPhoto } from "./actions";
 import { featuredLabel } from "./featured-grid";
@@ -34,14 +33,10 @@ function Page({
   width: number;
   height: number;
   onTap: () => void;
-  /** A double tap likes it (the heart pops here). */
+  /** A double tap likes it (the heart below fills). */
   onDoubleTap: (photo: FeaturedPhoto) => void;
 }) {
-  const [burst, setBurst] = useState(0);
-  const taps = useDoubleTap(onTap, () => {
-    setBurst((b) => b + 1);
-    onDoubleTap(photo);
-  });
+  const taps = useDoubleTap(onTap, () => onDoubleTap(photo));
   return (
     <ScrollView
       style={{ width, height }}
@@ -60,7 +55,6 @@ function Page({
           contentFit="contain"
           style={{ width, height }}
         />
-        <HeartBurst burst={burst} />
       </Pressable>
     </ScrollView>
   );
@@ -94,7 +88,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
   const [chrome, setChrome] = useState(true);
   const toggle = useCallback(() => setChrome((v) => !v), []);
 
-  // Guards against a second tap before `removing` re-renders the pill as disabled.
+  // Guards against a second tap before `removing` re-renders the button as busy.
   const removeInFlight = useRef(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<{ mediaId: string; message: string } | null>(null);
@@ -170,12 +164,23 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
             accessibilityRole="button"
             accessibilityLabel="Cerrar"
             onPress={() => router.back()}
-            style={[styles.close, { top: insets.top + spacing.sm }]}
+            style={[overlayCorner, styles.close, { top: insets.top + spacing.sm }]}
           >
-            <SymbolView name="xmark" size={16} weight="semibold" tintColor="#FFFFFF" />
+            <OverlayCornerSymbol name="xmark" />
           </Pressable>
+          {photo && reportable && (
+            // In the corner opposite the ✕.
+            <View style={[styles.more, { top: insets.top + spacing.sm }]}>
+              <MenuView
+                actions={[{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]}
+                onPressAction={() => void reportPhoto(photo)}
+              >
+                <OverlayMoreButton />
+              </MenuView>
+            </View>
+          )}
           {photo && (
-            <View pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.md }]}>
+            <View testID="featured-info" pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.sm }]}>
               {photo.author && (
                 // Closes the viewer and opens the author's profile over the tabs (or Perfil if it's you).
                 <Pressable
@@ -195,28 +200,13 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                   busy={likes.pending.has(photo.mediaId)}
                   onPress={() => void likes.toggle(likeTarget(photo))}
                 />
-                {reportable && (
-                  <MenuView
-                    actions={[{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]}
-                    onPressAction={() => void reportPhoto(photo)}
-                  >
-                    <View accessibilityLabel="Más opciones" style={styles.pill}>
-                      <SymbolView name="ellipsis" size={15} tintColor="#FFFFFF" />
-                    </View>
-                  </MenuView>
-                )}
                 {own && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Sacar de tu perfil"
-                    accessibilityState={{ disabled: removing, busy: removing }}
-                    disabled={removing}
+                  <OverlayIconButton
+                    symbol="star.slash"
+                    label="Sacar de tu perfil"
+                    busy={removing}
                     onPress={() => void remove(photo)}
-                    style={styles.pill}
-                  >
-                    {removing ? <ActivityIndicator color="#FFFFFF" /> : <SymbolView name="star.slash" size={15} tintColor="#FFFFFF" />}
-                    <Text style={[type.subhead, styles.white]}>Sacar de tu perfil</Text>
-                  </Pressable>
+                  />
                 )}
               </View>
               {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
@@ -231,16 +221,8 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: "#000000" },
-  close: {
-    position: "absolute",
-    left: spacing.md,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  close: { position: "absolute", left: spacing.md },
+  more: { position: "absolute", right: spacing.md },
   info: {
     position: "absolute",
     left: 0,
@@ -255,14 +237,5 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.6 },
   white: { color: "#FFFFFF" },
   dim: { color: "rgba(255,255,255,0.7)" },
-  actions: { flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.18)",
-  },
+  actions: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
 });
