@@ -32,6 +32,8 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,
+  likeCount: 0,
+  likedByMe: false,
 });
 
 const ctx = {

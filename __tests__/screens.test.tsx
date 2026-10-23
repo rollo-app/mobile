@@ -8,6 +8,7 @@ import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
 import { getActiveTripId } from "@/storage/active-trip";
+import { markPushPrimerSeen } from "@/storage/push-primer";
 import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
@@ -362,7 +363,11 @@ describe("Trip picker", () => {
 });
 
 describe("Join", () => {
-  beforeEach(() => signInAs({ trips: [] }));
+  // The one-time notifications primer has its own tests (notifications.test.tsx).
+  beforeEach(async () => {
+    await signInAs({ trips: [] });
+    await markPushPrimerSeen();
+  });
 
   it("the button stays disabled until there is a 6-character code", async () => {
     await renderRouter(routes, { initialUrl: "/join" });
@@ -420,6 +425,7 @@ describe("Join roll header", () => {
 describe("Create roll", () => {
   beforeEach(async () => {
     await signInAs({ trips: [] });
+    await markPushPrimerSeen();
     friends.fetchFriends.mockResolvedValue([]);
   });
 
@@ -443,6 +449,7 @@ describe("Create roll", () => {
   it("starts at the next full hour, lasts 3 days and allows 10 photos and 3 videos a day", async () => {
     await renderRouter(routes, { initialUrl: "/create" });
     await screen.findByRole("button", { name: "Crear" });
+    await fireEvent.press(screen.getByRole("button", { name: "Otra fecha" }));
 
     const start = dateOf("Empieza");
     expect(start % HOUR).toBe(0);
@@ -463,6 +470,7 @@ describe("Create roll", () => {
     mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
     await renderRouter(routes, { initialUrl: "/create" });
     await fillNames();
+    await fireEvent.press(screen.getByRole("button", { name: "Otra fecha" }));
     const start = dateOf("Empieza");
     await changeDate("Termina", start + 5 * 24 * HOUR);
     await fireEvent(screen.getByLabelText("10 fotos"), "valueChange", 25);
@@ -505,6 +513,7 @@ describe("Create roll", () => {
     mocked.createTrip.mockRejectedValue(new Error("El revelado no puede ser antes del fin"));
     await renderRouter(routes, { initialUrl: "/create" });
     await fillNames();
+    await fireEvent.press(screen.getByRole("button", { name: "Otra fecha" }));
     await fireEvent.press(screen.getByRole("button", { name: "Otro momento" }));
     const end = dateOf("Termina");
     await changeDate("Se revela", end - HOUR);
@@ -519,6 +528,54 @@ describe("Create roll", () => {
     expect(dateOf("Empieza")).toBe(end + 5 * HOUR);
     expect(dateOf("Se revela")).toBe(end - HOUR);
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
+  });
+
+  describe("starting now", () => {
+    const NOW = Date.UTC(2027, 0, 5, 12, 20);
+    // renderRouter installs fake timers, so the clock is moved with setSystemTime after rendering.
+
+    it("starts now by default, without a start date picker, and sends the moment of submit", async () => {
+      mocked.createTrip.mockResolvedValue(trip());
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+      await renderRouter(routes, { initialUrl: "/create" });
+      jest.setSystemTime(NOW);
+      await fillNames();
+      expect(screen.getByRole("button", { name: "Ahora" })).toBeSelected();
+      expect(screen.queryByLabelText("Empieza")).toBeNull();
+
+      jest.setSystemTime(NOW + 3 * 60 * 1000);
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+      expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ startsAt: NOW + 3 * 60 * 1000 }));
+    });
+
+    it("with another date it shows the picker and sends the chosen date", async () => {
+      mocked.createTrip.mockResolvedValue(trip());
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+      await renderRouter(routes, { initialUrl: "/create" });
+      jest.setSystemTime(NOW);
+      await fillNames();
+
+      await fireEvent.press(screen.getByRole("button", { name: "Otra fecha" }));
+      expect(dateOf("Empieza") % HOUR).toBe(0);
+      await changeDate("Empieza", Date.UTC(2027, 0, 8, 9, 0));
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+      expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ startsAt: Date.UTC(2027, 0, 8, 9, 0) }));
+    });
+
+    it("moves the end after the chosen start when switching modes", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      jest.setSystemTime(NOW);
+      await fillNames();
+      await fireEvent.press(screen.getByRole("button", { name: "Otra fecha" }));
+      await changeDate("Empieza", Date.UTC(2027, 0, 20, 9, 0));
+      await changeDate("Termina", Date.UTC(2027, 0, 6, 9, 0));
+      await fireEvent.press(screen.getByRole("button", { name: "Ahora" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Otra fecha" }));
+
+      expect(dateOf("Termina")).toBe(Date.UTC(2027, 0, 20, 9, 0) + 72 * HOUR);
+    });
   });
 
   it("cancels from the header and goes back", async () => {

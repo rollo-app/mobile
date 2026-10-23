@@ -20,6 +20,8 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,
+  likeCount: 0,
+  likedByMe: false,
 });
 
 describe("upcomingPhotos", () => {

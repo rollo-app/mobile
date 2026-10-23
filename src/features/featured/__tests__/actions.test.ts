@@ -22,6 +22,8 @@ const photo: FeaturedPhoto = {
   zone: { lat: -41.075, lng: -71.475 },
   thumbPath: "/featured/u1/m1/thumb",
   originalPath: "/featured/u1/m1/original",
+  likeCount: 0,
+  likedByMe: false,
 };
 
 beforeEach(() => setSessionToken("tok"));
