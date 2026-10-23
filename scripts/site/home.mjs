@@ -136,7 +136,7 @@ p+p{margin-top:12px}
 section{padding:56px 0;border-top:1px solid var(--rule)}
 section.hero{border-top:0;padding-top:36px}
 .cta{margin-top:28px}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:12px 28px;background:var(--tint);color:#fff;text-decoration:none;font-weight:600;font-size:19px;border-radius:999px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:12px 28px;background:var(--tint);color:#fff;text-decoration:none;font-weight:700;font-size:20px;border-radius:999px}
 .store{display:inline-block;line-height:0}
 .store img{display:block}
 .note{margin-top:10px;font-size:15px;color:var(--muted)}

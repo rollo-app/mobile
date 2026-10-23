@@ -157,3 +157,12 @@ describe("the home in App Store mode", () => {
     }
   });
 });
+
+describe("the home CTA contrast", () => {
+  it("is large text (bold, ≥ 19px) so white on the dark-mode tint passes AA", () => {
+    const style = read("index.html").match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
+    const rule = style.match(/(?:^|[}\s])\.btn\{([^}]*)\}/)?.[1] ?? "";
+    expect(rule).toContain("font-weight:700");
+    expect(Number(rule.match(/font-size:(\d+(?:\.\d+)?)px/)?.[1])).toBeGreaterThanOrEqual(19);
+  });
+});
