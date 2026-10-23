@@ -361,6 +361,9 @@ la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), 
 testing externo en TestFlight (revisión de Apple) y la prueba real. El backend ya está en producción
 (`rollo-api.juanifraga.com`) y el build 2 (1.0.0) ya se instala por TestFlight (testing interno).
 
+**Próximo build de TestFlight (features agrupadas):** comentarios en las fotos reveladas, solo entre miembros del rollo
+(diseño en `docs/superpowers/specs/2026-10-23-comentarios-design.md`). Los builds de EAS se agrupan: el plan gratis da 15 de iOS por mes.
+
 Pendiente (después de enero, no antes del viaje): **migrar el backend a Supabase**. La idea es que Postgres de
 Supabase reemplace a D1 y que las fotos sigan en R2 (gratis y sin costo de egress), con el Worker conectado
 por Hyperdrive o el backend en Supabase. A tener en cuenta: el plan gratis de Supabase pausa el proyecto tras
