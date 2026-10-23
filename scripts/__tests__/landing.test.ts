@@ -298,3 +298,12 @@ describe("the home motion", () => {
     });
   });
 });
+
+describe("the Open Graph image", () => {
+  it("is a 1200x630 PNG", () => {
+    const png = readFileSync(join(dist, "og.png"));
+    expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    expect(png.readUInt32BE(16)).toBe(1200);
+    expect(png.readUInt32BE(20)).toBe(630);
+  });
+});

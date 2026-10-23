@@ -130,6 +130,7 @@ await build({
 });
 copyFileSync(join(root, "scripts", "site", "landing.js"), join(dist, "landing.js"));
 if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
+copyFileSync(join(root, "scripts", "site", "og.png"), join(dist, "og.png"));
 const soporte = `<h2>Soporte</h2>
 <p>Escribinos a <a href="mailto:soporte@juanifraga.com">soporte@juanifraga.com</a> y te respondemos.</p>
 <div class="faq">

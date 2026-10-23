@@ -70,6 +70,7 @@
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/build-icons.mjs",
+    "og": "node scripts/build-og.mjs",
     "api:generate": "openapi-typescript ${API_SPEC:-https://raw.githubusercontent.com/rollo-app/backend/develop/openapi.json} --default-non-nullable false -o src/api/schema.d.ts"
   },
   "private": true,
