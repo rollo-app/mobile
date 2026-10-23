@@ -402,6 +402,33 @@ describe("Photo viewer", () => {
     expect(screen.getByRole("button", { name: "Ver en el mapa" })).toBeVisible();
   });
 
+  it("shows icon-only actions under the caption, without text labels", async () => {
+    await openViewer("b");
+    const info = within(await screen.findByTestId("viewer-info"));
+    expect(info.getByRole("button", { name: "Me gusta" })).toBeVisible();
+    expect(info.getByRole("button", { name: "Destacar" })).toBeVisible();
+    expect(info.getByRole("button", { name: "Ver en el mapa" })).toBeVisible();
+    expect(info.getByRole("button", { name: "Guardar en Fotos" })).toBeVisible();
+    for (const text of ["Guardar en Fotos", "Ver en el mapa", "Destacar", "Me gusta"]) expect(screen.queryByText(text)).toBeNull();
+  });
+
+  it("puts Más opciones at the top, out of the bottom panel", async () => {
+    await openViewer("a");
+    await screen.findByText("Fede");
+    expect(screen.getByLabelText("Más opciones")).toBeTruthy();
+    expect(within(screen.getByTestId("viewer-info")).queryByLabelText("Más opciones")).toBeNull();
+    expect(within(screen.getByTestId("viewer-info")).queryByRole("menuitem")).toBeNull();
+  });
+
+  it("double tap likes the photo without any heart animation", async () => {
+    await openViewer("b");
+    await screen.findByText("el glaciar");
+    await fireEvent.press(screen.getByLabelText("Foto de Juani"));
+    await fireEvent.press(screen.getByLabelText("Foto de Juani"));
+    expect(await screen.findByRole("button", { name: "Ya no me gusta" })).toBeVisible();
+    expect(screen.queryByTestId("heart-burst")).toBeNull();
+  });
+
   it("tapping the author closes the viewer and opens their profile", async () => {
     await openViewer("a");
     await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Fede" }));
@@ -436,10 +463,11 @@ describe("Photo viewer", () => {
     expect(screen.queryByRole("button", { name: "Ver en el mapa" })).toBeNull();
   });
 
-  it("saves the original and shows Guardada ✓", async () => {
+  it("saves the original and turns into Guardada", async () => {
     await openViewer("b");
     await fireEvent.press(await screen.findByRole("button", { name: "Guardar en Fotos" }));
-    expect(await screen.findByText("Guardada ✓")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Guardada" })).toBeVisible();
+    expect(screen.queryByText("Guardada ✓")).toBeNull();
     expect(mockSaveOne).toHaveBeenCalledWith(expect.objectContaining({ id: "b", originalPath: "/m/b/original" }));
   });
 
@@ -450,12 +478,12 @@ describe("Photo viewer", () => {
     expect(await screen.findByRole("button", { name: "Abrir Ajustes" })).toBeVisible();
   });
 
-  it("Destacar features the photo and turns into Destacada; again takes it off", async () => {
+  it("Destacar features the photo and turns into Sacar de tu perfil; again takes it off", async () => {
     await openViewer("b");
     await fireEvent.press(await screen.findByRole("button", { name: "Destacar" }));
-    expect(await screen.findByRole("button", { name: "Destacada" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Sacar de tu perfil" })).toBeVisible();
     expect(featured.featureMedia).toHaveBeenCalledWith("b");
-    await fireEvent.press(screen.getByRole("button", { name: "Destacada" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Sacar de tu perfil" }));
     expect(await screen.findByRole("button", { name: "Destacar" })).toBeVisible();
     expect(featured.unfeatureMedia).toHaveBeenCalledWith("b");
   });
@@ -464,7 +492,7 @@ describe("Photo viewer", () => {
     featured.featureMedia.mockReturnValue(new Promise(() => {}));
     await openViewer("b");
     await fireEvent.press(await screen.findByRole("button", { name: "Destacar" }));
-    await fireEvent.press(await screen.findByRole("button", { name: "Destacada" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar de tu perfil" }));
     expect(featured.featureMedia).toHaveBeenCalledTimes(1);
     expect(featured.unfeatureMedia).not.toHaveBeenCalled();
   });
@@ -558,18 +586,16 @@ describe("Photo viewer: likes", () => {
     await openOn([item("a", { likeCount: 2 })], "a");
     const button = await heart();
     expect(within(button).getByText("2")).toBeVisible();
-    expect(button.props.accessibilityState).toMatchObject({ selected: false });
 
     await fireEvent.press(button);
 
-    await waitFor(() => expect(within(screen.getByRole("button", { name: "Me gusta" })).getByText("3")).toBeVisible());
-    expect(screen.getByRole("button", { name: "Me gusta" }).props.accessibilityState).toMatchObject({ selected: true });
+    await waitFor(() => expect(within(screen.getByRole("button", { name: "Ya no me gusta" })).getByText("3")).toBeVisible());
     expect(likes.likeMedia).toHaveBeenCalledWith("a");
   });
 
   it("pressing it again takes your like away", async () => {
     await openOn([item("a", { likeCount: 1, likedByMe: true })], "a");
-    await fireEvent.press(await heart());
+    await fireEvent.press(await screen.findByRole("button", { name: "Ya no me gusta" }));
     await waitFor(() => expect(likes.unlikeMedia).toHaveBeenCalledWith("a"));
     await waitFor(() => expect(within(screen.getByRole("button", { name: "Me gusta" })).queryByText("1")).toBeNull());
   });
@@ -580,29 +606,26 @@ describe("Photo viewer: likes", () => {
     await fireEvent.press(await heart());
     expect(await screen.findByText("No encontramos esa foto")).toBeVisible();
     expect(within(screen.getByRole("button", { name: "Me gusta" })).getByText("2")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Me gusta" }).props.accessibilityState).toMatchObject({ selected: false });
   });
 
-  it("double tap on the photo likes it with the heart, without hiding the overlay", async () => {
+  it("double tap on the photo likes it, without hiding the overlay", async () => {
     await openOn([item("a", { likeCount: 0 })], "a");
     await heart();
     await fireEvent.press(screen.getByLabelText("Foto de Fede"));
     await fireEvent.press(screen.getByLabelText("Foto de Fede"));
 
     await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("a"));
-    expect(screen.getByTestId("heart-burst")).toBeTruthy();
-    await waitFor(() => expect(within(screen.getByRole("button", { name: "Me gusta" })).getByText("1")).toBeVisible());
+    await waitFor(() => expect(within(screen.getByRole("button", { name: "Ya no me gusta" })).getByText("1")).toBeVisible());
     // The pending single tap was cancelled: the overlay is still there after the window.
     await act(async () => jest.advanceTimersByTime(300));
-    expect(screen.getByRole("button", { name: "Me gusta" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Ya no me gusta" })).toBeVisible();
   });
 
   it("double tap on a photo you already like never takes the like away", async () => {
     await openOn([item("a", { likeCount: 1, likedByMe: true })], "a");
-    await heart();
+    await screen.findByRole("button", { name: "Ya no me gusta" });
     await fireEvent.press(screen.getByLabelText("Foto de Fede"));
     await fireEvent.press(screen.getByLabelText("Foto de Fede"));
-    expect(screen.getByTestId("heart-burst")).toBeTruthy();
     await act(async () => jest.advanceTimersByTime(300));
     expect(likes.unlikeMedia).not.toHaveBeenCalled();
     expect(likes.likeMedia).not.toHaveBeenCalled();

@@ -20,7 +20,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { HeartBurst } from "@/features/likes/heart-burst";
 import { useDoubleTap } from "@/features/likes/use-double-tap";
 import { useToggleLike } from "@/features/likes/use-toggle-like";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
@@ -43,7 +42,7 @@ const BACKDROP_FADE_DISTANCE = 300;
 
 /**
  * Fullscreen story: days with their photos, outro (the reveal intro is its own screen, `/reveal`). Taps navigate,
- * a double tap on a photo likes it (no counter here), holding pauses, swiping down closes.
+ * a double tap on a photo likes it and its heart toggles it (no counter here), holding pauses, swiping down closes.
  */
 export function StoryPlayer({
   photos,
@@ -155,15 +154,12 @@ export function StoryPlayer({
   const likes = useToggleLike();
   const stepRef = useRef(step);
   stepRef.current = step;
-  const [burst, setBurst] = useState<{ id: string; n: number }>({ id: "", n: 0 });
+  // The story's steps keep the photos they were built with: the like state comes from the latest feed.
+  const latestOf = (photo: RevealedPhoto) => photosRef.current.find((p) => p.id === photo.id) ?? photo;
   const taps = useDoubleTap<number>(onPress, () => {
     const current = stepRef.current;
     if (current.kind !== "photo" || current.photo.type !== "photo") return;
-    const { id } = current.photo;
-    setBurst((b) => ({ id, n: b.id === id ? b.n + 1 : 1 }));
-    // The story's steps keep the photos they were built with: the like state comes from the latest feed.
-    const latest = photosRef.current.find((p) => p.id === id) ?? current.photo;
-    void likes.like(latest);
+    void likes.like(latestOf(current.photo));
   });
   // A tap still waiting out the window belongs to the step it was made on: if the story moves first
   // (auto-advance, a feed reload), drop it, or it would skip the next step unseen.
@@ -283,9 +279,10 @@ export function StoryPlayer({
                 dispatch({ type: "pause" });
                 openProfile(step.photo.authorUserId, { leave: true });
               }}
+              liked={latestOf(step.photo).likedByMe}
+              onToggleLike={() => void likes.toggle(latestOf(step.photo))}
             />
           )}
-          {step.kind === "photo" && <HeartBurst key={`heart-${step.photo.id}`} burst={burst.id === step.photo.id ? burst.n : 0} />}
           {step.kind === "outro" && (
             <Outro
               stats={step.stats}

@@ -131,8 +131,9 @@ Decisiones de producto:
   **Ajustes → Notificaciones** (`settings-screen.tsx`, `GET/PATCH /me/settings`): un switch por aviso (`addedToTrip`, `newFriend`, `tripStarted`,
   `tripRevealed`, `photoFeatured`, `photoLiked`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
 - **"Me gusta"** (`src/features/likes/`): solo fotos reveladas (y destacadas en un perfil). Corazón con contador en el visor de la galería y
-  en el de destacadas; doble toque en la foto da el me gusta (con `HeartBurst`), así que un toque simple espera 250 ms (`tap-gate.ts`) antes de
-  contar como toque simple. En las historias el doble toque también da me gusta, sin contador. Es optimista y con cache (`like-cache.ts`).
+  en el de destacadas (fila de íconos sin texto: corazón, estrella, mapa, guardar; el "…" va arriba a la derecha); doble toque en la foto
+  da el me gusta (sin animación: el corazón se llena), así que un toque simple espera 250 ms (`tap-gate.ts`) antes de contar como toque
+  simple. En las historias, corazón abajo a la derecha sin contador: el doble toque da me gusta y tocarlo lo saca o lo pone. Es optimista y con cache (`like-cache.ts`).
 - **A futuro (no para enero):** feeds públicos de rollos y buscar perfiles públicos.
 
 ## Navegación y diseño

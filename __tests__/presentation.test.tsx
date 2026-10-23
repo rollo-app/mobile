@@ -1,7 +1,7 @@
 import { act } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { Text } from "react-native";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as likeActions from "@/features/likes/actions";
 import * as actions from "@/features/trips/actions";
 import { PHOTO_MS } from "@/features/presentation/story";
@@ -168,7 +168,18 @@ describe("Presentation", () => {
 });
 
 describe("Presentation: likes", () => {
-  it("double tap on a photo likes it with the heart and stays on it, with no counter", async () => {
+  it("a photo story shows an outline heart, with no counter and no burst", async () => {
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await screen.findByText("el viento no perdona");
+
+    const heart = screen.getByRole("button", { name: "Me gusta" });
+    expect(within(heart).getByTestId("story-heart").props.name).toBe("heart");
+    expect(within(heart).queryByText(/\d/)).toBeNull();
+    expect(screen.queryByTestId("heart-burst")).toBeNull();
+  });
+
+  it("double tap on a photo likes it, fills the heart and stays on it", async () => {
     await renderRouter(routes, { initialUrl: "/presentation" });
     await tap();
     await screen.findByText("el viento no perdona");
@@ -177,9 +188,23 @@ describe("Presentation: likes", () => {
     await press();
 
     await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("a"));
-    expect(screen.getByTestId("heart-burst")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Me gusta" })).toBeNull();
+    const heart = await screen.findByRole("button", { name: "Ya no me gusta" });
+    expect(within(heart).getByTestId("story-heart").props.name).toBe("heart.fill");
+    expect(screen.queryByTestId("heart-burst")).toBeNull();
     await act(async () => jest.advanceTimersByTime(300));
+    expect(screen.getByText("el viento no perdona")).toBeVisible();
+  });
+
+  it("tapping the heart likes the photo and tapping it again takes the like away, without moving", async () => {
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await screen.findByText("el viento no perdona");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Me gusta" }));
+    await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("a"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Ya no me gusta" }));
+    await waitFor(() => expect(likes.unlikeMedia).toHaveBeenCalledWith("a"));
+    expect(await screen.findByRole("button", { name: "Me gusta" })).toBeTruthy();
     expect(screen.getByText("el viento no perdona")).toBeVisible();
   });
 
@@ -225,12 +250,12 @@ describe("Presentation: likes", () => {
     await renderRouter(routes, { initialUrl: "/presentation" });
     await tap();
     await screen.findByText("un video");
+    expect(screen.queryByRole("button", { name: "Me gusta" })).toBeNull();
 
     await press();
     await press();
 
     expect(likes.likeMedia).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("heart-burst")).toBeNull();
     // Two immediate moves: past the video and the next photo, to day 2.
     await screen.findByText("Día 2");
   });

@@ -71,6 +71,18 @@ describe("Featured viewer", () => {
     expect(showcase().getByRole("button", { name: "Foto destacada" })).toBeVisible();
   });
 
+  it("shows icon-only actions, with Más opciones at the top, out of the bottom panel", async () => {
+    await openFromProfile("Foto de Cami");
+
+    const info = within(viewer().getByTestId("featured-info"));
+    expect(info.getByRole("button", { name: "Me gusta" })).toBeVisible();
+    expect(info.getByRole("button", { name: "Sacar de tu perfil" })).toBeVisible();
+    expect(viewer().queryByText("Sacar de tu perfil")).toBeNull();
+    expect(viewer().getByLabelText("Más opciones")).toBeTruthy();
+    expect(info.queryByLabelText("Más opciones")).toBeNull();
+    expect(info.queryByRole("menuitem")).toBeNull();
+  });
+
   it("if removing fails it says so and keeps the photo", async () => {
     featured.unfeatureMedia.mockRejectedValue(new Error("No hay conexión"));
     await openFromProfile("Foto de Cami");
@@ -154,29 +166,28 @@ describe("Featured viewer: likes", () => {
 
     await fireEvent.press(await heart());
 
-    await waitFor(() => expect(within(viewer().getByRole("button", { name: "Me gusta" })).getByText("5")).toBeVisible());
-    expect(viewer().getByRole("button", { name: "Me gusta" }).props.accessibilityState).toMatchObject({ selected: true });
+    await waitFor(() => expect(within(viewer().getByRole("button", { name: "Ya no me gusta" })).getByText("5")).toBeVisible());
     expect(likes.likeMedia).toHaveBeenCalledWith("p1");
   });
 
   it("puts it back and says why when it fails", async () => {
     likes.unlikeMedia.mockRejectedValue(new Error("No hay conexión"));
     await openSomeones([featuredPhoto("p1", { likeCount: 1, likedByMe: true }, "u2")], "p1");
-    await fireEvent.press(await heart());
+    await fireEvent.press(await viewer().findByRole("button", { name: "Ya no me gusta" }));
     expect(await viewer().findByText("No hay conexión")).toBeVisible();
-    expect(within(viewer().getByRole("button", { name: "Me gusta" })).getByText("1")).toBeVisible();
+    expect(within(viewer().getByRole("button", { name: "Ya no me gusta" })).getByText("1")).toBeVisible();
   });
 
-  it("double tap on the photo likes it with the heart", async () => {
+  it("double tap on the photo likes it, with no heart animation", async () => {
     await openSomeones([featuredPhoto("p1", {}, "u2")], "p1");
     await heart();
     await fireEvent.press(viewer().getByLabelText("Foto destacada"));
     await fireEvent.press(viewer().getByLabelText("Foto destacada"));
 
     await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("p1"));
-    expect(screen.getByTestId("heart-burst")).toBeTruthy();
+    expect(screen.queryByTestId("heart-burst")).toBeNull();
     await act(async () => jest.advanceTimersByTime(300));
-    expect(viewer().getByRole("button", { name: "Me gusta" })).toBeVisible();
+    expect(viewer().getByRole("button", { name: "Ya no me gusta" })).toBeVisible();
   });
 
   it("your own profile's photos have the heart too", async () => {
