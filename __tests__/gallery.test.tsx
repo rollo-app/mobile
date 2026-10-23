@@ -356,36 +356,36 @@ describe("Gallery: featuring from the grid", () => {
     await open();
     await screen.findByText("Martes 12 de enero");
     // One menu per photo; videos can't be featured.
-    expect(screen.getAllByRole("menuitem", { name: "Destacar en tu perfil" })).toHaveLength(2);
-    await fireEvent.press(screen.getAllByRole("menuitem", { name: "Destacar en tu perfil" })[0]!);
+    expect(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })).toHaveLength(2);
+    await fireEvent.press(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })[0]!);
     await waitFor(() => expect(featured.featureMedia).toHaveBeenCalledWith("a"));
     await fireEvent.press(await screen.findByRole("menuitem", { name: "Sacar de tu perfil" }));
     await waitFor(() => expect(featured.unfeatureMedia).toHaveBeenCalledWith("a"));
-    await waitFor(() => expect(screen.getAllByRole("menuitem", { name: "Destacar en tu perfil" })).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })).toHaveLength(2));
   });
 
   it("a photo already featured offers Sacar de tu perfil", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([item("a", { featuredByMe: true })]));
     await open();
     expect(await screen.findByRole("menuitem", { name: "Sacar de tu perfil" })).toBeTruthy();
-    expect(screen.queryByRole("menuitem", { name: "Destacar en tu perfil" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Agregar a tu perfil" })).toBeNull();
   });
 
   it("shows the server's error when featuring fails", async () => {
     featured.featureMedia.mockRejectedValue(new Error("Podés destacar hasta 60 fotos"));
     mocked.fetchFeed.mockResolvedValue(feed([item("a")]));
     await open();
-    await fireEvent.press(await screen.findByRole("menuitem", { name: "Destacar en tu perfil" }));
+    await fireEvent.press(await screen.findByRole("menuitem", { name: "Agregar a tu perfil" }));
     expect(await screen.findByText("Podés destacar hasta 60 fotos")).toBeVisible();
-    expect(screen.getByRole("menuitem", { name: "Destacar en tu perfil" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Agregar a tu perfil" })).toBeTruthy();
   });
 
   it("there is no feature menu while selecting", async () => {
     mocked.fetchFeed.mockResolvedValue(two());
     await open();
-    await screen.findAllByRole("menuitem", { name: "Destacar en tu perfil" });
+    await screen.findAllByRole("menuitem", { name: "Agregar a tu perfil" });
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
-    expect(screen.queryByRole("menuitem", { name: "Destacar en tu perfil" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Agregar a tu perfil" })).toBeNull();
   });
 });
 
@@ -406,10 +406,10 @@ describe("Photo viewer", () => {
     await openViewer("b");
     const info = within(await screen.findByTestId("viewer-info"));
     expect(info.getByRole("button", { name: "Me gusta" })).toBeVisible();
-    expect(info.getByRole("button", { name: "Destacar" })).toBeVisible();
+    expect(info.getByRole("button", { name: "Agregar a tu perfil" })).toBeVisible();
     expect(info.getByRole("button", { name: "Ver en el mapa" })).toBeVisible();
     expect(info.getByRole("button", { name: "Guardar en Fotos" })).toBeVisible();
-    for (const text of ["Guardar en Fotos", "Ver en el mapa", "Destacar", "Me gusta"]) expect(screen.queryByText(text)).toBeNull();
+    for (const text of ["Guardar en Fotos", "Ver en el mapa", "Agregar a tu perfil", "Me gusta"]) expect(screen.queryByText(text)).toBeNull();
   });
 
   it("puts Más opciones at the top, out of the bottom panel", async () => {
@@ -478,37 +478,39 @@ describe("Photo viewer", () => {
     expect(await screen.findByRole("button", { name: "Abrir Ajustes" })).toBeVisible();
   });
 
-  it("Destacar features the photo and turns into Sacar de tu perfil; again takes it off", async () => {
+  it("Agregar a tu perfil features the photo and turns into Sacar de tu perfil; again takes it off", async () => {
     await openViewer("b");
-    await fireEvent.press(await screen.findByRole("button", { name: "Destacar" }));
+    expect(await screen.findByTestId("feature-symbol")).toHaveProp("name", "person.crop.circle.badge.plus");
+    await fireEvent.press(await screen.findByRole("button", { name: "Agregar a tu perfil" }));
     expect(await screen.findByRole("button", { name: "Sacar de tu perfil" })).toBeVisible();
+    expect(screen.getByTestId("feature-symbol")).toHaveProp("name", "person.crop.circle.badge.checkmark");
     expect(featured.featureMedia).toHaveBeenCalledWith("b");
     await fireEvent.press(screen.getByRole("button", { name: "Sacar de tu perfil" }));
-    expect(await screen.findByRole("button", { name: "Destacar" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Agregar a tu perfil" })).toBeVisible();
     expect(featured.unfeatureMedia).toHaveBeenCalledWith("b");
   });
 
-  it("pressing Destacar twice while the request is in flight sends it once", async () => {
+  it("pressing Agregar a tu perfil twice while the request is in flight sends it once", async () => {
     featured.featureMedia.mockReturnValue(new Promise(() => {}));
     await openViewer("b");
-    await fireEvent.press(await screen.findByRole("button", { name: "Destacar" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Agregar a tu perfil" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar de tu perfil" }));
     expect(featured.featureMedia).toHaveBeenCalledTimes(1);
     expect(featured.unfeatureMedia).not.toHaveBeenCalled();
   });
 
-  it("shows the server's error inline and goes back to Destacar", async () => {
+  it("shows the server's error inline and goes back to Agregar a tu perfil", async () => {
     featured.featureMedia.mockRejectedValue(new Error("Quien sacó esta foto no quiere que se destaque"));
     await openViewer("b");
-    await fireEvent.press(await screen.findByRole("button", { name: "Destacar" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Agregar a tu perfil" }));
     expect(await screen.findByText("Quien sacó esta foto no quiere que se destaque")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Destacar" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Agregar a tu perfil" })).toBeVisible();
   });
 
   it("videos can't be featured", async () => {
     await openViewer("c");
     await screen.findByRole("button", { name: "Guardar en Fotos" });
-    expect(screen.queryByRole("button", { name: "Destacar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Agregar a tu perfil" })).toBeNull();
   });
 
   it("reports someone else's photo and moves on to the next one", async () => {
@@ -548,7 +550,7 @@ describe("Photo viewer", () => {
 
   it("someone else's photo has no feature-block option", async () => {
     await openViewer("a");
-    await screen.findByRole("button", { name: "Destacar" });
+    await screen.findByRole("button", { name: "Agregar a tu perfil" });
     expect(screen.queryByRole("menuitem", { name: "No dejar que la destaquen" })).toBeNull();
   });
 
