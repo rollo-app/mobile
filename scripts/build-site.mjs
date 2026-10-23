@@ -8,6 +8,12 @@ import { marked } from "marked";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
 
+const SITE_URL = "https://rollo.juanifraga.com";
+/** @type {"beta" | "appstore"} */
+const STORE_MODE = process.env.SITE_STORE_MODE ?? "beta";
+const TESTFLIGHT_URL = "https://testflight.apple.com/join/Q557gZkR";
+const APP_STORE_URL = null; // filled in when the app is approved
+
 const logo = (size) => `<svg class="logo" width="${size}" height="${size}" viewBox="14 14 76 76" aria-hidden="true">
 <circle cx="60" cy="60" r="34" fill="currentColor" fill-opacity="0.18"/>
 <circle cx="66" cy="54" r="24" fill="currentColor" fill-opacity="0.38"/>
@@ -50,7 +56,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:15px}
 `;
 
 const footer = `<footer><p>&copy; 2026 Juan Ignacio Fraga &middot; Uruguay</p>
-<p><a href="/privacidad">Privacidad</a> &middot; <a href="/terminos">T&eacute;rminos</a></p></footer>`;
+<p><a href="/privacidad">Privacidad</a> &middot; <a href="/terminos">T&eacute;rminos</a> &middot; <a href="/soporte">Soporte</a></p></footer>`;
 
 const page = ({ title, description, body, header = true, head = "" }) => `<!doctype html>
 <html lang="es">
@@ -98,7 +104,15 @@ const home = `<div class="brand">${logo(56)}<h1>Rollo</h1></div>
 <li>En el revelado aparecen todas juntas, con mapa y presentaci&oacute;n.</li>
 </ol>
 
-<h2 id="soporte">Soporte</h2>
+<p><a id="soporte" href="/soporte">Soporte</a></p>`;
+
+write("index.html", page({
+  title: "Rollo",
+  description: "Rollo: fotos y videos en grupo que nadie ve hasta el revelado. App para iPhone.",
+  body: home,
+  header: false,
+}));
+const soporte = `<h2>Soporte</h2>
 <p>Escribinos a <a href="mailto:soporte@juanifraga.com">soporte@juanifraga.com</a> y te respondemos.</p>
 <div class="faq">
 <h3>&iquest;C&oacute;mo me sumo a un rollo?</h3>
@@ -111,11 +125,10 @@ const home = `<div class="brand">${logo(56)}<h1>Rollo</h1></div>
 <p>Por ahora Rollo es solo para iPhone.</p>
 </div>`;
 
-write("index.html", page({
-  title: "Rollo",
-  description: "Rollo: fotos y videos en grupo que nadie ve hasta el revelado. App para iPhone.",
-  body: home,
-  header: false,
+write("soporte/index.html", page({
+  title: "Soporte · Rollo",
+  description: "Soporte de Rollo: preguntas frecuentes y contacto.",
+  body: soporte,
 }));
 write("privacidad/index.html", page({
   title: "Política de privacidad · Rollo",
