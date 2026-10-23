@@ -1,6 +1,6 @@
 # Términos de uso de Rollo
 
-Última actualización: 22 de octubre de 2026
+Última actualización: 23 de octubre de 2026
 
 Al crear una cuenta o usar Rollo aceptás estos términos. Si no estás de acuerdo, no uses la app.
 
@@ -14,7 +14,7 @@ Rollo es una app para sacar fotos y videos en grupo. Cada grupo es un "rollo". L
 - Tenés que tener al menos 13 años (y si sos menor de 18, el permiso de tu madre, padre o tutor).
 - La información que ponés tiene que ser verdadera y no podés hacerte pasar por otra persona. Elegí un nombre y @usuario que no sean ofensivos ni engañosos.
 - Cuidá tu celular y tu email: lo que pase con tu sesión es tu responsabilidad.
-- Podés cerrar sesión o **borrar tu cuenta** cuando quieras desde Perfil → Borrar cuenta. Al hacerlo se borran tus fotos y videos (ver la Política de privacidad).
+- Podés cerrar sesión o **borrar tu cuenta** cuando quieras desde Perfil → Ajustes → Borrar cuenta. Al hacerlo se borran tus fotos y videos (ver la Política de privacidad).
 
 ## 3. Lo que subís es tu responsabilidad
 
