@@ -24,7 +24,9 @@ import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
 import NotFound from "../../app/+not-found";
+import NotificationsRoute from "../../app/notifications";
 import OfflineMapsScreen from "../../app/offline-maps";
+import PushPrimerRoute from "../../app/push-primer";
 import PresentationScreen from "../../app/presentation";
 import RevealRoute from "../../app/reveal";
 import RollStartedScreen from "../../app/roll-started";
@@ -45,11 +47,13 @@ export const routes = {
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
   settings: SettingsScreen,
+  notifications: NotificationsRoute,
   blocked: BlockedScreen,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
+  "push-primer": PushPrimerRoute,
   presentation: PresentationScreen,
   reveal: RevealRoute,
   "roll-started": RollStartedScreen,

@@ -22,6 +22,8 @@ const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto =>
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,
+  likeCount: 0,
+  likedByMe: false,
   ...over,
 });
 

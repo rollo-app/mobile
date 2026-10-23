@@ -13,6 +13,10 @@ import { useMe } from "@/features/auth/use-me";
 import { blockFeature, unblockFeature } from "@/features/featured/actions";
 import { useReport } from "@/features/moderation/use-report";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
+import { HeartBurst } from "@/features/likes/heart-burst";
+import { LikeButton } from "@/features/likes/like-button";
+import { useDoubleTap } from "@/features/likes/use-double-tap";
+import { useToggleLike } from "@/features/likes/use-toggle-like";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatPinTime } from "@/features/map/pin-time";
@@ -42,6 +46,7 @@ function Page({
   width,
   height,
   onTap,
+  onDoubleTap,
 }: {
   photo: RevealedPhoto;
   token: string;
@@ -49,7 +54,14 @@ function Page({
   width: number;
   height: number;
   onTap: () => void;
+  /** Photos only: a double tap likes it (the heart pops here). */
+  onDoubleTap: (photo: RevealedPhoto) => void;
 }) {
+  const [burst, setBurst] = useState(0);
+  const taps = useDoubleTap(onTap, () => {
+    setBurst((b) => b + 1);
+    onDoubleTap(photo);
+  });
   if (photo.type === "video") {
     return (
       <View style={{ width, height }}>
@@ -67,7 +79,7 @@ function Page({
       showsHorizontalScrollIndicator={false}
       showsVerticalScrollIndicator={false}
     >
-      <Pressable accessibilityLabel={`Foto de ${photo.author.name}`} onPress={onTap} style={{ width, height }}>
+      <Pressable accessibilityLabel={`Foto de ${photo.author.name}`} onPress={() => taps.tap()} style={{ width, height }}>
         <Image
           source={mediaSource(photo.originalPath, token)}
           placeholder={mediaSource(photo.thumbPath, token)}
@@ -75,12 +87,13 @@ function Page({
           contentFit="contain"
           style={{ width, height }}
         />
+        <HeartBurst burst={burst} />
       </Pressable>
     </ScrollView>
   );
 }
 
-/** Full-screen pager over the roll's photos, starting at `id`. Tap hides or shows the overlay. */
+/** Full-screen pager over the roll's photos, starting at `id`. Tap hides or shows the overlay; double tap likes a photo. */
 export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -94,6 +107,7 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
   const openProfile = useOpenProfile();
   const queryClient = useQueryClient();
   const featured = useToggleFeatured();
+  const likes = useToggleLike();
   // Which photo the last feature/block attempt was for, so its error shows only on that page.
   const [featureTarget, setFeatureTarget] = useState<string | null>(null);
   const [blocking, setBlocking] = useState(false);
@@ -153,6 +167,8 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
   const state = (photo && saves[photo.id]) || "idle";
   const featuring = !!photo && featured.pending.has(photo.id);
   const featureError = photo && featureTarget === photo.id ? (blockError ?? featured.error) : null;
+  const liking = !!photo && likes.pending.has(photo.id);
+  const likeError = photo && likes.error?.mediaId === photo.id ? likes.error.message : null;
   const timeZone = detail?.trip.timezone ?? "America/Argentina/Buenos_Aires";
 
   return (
@@ -172,7 +188,15 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
           initialNumToRender={1}
           onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
           renderItem={({ item, index: i }) => (
-            <Page photo={item} token={token} active={i === current} width={width} height={height} onTap={toggle} />
+            <Page
+              photo={item}
+              token={token}
+              active={i === current}
+              width={width}
+              height={height}
+              onTap={toggle}
+              onDoubleTap={(target) => void likes.like(target)}
+            />
           )}
         />
       ) : (
@@ -206,6 +230,9 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
               </View>
               {photo.caption ? <Text style={[type.quote, styles.white]}>{photo.caption}</Text> : null}
               <View style={styles.actions}>
+                {photo.type === "photo" && (
+                  <LikeButton liked={photo.likedByMe} count={photo.likeCount} busy={liking} onPress={() => void likes.toggle(photo)} />
+                )}
                 {photo.lat !== null && photo.lng !== null && (
                   <Pressable
                     accessibilityRole="button"
@@ -278,6 +305,7 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
                   </MenuView>
                 )}
               </View>
+              {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
               {featureError && <Text style={[type.footnote, styles.dim]}>{featureError}</Text>}
               {state === "failed" && <Text style={[type.footnote, styles.dim]}>No se pudo guardar. Probá de nuevo.</Text>}
               {state === "denied" && <PermissionNotice />}

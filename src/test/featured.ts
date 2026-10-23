@@ -17,5 +17,7 @@ export const featuredPhoto = (mediaId: string, over: Partial<FeaturedPhoto> = {}
   zone: BARILOCHE,
   thumbPath: `/featured/${owner}/${mediaId}/thumb`,
   originalPath: `/featured/${owner}/${mediaId}/original`,
+  likeCount: 0,
+  likedByMe: false,
   ...over,
 });

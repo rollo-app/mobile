@@ -1,5 +1,6 @@
 import { ActionSheetIOS } from "react-native";
-import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import * as likeActions from "@/features/likes/actions";
 import * as featuredActions from "@/features/featured/actions";
 import * as moderationActions from "@/features/moderation/actions";
 import * as friendActions from "@/features/friends/actions";
@@ -11,9 +12,11 @@ import { routes } from "@/test/routes";
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/friends/actions");
 jest.mock("@/features/featured/actions");
+jest.mock("@/features/likes/actions");
 jest.mock("@/features/moderation/actions");
 const moderation = jest.mocked(moderationActions);
 const featured = jest.mocked(featuredActions);
+const likes = jest.mocked(likeActions);
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 
@@ -24,6 +27,8 @@ beforeEach(async () => {
   jest.mocked(actions).fetchFeed.mockReturnValue(new Promise(() => {}));
   featured.fetchFeatured.mockReset().mockResolvedValue([featuredPhoto("p1"), featuredPhoto("p2", { author: CAMI })]);
   featured.unfeatureMedia.mockReset().mockResolvedValue(undefined);
+  likes.likeMedia.mockReset().mockResolvedValue(undefined);
+  likes.unlikeMedia.mockReset().mockResolvedValue(undefined);
 });
 
 const showcase = () => within(screen.getByTestId("profile-showcase"));
@@ -131,5 +136,51 @@ describe("Featured viewer", () => {
 
       expect(viewer().queryByRole("menuitem", { name: "Denunciar" })).toBeNull();
     });
+  });
+});
+
+describe("Featured viewer: likes", () => {
+  const openSomeones = async (photos: ReturnType<typeof featuredPhoto>[], mediaId: string) => {
+    jest.mocked(friendActions).fetchFriend.mockResolvedValue({ friend: { ...CAMI, bio: null }, commonTrips: [] });
+    featured.fetchFeatured.mockImplementation(async (userId) => (userId === "u2" ? photos : []));
+    await renderRouter(routes, { initialUrl: `/featured/u2/${mediaId}` });
+    await screen.findByTestId("featured-viewer");
+  };
+  const heart = () => viewer().findByRole("button", { name: "Me gusta" });
+
+  it("shows the heart with the count on someone else's photo, and liking adds yours", async () => {
+    await openSomeones([featuredPhoto("p1", { likeCount: 4 }, "u2")], "p1");
+    expect(within(await heart()).getByText("4")).toBeVisible();
+
+    await fireEvent.press(await heart());
+
+    await waitFor(() => expect(within(viewer().getByRole("button", { name: "Me gusta" })).getByText("5")).toBeVisible());
+    expect(viewer().getByRole("button", { name: "Me gusta" }).props.accessibilityState).toMatchObject({ selected: true });
+    expect(likes.likeMedia).toHaveBeenCalledWith("p1");
+  });
+
+  it("puts it back and says why when it fails", async () => {
+    likes.unlikeMedia.mockRejectedValue(new Error("No hay conexión"));
+    await openSomeones([featuredPhoto("p1", { likeCount: 1, likedByMe: true }, "u2")], "p1");
+    await fireEvent.press(await heart());
+    expect(await viewer().findByText("No hay conexión")).toBeVisible();
+    expect(within(viewer().getByRole("button", { name: "Me gusta" })).getByText("1")).toBeVisible();
+  });
+
+  it("double tap on the photo likes it with the heart", async () => {
+    await openSomeones([featuredPhoto("p1", {}, "u2")], "p1");
+    await heart();
+    await fireEvent.press(viewer().getByLabelText("Foto destacada"));
+    await fireEvent.press(viewer().getByLabelText("Foto destacada"));
+
+    await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("p1"));
+    expect(screen.getByTestId("heart-burst")).toBeTruthy();
+    await act(async () => jest.advanceTimersByTime(300));
+    expect(viewer().getByRole("button", { name: "Me gusta" })).toBeVisible();
+  });
+
+  it("your own profile's photos have the heart too", async () => {
+    await openFromProfile("Foto destacada");
+    expect(await heart()).toBeVisible();
   });
 });

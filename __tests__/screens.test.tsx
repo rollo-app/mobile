@@ -8,6 +8,7 @@ import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
 import { getActiveTripId } from "@/storage/active-trip";
+import { markPushPrimerSeen } from "@/storage/push-primer";
 import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
@@ -362,7 +363,11 @@ describe("Trip picker", () => {
 });
 
 describe("Join", () => {
-  beforeEach(() => signInAs({ trips: [] }));
+  // The one-time notifications primer has its own tests (notifications.test.tsx).
+  beforeEach(async () => {
+    await signInAs({ trips: [] });
+    await markPushPrimerSeen();
+  });
 
   it("the button stays disabled until there is a 6-character code", async () => {
     await renderRouter(routes, { initialUrl: "/join" });
@@ -420,6 +425,7 @@ describe("Join roll header", () => {
 describe("Create roll", () => {
   beforeEach(async () => {
     await signInAs({ trips: [] });
+    await markPushPrimerSeen();
     friends.fetchFriends.mockResolvedValue([]);
   });
 
