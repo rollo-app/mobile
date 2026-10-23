@@ -25,6 +25,7 @@ const PEOPLE = {
   juani: { initial: "J", color: "#007AFF" },
   tomi: { initial: "T", color: "#00A39C" },
   fede: { initial: "F", color: "#A2845E" },
+  juan: { initial: "J", color: "#FF9500" },
 };
 
 const photo = (i, extra = "") => {
@@ -146,7 +147,7 @@ const profile = () => {
   return phone(
     "profile",
     `<div class="bar"><span></span>${svg(ICONS.gear, "muted")}</div>
-<div class="head">${avatar("cami", "me")}<div><h4>Cami Ferreira</h4><p class="handle">@cami</p></div></div>
+<div class="head">${avatar("juan", "me")}<div><h4>Juan Pérez</h4><p class="handle">@juanperez</p></div></div>
 <p class="bio serif">Viajes al sur y fotos de ruta.</p>
 <p class="friends">48 amigos</p>
 ${segmented("Fotos", "Mapa")}
