@@ -1,9 +1,10 @@
-// Builds the static public site (home/support + legal pages) into site/dist.
+// Builds the static public site (home, support and legal pages) into site/dist.
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
+import { homeCss, homeHtml } from "./site/home.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
@@ -13,6 +14,15 @@ const SITE_URL = "https://rollo.juanifraga.com";
 const STORE_MODE = process.env.SITE_STORE_MODE ?? "beta";
 const TESTFLIGHT_URL = "https://testflight.apple.com/join/Q557gZkR";
 const APP_STORE_URL = null; // filled in when the app is approved
+const APP_STORE_BADGE = join(root, "scripts", "site", "app-store-badge.svg");
+
+if (STORE_MODE !== "beta" && STORE_MODE !== "appstore") throw new Error(`Unknown SITE_STORE_MODE: ${STORE_MODE}`);
+if (STORE_MODE === "appstore") {
+  if (!existsSync(APP_STORE_BADGE)) {
+    throw new Error("Missing scripts/site/app-store-badge.svg (official Apple badge) for STORE_MODE=appstore");
+  }
+  if (!APP_STORE_URL) throw new Error("Missing APP_STORE_URL for STORE_MODE=appstore");
+}
 
 const logo = (size) => `<svg class="logo" width="${size}" height="${size}" viewBox="14 14 76 76" aria-hidden="true">
 <circle cx="60" cy="60" r="34" fill="currentColor" fill-opacity="0.18"/>
@@ -58,7 +68,7 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:15px}
 const footer = `<footer><p>&copy; 2026 Juan Ignacio Fraga &middot; Uruguay</p>
 <p><a href="/privacidad">Privacidad</a> &middot; <a href="/terminos">T&eacute;rminos</a> &middot; <a href="/soporte">Soporte</a></p></footer>`;
 
-const page = ({ title, description, body, header = true, head = "" }) => `<!doctype html>
+const page = ({ title, description, body, header = true, head = "", css: styles = css, wide = false }) => `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -67,10 +77,10 @@ const page = ({ title, description, body, header = true, head = "" }) => `<!doct
 <meta name="description" content="${description}">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<style>${css}</style>
+<style>${styles}</style>
 ${head}</head>
 <body>
-<div class="wrap">
+<div class="wrap${wide ? " wide" : ""}">
 ${header ? `<header class="top"><a href="/">${logo(28)}<span>Rollo</span></a></header>` : ""}
 <main>
 ${body}
@@ -93,25 +103,21 @@ const legal = (name) =>
     .replaceAll('href="privacidad.md"', 'href="/privacidad"')
     .replaceAll('href="terminos.md"', 'href="/terminos"');
 
-const home = `<div class="brand">${logo(56)}<h1>Rollo</h1></div>
-<p class="tagline">Fotos en grupo que nadie ve hasta el revelado.</p>
-<p>Una app para iPhone para sacar fotos y videos con tus amigos, como un rollo de fotos de los de antes.</p>
-
-<h2>C&oacute;mo funciona</h2>
-<ol>
-<li>Abr&iacute;s un rollo y sum&aacute;s a tus amigos con un c&oacute;digo.</li>
-<li>Cada uno saca fotos y videos, y nadie los ve, ni los propios.</li>
-<li>En el revelado aparecen todas juntas, con mapa y presentaci&oacute;n.</li>
-</ol>
-
-<p><a id="soporte" href="/soporte">Soporte</a></p>`;
-
+const home = homeHtml({
+  storeMode: STORE_MODE,
+  testflightUrl: TESTFLIGHT_URL,
+  appStoreUrl: APP_STORE_URL,
+  siteUrl: SITE_URL,
+});
 write("index.html", page({
-  title: "Rollo",
+  title: "Rollo · Fotos en grupo para iPhone",
   description: "Rollo: fotos y videos en grupo que nadie ve hasta el revelado. App para iPhone.",
-  body: home,
-  header: false,
+  body: home.body,
+  head: home.head,
+  css: homeCss,
+  wide: true,
 }));
+if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
 const soporte = `<h2>Soporte</h2>
 <p>Escribinos a <a href="mailto:soporte@juanifraga.com">soporte@juanifraga.com</a> y te respondemos.</p>
 <div class="faq">

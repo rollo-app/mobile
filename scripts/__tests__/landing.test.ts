@@ -37,3 +37,123 @@ describe("the /soporte page", () => {
     expect(read("index.html")).toMatch(/id="soporte"[^>]*href="\/soporte"|href="\/soporte"[^>]*id="soporte"/);
   });
 });
+
+const TESTFLIGHT = "https://testflight.apple.com/join/Q557gZkR";
+const SITE = "https://rollo.juanifraga.com";
+const visibleText = (html: string) =>
+  html
+    .replace(/<head>[\s\S]*?<\/head>/, "")
+    .replace(/<(script|style)[\s\S]*?<\/\1>/g, "")
+    .replace(/<[^>]+>/g, " ");
+
+describe("the home", () => {
+  let html: string;
+  beforeAll(() => {
+    html = read("index.html");
+  });
+  const section = (id: string) => html.match(new RegExp(`<section[^>]*id="${id}"[\\s\\S]*?</section>`))?.[0] ?? "";
+
+  it("has the 7 sections in the order a rollo is lived", () => {
+    const ids = ["inicio", "como-funciona", "mapa", "revelado", "perfil", "privado", "cierre"];
+    const positions = ids.map((id) => html.indexOf(`id="${id}"`));
+    for (const p of positions) expect(p).toBeGreaterThan(-1);
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  });
+
+  it("marks every section but the first one for the entrance animation", () => {
+    expect(html).not.toMatch(/<section[^>]*id="inicio"[^>]*data-enter/);
+    for (const id of ["como-funciona", "mapa", "revelado", "perfil", "privado", "cierre"]) {
+      expect(html).toMatch(new RegExp(`<section[^>]*id="${id}"[^>]*data-enter|<section[^>]*data-enter[^>]*id="${id}"`));
+    }
+  });
+
+  it("has the TestFlight button in the hero and in the closing, with the iPhone-only line", () => {
+    const links = [...html.matchAll(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g)].filter((m) => m[1] === TESTFLIGHT);
+    expect(links).toHaveLength(2);
+    for (const link of links) expect(link[2]).toContain("Probar la beta en iPhone");
+    for (const id of ["inicio", "cierre"]) {
+      expect(section(id)).toContain(TESTFLIGHT);
+      expect(section(id)).toContain("Solo para iPhone · Gratis");
+    }
+  });
+
+  it("has a serif headline in the hero and is in Spanish", () => {
+    expect(section("inicio")).toMatch(/<h1[^>]*class="[^"]*\bserif\b/);
+    expect(html).toContain('<html lang="es">');
+  });
+
+  it("has a mockup slot with a phone frame for each screen", () => {
+    for (const id of ["inicio", "como-funciona", "mapa", "revelado", "perfil"]) {
+      expect(section(id)).toMatch(new RegExp(`<div class="shot" data-shot="${id}">\\s*<div class="phone"`));
+    }
+    expect(section("como-funciona").match(/data-shot="como-funciona"/g)).toHaveLength(3);
+  });
+
+  it("keeps the old /#soporte anchor landing on the support link", () => {
+    expect(section("cierre")).toMatch(/id="soporte"[^>]*href="\/soporte"|href="\/soporte"[^>]*id="soporte"/);
+  });
+
+  it("has Open Graph, canonical and theme-color for sharing the link", () => {
+    const head = html.match(/<head>([\s\S]*?)<\/head>/)?.[1] ?? "";
+    expect(head).toContain(`<meta property="og:image" content="${SITE}/og.png">`);
+    expect(head).toMatch(/<meta property="og:title" content="[^"]+">/);
+    expect(head).toMatch(/<meta property="og:description" content="[^"]+">/);
+    expect(head).toContain(`<link rel="canonical" href="${SITE}/">`);
+    expect(head).toContain('<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F0EB">');
+    expect(head).toContain('<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0F14">');
+  });
+
+  it("makes no requests to third parties and only links out to TestFlight", () => {
+    for (const [, url] of html.matchAll(/\bsrc="([^"]*)"/g)) expect(url).not.toMatch(/^(https?:)?\/\//);
+    for (const [, url] of html.matchAll(/<link\b[^>]*href="([^"]*)"/g)) {
+      if (/^(https?:)?\/\//.test(url!)) expect(url!.startsWith(`${SITE}/`)).toBe(true);
+    }
+    for (const [, url] of html.matchAll(/<a\b[^>]*href="(https?:[^"]*)"/g)) expect(url).toBe(TESTFLIGHT);
+  });
+});
+
+describe("the home in App Store mode", () => {
+  const homeModule = join(__dirname, "..", "site", "home.mjs");
+  const render = (storeMode: string) =>
+    JSON.parse(
+      execFileSync(process.execPath, [
+        "--input-type=module",
+        "-e",
+        `import { homeHtml } from ${JSON.stringify(homeModule)};
+         process.stdout.write(JSON.stringify(homeHtml({ storeMode: ${JSON.stringify(storeMode)}, testflightUrl: "${TESTFLIGHT}",
+           appStoreUrl: "https://apps.apple.com/app/id6825843502", siteUrl: "${SITE}" })));`,
+      ]).toString(),
+    ) as { head: string; body: string };
+
+  it("swaps the button for the official badge, keeps the iPhone-only line and never says beta", () => {
+    const { body } = render("appstore");
+    const badges = body.match(
+      /<a\b[^>]*href="https:\/\/apps\.apple\.com\/app\/id6825843502"[^>]*>\s*<img src="\/app-store-badge\.svg" alt="Descargar en el App Store" width="156" height="52">\s*<\/a>/g,
+    );
+    expect(badges).toHaveLength(2);
+    expect(body).not.toContain(TESTFLIGHT);
+    expect(body.match(/Solo para iPhone · Gratis/g)).toHaveLength(2);
+    expect(visibleText(body).toLowerCase()).not.toContain("beta");
+  });
+
+  it("fails the build when the official badge file is missing", () => {
+    const out = mkdtempSync(join(tmpdir(), "rollo-landing-appstore-"));
+    try {
+      let stderr = "";
+      expect(() => {
+        try {
+          execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], {
+            env: { ...process.env, SITE_DIST: out, SITE_STORE_MODE: "appstore" },
+            stdio: "pipe",
+          });
+        } catch (error) {
+          stderr = String((error as { stderr?: Buffer }).stderr);
+          throw error;
+        }
+      }).toThrow();
+      expect(stderr).toContain("app-store-badge.svg");
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  });
+});
