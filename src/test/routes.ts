@@ -24,6 +24,7 @@ import CropAvatarScreen from "../../app/crop-avatar";
 import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
+import LoginLinkRoute from "../../app/login";
 import NotFound from "../../app/+not-found";
 import NotificationsRoute from "../../app/notifications";
 import OfflineMapsScreen from "../../app/offline-maps";
@@ -53,6 +54,7 @@ export const routes = {
   blocked: BlockedScreen,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
+  login: LoginLinkRoute,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
   "push-primer": PushPrimerRoute,

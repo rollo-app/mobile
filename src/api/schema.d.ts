@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Request a login code by email
-         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts). A new request invalidates the previous codes. Rate limited per email and per IP. Works for new and existing users alike.
+         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts) and, only when `linkChallenge` is sent, a magic link for the same attempt (`<LOGIN_LINK_URL>#t=<token>&e=<email>`, see `/auth/email/verify-link`), bound to that challenge. Using either one consumes both. A new request invalidates the previous codes. Rate limited per email and per IP. Works for new and existing users alike.
          */
         post: {
             parameters: {
@@ -95,6 +95,58 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["EmailVerifyRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthSession"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/email/verify-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange the emailed magic-link token for a session token
+         * @description Same result as `/auth/email/verify`, with the token from the link's fragment instead of the code. Needs the `verifier` whose SHA-256 was sent as `linkChallenge` to `/auth/email/start`: the link only signs in the phone that asked for it. Shares the code's expiry, attempts and single use: a wrong or missing token or verifier uses up an attempt, and after the link or the code is used neither works again. Attempts started without a challenge have no link, so this always fails for them. Every failure answers the same 400. Only POST: the token is never accepted in a URL.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailVerifyLinkRequest"];
                 };
             };
             responses: {
@@ -2812,6 +2864,11 @@ export interface components {
              * @example juani@example.com
              */
             email: string;
+            /**
+             * @description base64url (no padding) of SHA-256 of a random verifier the app keeps on the phone (PKCE-style, 43 chars). Only with it does the email include a magic link, and the link only works with that verifier (`/auth/email/verify-link`). Without it (old app builds) the email carries only the code.
+             * @example E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
+             */
+            linkChallenge?: string;
         };
         AuthSession: {
             /** @description Session token (Bearer). Valid for 365 days; store it on the phone */
@@ -2857,6 +2914,23 @@ export interface components {
              * @example K7M2QX
              */
             code: string;
+        };
+        EmailVerifyLinkRequest: {
+            /**
+             * @description Trimmed and lowercased
+             * @example juani@example.com
+             */
+            email: string;
+            /**
+             * @description Token from the magic link in the email (the `t` parameter of its fragment)
+             * @example q3N0dGhpcy1pcy1ub3QtYS1yZWFsLXRva2VuLWp1c3QtYW4tZXhhbXBsZQ
+             */
+            token: string;
+            /**
+             * @description The verifier whose SHA-256 was sent as `linkChallenge` to `/auth/email/start` (43–128 chars of `A-Z a-z 0-9 - . _ ~`). Without the right one the link fails like a wrong token.
+             * @example dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+             */
+            verifier?: string;
         };
         UpdateProfileRequest: {
             /** @example Juani */

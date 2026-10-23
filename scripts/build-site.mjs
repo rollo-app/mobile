@@ -1,11 +1,12 @@
 // Builds the static public site (home/support + legal pages) into site/dist.
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const dist = join(root, "site", "dist");
+const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
 
 const logo = (size) => `<svg class="logo" width="${size}" height="${size}" viewBox="14 14 76 76" aria-hidden="true">
 <circle cx="60" cy="60" r="34" fill="currentColor" fill-opacity="0.18"/>
@@ -44,12 +45,14 @@ footer a{color:var(--muted)}
 table{border-collapse:collapse;display:block;overflow-x:auto;max-width:100%;margin:0 0 14px}
 th,td{border-bottom:1px solid var(--rule);padding:6px 10px 6px 0;text-align:left;vertical-align:top}
 code{font-family:ui-monospace,Menlo,monospace;font-size:15px}
+.btn{display:block;text-align:center;background:var(--tint);color:#fff;text-decoration:none;font-weight:600;font-size:19px;padding:16px 24px;border-radius:999px;margin:24px 0 16px}
+.muted{color:var(--muted)}
 `;
 
 const footer = `<footer><p>&copy; 2026 Juan Ignacio Fraga &middot; Uruguay</p>
 <p><a href="/privacidad">Privacidad</a> &middot; <a href="/terminos">T&eacute;rminos</a></p></footer>`;
 
-const page = ({ title, description, body, header = true }) => `<!doctype html>
+const page = ({ title, description, body, header = true, head = "" }) => `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -59,7 +62,7 @@ const page = ({ title, description, body, header = true }) => `<!doctype html>
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <style>${css}</style>
-</head>
+${head}</head>
 <body>
 <div class="wrap">
 ${header ? `<header class="top"><a href="/">${logo(28)}<span>Rollo</span></a></header>` : ""}
@@ -123,6 +126,46 @@ write("terminos/index.html", page({
   title: "Términos de uso · Rollo",
   description: "Términos de uso de Rollo.",
   body: legal("terminos"),
+}));
+// The login email's button: https://rollo.juanifraga.com/entrar#t=<token>&e=<email>. The fragment never reaches
+// any server; this page only hands it to the app (rollo://login) and wipes it from the address bar.
+const entrarScript = `(function () {
+  var params = new URLSearchParams(location.hash.slice(1));
+  var token = params.get("t");
+  var email = params.get("e");
+  history.replaceState(null, "", location.pathname + location.search);
+  if (!token || !email) {
+    document.getElementById("bad").hidden = false;
+    return;
+  }
+  var deepLink = "rollo://login?token=" + encodeURIComponent(token) + "&email=" + encodeURIComponent(email);
+  document.getElementById("open").href = deepLink;
+  document.getElementById("ok").hidden = false;
+  location.href = deepLink;
+})();`;
+
+const entrar = `<h1>Entrar a Rollo</h1>
+<div id="ok" hidden>
+<a id="open" class="btn" href="#">Abrir Rollo</a>
+<p class="muted">Si la app no se abri&oacute;, toc&aacute; el bot&oacute;n. Ten&eacute;s que abrirlo en el iPhone donde est&aacute; Rollo.</p>
+</div>
+<div id="bad" hidden>
+<p>Este link no es v&aacute;lido. Ped&iacute; un c&oacute;digo nuevo desde la app.</p>
+</div>
+<noscript><p>Este link no es v&aacute;lido. Ped&iacute; un c&oacute;digo nuevo desde la app.</p></noscript>
+<script>${entrarScript}</script>`;
+
+write("entrar/index.html", page({
+  title: "Entrar · Rollo",
+  description: "Entrá a Rollo con el link del mail.",
+  body: entrar,
+  head: [
+    // Only this page's own script runs and nothing can be fetched or sent: the token never leaves the phone.
+    `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${createHash("sha256").update(entrarScript).digest("base64")}'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">`,
+    `<meta name="referrer" content="no-referrer">`,
+    `<meta name="robots" content="noindex">`,
+    "",
+  ].join("\n"),
 }));
 write("404.html", page({
   title: "No encontrada · Rollo",

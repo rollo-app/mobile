@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { startEmailLogin } from "@/features/auth/actions";
 import { AuthScreen } from "@/features/auth/auth-screen";
@@ -7,7 +7,9 @@ import { TermsNotice } from "@/features/auth/terms-notice";
 import { Button, ErrorText, Field } from "@/ui/components";
 
 export default function EmailScreen() {
-  const [email, setEmail] = useState("");
+  // Prefilled when coming back from a dead magic link.
+  const params = useLocalSearchParams<{ email?: string | string[] }>();
+  const [email, setEmail] = useState(typeof params.email === "string" ? params.email : "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

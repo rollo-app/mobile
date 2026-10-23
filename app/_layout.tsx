@@ -65,6 +65,8 @@ function RootStack() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {/* A friend link works with or without a session: it routes to the right step itself. */}
       <Stack.Screen name="friends/[code]" options={{ headerShown: false }} />
+      {/* The login email's magic link: signs in without a session, never switches an existing one. */}
+      <Stack.Screen name="login" options={{ headerShown: false }} />
       {/* The profile photo crop: "Completá tu perfil" (login gate) and "Editar perfil" (app) both open it. */}
       <Stack.Screen
         name="crop-avatar"

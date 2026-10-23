@@ -1,5 +1,7 @@
+import { createHash } from "crypto";
+import { getLoginLinkVerifier, setLoginLinkVerifier } from "@/storage/login-link-verifier";
 import { getSessionToken, setSessionToken } from "@/storage/session";
-import { deleteAccount, fetchMe, logout, startEmailLogin, verifyCode } from "../actions";
+import { deleteAccount, fetchMe, LINK_FROM_OTHER_REQUEST, logout, startEmailLogin, verifyCode, verifyMagicLink } from "../actions";
 
 const user = { id: "u1", email: "juani@rollo.test", name: "Juani", avatarUrl: null };
 
@@ -17,7 +19,27 @@ describe("startEmailLogin", () => {
     await startEmailLogin("  Juani@Rollo.test ");
 
     expect(req(fetchMock).url).toMatch(/\/auth\/email\/start$/);
-    expect(await req(fetchMock).json()).toEqual({ email: "juani@rollo.test" });
+    expect(await req(fetchMock).json()).toEqual({ email: "juani@rollo.test", linkChallenge: expect.any(String) });
+  });
+
+  it("binds the email's link to this phone: sends the challenge and keeps its verifier", async () => {
+    const fetchMock = mockFetch(204);
+
+    await startEmailLogin(" Juani@Rollo.test ");
+
+    const stored = await getLoginLinkVerifier();
+    expect(stored).toEqual({ email: "juani@rollo.test", verifier: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) });
+    const { linkChallenge } = await req(fetchMock).json();
+    expect(linkChallenge).toBe(createHash("sha256").update(stored!.verifier).digest("base64url"));
+  });
+
+  it("a resend overwrites the verifier", async () => {
+    mockFetch(204);
+    await startEmailLogin("juani@rollo.test");
+    const first = await getLoginLinkVerifier();
+    await startEmailLogin("juani@rollo.test");
+
+    expect((await getLoginLinkVerifier())!.verifier).not.toBe(first!.verifier);
   });
 
   it("propagates the server's message", async () => {
@@ -122,5 +144,48 @@ describe("verifyCode seeds /me", () => {
     await verifyCode("juani@rollo.test", "123456");
 
     expect(queryClient.getQueryData(["me"])).toEqual(user);
+  });
+});
+
+describe("verifyMagicLink", () => {
+  const VERIFIER = "v".repeat(43);
+
+  it("posts the email, the link's token and this phone's verifier, saves the session, seeds /me and forgets the verifier", async () => {
+    const { queryClient } = require("@/api/query-client");
+    await setLoginLinkVerifier({ email: "juani@rollo.test", verifier: VERIFIER });
+    const fetchMock = mockFetch(200, { token: "tok", user, isNew: true });
+
+    const result = await verifyMagicLink(" Juani@Rollo.test ", "link-token");
+
+    expect(req(fetchMock).url).toMatch(/\/auth\/email\/verify-link$/);
+    expect(req(fetchMock).method).toBe("POST");
+    expect(await req(fetchMock).json()).toEqual({ email: "juani@rollo.test", token: "link-token", verifier: VERIFIER });
+    expect(await getSessionToken()).toBe("tok");
+    expect(queryClient.getQueryData(["me"])).toEqual(user);
+    expect(result).toEqual({ user, isNew: true });
+    expect(await getLoginLinkVerifier()).toBeNull();
+  });
+
+  it("with a dead link it saves nothing and propagates the server's message", async () => {
+    await setLoginLinkVerifier({ email: "a@b.c", verifier: VERIFIER });
+    mockFetch(400, { error: "El link venció o ya se usó. Pedí otro código." });
+    await expect(verifyMagicLink("a@b.c", "x")).rejects.toThrow("El link venció o ya se usó. Pedí otro código.");
+    expect(await getSessionToken()).toBeNull();
+  });
+
+  it("without a verifier from this phone it never asks the server", async () => {
+    const fetchMock = mockFetch(200, { token: "tok", user, isNew: false });
+    await expect(verifyMagicLink("a@b.c", "x")).rejects.toThrow(LINK_FROM_OTHER_REQUEST);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await getSessionToken()).toBeNull();
+  });
+
+  it("with a verifier for another email it never asks the server and keeps the verifier", async () => {
+    await setLoginLinkVerifier({ email: "juani@rollo.test", verifier: VERIFIER });
+    const fetchMock = mockFetch(200, { token: "tok", user, isNew: false });
+
+    await expect(verifyMagicLink("atacante@rollo.test", "x")).rejects.toThrow(LINK_FROM_OTHER_REQUEST);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await getLoginLinkVerifier()).toEqual({ email: "juani@rollo.test", verifier: VERIFIER });
   });
 });
