@@ -17,7 +17,7 @@ const SUR = "11111111-1111-4111-8111-111111111111";
 const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
 
 const profile = (blockedByMe: boolean): profileActions.UserProfile => ({
-  user: cami,
+  user: { ...cami, badge: null },
   isFriend: false,
   blockedByMe,
   reportedByMe: false,

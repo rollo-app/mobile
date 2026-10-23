@@ -2896,6 +2896,11 @@ export interface components {
              * @example Viajando por el sur
              */
             bio: string | null;
+            /**
+             * @description Profile badge assigned by hand (founder = Founder, first_edition = First Edition); null if none
+             * @enum {string|null}
+             */
+            badge: "founder" | "first_edition" | null;
             profileVisibility: components["schemas"]["ProfileVisibility"];
         };
         /**
@@ -3061,6 +3066,11 @@ export interface components {
              * @example Viajando por el sur
              */
             bio: string | null;
+            /**
+             * @description Profile badge assigned by hand (founder = Founder, first_edition = First Edition); null if none
+             * @enum {string|null}
+             */
+            badge: "founder" | "first_edition" | null;
         };
         UserFriends: {
             /**
