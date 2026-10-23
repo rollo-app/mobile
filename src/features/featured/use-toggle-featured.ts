@@ -39,7 +39,7 @@ export function useToggleFeatured() {
       try {
         await (next ? featureMedia : unfeatureMedia)(photo.id);
         if (me) void client.invalidateQueries({ queryKey: featuredKey(me.id) });
-        if (next) Burnt.alert({ title: "Agregada a tu perfil", preset: "done", duration: 2, haptic: "success" });
+        if (next) Burnt.alert({ title: "Agregada a tu perfil", preset: "done", duration: 2 });
       } catch (e) {
         setFeaturedInFeed(client, tripId, photo.id, photo.featuredByMe);
         setError(e instanceof Error ? e.message : "No se pudo cambiar la foto destacada");

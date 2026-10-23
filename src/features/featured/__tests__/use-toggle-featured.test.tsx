@@ -194,7 +194,7 @@ describe("useToggleFeatured", () => {
         await done;
       });
       expect(Burnt.alert).toHaveBeenCalledTimes(1);
-      expect(Burnt.alert).toHaveBeenCalledWith({ title: "Agregada a tu perfil", preset: "done", duration: 2, haptic: "success" });
+      expect(Burnt.alert).toHaveBeenCalledWith({ title: "Agregada a tu perfil", preset: "done", duration: 2 });
     });
 
     it("does not show the HUD when the server rejects", async () => {
