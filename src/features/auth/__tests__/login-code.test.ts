@@ -18,4 +18,24 @@ describe("normalizeLoginCode", () => {
   it("accepts digits 2-9", () => {
     expect(normalizeLoginCode("234567")).toBe("234567");
   });
+
+  describe("pasted or autofilled text", () => {
+    it("trims spaces and dashes around a lowercase code", () => {
+      expect(normalizeLoginCode(" k7m-4qx ")).toBe("K7M4QX");
+    });
+
+    it("picks the code out of a sentence", () => {
+      expect(normalizeLoginCode("Tu código de Rollo es K7M4QX")).toBe("K7M4QX");
+      expect(normalizeLoginCode("tu código de rollo es k7m4qx.")).toBe("K7M4QX");
+    });
+
+    it("keeps one code when it comes twice", () => {
+      expect(normalizeLoginCode("K7M4QXK7M4QX")).toBe("K7M4QX");
+      expect(normalizeLoginCode("K7M4QX K7M4QX")).toBe("K7M4QX");
+    });
+
+    it("prefers a standalone 6-character token over the first valid characters", () => {
+      expect(normalizeLoginCode("Rollo: 23ABCD")).toBe("23ABCD");
+    });
+  });
 });

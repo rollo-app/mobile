@@ -4,7 +4,7 @@ import { startEmailLogin, verifyCode } from "@/features/auth/actions";
 import { AuthScreen } from "@/features/auth/auth-screen";
 import { LOGIN_CODE_LENGTH, normalizeLoginCode } from "@/features/auth/login-code";
 import { resendSecondsLeft } from "@/features/auth/resend";
-import { Button, ErrorText, Field } from "@/ui/components";
+import { Button, ErrorText, Field, Footnote } from "@/ui/components";
 
 export default function CodeScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -66,11 +66,17 @@ export default function CodeScreen() {
         spellCheck={false}
         textContentType="oneTimeCode"
         autoComplete="one-time-code"
-        maxLength={LOGIN_CODE_LENGTH}
+        // No native maxLength: iOS AutoFill can drop an insertion that goes over it. normalizeLoginCode trims instead.
         autoFocus
         placeholder="K7M4QX"
       />
-      {error && <ErrorText>{error}</ErrorText>}
+      {error && (
+        <>
+          <ErrorText>{error}</ErrorText>
+          {/* iOS can delete the mail after autofilling the code ("Delete after use"). */}
+          <Footnote>Si el mail se borró, pedí otro código.</Footnote>
+        </>
+      )}
       <Button label="Entrar" onPress={() => void submit(code)} disabled={code.length !== LOGIN_CODE_LENGTH} loading={loading} />
       <Button
         label={wait > 0 ? `Reenviar código (${wait} s)` : "Reenviar código"}

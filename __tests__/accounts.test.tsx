@@ -204,6 +204,51 @@ describe("Login", () => {
     expect(screen.getByLabelText("Código").props.value).toBe("K7M");
   });
 
+  it("the code field has no native length limit, so iOS AutoFill can insert it", async () => {
+    mockApi({ "POST /auth/email/start": json(204) });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    const code = await screen.findByLabelText("Código");
+    expect(code.props.maxLength).toBeUndefined();
+    expect(code.props.textContentType).toBe("oneTimeCode");
+    expect(code.props.autoComplete).toBe("one-time-code");
+  });
+
+  it("an autofilled code with extra text is submitted, and stays in the field if it fails", async () => {
+    let body: unknown;
+    mockApi({
+      "POST /auth/email/start": json(204),
+      "POST /auth/email/verify": async (req) => {
+        body = await req.json();
+        return json(400, { error: "Código incorrecto o vencido" });
+      },
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    await fireEvent.changeText(await screen.findByLabelText("Código"), " k7m-4qx ");
+
+    expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+    expect(body).toEqual(expect.objectContaining({ code: "K7M4QX" }));
+    expect(screen.getByLabelText("Código").props.value).toBe("K7M4QX");
+    expect(screen.getByText("Si el mail se borró, pedí otro código.")).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Reenviar código/ })).toBeVisible();
+  });
+
+  it("doesn't suggest asking for another code before anything failed", async () => {
+    mockApi({ "POST /auth/email/start": json(204) });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByLabelText("Código")).toBeVisible();
+    expect(screen.queryByText("Si el mail se borró, pedí otro código.")).toBeNull();
+    expect(screen.getByRole("button", { name: /^Reenviar código/ })).toBeVisible();
+  });
+
   it("an expired code shows the server's message and resend still works once the wait is over", async () => {
     const calls = mockApi({
       "POST /auth/email/start": json(204),
