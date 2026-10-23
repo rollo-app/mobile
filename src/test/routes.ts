@@ -23,6 +23,7 @@ import CreateScreen from "../../app/create";
 import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
 import JoinScreen from "../../app/join";
+import LoginLinkRoute from "../../app/login";
 import NotFound from "../../app/+not-found";
 import OfflineMapsScreen from "../../app/offline-maps";
 import PresentationScreen from "../../app/presentation";
@@ -48,6 +49,7 @@ export const routes = {
   blocked: BlockedScreen,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
+  login: LoginLinkRoute,
   capture: CaptureScreen,
   "offline-maps": OfflineMapsScreen,
   presentation: PresentationScreen,

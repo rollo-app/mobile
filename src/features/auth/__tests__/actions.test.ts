@@ -1,5 +1,5 @@
 import { getSessionToken, setSessionToken } from "@/storage/session";
-import { deleteAccount, fetchMe, logout, startEmailLogin, verifyCode } from "../actions";
+import { deleteAccount, fetchMe, logout, startEmailLogin, verifyCode, verifyMagicLink } from "../actions";
 
 const user = { id: "u1", email: "juani@rollo.test", name: "Juani", avatarUrl: null };
 
@@ -105,5 +105,27 @@ describe("verifyCode seeds /me", () => {
     await verifyCode("juani@rollo.test", "123456");
 
     expect(queryClient.getQueryData(["me"])).toEqual(user);
+  });
+});
+
+describe("verifyMagicLink", () => {
+  it("posts the email and the link's token, saves the session and seeds /me", async () => {
+    const { queryClient } = require("@/api/query-client");
+    const fetchMock = mockFetch(200, { token: "tok", user, isNew: true });
+
+    const result = await verifyMagicLink(" Juani@Rollo.test ", "link-token");
+
+    expect(req(fetchMock).url).toMatch(/\/auth\/email\/verify-link$/);
+    expect(req(fetchMock).method).toBe("POST");
+    expect(await req(fetchMock).json()).toEqual({ email: "juani@rollo.test", token: "link-token" });
+    expect(await getSessionToken()).toBe("tok");
+    expect(queryClient.getQueryData(["me"])).toEqual(user);
+    expect(result).toEqual({ user, isNew: true });
+  });
+
+  it("with a dead link it saves nothing and propagates the server's message", async () => {
+    mockFetch(400, { error: "El link venció o ya se usó. Pedí otro código." });
+    await expect(verifyMagicLink("a@b.c", "x")).rejects.toThrow("El link venció o ya se usó. Pedí otro código.");
+    expect(await getSessionToken()).toBeNull();
   });
 });

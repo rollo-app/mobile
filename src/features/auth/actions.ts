@@ -16,11 +16,27 @@ export async function startEmailLogin(email: string): Promise<void> {
 
 /** Checks the code and, if it's right, saves the session. */
 export async function verifyCode(email: string, code: string): Promise<{ user: User; isNew: boolean }> {
-  const { token, user, isNew } = await unwrap(
-    createApiClient({ baseUrl: API_URL }).POST("/auth/email/verify", {
-      body: { email: normalizeEmail(email), code: code.trim() },
-    }),
+  return startSession(
+    await unwrap(
+      createApiClient({ baseUrl: API_URL }).POST("/auth/email/verify", {
+        body: { email: normalizeEmail(email), code: code.trim() },
+      }),
+    ),
   );
+}
+
+/** Same as `verifyCode`, with the token from the email's magic link (rollo://login) instead of the code. */
+export async function verifyMagicLink(email: string, token: string): Promise<{ user: User; isNew: boolean }> {
+  return startSession(
+    await unwrap(
+      createApiClient({ baseUrl: API_URL }).POST("/auth/email/verify-link", {
+        body: { email: normalizeEmail(email), token },
+      }),
+    ),
+  );
+}
+
+async function startSession({ token, user, isNew }: { token: string; user: User; isNew: boolean }) {
   // Seeded before the session flips, so the gate doesn't wait for a second request.
   queryClient.setQueryData(meKey, user);
   await signIn(token);

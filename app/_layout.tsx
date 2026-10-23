@@ -58,6 +58,8 @@ function RootStack() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {/* A friend link works with or without a session: it routes to the right step itself. */}
       <Stack.Screen name="friends/[code]" options={{ headerShown: false }} />
+      {/* The login email's magic link: signs in without a session, never switches an existing one. */}
+      <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack.Protected>

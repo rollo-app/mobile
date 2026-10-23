@@ -23,6 +23,13 @@ Decisiones de producto:
   `GET /me/trips` (cache de TanStack Query); el rollo activo es el último que abriste y solo se guarda su id
   (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
   cola de fotos pendientes.
+  **Link mágico:** el mail del código trae además un botón a `rollo.juanifraga.com/entrar#t=<token>&e=<email>` (fragmento:
+  no llega a ningún server). Esa página estática solo abre `rollo://login?token=…&email=…` y borra el fragmento de la barra.
+  La ruta `app/login.tsx` (fuera del grupo protegido, `src/features/auth/magic-link-screen.tsx`) llama a
+  `POST /auth/email/verify-link` una sola vez por token (`magic-link.ts`) y guarda la sesión igual que el código. Con sesión
+  y el mismo email entra; con otra cuenta muestra "Ya tenés la sesión iniciada con…" y **nunca cambia de cuenta sola**.
+  Si el link venció, "Volver a pedir un código" abre `/email` con el email puesto. Próximo paso: Universal Links
+  (`https://…/entrar` abre la app directo, sin la página), que piden la cuenta paga.
 - **Cámara nativa del sistema** (`expo-image-picker` → `launchCameraAsync`), no una cámara propia:
   funciona mejor, sobre todo en video. Lo que se saca **no queda en el carrete**: se sube y se borra
   del caché local.
@@ -277,8 +284,8 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 ## Sitio público
 
-`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): inicio + soporte, `/privacidad`
-y `/terminos`. Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
+`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): inicio + soporte, `/privacidad`,
+`/terminos` y `/entrar` (el link mágico del mail; script inline, sin pedidos a ningún lado). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
 se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/`. `npm run site:build` para verlo,
 `npm run site:deploy` para publicarlo. Son las URLs de privacidad, soporte y marketing de App Store Connect.
 Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Juani).
