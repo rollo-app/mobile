@@ -363,7 +363,8 @@ testing externo en TestFlight (revisión de Apple) y la prueba real. El backend 
 
 **Próximo build de TestFlight (features agrupadas):** comentarios en las fotos reveladas, solo entre miembros del rollo
 (diseño en `docs/superpowers/specs/2026-10-23-comentarios-design.md`) y "Tu actividad" en tu Perfil, empezando por las fotos que te
-gustaron (`docs/superpowers/specs/2026-10-23-tu-actividad-design.md`). Los builds de EAS se agrupan: el plan gratis da 15 de iOS por mes.
+gustaron (`docs/superpowers/specs/2026-10-23-tu-actividad-design.md`) y decidir adónde van tus fotos: no dejar que las destaquen
+en otros perfiles para todas tus fotos, por rollo o con un rollo privado del admin (`docs/superpowers/specs/2026-10-23-fotos-en-perfiles-design.md`). Los builds de EAS se agrupan: el plan gratis da 15 de iOS por mes.
 
 Pendiente (después de enero, no antes del viaje): **migrar el backend a Supabase**. La idea es que Postgres de
 Supabase reemplace a D1 y que las fotos sigan en R2 (gratis y sin costo de egress), con el Worker conectado
