@@ -1,10 +1,10 @@
-import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 import { useMe } from "@/features/auth/use-me";
 import type { Feed } from "@/features/trips/actions";
 import { feedKey } from "@/features/trips/use-feed";
+import { showPill } from "@/ui/pill";
 import { featureMedia, unfeatureMedia } from "./actions";
 import { featuredKey } from "./use-featured";
 
@@ -41,7 +41,7 @@ export function useToggleFeatured() {
         await (next ? featureMedia : unfeatureMedia)(photo.id);
         if (me) void client.invalidateQueries({ queryKey: featuredKey(me.id) });
         if (next) {
-          Burnt.alert({ title: "Agregada a tu perfil", preset: "done", duration: 2 });
+          showPill("Agregada a tu perfil");
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } catch (e) {

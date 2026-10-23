@@ -1,4 +1,4 @@
-import * as Burnt from "burnt";
+import { showPill } from "@/ui/pill";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
@@ -10,6 +10,8 @@ import { setSessionToken } from "@/storage/session";
 import { USER } from "@/test/account";
 import { featuredKey } from "../use-featured";
 import { useToggleFeatured } from "../use-toggle-featured";
+
+jest.mock("@/ui/pill", () => ({ showPill: jest.fn() }));
 
 type Feed = Schemas["Feed"];
 
@@ -59,7 +61,7 @@ function deferredFetch() {
 
 beforeEach(() => {
   setSessionToken("tok");
-  (Burnt.alert as jest.Mock).mockClear();
+  (showPill as jest.Mock).mockClear();
 });
 
 describe("useToggleFeatured", () => {
@@ -188,13 +190,13 @@ describe("useToggleFeatured", () => {
         done = result.current.toggle({ id: "a", featuredByMe: false }, "t1");
       });
       await waitFor(() => expect(featuredInCache("a")).toBe(true));
-      expect(Burnt.alert).not.toHaveBeenCalled();
+      expect(showPill).not.toHaveBeenCalled();
       await act(async () => {
         net.release(204);
         await done;
       });
-      expect(Burnt.alert).toHaveBeenCalledTimes(1);
-      expect(Burnt.alert).toHaveBeenCalledWith({ title: "Agregada a tu perfil", preset: "done", duration: 2 });
+      expect(showPill).toHaveBeenCalledTimes(1);
+      expect(showPill).toHaveBeenCalledWith("Agregada a tu perfil");
     });
 
     it("does not show the HUD when the server rejects", async () => {
@@ -204,7 +206,7 @@ describe("useToggleFeatured", () => {
       await act(async () => {
         await result.current.toggle({ id: "a", featuredByMe: false }, "t1");
       });
-      expect(Burnt.alert).not.toHaveBeenCalled();
+      expect(showPill).not.toHaveBeenCalled();
     });
 
     it("does not show the HUD when removing from the profile", async () => {
@@ -214,7 +216,7 @@ describe("useToggleFeatured", () => {
       await act(async () => {
         await result.current.toggle({ id: "a", featuredByMe: true }, "t1");
       });
-      expect(Burnt.alert).not.toHaveBeenCalled();
+      expect(showPill).not.toHaveBeenCalled();
     });
   });
 });
