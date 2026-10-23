@@ -18,6 +18,7 @@ import { signOut } from "@/features/auth/session";
 import { useRetryPendingLogouts } from "@/features/auth/use-retry-pending-logouts";
 import { useMe } from "@/features/auth/use-me";
 import { Button } from "@/ui/components";
+import { PillHost } from "@/ui/pill-host";
 import { colors, spacing, type } from "@/ui/theme";
 
 export default function RootLayout() {
@@ -32,6 +33,7 @@ export default function RootLayout() {
       <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
         <StatusBar style="auto" />
         <RootStack />
+        <PillHost />
       </ThemeProvider>
     </PersistQueryClientProvider>
   );

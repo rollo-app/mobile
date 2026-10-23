@@ -93,7 +93,7 @@ Decisiones de producto:
   se hace el push, porque un push después de un modal se presentaría como otro modal.
 - **Fotos destacadas** (`src/features/featured/`): de un rollo **revelado** donde sos miembro activo destacás **fotos** (no
   videos), tuyas o de otros, hasta **60**: en el visor con el ícono de perfil "Agregar a tu perfil" / "Sacar de tu perfil" (`person.crop.circle.badge.plus` / `.badge.checkmark`) y en la
-  grilla con el menú de mantener apretado "Agregar a tu perfil" / "Sacar de tu perfil". El autor puede "No dejar que la
+  grilla con el menú de mantener apretado "Agregar a tu perfil" / "Sacar de tu perfil". Al agregar una, sale la pastilla "Agregada a tu perfil" (`showPill`). El autor puede "No dejar que la
   destaquen" (borra las de otros y bloquea nuevas; él siempre puede destacar las suyas). Nunca sale el rollo, el caption ni la
   coordenada: la ubicación va como **zona de ~5 km** (celda de 0.05°). En un perfil, "Fotos | Mapa": la grilla (con la
   insignia del autor si no es el dueño del perfil; tocar una abre `/featured/<userId>/<mediaId>`) y el mapa por zonas.
@@ -187,6 +187,8 @@ Decisiones de producto:
     tuyas sin subir) o para confirmar una acción destructiva (borrar como admin).
   - Si un momento puntual necesita una confirmación fugaz, usar `burnt` (HUD nativo tipo AirPods), no un
     toast hecho a mano. También para los errores de denunciar y bloquear (`Burnt.alert`).
+    **Única excepción, a pedido del dueño:** al agregar una foto a tu perfil sale una pastilla chica y centrada "Agregada a tu perfil"
+    (sin ícono; `showPill` de `src/ui/pill.ts`, `PillHost` en `app/_layout.tsx` sobre `FullWindowOverlay` para quedar encima de los modales).
 
 El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 
