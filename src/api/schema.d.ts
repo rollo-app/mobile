@@ -4,6 +4,1454 @@
  */
 
 export interface paths {
+    "/auth/email/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a login code by email
+         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts) and, only when `linkChallenge` is sent, a magic link for the same attempt (`<LOGIN_LINK_URL>#t=<token>&e=<email>`, see `/auth/email/verify-link`), bound to that challenge. Using either one consumes both. A new request invalidates the previous codes. Rate limited per email and per IP. Works for new and existing users alike.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailStartRequest"];
+                };
+            };
+            responses: {
+                /** @description Code sent */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Upstream service failed */
+                502: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange the emailed code for a session token
+         * @description Creates the user on the first successful verification. `isNew` is true while the user has no name. The code is case-insensitive and spaces or dashes are ignored; a malformed code is answered like a wrong one.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailVerifyRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthSession"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/email/verify-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange the emailed magic-link token for a session token
+         * @description Same result as `/auth/email/verify`, with the token from the link's fragment instead of the code. Needs the `verifier` whose SHA-256 was sent as `linkChallenge` to `/auth/email/start`: the link only signs in the phone that asked for it. Shares the code's expiry, attempts and single use: a wrong or missing token or verifier uses up an attempt, and after the link or the code is used neither works again. Attempts started without a challenge have no link, so this always fails for them. Every failure answers the same 400. Only POST: the token is never accepted in a URL.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailVerifyLinkRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthSession"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign out (deletes the current session) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Signed out */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your profile */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Your profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Delete your account
+         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your reports and blocks (made and received), push tokens, settings and likes (yours, and the ones on your photos) are deleted too. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Account deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Edit your profile
+         * @description Send any of name, username, bio and profileVisibility; fields left out are not changed. The name is shown in every rollo you are part of and does not have to be unique. The username must be unique (case-insensitive); setting your own current one is a no-op. 409 if someone else has it. The bio is trimmed, an empty one clears it (null), and it allows up to 150 characters and 3 lines (400 otherwise). profileVisibility is "friends" (default) or "public"; any other value is a 400.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description Profile updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a URL to upload your avatar
+         * @description Returns a signed URL to PUT a JPEG straight to R2. Then call POST /me/avatar/complete. Each call generates a new random file name, so the avatar URL changes when you replace it.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Upload URL */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AvatarUpload"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/avatar/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm your avatar upload
+         * @description Checks that the file is in R2, is a JPEG (verified by its magic bytes) and is at most 2 MB, makes it your avatar and deletes the previous one. Otherwise the upload is discarded and the response is a 400.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Profile with the new avatar */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/trips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your rollos
+         * @description Rollos you are an active member of, most recent start first.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Your rollos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyTrips"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/push-tokens/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register this phone's push token
+         * @description Registers an Expo push token (ExponentPushToken[...] or ExpoPushToken[...], URL-encoded in the path) for your account. Idempotent: calling it again only refreshes when it was last seen. A token belongs to one account at a time: if another account had it (same phone, another account), it moves to yours. 400 if it is not an Expo push token.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Token registered */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Unregister a push token
+         * @description Stops sending pushes to this token for your account (call it when signing out). Idempotent; another account's token is left alone.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Token removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your settings
+         * @description Your notification preferences, one per kind of push. Every one is on by default.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Your settings */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserSettings"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change your settings
+         * @description Send any subset of the notification preferences; the ones left out do not change. Unknown keys or non-boolean values are a 400. Returns the full settings.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateUserSettingsRequest"];
+                };
+            };
+            responses: {
+                /** @description Settings updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserSettings"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/avatars/{userId}/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a user's avatar
+         * @description Public (no token) so it can be used directly as an image URL. Only the user's current avatar is served; file names are random, so older or guessed ones return 404.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                    file: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Avatar */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/usernames/{username}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check if a username is available
+         * @description Normalizes the username (optional @, lowercase) and says whether nobody else has it. Your own current username counts as available. 400 if it breaks the format rules. For checking while typing.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    username: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Availability */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UsernameAvailability"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A user's profile
+         * @description Name, username, avatar, bio and friend counts are always visible. Featured photos and the full friend list only if canSee: it is you, a friend, or the profile is public. Never includes the email. 404 if the user does not exist.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserProfile"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A user's friends
+         * @description If you can see the profile (it is you, a friend, or the profile is public) every friend (scope all); otherwise only the friends you have in common (scope mutual). Sorted by name. Only id, name, username and avatar. 404 if the user does not exist.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User's friends */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserFriends"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friends/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a friend link
+         * @description Returns an 8-character code (the link is rollo://friends/<code>) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Friend link */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FriendLink"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friends/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Become friends with whoever made a link
+         * @description Send exactly one of `code` (a link that is still valid) or `claimToken` (from /friend-links/claim, valid 24 hours, single use). The friendship is symmetric and needs no acceptance. Redeeming your own link or one from a current friend is not an error. A wrong, expired or replaced code always gets the same 400. 10 failed attempts per user or per IP in an hour lock it (429).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RedeemFriendRequest"];
+                };
+            };
+            responses: {
+                /** @description The new (or existing) friend */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FriendResponse"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your friends
+         * @description Ordered by name.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Friends */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Friends"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friends/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A friend's profile
+         * @description The friend and the rollos both of you are active members of (neither left nor was removed), most recent start first. 404 if you are not friends, also for an unknown id or your own.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Friend profile */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FriendProfile"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Remove a friend
+         * @description Removes the friendship in both directions. Also 204 if you were not friends. Rollos you share are not affected.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Friendship removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Users you blocked
+         * @description Ordered by name.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Blocked users */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Blocks"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/blocks/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Block a user
+         * @description Idempotent and one-directional. Also removes the friendship in both directions. Does not remove anyone from a rollo. Also removes the blocked user's photos from your featured list. A new block is emailed to support (at most 10 reports and blocks per user per 24 hours are emailed).
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Blocked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Unblock a user
+         * @description Only removes your own block; a block the other user made on you stays. Also 204 if you had not blocked them. Friendship is not restored.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Unblocked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report a photo or a person
+         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos). At most 10 reports and blocks per user per 24 hours are emailed to support; the rest are stored without email. 404 if the photo is not one the reporter can see; 400 if it is theirs.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateReportRequest"];
+                };
+            };
+            responses: {
+                /** @description Reported */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/friend-links/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open a friend link (no session needed)
+         * @description For someone who opens the link before having an account. Returns who invited them and a claim token (valid 24 hours) to redeem the friendship once signed in. A wrong, expired or replaced code always gets the same 400. Rate limited per IP.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ClaimFriendLinkRequest"];
+                };
+            };
+            responses: {
+                /** @description Claim token */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ClaimResponse"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips": {
         parameters: {
             query?: never;
@@ -14,8 +1462,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Crear un viaje
-         * @description Quien lo crea queda como admin. Devuelve el código para invitar y el token del admin.
+         * Create a trip
+         * @description Whoever creates it becomes the admin. The profile must have a name and a username. Returns the invite code.
          */
         post: {
             parameters: {
@@ -30,7 +1478,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Viaje creado */
+                /** @description Trip created */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -39,8 +1487,26 @@ export interface paths {
                         "application/json": components["schemas"]["TripCreated"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -66,8 +1532,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Unirse a un viaje
-         * @description Con el código y un nombre. El nombre es único por viaje (sin distinguir mayúsculas).
+         * Join a trip
+         * @description With the invite code. The profile must have a name and a username. Idempotent: 201 when newly joined (or back after leaving), 200 when already an active member. Someone removed by the admin gets 403. Revealed rollos 409.
          */
         post: {
             parameters: {
@@ -82,7 +1548,16 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Te uniste al viaje */
+                /** @description Already a member */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TripCreated"];
+                    };
+                };
+                /** @description Joined the trip */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -91,7 +1566,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripCreated"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -100,7 +1575,25 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -109,7 +1602,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Conflicto con el estado actual */
+                /** @description Conflict with the current state */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -134,8 +1627,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Info del viaje
-         * @description Viaje, miembros y cuántas fotos y videos te quedan hoy.
+         * Trip info
+         * @description Trip, members and how many photos and videos you have left today.
          */
         get: {
             parameters: {
@@ -148,7 +1641,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Detalle del viaje */
+                /** @description Trip detail */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -157,7 +1650,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripDetail"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -166,7 +1659,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -182,7 +1675,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Editar el viaje (admin) */
+        /** Edit the trip (admin) */
         patch: {
             parameters: {
                 query?: never;
@@ -198,7 +1691,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Viaje actualizado */
+                /** @description Trip updated */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -207,7 +1700,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripResponse"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -216,7 +1709,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -225,7 +1718,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -247,7 +1740,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revelar el rollo ya (admin) */
+        /** Reveal the roll now (admin) */
         post: {
             parameters: {
                 query?: never;
@@ -259,7 +1752,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Rollo revelado */
+                /** @description Roll revealed */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -268,7 +1761,7 @@ export interface paths {
                         "application/json": components["schemas"]["TripResponse"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -277,7 +1770,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -294,6 +1787,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trips/{tripId}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add your friends to the trip
+         * @description Any member adds their own friends directly. The answer is per friend (never all-or-nothing): `added` (also when they had left and come back), `already_member`, or `unavailable` (not your friend, removed by the admin, or unknown). The rollo's admin can add back someone who was removed (they become active again with their old photos); for a regular member a removed person stays `unavailable`. A revealed rollo gets 409 for the whole request.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AddMembersRequest"];
+                };
+            };
+            responses: {
+                /** @description Result per friend */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AddMembersResponse"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/members/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Leave the trip
+         * @description You lose access and the rollo leaves your list; your photos stay in the roll. You can come back with the code or if a friend adds you (before the reveal). The admin can't leave (409).
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description You left the trip */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips/{tripId}/members/{memberId}": {
         parameters: {
             query?: never;
@@ -305,8 +1945,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Sacar a alguien del viaje (admin)
-         * @description Su token deja de servir y su nombre queda libre. Sus fotos quedan en el rollo.
+         * Remove someone from the trip (admin)
+         * @description They lose access to the rollo and cannot rejoin by code or through a regular member; only the admin can add them back as a friend. Their photos stay in the roll.
          */
         delete: {
             parameters: {
@@ -320,14 +1960,14 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Miembro removido */
+                /** @description Member removed */
                 204: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -336,7 +1976,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -345,7 +1985,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -354,7 +1994,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -380,8 +2020,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Registrar una foto o video
-         * @description Devuelve URLs firmadas para subir el original y el thumbnail directo a R2. Idempotente por `id`: reintentar desde la cola offline no duplica ni gasta cupo.
+         * Register a photo or video
+         * @description Returns signed URLs to upload the original and the thumbnail straight to R2. Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota.
          */
         post: {
             parameters: {
@@ -398,7 +2038,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Reintento: URLs nuevas, o ya estaba subida */
+                /** @description Retry: new URLs, or it was already uploaded */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -407,7 +2047,7 @@ export interface paths {
                         "application/json": components["schemas"]["MediaRegistered"] | components["schemas"]["MediaStatus"];
                     };
                 };
-                /** @description Registrada; subí los archivos */
+                /** @description Registered; upload the files */
                 201: {
                     headers: {
                         [name: string]: unknown;
@@ -416,7 +2056,7 @@ export interface paths {
                         "application/json": components["schemas"]["MediaRegistered"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -425,7 +2065,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -434,7 +2074,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -443,7 +2083,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Conflicto con el estado actual */
+                /** @description Conflict with the current state */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -452,7 +2092,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Se alcanzó el límite del día */
+                /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -479,8 +2119,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Confirmar que se subieron los archivos
-         * @description Verifica que original y thumbnail estén en R2. Recién ahí la foto aparece en el feed.
+         * Confirm the files were uploaded
+         * @description Checks that the original and the thumbnail are in R2. Only then does the photo show up in the feed.
          */
         post: {
             parameters: {
@@ -493,7 +2133,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Subida confirmada */
+                /** @description Upload confirmed */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -502,7 +2142,7 @@ export interface paths {
                         "application/json": components["schemas"]["MediaStatus"];
                     };
                 };
-                /** @description Datos inválidos */
+                /** @description Invalid data */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -511,7 +2151,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -520,7 +2160,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -545,8 +2185,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Feed del viaje
-         * @description Antes del revelado: solo metadata (autor, hora, lugar, epígrafe), sin archivos, ni siquiera los propios. Después: incluye dimensiones y los paths para descargar.
+         * Trip feed
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
          */
         get: {
             parameters: {
@@ -559,7 +2199,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Feed ordenado por hora en que se sacó */
+                /** @description Feed ordered by the time the shot was taken */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -568,7 +2208,7 @@ export interface paths {
                         "application/json": components["schemas"]["Feed"];
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -577,7 +2217,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -604,8 +2244,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Descargar un archivo (solo después del revelado)
-         * @description Streaming desde R2 con el mismo Bearer token.
+         * Download a file (only after the reveal)
+         * @description Streamed from R2 with the same Bearer token.
          */
         get: {
             parameters: {
@@ -620,7 +2260,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Archivo */
+                /** @description File */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -630,7 +2270,7 @@ export interface paths {
                         "video/mp4": string;
                     };
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -639,7 +2279,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Sin permiso */
+                /** @description Forbidden */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -648,7 +2288,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -678,8 +2318,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Borrar una foto propia (antes del revelado)
-         * @description Borra los archivos y devuelve el cupo del día.
+         * Delete a photo or video from the trip (admin, before the reveal)
+         * @description Once sent, a photo can be neither deleted nor retaken. The exception is the admin, in case someone sends something inappropriate: they can delete any photo of the trip before the reveal. The files are deleted but the quota is **not given back** to anyone, and the id cannot be registered again.
          */
         delete: {
             parameters: {
@@ -692,14 +2332,14 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Borrada */
+                /** @description Deleted */
                 204: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
-                /** @description Falta el token o es inválido */
+                /** @description Missing or invalid session token */
                 401: {
                     headers: {
                         [name: string]: unknown;
@@ -708,7 +2348,16 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description No encontrado */
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -717,8 +2366,476 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Conflicto con el estado actual */
+                /** @description Conflict with the current state */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{mediaId}/feature-block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Don't let others feature this photo (author only)
+         * @description Removes it from everyone else's profile and stops new ones (they get 409). You can still feature it yourself. Idempotent. Works even if you left the rollo or were removed from it. 403 if you did not take it; 404 if it does not exist or you neither took it nor are an active member of its rollo.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Done */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Let others feature this photo again (author only)
+         * @description Idempotent. Works even if you left the rollo or were removed from it. Photos removed from other profiles while it was blocked do not come back.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Done */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/featured/{mediaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Feature a photo on your profile
+         * @description A photo (not a video) of a revealed rollo you are an active member of, yours or someone else's. Idempotent. 404 if it does not exist or you are not an active member; 409 if the rollo is not revealed, if its author does not let others feature it (unless you took it) or if you already have 60; 400 for a video.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Featured */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Remove a photo from your profile
+         * @description 204 also if it was not featured.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Not featured anymore */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/featured": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A user's featured photos
+         * @description Newest photo first (by when it was taken). Only if you can see the profile (it is you, a friend, or it is public); otherwise 403. Each photo carries a ~5 km zone instead of its location, its author when it is not the owner, and its likes; never the rollo or the caption. Photos you reported or by authors you blocked, and photos that were deleted, blocked by their author, or whose rollo the owner left do not show up.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Featured photos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FeaturedPhotos"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/featured/{userId}/{mediaId}/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * File of a featured photo
+         * @description Streamed from R2 under the profile's permission (not the rollo's): 403 if you can't see the profile, 404 if that user does not feature this photo (or it no longer shows on their profile). Same caching as the trip download.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                    mediaId: string;
+                    variant: "thumb" | "original";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description File */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{mediaId}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Like a photo
+         * @description Idempotent. Whoever can see the photo can like it: an active member of its rollo once it is revealed, or anyone who can see a profile where it is featured. Otherwise 404 (also with a block with its author); 400 for a video. Notifies the author (`photoLiked`) at most once every 30 minutes per photo: the likes in between are counted and added to the next push ("A Cami y 3 más les gustó tu foto").
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Liked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Remove your like from a photo
+         * @description Idempotent: 204 also if you did not like it (or the photo does not exist). Never notifies.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Not liked anymore */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -737,11 +2854,339 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Error: {
+            /** @example Código inválido */
+            error: string;
+        };
+        EmailStartRequest: {
+            /**
+             * @description Trimmed and lowercased
+             * @example juani@example.com
+             */
+            email: string;
+            /**
+             * @description base64url (no padding) of SHA-256 of a random verifier the app keeps on the phone (PKCE-style, 43 chars). Only with it does the email include a magic link, and the link only works with that verifier (`/auth/email/verify-link`). Without it (old app builds) the email carries only the code.
+             * @example E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
+             */
+            linkChallenge?: string;
+        };
+        AuthSession: {
+            /** @description Session token (Bearer). Valid for 365 days; store it on the phone */
+            token: string;
+            user: components["schemas"]["User"];
+            /** @description true while the profile is incomplete (no name or no username): show the profile step */
+            isNew: boolean;
+        };
+        User: {
+            /** Format: uuid */
+            id: string;
+            /** @example juani@example.com */
+            email: string;
+            /** @description null until the profile is completed */
+            name: string | null;
+            /**
+             * @description Unique handle, lowercase, without the @ (the app shows it as @username); null until chosen
+             * @example juanifraga
+             */
+            username: string | null;
+            /** @description Path (the app prefixes the API base URL), e.g. /avatars/<userId>/<version>.jpg; null if none */
+            avatarUrl: string | null;
+            /**
+             * @description Profile description (up to 3 lines); null if none
+             * @example Viajando por el sur
+             */
+            bio: string | null;
+            profileVisibility: components["schemas"]["ProfileVisibility"];
+        };
+        /**
+         * @description Who can see your bio and featured photos: your friends only, or anyone signed in. Name, username and avatar are always visible
+         * @enum {string}
+         */
+        ProfileVisibility: "friends" | "public";
+        EmailVerifyRequest: {
+            /**
+             * @description Trimmed and lowercased
+             * @example juani@example.com
+             */
+            email: string;
+            /**
+             * @description 6-character code from the email (letters and digits, no 0/O/1/I/L). Case-insensitive; spaces and dashes are ignored
+             * @example K7M2QX
+             */
+            code: string;
+        };
+        EmailVerifyLinkRequest: {
+            /**
+             * @description Trimmed and lowercased
+             * @example juani@example.com
+             */
+            email: string;
+            /**
+             * @description Token from the magic link in the email (the `t` parameter of its fragment)
+             * @example q3N0dGhpcy1pcy1ub3QtYS1yZWFsLXRva2VuLWp1c3QtYW4tZXhhbXBsZQ
+             */
+            token: string;
+            /**
+             * @description The verifier whose SHA-256 was sent as `linkChallenge` to `/auth/email/start` (43–128 chars of `A-Z a-z 0-9 - . _ ~`). Without the right one the link fails like a wrong token.
+             * @example dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
+             */
+            verifier?: string;
+        };
+        UpdateProfileRequest: {
+            /** @example Juani */
+            name?: string;
+            /**
+             * @description Optional leading @, trimmed and lowercased. a-z 0-9 . _ (3 to 30), no leading/trailing dot, no ".."
+             * @example juanifraga
+             */
+            username?: string;
+            /**
+             * @description Profile description, up to 150 characters and 3 lines after trimming. An empty string clears it
+             * @example Viajando por el sur
+             */
+            bio?: string;
+            profileVisibility?: components["schemas"]["ProfileVisibility"];
+        };
+        AvatarUpload: {
+            /**
+             * Format: uri
+             * @description PUT of the JPEG avatar (square, ~512px)
+             */
+            upload: string;
+            /** @description Seconds the URL stays valid */
+            expiresIn: number;
+        };
+        MyTrips: {
+            trips: components["schemas"]["TripSummary"][];
+        };
+        TripSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            joinCode: string;
+            /**
+             * @description Trip start
+             * @example 1767225600000
+             */
+            startsAt: number;
+            /**
+             * @description Trip end
+             * @example 1767225600000
+             */
+            endsAt: number;
+            /**
+             * @description Automatic reveal
+             * @example 1767225600000
+             */
+            revealAt: number;
+            revealed: boolean;
+            role: components["schemas"]["Role"];
+            totalUploaded: number;
+            /** @description ThumbHash of the most recently taken uploaded photo or video of the rollo (null if none); the app derives the rollo's color from it */
+            coverThumbhash: string | null;
+        };
+        /** @enum {string} */
+        Role: "admin" | "member";
+        UserSettings: {
+            notifications: components["schemas"]["NotificationSettings"];
+        };
+        NotificationSettings: {
+            /** @description Someone adds you to a rollo */
+            addedToTrip: boolean;
+            /** @description Someone redeems your friend link */
+            newFriend: boolean;
+            /** @description A rollo you are in starts */
+            tripStarted: boolean;
+            /** @description A rollo you are in is revealed */
+            tripRevealed: boolean;
+            /** @description Someone features a photo of yours on their profile */
+            photoFeatured: boolean;
+            /** @description Someone likes a photo of yours */
+            photoLiked: boolean;
+        };
+        UpdateUserSettingsRequest: {
+            notifications?: {
+                /** @description Someone adds you to a rollo */
+                addedToTrip?: boolean;
+                /** @description Someone redeems your friend link */
+                newFriend?: boolean;
+                /** @description A rollo you are in starts */
+                tripStarted?: boolean;
+                /** @description A rollo you are in is revealed */
+                tripRevealed?: boolean;
+                /** @description Someone features a photo of yours on their profile */
+                photoFeatured?: boolean;
+                /** @description Someone likes a photo of yours */
+                photoLiked?: boolean;
+            };
+        };
+        UsernameAvailability: {
+            /** @description true if nobody else has it (also true if it is yours) */
+            available: boolean;
+            /** @description The normalized username that was checked */
+            username: string;
+        };
+        UserProfile: {
+            user: components["schemas"]["PublicUser"];
+            /** @description Whether you and this user are friends (false for yourself) */
+            isFriend: boolean;
+            /** @description Whether you blocked this user */
+            blockedByMe: boolean;
+            /** @description Whether you reported this user (their profile, not a photo) */
+            reportedByMe: boolean;
+            profileVisibility: components["schemas"]["ProfileVisibility"];
+            /** @description Whether you can see the featured photos and the full friend list: it is you, a friend, or the profile is public, and neither of you blocked the other */
+            canSee: boolean;
+            /** @description How many friends this user has (always public) */
+            friendCount: number;
+            /** @description How many of your friends are also this user's friends (0 for yourself) */
+            mutualCount: number;
+        };
+        PublicUser: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string | null;
+            avatarUrl: string | null;
+            /**
+             * @description Profile description; null if none. Always public, whatever canSee says
+             * @example Viajando por el sur
+             */
+            bio: string | null;
+        };
+        UserFriends: {
+            /**
+             * @description all: every friend of this user (canSee); mutual: only the friends you have in common
+             * @enum {string}
+             */
+            scope: "all" | "mutual";
+            /** @description Sorted by name, case-insensitive */
+            friends: components["schemas"]["UserFriend"][];
+        };
+        UserFriend: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string | null;
+            avatarUrl: string | null;
+        };
+        FriendLink: {
+            /**
+             * @description 8-character code; the link is rollo://friends/<code>
+             * @example K7M2QX9A
+             */
+            code: string;
+            /**
+             * @description The link stops working at this instant (1 hour after it was generated)
+             * @example 1767225600000
+             */
+            expiresAt: number;
+        };
+        FriendResponse: {
+            friend: components["schemas"]["Friend"];
+        };
+        Friend: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string | null;
+            avatarUrl: string | null;
+            /**
+             * @description Profile description (up to 3 lines); null if none
+             * @example Viajando por el sur
+             */
+            bio: string | null;
+        };
+        RedeemFriendRequest: {
+            /** @description Friend code typed or taken from a link that is still valid */
+            code?: string;
+            /** @description Token returned by /friend-links/claim */
+            claimToken?: string;
+        };
+        Friends: {
+            friends: components["schemas"]["Friend"][];
+        };
+        FriendProfile: {
+            friend: components["schemas"]["Friend"];
+            /** @description Rollos both of you are active members of, most recent start first */
+            commonTrips: components["schemas"]["CommonTrip"][];
+        };
+        CommonTrip: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /**
+             * @description Trip start
+             * @example 1767225600000
+             */
+            startsAt: number;
+            /**
+             * @description Trip end
+             * @example 1767225600000
+             */
+            endsAt: number;
+            revealed: boolean;
+        };
+        Blocks: {
+            blocked: components["schemas"]["Friend"][];
+        };
+        CreateReportRequest: {
+            reason: components["schemas"]["ReportReason"];
+            /** @description Photo or video to report */
+            mediaId?: string;
+            /** @description Person to report */
+            userId?: string;
+        };
+        /** @enum {string} */
+        ReportReason: "offensive" | "abuse" | "other";
+        ClaimResponse: {
+            /** @description Permission to redeem this link while signed in. Valid for 24 hours */
+            claimToken: string;
+            /**
+             * @description The claim token stops working at this instant
+             * @example 1767225600000
+             */
+            expiresAt: number;
+            creator: {
+                name: string;
+                username: string | null;
+                avatarUrl: string | null;
+            };
+        };
+        ClaimFriendLinkRequest: {
+            /**
+             * @description Case-insensitive; spaces and dashes are ignored
+             * @example K7M2QX9A
+             */
+            code: string;
+        };
         TripCreated: {
             trip: components["schemas"]["Trip"];
             member: components["schemas"]["Member"];
-            /** @description Guardalo en el celular: es la única vez que se devuelve */
-            token: string;
         };
         Trip: {
             /** Format: uuid */
@@ -749,24 +3194,24 @@ export interface components {
             /** @example Viaje al sur */
             name: string;
             /**
-             * @description Código de 6 caracteres para unirse
+             * @description 6-character code to join
              * @example HUB5FT
              */
             joinCode: string;
             /** @example America/Argentina/Buenos_Aires */
             timezone: string;
             /**
-             * @description Inicio del viaje
+             * @description Trip start
              * @example 1767225600000
              */
             startsAt: number;
             /**
-             * @description Fin del viaje
+             * @description Trip end
              * @example 1767225600000
              */
             endsAt: number;
             /**
-             * @description Revelado automático
+             * @description Automatic reveal
              * @example 1767225600000
              */
             revealAt: number;
@@ -775,40 +3220,45 @@ export interface components {
             dailyVideoLimit: number;
         };
         Member: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Membership id (the one used by DELETE members and FeedItem.author)
+             */
             id: string;
+            /** Format: uuid */
+            userId: string;
             /** @example Fede */
             name: string;
+            /**
+             * @description Unique handle without the @
+             * @example fede
+             */
+            username: string | null;
+            avatarUrl: string | null;
             role: components["schemas"]["Role"];
-        };
-        /** @enum {string} */
-        Role: "admin" | "member";
-        Error: {
-            /** @example Código inválido */
-            error: string;
+            /** @description Whether you blocked this member */
+            blockedByMe: boolean;
         };
         CreateTripRequest: {
             /** @example Viaje al sur */
             name: string;
-            /** @example Juani */
-            adminName: string;
             /**
-             * @description Zona IANA del destino
+             * @description IANA time zone of the destination
              * @example America/Argentina/Buenos_Aires
              */
             timezone: string;
             /**
-             * @description Inicio del viaje
+             * @description Trip start
              * @example 1767225600000
              */
             startsAt: number;
             /**
-             * @description Fin del viaje
+             * @description Trip end; must be after startsAt
              * @example 1767225600000
              */
             endsAt: number;
             /**
-             * @description Cuándo se revela el rollo
+             * @description When the roll is revealed; must be >= endsAt
              * @example 1767225600000
              */
             revealAt: number;
@@ -820,8 +3270,6 @@ export interface components {
         JoinTripRequest: {
             /** @example HUB5FT */
             code: string;
-            /** @example Juani */
-            name: string;
         };
         TripDetail: {
             trip: components["schemas"]["Trip"];
@@ -829,11 +3277,13 @@ export interface components {
             members: components["schemas"]["Member"][];
             today: {
                 /**
-                 * @description Fecha local del viaje
+                 * @description Trip's local date
                  * @example 2027-01-12
                  */
                 date: string;
+                /** @description 0 outside the rollo's dates */
                 photosLeft: number;
+                /** @description 0 outside the rollo's dates */
                 videosLeft: number;
             };
             totalUploaded: number;
@@ -843,10 +3293,26 @@ export interface components {
         };
         UpdateTripRequest: {
             name?: string;
+            /** @description Trip end; must be after startsAt and <= the resulting revealAt */
             endsAt?: number;
+            /** @description Must be >= the resulting endsAt */
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
+        };
+        AddMembersResponse: {
+            results: {
+                userId: string;
+                /**
+                 * @description added: now a member (also if they had left); already_member; unavailable: not your friend, removed by the admin (unless the caller is the admin), or unknown
+                 * @enum {string}
+                 */
+                status: "added" | "already_member" | "unavailable";
+            }[];
+        };
+        AddMembersRequest: {
+            /** @description User ids of your friends (1 to 50) */
+            friendIds: string[];
         };
         MediaRegistered: {
             /** Format: uuid */
@@ -856,16 +3322,16 @@ export interface components {
             upload: {
                 /**
                  * Format: uri
-                 * @description PUT del archivo original
+                 * @description PUT of the original file
                  */
                 original: string;
                 /**
                  * Format: uri
-                 * @description PUT del thumbnail JPEG (~800px)
+                 * @description PUT of the JPEG thumbnail (~800px)
                  */
                 thumb: string;
             };
-            /** @description Segundos de validez de las URLs */
+            /** @description Seconds the URLs stay valid */
             expiresIn: number;
         };
         MediaStatus: {
@@ -877,12 +3343,12 @@ export interface components {
         RegisterMediaRequest: {
             /**
              * Format: uuid
-             * @description UUID generado en el celular; reintentar con el mismo id es seguro
+             * @description UUID generated on the phone; retrying with the same id is safe
              */
             id: string;
             type: components["schemas"]["MediaType"];
             /**
-             * @description Hora del celular al disparar
+             * @description Phone time when the shot was taken
              * @example 1767225600000
              */
             takenAt: number;
@@ -890,6 +3356,11 @@ export interface components {
             lng?: number | null;
             accuracyM?: number | null;
             caption?: string | null;
+            /**
+             * @description ThumbHash (https://evanw.github.io/thumbhash/) in standard base64, generated on the phone from the thumbnail. If a retry brings a different value, the first one is kept.
+             * @example 3OcRJYB4d3h/iIeHeEh3eIhw+j3A
+             */
+            thumbhash?: string | null;
             durationS?: number | null;
             width?: number | null;
             height?: number | null;
@@ -912,22 +3383,84 @@ export interface components {
             lat: number | null;
             lng: number | null;
             caption: string | null;
+            /** @description ThumbHash in base64. Always returned, also before the reveal, on purpose: it only encodes blurry colors (~25 bytes), the photo cannot be reconstructed from it. */
+            thumbhash: string | null;
             durationS: number | null;
+            /** @description `id` is the author's membership id; `userId` their user id */
             author: {
                 /** Format: uuid */
                 id: string;
+                /**
+                 * Format: uuid
+                 * @description The author's user id (to open their profile)
+                 */
+                userId: string;
                 name: string;
+                username: string | null;
+                avatarUrl: string | null;
             };
-            /** @description Solo después del revelado */
+            /** @description Only after the reveal */
             width?: number | null;
-            /** @description Solo después del revelado */
+            /** @description Only after the reveal */
             height?: number | null;
-            /** @description Paths de descarga; solo después del revelado */
+            /** @description Download paths; only after the reveal */
             files?: {
                 thumb: string;
                 original: string;
             };
+            /** @description Only after the reveal: you featured it on your profile */
+            featuredByMe?: boolean;
+            /** @description Only after the reveal: the author does not let others feature it (they still can) */
+            featureBlocked?: boolean;
+            /** @description Only after the reveal: how many people like it (one counter, also likes from profiles that feature it). Always 0 for videos */
+            likeCount?: number;
+            /** @description Only after the reveal: you like it */
+            likedByMe?: boolean;
         };
+        FeaturedPhotos: {
+            /** @description Most recently featured first */
+            photos: components["schemas"]["FeaturedPhoto"][];
+        };
+        /** @description A photo on someone's profile. Never includes the rollo, the caption or the exact location */
+        FeaturedPhoto: {
+            /** Format: uuid */
+            mediaId: string;
+            takenAt: number;
+            width: number | null;
+            height: number | null;
+            thumbhash: string | null;
+            /** @description Who took it; null when it is the profile owner */
+            author: {
+                /**
+                 * Format: uuid
+                 * @description User id
+                 */
+                id: string;
+                name: string;
+                username: string | null;
+                avatarUrl: string | null;
+            } | null;
+            zone: components["schemas"]["Zone"];
+            /** @example /featured/<userId>/<mediaId>/thumb */
+            thumbPath: string;
+            /** @example /featured/<userId>/<mediaId>/original */
+            originalPath: string;
+            /** @description How many people like it (the same counter as in its rollo) */
+            likeCount: number;
+            /** @description You like it */
+            likedByMe: boolean;
+        };
+        /**
+         * @description null if the photo has no GPS
+         * @example {
+         *       "lat": -41.075,
+         *       "lng": -71.475
+         *     }
+         */
+        Zone: {
+            lat: number;
+            lng: number;
+        } | null;
     };
     responses: never;
     parameters: never;

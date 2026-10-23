@@ -1,34 +1,47 @@
-import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
-import { radius, spacing, useTheme } from "./theme";
+import { Children, Fragment, type ReactNode } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type TextInputProps,
+  type ViewStyle,
+} from "react-native";
+import { Host, Toggle } from "@expo/ui/swift-ui";
+import { accessibilityLabel, disabled as disabledModifier, labelsHidden, tint } from "@expo/ui/swift-ui/modifiers";
+import { SymbolView } from "expo-symbols";
+import { colors, radius, spacing, type } from "./theme";
 
-export function Screen({ children }: { children: ReactNode }) {
-  const theme = useTheme();
+/** Scrolling screen. `grouped` uses the gray background of iOS grouped lists. */
+export function Screen({ children, grouped, testID }: { children: ReactNode; grouped?: boolean; testID?: string }) {
   return (
     <ScrollView
-      style={{ backgroundColor: theme.background }}
-      contentContainerStyle={styles.screen}
+      testID={testID}
+      contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
+      style={{ backgroundColor: grouped ? colors.groupedBackground : colors.background }}
+      contentContainerStyle={styles.screen}
     >
       {children}
     </ScrollView>
   );
 }
 
-export function Title({ children }: { children: ReactNode }) {
-  const theme = useTheme();
-  return <Text style={[styles.title, { color: theme.text }]}>{children}</Text>;
+export function Body({ children, muted }: { children: ReactNode; muted?: boolean }) {
+  return <Text style={[type.body, { color: muted ? colors.secondaryLabel : colors.label }]}>{children}</Text>;
 }
 
-export function Body({ children, muted }: { children: ReactNode; muted?: boolean }) {
-  const theme = useTheme();
-  return <Text style={[styles.body, { color: muted ? theme.muted : theme.text }]}>{children}</Text>;
+export function Footnote({ children }: { children: ReactNode }) {
+  return <Text style={[type.footnote, styles.footnote]}>{children}</Text>;
 }
 
 export function ErrorText({ children }: { children: ReactNode }) {
-  const theme = useTheme();
   return (
-    <Text accessibilityRole="alert" style={[styles.body, { color: theme.danger }]}>
+    <Text accessibilityRole="alert" selectable style={[type.subhead, { color: colors.danger }]}>
       {children}
     </Text>
   );
@@ -40,16 +53,18 @@ export function Button({
   disabled,
   loading,
   variant = "primary",
+  style,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
   variant?: "primary" | "secondary";
+  style?: StyleProp<ViewStyle>;
 }) {
-  const theme = useTheme();
   const isDisabled = disabled || loading;
   const primary = variant === "primary";
+  const textColor = primary ? colors.onTint : colors.label;
   return (
     <Pressable
       accessibilityRole="button"
@@ -59,68 +74,186 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        {
-          backgroundColor: primary ? theme.accent : "transparent",
-          borderColor: primary ? theme.accent : theme.border,
-          opacity: isDisabled ? 0.45 : pressed ? 0.8 : 1,
-        },
+        { backgroundColor: primary ? colors.tint : colors.fill, opacity: isDisabled ? 0.35 : pressed ? 0.7 : 1 },
+        style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator color={primary ? theme.accentText : theme.text} />
-      ) : (
-        <Text style={[styles.buttonText, { color: primary ? theme.accentText : theme.text }]}>{label}</Text>
-      )}
+      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[type.headline, { color: textColor }]}>{label}</Text>}
     </Pressable>
   );
 }
 
-export function Field({ label, ...props }: { label: string } & TextInputProps) {
-  const theme = useTheme();
+export function Field({ label, prefix, style, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
   return (
     <View style={styles.field}>
-      <Text style={[styles.label, { color: theme.muted }]}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        placeholderTextColor={theme.muted}
-        style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
-        {...props}
-      />
+      <Text style={[type.footnote, styles.footnote]}>{label}</Text>
+      {prefix ? (
+        <View style={[styles.input, styles.prefixed]}>
+          <Text style={[type.body, { color: colors.secondaryLabel }]}>{prefix}</Text>
+          <TextInput
+            accessibilityLabel={label}
+            placeholderTextColor={colors.tertiaryLabel}
+            style={[type.body, styles.prefixedInput, style]}
+            {...props}
+          />
+        </View>
+      ) : (
+        <TextInput
+          accessibilityLabel={label}
+          placeholderTextColor={colors.tertiaryLabel}
+          style={[type.body, styles.input, style]}
+          {...props}
+        />
+      )}
     </View>
   );
 }
 
-export function Card({ children, onPress, label }: { children: ReactNode; onPress?: () => void; label?: string }) {
-  const theme = useTheme();
-  const style = [styles.card, { backgroundColor: theme.surface, borderColor: theme.border }];
-  if (!onPress) return <View style={style}>{children}</View>;
+/** Inset grouped list section (iOS): rows separated by hairlines, no borders. */
+export function Section({ title, footer, children }: { title?: string; footer?: string; children: ReactNode }) {
+  const rows = Children.toArray(children);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={style}>
-      {children}
+    <View style={styles.section}>
+      {title && <Text style={[type.headline, styles.sectionTitle]}>{title}</Text>}
+      <View style={styles.group}>
+        {rows.map((row, i) => (
+          <Fragment key={i}>
+            {i > 0 && <View style={styles.separator} />}
+            {row}
+          </Fragment>
+        ))}
+      </View>
+      {footer && <Footnote>{footer}</Footnote>}
+    </View>
+  );
+}
+
+export function Row({
+  label,
+  value,
+  note,
+  onPress,
+  loading,
+  tone,
+  leading,
+  detail,
+}: {
+  /** Secondary text under the label (a handle). */
+  detail?: string;
+  /** Something before the label (an avatar). */
+  leading?: ReactNode;
+  label: string;
+  value?: string;
+  note?: string;
+  onPress?: () => void;
+  /** Spinner in place of the chevron (an action running). */
+  loading?: boolean;
+  /** "danger" colors the label red, for destructive actions; "tint" makes it an action in the brand color. */
+  tone?: "danger" | "tint";
+}) {
+  const content = (
+    <>
+      {leading}
+      {detail !== undefined ? (
+        <View style={styles.rowLabel}>
+          <Text style={[type.body, { color: colors.label }]}>{label}</Text>
+          <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{detail}</Text>
+        </View>
+      ) : (
+        <Text style={[type.body, styles.rowLabel, tone === "danger" && { color: colors.danger }, tone === "tint" && { color: colors.tint }]}>{label}</Text>
+      )}
+      {value !== undefined && (
+        <View style={styles.rowValueBox}>
+          <Text selectable style={[type.body, styles.rowValue]}>
+            {value}
+          </Text>
+          {note !== undefined && <Text style={[type.footnote, styles.rowNote]}>{note}</Text>}
+        </View>
+      )}
+      {loading ? (
+        <ActivityIndicator />
+      ) : (
+        onPress && <SymbolView name="chevron.right" size={14} weight="semibold" tintColor={colors.tertiaryLabel as string} />
+      )}
+    </>
+  );
+  if (!onPress) return <View style={styles.row} accessibilityState={loading ? { busy: true } : undefined}>{content}</View>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${label}, ${value}` : label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.fill }]}
+    >
+      {content}
     </Pressable>
   );
 }
 
+/** A grouped-list row with a native switch (on in the brand color: it's what's selected). */
+export function SwitchRow({
+  label,
+  value,
+  onValueChange,
+  disabled,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <View style={styles.row}>
+      <Text style={[type.body, styles.rowLabel]}>{label}</Text>
+      {/* Native SwiftUI toggle in a content-sized host: RN's Switch reserves 51x31 and draws off-center on iOS 26. */}
+      <Host matchContents>
+        <Toggle
+          isOn={value}
+          onIsOnChange={onValueChange}
+          modifiers={[
+            labelsHidden(),
+            tint(colors.tint as string),
+            disabledModifier(!!disabled),
+            accessibilityLabel(label),
+          ]}
+        />
+      </Host>
+    </View>
+  );
+}
+
 export function Loading() {
-  const theme = useTheme();
-  return <ActivityIndicator style={{ marginTop: spacing.xl }} color={theme.accent} />;
+  return <ActivityIndicator style={{ marginTop: spacing.xl }} />;
 }
 
 const styles = StyleSheet.create({
-  screen: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
-  title: { fontSize: 28, fontWeight: "700", letterSpacing: -0.5 },
-  body: { fontSize: 16, lineHeight: 22 },
+  screen: { padding: spacing.md, gap: spacing.lg, flexGrow: 1 },
+  footnote: { color: colors.secondaryLabel, paddingHorizontal: spacing.md },
   button: {
-    minHeight: 52,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    minHeight: 50,
+    borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
-  buttonText: { fontSize: 16, fontWeight: "600" },
-  field: { gap: spacing.xs },
-  label: { fontSize: 13, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
-  input: { minHeight: 48, borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing.md, fontSize: 17 },
-  card: { borderRadius: radius.lg, borderWidth: 1, padding: spacing.md, gap: spacing.xs },
+  field: { gap: spacing.sm },
+  input: {
+    minHeight: 50,
+    borderRadius: radius.md,
+    borderCurve: "continuous",
+    paddingHorizontal: spacing.md,
+    color: colors.label,
+    backgroundColor: colors.cell,
+  },
+  prefixed: { flexDirection: "row", alignItems: "center" },
+  prefixedInput: { flex: 1, minHeight: 50, color: colors.label },
+  section: { gap: spacing.sm },
+  sectionTitle: { color: colors.label, paddingHorizontal: spacing.xs },
+  group: { backgroundColor: colors.cell, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden" },
+  separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: spacing.md },
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 50, paddingHorizontal: spacing.md },
+  rowLabel: { flex: 1, color: colors.label },
+  rowValueBox: { alignItems: "flex-end", paddingVertical: spacing.xs },
+  rowNote: { color: colors.tertiaryLabel },
+  rowValue: { color: colors.secondaryLabel, fontVariant: ["tabular-nums"] },
 });

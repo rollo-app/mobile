@@ -2,8 +2,8 @@ import createClient, { type Middleware } from "openapi-fetch";
 import type { components, paths } from "./schema";
 
 /**
- * Cliente tipado generado desde el contrato del backend (openapi.json).
- * Si cambia la API: `npm run api:generate` y TypeScript marca lo que hay que ajustar.
+ * Typed client generated from the backend contract (openapi.json).
+ * If the API changes: `npm run api:generate` and TypeScript flags what needs adjusting.
  */
 
 export type Schemas = components["schemas"];
@@ -20,6 +20,16 @@ export class ApiError extends Error {
 
 export const OFFLINE_MESSAGE = "Sin conexión. Probá de nuevo cuando tengas señal.";
 
+let onUnauthorized: ((token: string) => void) | null = null;
+
+/**
+ * Registers who closes the local session when the server rejects it (401). It's a single place:
+ * every client made with a token reports there, whatever endpoint it called.
+ */
+export function setUnauthorizedHandler(handler: ((token: string) => void) | null) {
+  onUnauthorized = handler;
+}
+
 export function createApiClient({ baseUrl, token }: { baseUrl: string; token?: string | null }) {
   const client = createClient<paths>({ baseUrl });
   if (token) {
@@ -27,6 +37,10 @@ export function createApiClient({ baseUrl, token }: { baseUrl: string; token?: s
       onRequest({ request }) {
         request.headers.set("Authorization", `Bearer ${token}`);
         return request;
+      },
+      onResponse({ response }) {
+        if (response.status === 401) onUnauthorized?.(token);
+        return undefined;
       },
     };
     client.use(auth);
@@ -38,7 +52,7 @@ export type ApiClient = ReturnType<typeof createApiClient>;
 
 type FetchResult<T> = { data?: T; error?: unknown; response: Response };
 
-/** Devuelve `data` o tira un ApiError con el mensaje del server (`{ error }`). */
+/** Returns `data` or throws an ApiError with the server's message (`{ error }`). */
 export async function unwrap<T>(request: Promise<FetchResult<T>>): Promise<T> {
   let result: FetchResult<T>;
   try {

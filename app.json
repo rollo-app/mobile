@@ -8,7 +8,21 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.juanifraga.rollo"
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "es",
+        "CFBundleLocalizations": [
+          "es"
+        ]
+      },
+      "bundleIdentifier": "com.juanifraga.rollo",
+      "icon": {
+        "light": "./assets/icon.png",
+        "dark": "./assets/icon-dark.png",
+        "tinted": "./assets/icon-tinted.png"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,14 +39,65 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
+          "microphonePermission": "Rollo usa el micrófono para el sonido de los videos.",
+          "photosPermission": "Rollo usa el acceso a tus fotos solo para crear el álbum del rollo cuando guardás todo."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Rollo guarda dónde sacaste cada foto para el mapa del viaje."
+        }
+      ],
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "backgroundColor": "#F2F0EB",
+          "resizeMode": "contain",
+          "dark": {
+            "image": "./assets/splash-icon-dark.png",
+            "backgroundColor": "#0E0F14"
+          }
+        }
+      ],
+      "expo-background-task",
+      "expo-notifications",
+      "expo-video",
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Rollo guarda en tu carrete las fotos y videos del rollo que elijas.",
+          "photosPermission": "Rollo usa el acceso a tus fotos solo para crear el álbum del rollo cuando guardás todo."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "scheme": "rollo",
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "https://rollo-api.juanifraga.com"
-    }
+      "apiUrl": "https://rollo-api.juanifraga.com",
+      "eas": {
+        "projectId": "124fc671-d309-4a16-9606-e4e900286752"
+      }
+    },
+    "owner": "rollo-app"
   }
 }

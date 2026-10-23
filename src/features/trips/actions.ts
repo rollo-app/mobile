@@ -1,65 +1,53 @@
-import { createApiClient, unwrap, type Schemas } from "@/api/client";
-import { API_URL } from "@/config";
-import { getToken, saveSession } from "@/storage/trips";
+import { unwrap, type Schemas } from "@/api/client";
+import { authedClient } from "@/features/auth/session";
+import { setActiveTripId } from "@/storage/active-trip";
+import type { TripSummary } from "./active";
 
 export type Trip = Schemas["Trip"];
 export type TripDetail = Schemas["TripDetail"];
+export type Feed = Schemas["Feed"];
 
-const DAY = 24 * 60 * 60 * 1000;
-
-async function persist({ trip, member, token }: Schemas["TripCreated"]) {
-  await saveSession({
-    tripId: trip.id,
-    tripName: trip.name,
-    joinCode: trip.joinCode,
-    memberId: member.id,
-    memberName: member.name,
-    role: member.role,
-    token,
-  });
+/** The trips you're in, most recent first. */
+export async function fetchMyTrips(): Promise<{ trips: TripSummary[] }> {
+  return unwrap((await authedClient()).GET("/me/trips"));
 }
 
-/** Crea un viaje que arranca hoy, dura `days` días y se revela al terminar. */
+/** Creates a trip with the dates and daily limits the admin chose; it becomes the active one. */
 export async function createTrip(input: {
   name: string;
-  adminName: string;
-  days: number;
+  startsAt: number;
+  endsAt: number;
+  revealAt: number;
+  dailyPhotoLimit: number;
+  dailyVideoLimit: number;
   timezone: string;
 }): Promise<Trip> {
-  const startsAt = Date.now();
-  const endsAt = startsAt + input.days * DAY;
-
   const created = await unwrap(
-    createApiClient({ baseUrl: API_URL }).POST("/trips", {
-      body: {
-        name: input.name.trim(),
-        adminName: input.adminName.trim(),
-        timezone: input.timezone,
-        startsAt,
-        endsAt,
-        revealAt: endsAt,
-      },
-    }),
+    (await authedClient()).POST("/trips", { body: { ...input, name: input.name.trim() } }),
   );
-  await persist(created);
+  await setActiveTripId(created.trip.id);
   return created.trip;
 }
 
-export async function joinTrip(input: { code: string; name: string }): Promise<Trip> {
+/** Joins with the code (also fine if you were already in); it becomes the active trip. */
+export async function joinTrip(input: { code: string }): Promise<Trip> {
   const joined = await unwrap(
-    createApiClient({ baseUrl: API_URL }).POST("/trips/join", {
-      body: { code: input.code.trim().toUpperCase(), name: input.name.trim() },
-    }),
+    (await authedClient()).POST("/trips/join", { body: { code: input.code.trim().toUpperCase() } }),
   );
-  await persist(joined);
+  await setActiveTripId(joined.trip.id);
   return joined.trip;
 }
 
 export async function fetchTrip(tripId: string): Promise<TripDetail> {
-  const token = await getToken(tripId);
-  if (!token) throw new Error("No estás en este viaje");
+  return unwrap((await authedClient()).GET("/trips/{tripId}", { params: { path: { tripId } } }));
+}
 
-  return unwrap(
-    createApiClient({ baseUrl: API_URL, token }).GET("/trips/{tripId}", { params: { path: { tripId } } }),
-  );
+/** Everything uploaded to the trip. Before the reveal it only has metadata (author, time, place, thumbhash). */
+export async function fetchFeed(tripId: string): Promise<Schemas["Feed"]> {
+  return unwrap((await authedClient()).GET("/trips/{tripId}/feed", { params: { path: { tripId } } }));
+}
+
+/** Deletes a photo or video from the trip (admin only, before the reveal). */
+export async function deleteMedia(mediaId: string): Promise<void> {
+  await unwrap((await authedClient()).DELETE("/media/{mediaId}", { params: { path: { mediaId } } }));
 }

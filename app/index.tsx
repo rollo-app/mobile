@@ -1,34 +1,20 @@
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
-import { listTrips, type TripSummary } from "@/storage/trips";
-import { Body, Button, Card, Screen, Title } from "@/ui/components";
+import { Redirect } from "expo-router";
+import { gateFor } from "@/features/auth/gate";
+import { useMe } from "@/features/auth/use-me";
+import { useActiveTrip } from "@/features/trips/use-active-trip";
 
-export default function HomeScreen() {
-  const [trips, setTrips] = useState<TripSummary[] | null>(null);
+export default function IndexScreen() {
+  const { session, me, failed } = useMe();
+  const gate = gateFor({ session, me, meFailed: failed });
+  if (gate === "login") return <Redirect href="/email" />;
+  if (gate === "profile") return <Redirect href="/profile" />;
+  if (gate !== "app") return null;
+  return <Home />;
+}
 
-  useFocusEffect(
-    useCallback(() => {
-      listTrips().then(setTrips);
-    }, []),
-  );
-
-  return (
-    <Screen>
-      <Title>Tus rollos</Title>
-
-      {trips?.length === 0 && (
-        <Body muted>Todavía no estás en ningún viaje</Body>
-      )}
-
-      {trips?.map((trip) => (
-        <Card key={trip.tripId} label={trip.tripName} onPress={() => router.push(`/trip/${trip.tripId}`)}>
-          <Body>{trip.tripName}</Body>
-          <Body muted>{trip.role === "admin" ? "Lo creaste vos" : `Entraste como ${trip.memberName}`}</Body>
-        </Card>
-      ))}
-
-      <Button label="Crear un viaje" onPress={() => router.push("/create")} />
-      <Button label="Unirme con un código" variant="secondary" onPress={() => router.push("/join")} />
-    </Screen>
-  );
+function Home() {
+  const { loaded } = useActiveTrip();
+  if (!loaded) return null;
+  // With or without rollos, the Rollo tab is the home: with none it's the welcome.
+  return <Redirect href="/roll" />;
 }
