@@ -112,6 +112,51 @@ describe("the home", () => {
   });
 });
 
+describe("the home mockups", () => {
+  let html: string;
+  beforeAll(() => {
+    html = read("index.html");
+  });
+  const section = (id: string) => html.match(new RegExp(`<section[^>]*id="${id}"[\\s\\S]*?</section>`))?.[0] ?? "";
+  const figures = () => [...html.matchAll(/<figure\b([^>]*)>([\s\S]*?)<\/figure>/g)];
+
+  it("draws a phone with app content in every slot", () => {
+    const slots = [...html.matchAll(/data-shot="([^"]+)">\s*(<div class="phone"[\s\S]*?)<\/figure>/g)];
+    expect(slots.map((s) => s[1])).toEqual(["inicio", "como-funciona", "como-funciona", "como-funciona", "mapa", "revelado", "perfil"]);
+    for (const [, , phone] of slots) {
+      expect(phone).toMatch(/<div class="screen m-[a-z]+"><div class="status">[\s\S]*<\/div>\s*<\/div>\s*<\/div>\s*$/);
+    }
+  });
+
+  it("hides every mockup from screen readers and labels every figure in Spanish", () => {
+    const all = figures();
+    expect(all).toHaveLength(7);
+    for (const [, attrs, inner] of all) {
+      expect(attrs).toMatch(/aria-label="[^"]*[a-záéíóúñ]{3,}[^"]*"/);
+      expect(inner).toMatch(/^<div class="shot" data-shot="[^"]+">\s*<div class="phone" aria-hidden="true">/);
+    }
+  });
+
+  it("has at least 9 photos to reveal in the reveal section", () => {
+    const photos = section("revelado").match(/<span class="photo"[^>]*\bdata-reveal\b/g) ?? [];
+    expect(photos.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("paints photos as color blobs, sharp in the static CSS", () => {
+    expect(section("inicio")).toMatch(/<span class="photo" style="--a:#[0-9a-f]{6};--b:#[0-9a-f]{6}"/);
+    const style = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
+    expect(style).toContain("linear-gradient(135deg,var(--a),var(--b))");
+    expect(style).not.toMatch(/(?<!\.js-motion[^{]*)\{[^}]*filter:\s*blur/);
+  });
+
+  it("shows the map pins with initials, the feed row and the profile header", () => {
+    expect(section("mapa")).toMatch(/class="pin"[^>]*>C</);
+    expect(section("mapa")).toContain("Cami sacó una foto · 14:32");
+    expect(section("perfil")).toMatch(/@\w+/);
+    expect(section("perfil")).toMatch(/Fotos[\s\S]*Mapa/);
+  });
+});
+
 describe("the home in App Store mode", () => {
   const homeModule = join(__dirname, "..", "site", "home.mjs");
   const render = (storeMode: string) =>

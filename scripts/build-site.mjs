@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
 import { homeCss, homeHtml } from "./site/home.mjs";
+import { mockups, mockupsCss } from "./site/mockups.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
@@ -108,13 +109,14 @@ const home = homeHtml({
   testflightUrl: TESTFLIGHT_URL,
   appStoreUrl: APP_STORE_URL,
   siteUrl: SITE_URL,
+  mockups,
 });
 write("index.html", page({
   title: "Rollo · Fotos en grupo para iPhone",
   description: "Rollo: fotos y videos en grupo que nadie ve hasta el revelado. App para iPhone.",
   body: home.body,
   head: home.head,
-  css: homeCss,
+  css: homeCss + mockupsCss,
   wide: true,
 }));
 if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
