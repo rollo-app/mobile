@@ -2,18 +2,22 @@ import { act } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import * as likeActions from "@/features/likes/actions";
 import * as actions from "@/features/trips/actions";
+import { PHOTO_MS } from "@/features/presentation/story";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
+jest.mock("@/features/likes/actions");
 jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(), ImpactFeedbackStyle: { Light: "light" } }));
 jest.mock("expo-video", () => ({
   useVideoPlayer: () => ({ play: jest.fn(), pause: jest.fn(), muted: true, loop: false }),
   VideoView: () => null,
 }));
 const mocked = jest.mocked(actions);
+const likes = jest.mocked(likeActions);
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const TZ = "America/Argentina/Buenos_Aires";
@@ -54,9 +58,16 @@ const item = (id: string, iso: string, author: { id: string; name: string; usern
   files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
 });
 
-const tap = async () => fireEvent.press(await screen.findByTestId("story-surface"), { nativeEvent: { locationX: 600 } });
+const press = async (x = 600) => fireEvent.press(await screen.findByTestId("story-surface"), { nativeEvent: { locationX: x } });
+/** A single tap: on a photo it waits out the double-tap window before it moves. */
+const tap = async (x = 600) => {
+  await press(x);
+  await act(async () => jest.advanceTimersByTime(300));
+};
 
 beforeEach(async () => {
+  likes.likeMedia.mockReset().mockResolvedValue(undefined);
+  likes.unlikeMedia.mockReset().mockResolvedValue(undefined);
   mocked.fetchTrip.mockResolvedValue(detail());
   mocked.fetchFeed.mockResolvedValue({
     revealed: true,
@@ -100,7 +111,7 @@ describe("Presentation", () => {
     await tap();
     await screen.findByText("el viento no perdona");
     await tap(); // b
-    await fireEvent.press(await screen.findByTestId("story-surface"), { nativeEvent: { locationX: 10 } });
+    await tap(10);
     await screen.findByText("el viento no perdona");
   });
 
@@ -153,5 +164,90 @@ describe("Presentation", () => {
     mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: 0, items: [] });
     await renderRouter(routes, { initialUrl: "/presentation" });
     await screen.findByText("Todavía no hay fotos para mostrar.");
+  });
+});
+
+describe("Presentation: likes", () => {
+  it("double tap on a photo likes it with the heart and stays on it, with no counter", async () => {
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await screen.findByText("el viento no perdona");
+
+    await press();
+    await press();
+
+    await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("a"));
+    expect(screen.getByTestId("heart-burst")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Me gusta" })).toBeNull();
+    await act(async () => jest.advanceTimersByTime(300));
+    expect(screen.getByText("el viento no perdona")).toBeVisible();
+  });
+
+  it("double tap on a photo you already like doesn't take it away", async () => {
+    const liked = await mocked.fetchFeed("x");
+    mocked.fetchFeed.mockResolvedValue({ ...liked, items: liked.items.map((i) => ({ ...i, likedByMe: true, likeCount: 1 })) });
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await screen.findByText("el viento no perdona");
+
+    await press();
+    await press();
+    await act(async () => jest.advanceTimersByTime(300));
+
+    expect(likes.unlikeMedia).not.toHaveBeenCalled();
+    expect(likes.likeMedia).not.toHaveBeenCalled();
+    expect(screen.getByText("el viento no perdona")).toBeVisible();
+  });
+
+  it("a second double tap after liking doesn't send it again", async () => {
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await screen.findByText("el viento no perdona");
+
+    await press();
+    await press();
+    await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledTimes(1));
+    await act(async () => jest.advanceTimersByTime(300));
+    await press();
+    await press();
+    await act(async () => jest.advanceTimersByTime(300));
+
+    expect(likes.likeMedia).toHaveBeenCalledTimes(1);
+    expect(likes.unlikeMedia).not.toHaveBeenCalled();
+  });
+
+  it("on a video, taps move right away and never like", async () => {
+    const base = await mocked.fetchFeed("x");
+    mocked.fetchFeed.mockResolvedValue({
+      ...base,
+      items: [{ ...base.items[0]!, type: "video", durationS: 10, caption: "un video" }, ...base.items.slice(1)],
+    });
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await screen.findByText("un video");
+
+    await press();
+    await press();
+
+    expect(likes.likeMedia).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("heart-burst")).toBeNull();
+    // Two immediate moves: past the video and the next photo, to day 2.
+    await screen.findByText("Día 2");
+  });
+
+  it("a tap right before the photo moves on by itself doesn't also skip the next one", async () => {
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await screen.findByText("el viento no perdona");
+
+    // `tap()` already let 300 ms of this photo run: tap ~100 ms before it moves on by itself.
+    await act(async () => jest.advanceTimersByTime(PHOTO_MS - 400));
+    await press();
+    await act(async () => jest.advanceTimersByTime(200));
+    await act(async () => jest.advanceTimersByTime(300));
+
+    // Exactly one step forward: the next photo (b), not day 2.
+    expect(screen.getByLabelText(/^Foto de Juani/)).toBeTruthy();
+    expect(screen.queryByText("Día 2")).toBeNull();
   });
 });

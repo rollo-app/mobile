@@ -19,6 +19,8 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,
+  likeCount: 0,
+  likedByMe: false,
 });
 
 describe("gallery grouping", () => {
