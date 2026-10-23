@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { ApiError } from "@/api/client";
 import { Button, ErrorText, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
-import { verifyMagicLink } from "./actions";
+import { LinkFromOtherRequestError, verifyMagicLink } from "./actions";
 import { gateFor } from "./gate";
 import { sameEmail, verifyMagicLinkOnce } from "./magic-link";
 import { useMe } from "./use-me";
@@ -13,7 +13,8 @@ const INVALID = "Este link no es válido. Pedí un código nuevo desde la app.";
 
 /**
  * `rollo://login?token=…&email=…`, from the email's button (via rollo.juanifraga.com/entrar). Without a
- * session it signs in like the code does and the gate takes over; with one it never switches accounts.
+ * session it signs in like the code does (only if this phone asked for that email's code) and the gate
+ * takes over; with one it never switches accounts.
  */
 export function MagicLinkScreen({ token, email }: { token: string; email: string }) {
   const { session, me, failed } = useMe();
@@ -26,7 +27,9 @@ export function MagicLinkScreen({ token, email }: { token: string; email: string
     if (!signedOut || !token || !email) return;
     let active = true;
     verifyMagicLinkOnce(email, token, verifyMagicLink).catch((e) => {
-      if (active) setError(e instanceof ApiError ? e.message : "No pudimos entrar. Revisá tu conexión y pedí otro código.");
+      if (!active) return;
+      const known = e instanceof ApiError || e instanceof LinkFromOtherRequestError;
+      setError(known ? e.message : "No pudimos entrar. Revisá tu conexión y volvé a abrir el link.");
     });
     return () => {
       active = false;
@@ -65,7 +68,7 @@ export function MagicLinkScreen({ token, email }: { token: string; email: string
   return (
     <View style={styles.screen}>
       <Loading />
-      <Text style={[type.body, styles.center, { color: colors.secondaryLabel }]}>Entrando…</Text>
+      <Text style={[type.body, styles.center, { color: colors.secondaryLabel }]}>Entrando como {email.trim().toLowerCase()}…</Text>
     </View>
   );
 }

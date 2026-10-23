@@ -1,4 +1,5 @@
 // Builds the static public site (home/support + legal pages) into site/dist.
+import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -158,7 +159,13 @@ write("entrar/index.html", page({
   title: "Entrar · Rollo",
   description: "Entrá a Rollo con el link del mail.",
   body: entrar,
-  head: `<meta name="referrer" content="no-referrer">\n<meta name="robots" content="noindex">\n`,
+  head: [
+    // Only this page's own script runs and nothing can be fetched or sent: the token never leaves the phone.
+    `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${createHash("sha256").update(entrarScript).digest("base64")}'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">`,
+    `<meta name="referrer" content="no-referrer">`,
+    `<meta name="robots" content="noindex">`,
+    "",
+  ].join("\n"),
 }));
 write("404.html", page({
   title: "No encontrada · Rollo",

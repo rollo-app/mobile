@@ -5,6 +5,7 @@ import * as featuredActions from "@/features/featured/actions";
 import * as friendActions from "@/features/friends/actions";
 import * as moderationActions from "@/features/moderation/actions";
 import * as tripActions from "@/features/trips/actions";
+import { getLoginLinkVerifier, setLoginLinkVerifier } from "@/storage/login-link-verifier";
 import { getSessionToken } from "@/storage/session";
 import { signInAs, USER } from "@/test/account";
 import { routes } from "@/test/routes";
@@ -33,6 +34,8 @@ const verifyCalls = (calls: { key: string }[]) => calls.filter((c) => c.key === 
 
 const link = (token: string, email: string) => `/login?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
 const DEAD = "El link venció o ya se usó. Pedí otro código.";
+const OTHER_REQUEST = "Este link es de otro pedido. Pedí un código nuevo desde este iPhone.";
+const VERIFIER = "v".repeat(43);
 
 beforeEach(() => {
   forgetMagicLinks();
@@ -44,6 +47,9 @@ beforeEach(() => {
 
 describe("Opening the magic link from the email", () => {
   describe("without a session", () => {
+    // This phone asked for the code (and so for the link) for juani@rollo.test.
+    beforeEach(() => setLoginLinkVerifier({ email: "juani@rollo.test", verifier: VERIFIER }));
+
     it("signs in with the link and the app opens, like with the code", async () => {
       const calls = mockApi({ "POST /auth/email/verify-link": () => json(200, { token: "tok", user: USER, isNew: false }) });
       await renderRouter(routes, { initialUrl: link("tk1", "juani@rollo.test") });
@@ -51,7 +57,10 @@ describe("Opening the magic link from the email", () => {
       expect(await screen.findByText("Todavía no tenés rollos")).toBeVisible();
       expect(screen).toHavePathname("/roll");
       expect(await getSessionToken()).toBe("tok");
-      expect(verifyCalls(calls)).toEqual([{ key: "POST /auth/email/verify-link", body: { email: "juani@rollo.test", token: "tk1" } }]);
+      expect(verifyCalls(calls)).toEqual([
+        { key: "POST /auth/email/verify-link", body: { email: "juani@rollo.test", token: "tk1", verifier: VERIFIER } },
+      ]);
+      expect(await getLoginLinkVerifier()).toBeNull();
     });
 
     it("a new account goes on to Completá tu perfil", async () => {
@@ -64,11 +73,25 @@ describe("Opening the magic link from the email", () => {
       expect(screen).toHavePathname("/profile");
     });
 
-    it("shows that it's signing in while it checks the link", async () => {
+    it("shows which account it's signing into while it checks the link", async () => {
       mockApi({ "POST /auth/email/verify-link": () => new Promise<Response>(() => {}) });
-      await renderRouter(routes, { initialUrl: link("tk1", "juani@rollo.test") });
+      await renderRouter(routes, { initialUrl: link("tk1", "Juani@rollo.test") });
 
-      expect(await screen.findByText("Entrando…")).toBeVisible();
+      expect(await screen.findByText("Entrando como juani@rollo.test…")).toBeVisible();
+    });
+
+    it("a link this phone didn't ask for (another account's) does nothing and explains why", async () => {
+      const calls = mockApi({ "POST /auth/email/verify-link": () => json(200, { token: "evil", user: USER, isNew: false }) });
+      await renderRouter(routes, { initialUrl: link("tk1", "atacante@rollo.test") });
+
+      expect(await screen.findByText(OTHER_REQUEST)).toBeVisible();
+      expect(verifyCalls(calls)).toHaveLength(0);
+      expect(await getSessionToken()).toBeNull();
+      expect(await getLoginLinkVerifier()).toEqual({ email: "juani@rollo.test", verifier: VERIFIER });
+
+      await fireEvent.press(screen.getByRole("button", { name: "Volver a pedir un código" }));
+      await waitFor(() => expect(screen).toHavePathname("/email"));
+      expect(screen.getByLabelText("Tu email").props.value).toBe("atacante@rollo.test");
     });
 
     it("a dead link shows the message and goes back to ask for a code with the email filled in", async () => {
@@ -82,6 +105,16 @@ describe("Opening the magic link from the email", () => {
 
       await waitFor(() => expect(screen).toHavePathname("/email"));
       expect(screen.getByLabelText("Tu email").props.value).toBe("juani@rollo.test");
+    });
+
+    it("without a verifier on this phone (the code was asked elsewhere) it never asks the server", async () => {
+      await require("@/storage/login-link-verifier").clearLoginLinkVerifier();
+      const calls = mockApi({ "POST /auth/email/verify-link": () => json(200, { token: "tok", user: USER, isNew: false }) });
+      await renderRouter(routes, { initialUrl: link("tk1", "juani@rollo.test") });
+
+      expect(await screen.findByText(OTHER_REQUEST)).toBeVisible();
+      expect(verifyCalls(calls)).toHaveLength(0);
+      expect(await getSessionToken()).toBeNull();
     });
 
     it("a link without a token says it isn't valid, without asking the server", async () => {
@@ -99,8 +132,8 @@ describe("Opening the magic link from the email", () => {
       let answer!: (r: Response) => void;
       const calls = mockApi({ "POST /auth/email/verify-link": () => new Promise<Response>((resolve) => (answer = resolve)) });
       await renderRouter(routes, { initialUrl: link("tk1", "juani@rollo.test") });
-      expect(await screen.findByText("Entrando…")).toBeVisible();
 
+      expect(await screen.findByText("Entrando como juani@rollo.test…")).toBeVisible();
       await act(async () => router.push(link("tk1", "juani@rollo.test")));
       await act(async () => answer(json(200, { token: "tok", user: USER, isNew: false })));
 

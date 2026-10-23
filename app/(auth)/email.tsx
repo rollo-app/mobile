@@ -8,8 +8,8 @@ import { Button, ErrorText, Field } from "@/ui/components";
 
 export default function EmailScreen() {
   // Prefilled when coming back from a dead magic link.
-  const params = useLocalSearchParams<{ email?: string }>();
-  const [email, setEmail] = useState(params.email ?? "");
+  const params = useLocalSearchParams<{ email?: string | string[] }>();
+  const [email, setEmail] = useState(typeof params.email === "string" ? params.email : "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

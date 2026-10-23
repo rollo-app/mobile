@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -71,5 +72,16 @@ describe("the /entrar page (magic link from the email)", () => {
     expect(html).not.toMatch(/<(img|iframe)\b/);
     expect(html).not.toMatch(/(src|href)="(https?:)?\/\//);
     expect(html).toContain('<meta name="referrer" content="no-referrer">');
+  });
+
+  it("locks the page down with a CSP: only its own inline script runs and it can't connect anywhere", () => {
+    const csp = html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/)?.[1];
+    expect(csp).toBeDefined();
+    const hash = createHash("sha256").update(inlineScript()).digest("base64");
+    expect(csp).toContain("default-src 'none'");
+    expect(csp).toContain(`script-src 'sha256-${hash}'`);
+    expect(csp).toContain("connect-src 'none'");
+    expect(csp).toContain("form-action 'none'");
+    expect(csp).toContain("base-uri 'none'");
   });
 });

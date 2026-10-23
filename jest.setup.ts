@@ -409,3 +409,16 @@ jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"))
 
 // Native HUD (burnt): tests get mocks they can inspect.
 jest.mock("burnt", () => ({ alert: jest.fn(), toast: jest.fn() }));
+
+// expo-crypto is native: random bytes and digests come from Node's crypto (a test file can still mock it whole).
+jest.mock("expo-crypto", () => {
+  const nodeCrypto = jest.requireActual("crypto");
+  return {
+    ...jest.requireActual("expo-crypto"),
+    getRandomBytes: (count: number) => new Uint8Array(nodeCrypto.randomBytes(count)),
+    digest: async (_algorithm: string, data: Uint8Array) => {
+      const hash: Uint8Array = nodeCrypto.createHash("sha256").update(data).digest();
+      return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength);
+    },
+  };
+});
