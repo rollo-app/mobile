@@ -1,3 +1,5 @@
+import * as Burnt from "burnt";
+import * as Haptics from "expo-haptics";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 import { useMe } from "@/features/auth/use-me";
@@ -38,6 +40,10 @@ export function useToggleFeatured() {
       try {
         await (next ? featureMedia : unfeatureMedia)(photo.id);
         if (me) void client.invalidateQueries({ queryKey: featuredKey(me.id) });
+        if (next) {
+          Burnt.alert({ title: "Agregada a tu perfil", preset: "done", duration: 2 });
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
       } catch (e) {
         setFeaturedInFeed(client, tripId, photo.id, photo.featuredByMe);
         setError(e instanceof Error ? e.message : "No se pudo cambiar la foto destacada");
