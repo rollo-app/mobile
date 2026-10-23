@@ -249,6 +249,75 @@ describe("Login", () => {
     expect(screen.getByRole("button", { name: /^Reenviar código/ })).toBeVisible();
   });
 
+  it("after a failed code, an autofilled new one is submitted instead of the old one", async () => {
+    const codes: string[] = [];
+    mockApi({
+      "POST /auth/email/start": json(204),
+      "POST /auth/email/verify": async (req) => {
+        codes.push(((await req.json()) as { code: string }).code);
+        return json(400, { error: "Código incorrecto o vencido" });
+      },
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
+    expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+
+    // AutoFill inserts at the cursor, after the old code.
+    await fireEvent.changeText(screen.getByLabelText("Código"), "K7M4QXA2B3C4");
+
+    await waitFor(() => expect(codes).toEqual(["K7M4QX", "A2B3C4"]));
+    expect(screen.getByLabelText("Código").props.value).toBe("A2B3C4");
+  });
+
+  it("a resent code clears the old one from the field", async () => {
+    mockApi({
+      "POST /auth/email/start": json(204),
+      "POST /auth/email/verify": json(400, { error: "Código incorrecto o vencido" }),
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+    await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
+    expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+
+    const realNow = Date.now();
+    const clock = jest.spyOn(Date, "now").mockImplementation(() => realNow + 61_000);
+    try {
+      await waitFor(() => expect(screen.getByRole("button", { name: "Reenviar código" })).toBeEnabled(), { timeout: 3000 });
+      await fireEvent.press(screen.getByRole("button", { name: "Reenviar código" }));
+      await waitFor(() => expect(screen.getByLabelText("Código").props.value).toBe(""));
+      expect(screen.queryByText("Si el mail se borró, pedí otro código.")).toBeNull();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("a failed resend doesn't suggest asking for another code", async () => {
+    mockApi({
+      "POST /auth/email/start": (() => {
+        let n = 0;
+        return () => (++n === 1 ? json(204) : json(429, { error: "Pediste demasiados códigos, esperá un rato" }));
+      })(),
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+    await screen.findByLabelText("Código");
+
+    const realNow = Date.now();
+    const clock = jest.spyOn(Date, "now").mockImplementation(() => realNow + 61_000);
+    try {
+      await waitFor(() => expect(screen.getByRole("button", { name: "Reenviar código" })).toBeEnabled(), { timeout: 3000 });
+      await fireEvent.press(screen.getByRole("button", { name: "Reenviar código" }));
+      expect(await screen.findByText("Pediste demasiados códigos, esperá un rato")).toBeVisible();
+      expect(screen.queryByText("Si el mail se borró, pedí otro código.")).toBeNull();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it("doesn't suggest asking for another code before anything failed", async () => {
     mockApi({ "POST /auth/email/start": json(204) });
     await renderRouter(routes, { initialUrl: "/" });
@@ -534,6 +603,19 @@ describe("Edit profile", () => {
       expect(manipulator.ImageManipulator.__ctx.crop).toHaveBeenLastCalledWith({ originX: 0, originY: 200, width: 1200, height: 1200 });
       expect(manipulator.ImageManipulator.__ctx.resize).toHaveBeenLastCalledWith({ width: 512, height: 512 });
       await waitFor(() => expect(screen).toHavePathname("/edit-profile"));
+    });
+
+    it("a library photo without a size skips the crop screen and uploads as is", async () => {
+      const sizeless = { uri: "file:///picked.jpg", width: 0, height: 0 } as ImagePicker.ImagePickerAsset;
+      picker.launchImageLibraryAsync.mockResolvedValue({ canceled: false, assets: [sizeless] });
+      const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue(USER);
+      upload.mockClear();
+      await renderRouter(routes, { initialUrl: "/edit-profile" });
+
+      await choose(1);
+
+      await waitFor(() => expect(upload).toHaveBeenCalledWith(sizeless));
+      expect(screen).toHavePathname("/edit-profile");
     });
 
     it("Cancelar on the crop screen goes back and uploads nothing", async () => {

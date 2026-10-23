@@ -71,7 +71,9 @@ export function useAvatarUpload() {
       const asset = result.canceled ? null : result.assets[0];
       if (!asset) return;
       const photo = { uri: asset.uri, width: asset.width, height: asset.height };
-      const ready = source === "camera" ? photo : await cropInApp(photo);
+      // Without a size (iOS can report 0×0) the crop can't be laid out: send it as is.
+      const croppable = photo.width > 0 && photo.height > 0;
+      const ready = source === "camera" || !croppable ? photo : await cropInApp(photo);
       if (ready) await send(ready);
     },
     [send],

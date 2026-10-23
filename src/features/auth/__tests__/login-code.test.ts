@@ -38,4 +38,21 @@ describe("normalizeLoginCode", () => {
       expect(normalizeLoginCode("Rollo: 23ABCD")).toBe("23ABCD");
     });
   });
+
+  describe("inserting into a field that already has a code", () => {
+    it("takes the inserted code, not the old one", () => {
+      expect(normalizeLoginCode("OLD234NEW456", "OLD234")).toBe("NEW456");
+      expect(normalizeLoginCode("K7M4QX A2B3C4", "K7M4QX")).toBe("A2B3C4");
+    });
+
+    it("still types one character at a time", () => {
+      expect(normalizeLoginCode("K7M4", "K7M")).toBe("K7M4");
+    });
+  });
+
+  it("prefers a token with digits, and the last one, over plain words", () => {
+    expect(normalizeLoginCode("Para ENTRAR usá K7M4QX")).toBe("K7M4QX");
+    expect(normalizeLoginCode("Para ENTRAR usá ABCDEF")).toBe("ABCDEF");
+  });
 });
+

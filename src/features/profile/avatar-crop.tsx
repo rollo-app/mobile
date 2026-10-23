@@ -48,7 +48,10 @@ export function AvatarCrop({ requestId }: { requestId: string | undefined }) {
 
   // Leaving any other way (or a crop that no longer exists) counts as cancelling.
   useEffect(() => {
-    if (!photo && router.canGoBack()) router.back();
+    if (!photo) {
+      if (router.canGoBack()) router.back();
+      else router.replace("/");
+    }
     return () => settleCropRequest(requestId, null);
   }, [photo, requestId]);
 
