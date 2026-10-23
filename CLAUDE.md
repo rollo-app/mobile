@@ -309,10 +309,20 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 ## Sitio público
 
-`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): inicio + soporte, `/privacidad`,
-`/terminos` y `/entrar` (el link mágico del mail; script inline, sin pedidos a ningún lado). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
-se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/`. `npm run site:build` para verlo,
-`npm run site:deploy` para publicarlo. Son las URLs de privacidad, soporte y marketing de App Store Connect.
+`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** (7 secciones
+con maquetas de la app en HTML/CSS y el botón "Probar la beta en iPhone" a TestFlight), `/soporte` (preguntas frecuentes y contacto;
+`/#soporte` cae en el link a esa página), `/privacidad`, `/terminos` y `/entrar` (el link mágico del mail; script inline, sin pedidos a
+ningún lado, con su CSP). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
+se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/` (la home vive en `scripts/site/home.mjs` y `mockups.mjs`, los
+tokens de color compartidos en `scripts/site/tokens.mjs`). `npm run site:build` para verlo, `npm run site:deploy` para publicarlo.
+Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y marketing de App Store Connect.
+- **Botón de la home:** constantes `STORE_MODE` (`"beta"` por defecto, o `SITE_STORE_MODE=appstore`) y `APP_STORE_URL` en
+  `build-site.mjs`. En modo `appstore` el botón pasa a ser el badge oficial de Apple, que hay que bajar a
+  `scripts/site/app-store-badge.svg` (no se dibuja a mano); sin ese archivo o sin `APP_STORE_URL` el build falla.
+- **Animaciones:** Motion (`animate`, `scroll`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
+  `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
+  Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.
+- **Imagen para compartir:** `npm run og` regenera `scripts/site/og.png` (1200×630, `scripts/build-og.mjs`); se commitea.
 Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Juani).
 
 ## Apple

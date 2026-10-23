@@ -7,6 +7,7 @@ import { build } from "esbuild";
 import { marked } from "marked";
 import { homeCss, homeHtml } from "./site/home.mjs";
 import { mockups, mockupsCss } from "./site/mockups.mjs";
+import { tokensCss } from "./site/tokens.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
@@ -38,8 +39,7 @@ const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
 <circle cx="71" cy="49" r="14" fill="#3155F5"/></svg>`;
 
 const css = `
-:root{--bg:#F2F0EB;--fg:#1c1c1e;--muted:#6c6c70;--rule:#d8d5cd;--tint:#3155F5}
-@media (prefers-color-scheme:dark){:root{--bg:#0E0F14;--fg:#f2f2f7;--muted:#98989f;--rule:#2a2c35;--tint:#5C7CFF}}
+${tokensCss}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}

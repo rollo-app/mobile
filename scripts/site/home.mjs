@@ -1,4 +1,5 @@
 // The home (landing): 7 sections in the order a rollo is lived, plus its own wide stylesheet.
+import { tokensCss } from "./tokens.mjs";
 
 const IPHONE_ONLY = "Solo para iPhone · Gratis";
 
@@ -61,7 +62,7 @@ ${shot("inicio", "El rollo en la app, con las fotos todavía sin revelar", mocku
 
 <section id="como-funciona" data-enter>
 <h2 class="serif">Cómo funciona</h2>
-<ol class="steps">
+<ol class="steps" role="list">
 <li>
 <h3>Abrí un rollo</h3>
 <p>Ponele nombre, fechas y cuándo se revela. Tus amigos se suman con un código de 6 caracteres.</p>
@@ -123,8 +124,9 @@ ${button}
 export const homeCss = `
 .js-motion #revelado .photo[data-reveal]{filter:blur(10px) sepia(.8)}
 .js-motion [data-enter]{opacity:0;transform:translateY(16px)}
-:root{--bg:#F2F0EB;--fg:#1c1c1e;--muted:#6c6c70;--rule:#d8d5cd;--tint:#3155F5;--screen:#F7F6F2;--bezel:#111}
-@media (prefers-color-scheme:dark){:root{--bg:#0E0F14;--fg:#f2f2f7;--muted:#98989f;--rule:#2a2c35;--tint:#5C7CFF;--screen:#17181e;--bezel:#2a2c35}}
+${tokensCss}
+:root{--screen:#F7F6F2;--bezel:#111}
+@media (prefers-color-scheme:dark){:root{--screen:#17181e;--bezel:#2a2c35}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
@@ -135,6 +137,7 @@ a:focus-visible{outline:3px solid var(--tint);outline-offset:3px;border-radius:4
 header.top a{display:inline-flex;align-items:center;gap:10px;color:var(--fg);text-decoration:none;font-weight:600;font-size:19px}
 .logo{color:var(--tint);flex:none}
 h1,h2,h3,p,ol,figure{margin:0}
+h1,h2,.line{text-wrap:balance}
 h1{font-size:clamp(40px,11vw,64px);line-height:1.04;letter-spacing:-.01em;margin-bottom:18px}
 h2{font-size:clamp(28px,7vw,38px);line-height:1.15;margin-bottom:14px}
 h3{font-size:17px;font-weight:600;margin:22px 0 4px}
@@ -168,6 +171,7 @@ footer a{color:var(--muted)}
 @media (min-width:768px){
   .wrap.wide{padding:28px 32px 48px}
   section{padding:88px 0}
+  h1{font-size:clamp(44px,6vw,64px)}
   .hero,.feature{display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center}
   .feature.flip .text{order:2}
   .hero .figure,.feature .figure{margin-top:0}

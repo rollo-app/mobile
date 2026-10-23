@@ -156,6 +156,27 @@ describe("the home mockups", () => {
     expect(style).toMatch(/\.js-motion \[data-enter\]\{opacity:0;transform:translateY\(16px\)\}/);
   });
 
+  it("scopes every mockup rule under the phone so it can't hit the page", () => {
+    const css = execFileSync(process.execPath, [
+      "--input-type=module",
+      "-e",
+      `import { mockupsCss } from ${JSON.stringify(join(__dirname, "..", "site", "mockups.mjs"))}; process.stdout.write(mockupsCss);`,
+    ]).toString();
+    const selectors = css
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/@media[^{]*\{(:root\{[^}]*\})\}/g, "$1")
+      .split("}")
+      .map((rule) => rule.split("{")[0]!.trim())
+      .filter((s) => s && s !== ":root")
+      .flatMap((s) => s.split(",").map((part) => part.trim()));
+    expect(selectors.length).toBeGreaterThan(40);
+    expect(selectors.filter((s) => !/^(\.phone|\.screen|\.m-[a-z]+)\b/.test(s))).toEqual([]);
+  });
+
+  it("keeps list semantics on the steps (list-style:none drops them in Safari)", () => {
+    expect(section("como-funciona")).toContain('<ol class="steps" role="list">');
+  });
+
   it("shows the map pins with initials, the feed row and the profile header", () => {
     expect(section("mapa")).toMatch(/class="pin"[^>]*>C</);
     expect(section("mapa")).toContain("Cami sacó una foto · 14:32");
@@ -289,6 +310,15 @@ describe("the home motion", () => {
       const { classes, root } = run({ Motion: {} }, boom);
       expect(classes.has("js-motion")).toBe(false);
       expect(root.dataset.motion).toBeUndefined();
+    });
+
+    it("brings sections in with explicit y keyframes, never transform:none (Motion turns it into a zero-scale matrix)", () => {
+      const animate = jest.fn();
+      const section = {};
+      const inView = jest.fn((_el: unknown, onEnter: () => void) => onEnter());
+      run({ Motion: { animate, inView, scroll: jest.fn(), stagger: jest.fn() } }, () => [section]);
+      expect(animate).toHaveBeenCalledWith(section, { opacity: [0, 1], y: [16, 0] }, expect.any(Object));
+      for (const [, keyframes] of animate.mock.calls) expect(keyframes).not.toHaveProperty("transform");
     });
 
     it("marks motion as on when init succeeds", () => {

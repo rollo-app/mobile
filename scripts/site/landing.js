@@ -15,32 +15,34 @@
   }
 
   function init() {
-  var animate = window.Motion.animate;
-  var scroll = window.Motion.scroll;
-  var inView = window.Motion.inView;
-  var stagger = window.Motion.stagger;
+    var animate = window.Motion.animate;
+    var scroll = window.Motion.scroll;
+    var inView = window.Motion.inView;
+    var stagger = window.Motion.stagger;
 
-  document.querySelectorAll("[data-enter]").forEach(function (el) {
-    inView(
-      el,
-      function () {
-        animate(el, { opacity: 1, transform: "none" }, { duration: 0.6, ease: "easeOut" });
-      },
-      { amount: 0.2 },
-    );
-  });
+    // inView stops watching an element after the first entrance (the callback returns no leave handler).
+    // Keyframes go through `y`, not `transform: "none"`: Motion turns "none" into a zero-scale matrix and the section vanishes.
+    document.querySelectorAll("[data-enter]").forEach(function (el) {
+      inView(
+        el,
+        function () {
+          animate(el, { opacity: [0, 1], y: [16, 0] }, { duration: 0.6, ease: "easeOut" });
+        },
+        { amount: 0.2 },
+      );
+    });
 
-  var section = document.getElementById("revelado");
-  var photos = section ? section.querySelectorAll(".photo[data-reveal]") : [];
-  if (section && photos.length) {
-    scroll(
-      animate(
-        photos,
-        { filter: ["blur(10px) sepia(.8)", "blur(0px) sepia(0)"] },
-        { duration: 1, ease: "linear", delay: stagger(0.5 / photos.length) },
-      ),
-      { target: section, offset: ["start end", "center center"] },
-    );
-  }
+    var section = document.getElementById("revelado");
+    var photos = section ? section.querySelectorAll(".photo[data-reveal]") : [];
+    if (section && photos.length) {
+      scroll(
+        animate(
+          photos,
+          { filter: ["blur(10px) sepia(.8)", "blur(0px) sepia(0)"] },
+          { duration: 1, ease: "linear", delay: stagger(0.5 / photos.length) },
+        ),
+        { target: section, offset: ["start end", "center center"] },
+      );
+    }
   }
 })();
