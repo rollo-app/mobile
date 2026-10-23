@@ -1,4 +1,4 @@
-import { fitTarget, isTripActive, photosNear } from "../framing";
+import { CITY_ZOOM, fitTarget, isTripActive, photosNear, startView, startZoom, USER_ZOOM, WORLD_VIEW } from "../framing";
 import { toFeatures, type MapItem } from "../features";
 
 describe("isTripActive", () => {
@@ -50,5 +50,49 @@ describe("photosNear", () => {
   it("returns at least the tapped one even if the point does not match exactly", () => {
     const { features } = toFeatures([item("a", -72.9, -49.3)], none);
     expect(photosNear(features, [-72.9, -49.3], 20).map((f) => f.properties.id)).toEqual(["a"]);
+  });
+});
+
+describe("startView", () => {
+  const here: [number, number] = [-56.16, -34.9];
+  const spread: [number, number, number, number] = [-58, -35, -56, -34];
+  const padding = { top: 10, right: 20, bottom: 30, left: 40 };
+
+  it("with the trip in progress and a position, starts where you are", () => {
+    expect(startView({ active: true, position: here, bounds: spread, padding })).toEqual({ center: here, zoom: USER_ZOOM });
+  });
+
+  it("otherwise, with pins, frames them all", () => {
+    expect(startView({ active: false, position: here, bounds: spread, padding })).toEqual({ bounds: spread, padding });
+    expect(startView({ active: true, position: null, bounds: spread, padding })).toEqual({ bounds: spread, padding });
+  });
+
+  it("with all the pins at one spot, centers on them with the framing zoom cap", () => {
+    expect(startView({ active: false, position: null, bounds: [-56, -34, -56, -34], padding })).toEqual({ center: [-56, -34], zoom: 15 });
+  });
+
+  it("with no pins but a position, starts where you are at city level", () => {
+    expect(startView({ active: false, position: here, bounds: null, padding })).toEqual({ center: here, zoom: CITY_ZOOM });
+  });
+
+  it("with nothing, shows the whole world", () => {
+    expect(startView({ active: false, position: null, bounds: null, padding })).toEqual(WORLD_VIEW);
+    expect(startView({ active: true, position: null, bounds: null, padding })).toEqual(WORLD_VIEW);
+    expect(WORLD_VIEW.zoom).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("startZoom", () => {
+  it("is the view's zoom when it has one", () => {
+    expect(startZoom({ center: [0, 0], zoom: 12 })).toBe(12);
+    expect(startZoom(WORLD_VIEW)).toBe(WORLD_VIEW.zoom);
+  });
+
+  it("estimates it from the span when the view is a box", () => {
+    const wide = startZoom({ bounds: [-80, -50, -40, -20] });
+    const narrow = startZoom({ bounds: [-72.9, -49.4, -72, -48.5] });
+    expect(narrow).toBeGreaterThan(wide);
+    expect(narrow).toBeGreaterThan(7);
+    expect(narrow).toBeLessThanOrEqual(15);
   });
 });

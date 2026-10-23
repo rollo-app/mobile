@@ -1,3 +1,4 @@
+import type { InitialViewState } from "@maplibre/maplibre-react-native";
 import type { PinFeature } from "./features";
 
 /** Max map zoom. With `clusterMaxZoom` above it, clustering applies at every possible zoom. */
@@ -11,7 +12,15 @@ export function isTripActive(trip: { startsAt: number; endsAt: number }, now: nu
   return now >= trip.startsAt && now <= trip.endsAt;
 }
 
+/** Zoom when the map starts (or recenters) on you with the trip in progress. */
+export const USER_ZOOM = 12;
+/** Zoom when the map starts on you only because there is nothing else to show: your city. */
+export const CITY_ZOOM = 10;
+/** With no pins and no location: the whole world, neutral (never a hardcoded region). */
+export const WORLD_VIEW = { center: [0, 20] as [number, number], zoom: 1 };
+
 type Bounds = [number, number, number, number];
+type Padding = { top: number; right: number; bottom: number; left: number };
 
 export type FitTarget = { kind: "bounds"; bounds: Bounds } | { kind: "center"; center: [number, number]; zoom: number };
 
@@ -40,4 +49,39 @@ export function photosNear(features: PinFeature[], center: [number, number], zoo
     if (closest) near.push(closest);
   }
   return near;
+}
+
+/**
+ * Where the map starts, decided before showing it: with the trip in progress and your position, where
+ * you are; otherwise all the pins; with no pins, your position at city level; with nothing, the world.
+ * `position` is [lng, lat] and only present when location permission was already granted.
+ */
+export function startView(input: {
+  active: boolean;
+  position: [number, number] | null;
+  bounds: Bounds | null;
+  padding: Padding;
+}): InitialViewState {
+  const { active, position, bounds, padding } = input;
+  if (active && position) return { center: position, zoom: USER_ZOOM };
+  if (bounds) {
+    const target = fitTarget(bounds);
+    return target.kind === "center" ? { center: target.center, zoom: target.zoom } : { bounds: target.bounds, padding };
+  }
+  if (position) return { center: position, zoom: CITY_ZOOM };
+  return WORLD_VIEW;
+}
+
+/**
+ * The zoom the map starts at, for the "same spot" radius until the map reports its own. For a box it is
+ * an estimate: the zoom at which its widest side fills one 512 px tile, capped at FIT_MAX_ZOOM.
+ */
+export function startZoom(view: InitialViewState): number {
+  if ("zoom" in view && typeof view.zoom === "number") return view.zoom;
+  if ("bounds" in view && view.bounds) {
+    const [w, s, e, n] = view.bounds;
+    const span = Math.max(e - w, n - s, 1e-6);
+    return Math.min(FIT_MAX_ZOOM, Math.max(0, Math.log2(360 / span)));
+  }
+  return WORLD_VIEW.zoom;
 }

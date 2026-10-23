@@ -1,5 +1,5 @@
 import { MenuView } from "@expo/ui/community/menu";
-import { Camera, Images, Map, UserLocation, type CameraRef, type GeoJSONSourceRef } from "@maplibre/maplibre-react-native";
+import { Camera, Images, Map, UserLocation, type CameraRef, type GeoJSONSourceRef, type InitialViewState } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { boundsOf, feedToItems, itemsByTime, mergeItems, pendingToItems, toFeatures, type MapItem } from "@/features/map/features";
-import { fitTarget, isTripActive, MAX_ZOOM, photosNear } from "@/features/map/framing";
+import { fitTarget, isTripActive, MAX_ZOOM, photosNear, startView, startZoom, USER_ZOOM, WORLD_VIEW } from "@/features/map/framing";
 import { filterActive, filterLabel } from "@/features/map/map-filters";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
 import { CAROUSEL_HEIGHT, PinCarousel } from "@/features/map/pin-carousel";
@@ -28,8 +28,8 @@ import { colors, layout, radius, spacing, tintHex, type } from "@/ui/theme";
 
 silenceTileNetworkErrors();
 
-// No pins or location: southern Argentina, where the trip is.
-const DEFAULT_REGION = { center: [-72.89, -49.33] as [number, number], zoom: 6 };
+/** How long the map may stay hidden waiting for the location before it starts with what it has. */
+const START_TIMEOUT_MS = 1500;
 const HEADER_HEIGHT = layout.headerHeight;
 /** Height of the row under the header (segmented control and filter pill). */
 export const CONTROLS_ROW_HEIGHT = layout.controlsRowHeight;
@@ -37,7 +37,6 @@ const TAB_BAR_GAP = 12;
 // Height of the native tab bar (49 pt + 34 pt home indicator on notch iPhones). If the
 // safe area already includes it, `Math.max` changes nothing; if not, this keeps it from covering what's below.
 const TAB_BAR_MIN_INSET = 83;
-const USER_ZOOM = 12;
 const FOCUS_ZOOM = 15;
 const BUTTON_SIZE = 40;
 // Gap between the bar and the carousel.
@@ -84,7 +83,11 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   const cameraRef = useRef<CameraRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
   const framed = useRef(false);
-  const zoomRef = useRef(DEFAULT_REGION.zoom);
+  const zoomRef = useRef(WORLD_VIEW.zoom);
+  // Where the camera starts. The map is not mounted until it is decided, so no other place flashes first.
+  const [start, setStart] = useState<InitialViewState | null>(null);
+  const startDecided = useRef(false);
+  const deciding = useRef(false);
   // Where the camera was centered with padding for the carousel; null when there is none.
   const padded = useRef<[number, number] | null>(null);
 
@@ -134,19 +137,56 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
     else cameraRef.current?.fitBounds(target.bounds, { padding, duration });
   }
 
-  // On enter: with the trip in progress and location permission, where you are; otherwise, all pins in
-  // view; with no pins, the trip's default region. Waits to know the permission and to have data.
+  function begin(view: InitialViewState) {
+    zoomRef.current = startZoom(view);
+    setStart(view);
+  }
+
+  // Where the map starts (see `startView`), decided before mounting it. Waits to know the permission
+  // and to have data; the location is only read if permission was already granted (it never asks here).
   const tripKnown = !!detail || !!error;
+  const dataReady = hasLocation !== null && tripKnown && !!(feed || error);
   useEffect(() => {
-    if (!mapReady || framed.current || hasLocation === null || !tripKnown || !(feed || error)) return;
+    if (startDecided.current || deciding.current || !dataReady) return;
+    deciding.current = true;
+    const active = detail ? isTripActive(detail.trip, Date.now()) : false;
+    const bounds = boundsOf(all.features);
+    void (async () => {
+      const position = hasLocation && (active || !bounds) ? await knownPosition(active) : null;
+      if (startDecided.current) return; // the timeout already started the map
+      startDecided.current = true;
+      framed.current = true;
+      begin(startView({ active, position, bounds, padding }));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataReady, detail, hasLocation, all, padding]);
+
+  // A slow location lookup (or slow data) can't keep the map hidden: after a moment it starts with the
+  // pins it has, or the world. If the data wasn't there yet, the effect below frames it when it arrives.
+  const latest = useRef({ all, padding, dataReady });
+  latest.current = { all, padding, dataReady };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (startDecided.current) return;
+      startDecided.current = true;
+      const { all: now, padding: pad, dataReady: ready } = latest.current;
+      framed.current = ready;
+      begin(startView({ active: false, position: null, bounds: boundsOf(now.features), padding: pad }));
+    }, START_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Only when the map started before having data: frame it once it arrives, as the starting view would.
+  useEffect(() => {
+    if (!mapReady || framed.current || !dataReady) return;
     framed.current = true;
     const active = detail ? isTripActive(detail.trip, Date.now()) : false;
-    (async () => {
+    void (async () => {
       if (active && hasLocation && (await centerOnUser(false))) return;
       frameAll(all.features, 0);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, hasLocation, tripKnown, all, feed, error, detail, padding]);
+  }, [mapReady, dataReady, all, detail, hasLocation]);
 
   // Arrived from the Feed with a photo: no filters, fly to it (zoom 15) and open its card. The
   // param is consumed so tapping the same photo again after moving the map works.
@@ -163,6 +203,18 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
     const ids = itemsByTime(items, photosNear(all.features, [target.lng, target.lat], FOCUS_ZOOM).map((f) => f.properties.id)).map((i) => i.id);
     setSelection({ ids, index: Math.max(0, ids.indexOf(focus)), clusterId: null });
   }, [focus, mapReady, items, all, router]);
+
+  /** [lng, lat] of the last known position (or the current one if `orCurrent`); null if there is none. */
+  async function knownPosition(orCurrent: boolean): Promise<[number, number] | null> {
+    try {
+      const position =
+        (await Location.getLastKnownPositionAsync()) ??
+        (orCurrent ? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }) : null);
+      return position ? [position.coords.longitude, position.coords.latitude] : null;
+    } catch {
+      return null;
+    }
+  }
 
   async function centerOnUser(ask: boolean): Promise<boolean> {
     try {
@@ -250,34 +302,36 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
       />
       {/* While covered, VoiceOver skips the map: it is not what is on screen. */}
       <View
-        style={styles.fill}
+        style={[styles.fill, styles.mapBackground]}
         accessibilityElementsHidden={!!cover}
         importantForAccessibility={cover ? "no-hide-descendants" : "auto"}
       >
-        <Map
-          key={styleUri}
-          style={styles.fill}
-          mapStyle={styleUri}
-          logo={false}
-          compass
-          compassPosition={{ top: buttonsTop + BUTTON_SIZE + spacing.sm, right: spacing.md }}
-          attribution={false}
-          onDidFinishLoadingMap={() => setMapReady(true)}
-          onRegionDidChange={(e) => {
-            zoomRef.current = e.nativeEvent.zoom;
-          }}
-          onPress={() => setSelection(null)}
-        >
-          <Camera ref={cameraRef} initialViewState={DEFAULT_REGION} maxZoom={MAX_ZOOM} />
-          {hasLocation === true && (
-            <UserLocation>
-              <UserLocationDot color={tintHex[scheme]} />
-            </UserLocation>
-          )}
-          {/* Before the pins: its images are registered before the data that references them. */}
-          <Images images={pinAvatars.images} />
-          <PinLayers data={shown} selectedId={selectedId} selectedClusterId={selection?.clusterId ?? null} haloColor={tintHex[scheme]} sourceRef={sourceRef} onPress={onPinsPress} />
-        </Map>
+        {start && (
+          <Map
+            key={styleUri}
+            style={styles.fill}
+            mapStyle={styleUri}
+            logo={false}
+            compass
+            compassPosition={{ top: buttonsTop + BUTTON_SIZE + spacing.sm, right: spacing.md }}
+            attribution={false}
+            onDidFinishLoadingMap={() => setMapReady(true)}
+            onRegionDidChange={(e) => {
+              zoomRef.current = e.nativeEvent.zoom;
+            }}
+            onPress={() => setSelection(null)}
+          >
+            <Camera ref={cameraRef} initialViewState={start} maxZoom={MAX_ZOOM} />
+            {hasLocation === true && (
+              <UserLocation>
+                <UserLocationDot color={tintHex[scheme]} />
+              </UserLocation>
+            )}
+            {/* Before the pins: its images are registered before the data that references them. */}
+            <Images images={pinAvatars.images} />
+            <PinLayers data={shown} selectedId={selectedId} selectedClusterId={selection?.clusterId ?? null} haloColor={tintHex[scheme]} sourceRef={sourceRef} onPress={onPinsPress} />
+          </Map>
+        )}
       </View>
 
       {cover && <View style={[StyleSheet.absoluteFill, styles.cover]}>{cover}</View>}
@@ -375,6 +429,7 @@ const styles = StyleSheet.create({
   rowStart: { flex: 1 },
   pill: { ...chip, flexDirection: "row", alignItems: "center", gap: spacing.xs, paddingHorizontal: spacing.md, height: CONTROLS_ROW_HEIGHT },
   cover: { backgroundColor: colors.background },
+  mapBackground: { backgroundColor: colors.background },
   notice: {
     ...chip,
     alignSelf: "center",

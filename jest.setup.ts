@@ -99,8 +99,10 @@ jest.mock("@maplibre/maplibre-react-native", () => {
   const layerProps: Record<string, any> = {};
   // How many times a Map has mounted (tests reset it): a remount reloads the style and loses the camera.
   const mapMounts = { current: 0 };
+  const cameraProps: { current: any } = { current: null };
   return {
     __camera: camera,
+    __cameraProps: cameraProps,
     __mapMounts: mapMounts,
     __getClusterLeaves: getClusterLeaves,
     __mapProps: mapProps,
@@ -123,7 +125,9 @@ jest.mock("@maplibre/maplibre-react-native", () => {
         children,
       );
     },
-    Camera: ({ ref }: any) => {
+    Camera: (props: any) => {
+      const { ref } = props;
+      cameraProps.current = props;
       React.useImperativeHandle(ref, () => camera);
       return null;
     },
