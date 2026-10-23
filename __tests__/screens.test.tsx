@@ -239,7 +239,7 @@ describe("Roll board · people and settings", () => {
 
   it("tapping a member opens their profile; your own row isn't tappable", async () => {
     const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
-      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
+      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null, badge: null },
       isFriend: false,
       blockedByMe: false,
       reportedByMe: false,

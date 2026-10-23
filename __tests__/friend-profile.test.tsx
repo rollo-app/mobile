@@ -68,7 +68,7 @@ let fetchUserFriends: jest.SpyInstance;
 
 /** `GET /users/{id}` for someone: by default a friend you can see. */
 const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserProfile> = {}): profileActions.UserProfile => ({
-  user: friend,
+  user: { ...friend, badge: null },
   isFriend: true,
   blockedByMe: false,
   reportedByMe: false,
@@ -256,6 +256,25 @@ describe("Friend profile", () => {
 
     expect(await screen.findByText("No se pudo borrar")).toBeVisible();
     expect(screen).toHavePathname("/friends/user/u2");
+  });
+});
+
+describe("Badge on someone's profile", () => {
+  it("shows the badge the server sends", async () => {
+    const base = userProfile(lu, { isFriend: false, canSee: false });
+    fetchUser.mockResolvedValue({ ...base, user: { ...base.user, badge: "first_edition" } });
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByText("FIRST EDITION")).toBeVisible();
+    expect(screen.getByLabelText("Insignia: First Edition")).toBeVisible();
+  });
+
+  it("shows nothing without a badge", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    await screen.findByText("Este perfil es privado");
+    expect(screen.queryByLabelText(/^Insignia/)).toBeNull();
   });
 });
 

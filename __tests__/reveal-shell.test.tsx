@@ -278,7 +278,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("tapping a member in 'Rollo' opens their profile", async () => {
     const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
-      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
+      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null, badge: null },
       isFriend: false,
       blockedByMe: false,
       reportedByMe: false,

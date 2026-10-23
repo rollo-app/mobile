@@ -66,6 +66,26 @@ describe("Perfil", () => {
     expect(screen.queryByRole("button", { name: /^\d+ amigos?/ })).toBeNull();
   });
 
+  it.each([
+    ["founder", "FOUNDER", "Insignia: Founder"],
+    ["first_edition", "FIRST EDITION", "Insignia: First Edition"],
+  ] as const)("shows the %s badge in your own header", async (badge, label, a11y) => {
+    await signInAs({ user: { ...USER, badge }, trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    expect(await screen.findByText(label)).toBeVisible();
+    expect(screen.getByLabelText(a11y)).toBeVisible();
+  });
+
+  it("shows no badge when there is none", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    await screen.findByText("@juani");
+    expect(screen.queryByText("FOUNDER")).toBeNull();
+    expect(screen.queryByLabelText(/^Insignia/)).toBeNull();
+  });
+
   it("without a description there is no empty text under the handle", async () => {
     await signInAs({ user: { ...USER, bio: null }, trips: [tripSummary(SUR, "Viaje al sur")] });
     await renderRouter(routes, { initialUrl: "/me" });
@@ -282,7 +302,7 @@ describe("Perfil: fotos destacadas", () => {
 
   it("on a friend's profile the badge shows on the photos the friend didn't take", async () => {
     jest.mocked(friendActions).fetchFriend.mockResolvedValue({ friend: { ...CAMI, bio: null }, commonTrips: [] });
-    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null }, isFriend: true, blockedByMe: false, reportedByMe: false, profileVisibility: "friends", canSee: true, friendCount: 0, mutualCount: 0 });
+    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null, badge: null }, isFriend: true, blockedByMe: false, reportedByMe: false, profileVisibility: "friends", canSee: true, friendCount: 0, mutualCount: 0 });
     featured.fetchFeatured.mockImplementation(async (userId) =>
       userId === "u2"
         ? [
