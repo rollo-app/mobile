@@ -132,8 +132,8 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPre
       style={{ width: size, height: size }}
       actions={[
         photo.featuredByMe
-          ? { id: "unfeature", title: "Sacar de tu perfil", image: "star.slash" }
-          : { id: "feature", title: "Destacar en tu perfil", image: "star" },
+          ? { id: "unfeature", title: "Sacar de tu perfil", image: "person.crop.circle.badge.minus" }
+          : { id: "feature", title: "Agregar a tu perfil", image: "person.crop.circle.badge.plus" },
       ]}
       onPressAction={() => onToggleFeatured(photo)}
     >

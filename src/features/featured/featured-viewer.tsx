@@ -202,7 +202,8 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                 />
                 {own && (
                   <OverlayIconButton
-                    symbol="star.slash"
+                    symbol="person.crop.circle.badge.minus"
+                    symbolTestID="unfeature-symbol"
                     label="Sacar de tu perfil"
                     busy={removing}
                     onPress={() => void remove(photo)}

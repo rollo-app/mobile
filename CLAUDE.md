@@ -92,8 +92,8 @@ Decisiones de producto:
   `useOpenProfile()`: desde una sheet o el visor (modales) primero se cierra el modal (`leave`) y después
   se hace el push, porque un push después de un modal se presentaría como otro modal.
 - **Fotos destacadas** (`src/features/featured/`): de un rollo **revelado** donde sos miembro activo destacás **fotos** (no
-  videos), tuyas o de otros, hasta **60**: en el visor con la pill "Destacar" / "Destacada" (`star` / `star.fill`) y en la
-  grilla con el menú de mantener apretado "Destacar en tu perfil" / "Sacar de tu perfil". El autor puede "No dejar que la
+  videos), tuyas o de otros, hasta **60**: en el visor con el ícono de perfil "Agregar a tu perfil" / "Sacar de tu perfil" (`person.crop.circle.badge.plus` / `.badge.checkmark`) y en la
+  grilla con el menú de mantener apretado "Agregar a tu perfil" / "Sacar de tu perfil". El autor puede "No dejar que la
   destaquen" (borra las de otros y bloquea nuevas; él siempre puede destacar las suyas). Nunca sale el rollo, el caption ni la
   coordenada: la ubicación va como **zona de ~5 km** (celda de 0.05°). En un perfil, "Fotos | Mapa": la grilla (con la
   insignia del autor si no es el dueño del perfil; tocar una abre `/featured/<userId>/<mediaId>`) y el mapa por zonas.

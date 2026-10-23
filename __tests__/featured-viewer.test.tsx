@@ -62,6 +62,7 @@ describe("Featured viewer", () => {
   it("on your profile 'Sacar de tu perfil' removes it and the grid no longer has it", async () => {
     await openFromProfile("Foto de Cami");
 
+    expect(viewer().getByTestId("unfeature-symbol")).toHaveProp("name", "person.crop.circle.badge.minus");
     await fireEvent.press(viewer().getByRole("button", { name: "Sacar de tu perfil" }));
 
     await waitFor(() => expect(screen).toHavePathname("/me"));

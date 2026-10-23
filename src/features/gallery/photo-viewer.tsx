@@ -259,8 +259,9 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
                 )}
                 {photo.type === "photo" && (
                   <OverlayIconButton
-                    symbol={photo.featuredByMe ? "star.fill" : "star"}
-                    label={photo.featuredByMe ? "Sacar de tu perfil" : "Destacar"}
+                    symbol={photo.featuredByMe ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.plus"}
+                    symbolTestID="feature-symbol"
+                    label={photo.featuredByMe ? "Sacar de tu perfil" : "Agregar a tu perfil"}
                     // Featured is a selection: cobalt (its dark-scheme value, since the viewer is always black).
                     tint={photo.featuredByMe ? tintHex.dark : "#FFFFFF"}
                     disabled={featuring}
