@@ -238,14 +238,63 @@ describe("the home motion", () => {
   describe("head script", () => {
     const script = () => html().match(/<head>[\s\S]*?<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
     const run = (matches: boolean) => {
-      const add = jest.fn();
-      new Function("document", "matchMedia", script())({ documentElement: { classList: { add } } }, () => ({ matches }));
-      return add;
+      const classes = new Set<string>();
+      const root = {
+        dataset: {} as Record<string, string>,
+        classList: { add: jest.fn((c: string) => classes.add(c)), remove: jest.fn((c: string) => classes.delete(c)) },
+      };
+      const addEventListener = jest.fn();
+      new Function("document", "matchMedia", script())({ documentElement: root, addEventListener }, () => ({ matches }));
+      return { root, classes, addEventListener };
     };
 
     it("enables js-motion unless Reduce Motion is on", () => {
-      expect(run(false)).toHaveBeenCalledWith("js-motion");
-      expect(run(true)).not.toHaveBeenCalled();
+      expect(run(false).root.classList.add).toHaveBeenCalledWith("js-motion");
+      const reduced = run(true);
+      expect(reduced.root.classList.add).not.toHaveBeenCalled();
+      expect(reduced.addEventListener).not.toHaveBeenCalled();
+    });
+
+    it("drops js-motion on DOMContentLoaded unless landing.js took over", () => {
+      for (const [motion, expected] of [[undefined, false], ["on", true]] as const) {
+        const { root, classes, addEventListener } = run(false);
+        expect(addEventListener).toHaveBeenCalledWith("DOMContentLoaded", expect.any(Function));
+        if (motion) root.dataset.motion = motion;
+        addEventListener.mock.calls[0][1]();
+        expect(classes.has("js-motion")).toBe(expected);
+      }
+    });
+  });
+
+  describe("landing.js", () => {
+    const run = (win: object, querySelectorAll: () => unknown[] = () => []) => {
+      const classes = new Set(["js-motion"]);
+      const root = {
+        dataset: {} as Record<string, string>,
+        classList: { contains: (c: string) => classes.has(c), remove: (c: string) => classes.delete(c) },
+      };
+      const document = { documentElement: root, querySelectorAll, getElementById: () => null };
+      new Function("window", "document", readFileSync(join(__dirname, "..", "site", "landing.js"), "utf8"))(win, document);
+      return { root, classes };
+    };
+
+    it("removes js-motion when Motion did not load", () => {
+      expect(run({}).classes.has("js-motion")).toBe(false);
+    });
+
+    it("removes js-motion when init throws", () => {
+      const boom = () => {
+        throw new Error("boom");
+      };
+      const { classes, root } = run({ Motion: {} }, boom);
+      expect(classes.has("js-motion")).toBe(false);
+      expect(root.dataset.motion).toBeUndefined();
+    });
+
+    it("marks motion as on when init succeeds", () => {
+      const { classes, root } = run({ Motion: {} });
+      expect(root.dataset.motion).toBe("on");
+      expect(classes.has("js-motion")).toBe(true);
     });
   });
 });

@@ -1,10 +1,24 @@
 // Scroll animations for the home. Without Motion or with Reduce Motion (no js-motion class) the page stays in its final state.
 (function () {
-  if (!window.Motion || !document.documentElement.classList.contains("js-motion")) return;
-  var animate = Motion.animate;
-  var scroll = Motion.scroll;
-  var inView = Motion.inView;
-  var stagger = Motion.stagger;
+  var root = document.documentElement;
+  if (!root.classList.contains("js-motion")) return;
+  // If Motion is missing or init throws, drop the class so sections and photos show in their final state.
+  if (!window.Motion) {
+    root.classList.remove("js-motion");
+    return;
+  }
+  try {
+    init();
+    root.dataset.motion = "on";
+  } catch (error) {
+    root.classList.remove("js-motion");
+  }
+
+  function init() {
+  var animate = window.Motion.animate;
+  var scroll = window.Motion.scroll;
+  var inView = window.Motion.inView;
+  var stagger = window.Motion.stagger;
 
   document.querySelectorAll("[data-enter]").forEach(function (el) {
     inView(
@@ -27,5 +41,6 @@
       ),
       { target: section, offset: ["start end", "center center"] },
     );
+  }
   }
 })();

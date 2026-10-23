@@ -18,8 +18,8 @@ ${
 <p class="note">${IPHONE_ONLY}</p>
 </div>`;
 
-/** Enables the scroll animations unless the visitor asked for reduced motion. Runs with `document` and `matchMedia` in scope. */
-const HEAD_SCRIPT = `if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("js-motion")`;
+/** Enables the scroll animations unless the visitor asked for reduced motion; drops it again if landing.js did not take over (fires after deferred scripts). Runs with `document` and `matchMedia` in scope. */
+const HEAD_SCRIPT = `if(!matchMedia("(prefers-reduced-motion: reduce)").matches){var h=document.documentElement;h.classList.add("js-motion");document.addEventListener("DOMContentLoaded",function(){if(h.dataset.motion!=="on")h.classList.remove("js-motion")})}`;
 
 /**
  * @param {{ storeMode: "beta" | "appstore", testflightUrl: string, appStoreUrl: string | null, siteUrl: string,
