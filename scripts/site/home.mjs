@@ -18,6 +18,9 @@ ${
 <p class="note">${IPHONE_ONLY}</p>
 </div>`;
 
+/** Enables the scroll animations unless the visitor asked for reduced motion. Runs with `document` and `matchMedia` in scope. */
+const HEAD_SCRIPT = `if(!matchMedia("(prefers-reduced-motion: reduce)").matches)document.documentElement.classList.add("js-motion")`;
+
 /**
  * @param {{ storeMode: "beta" | "appstore", testflightUrl: string, appStoreUrl: string | null, siteUrl: string,
  *   mockups?: { rollSheet(): string, steps(): string[], map(): string, reveal(): string, profile(): string } }} opts
@@ -41,6 +44,9 @@ export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl, mocku
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F0EB">`,
     `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0F14">`,
+    `<script>${HEAD_SCRIPT}</script>`,
+    `<script src="/motion.js" defer></script>`,
+    `<script src="/landing.js" defer></script>`,
     "",
   ].join("\n");
 
@@ -115,6 +121,8 @@ ${button}
 }
 
 export const homeCss = `
+.js-motion #revelado .photo[data-reveal]{filter:blur(10px) sepia(.8)}
+.js-motion [data-enter]{opacity:0;transform:translateY(16px)}
 :root{--bg:#F2F0EB;--fg:#1c1c1e;--muted:#6c6c70;--rule:#d8d5cd;--tint:#3155F5;--screen:#F7F6F2;--bezel:#111}
 @media (prefers-color-scheme:dark){:root{--bg:#0E0F14;--fg:#f2f2f7;--muted:#98989f;--rule:#2a2c35;--tint:#5C7CFF;--screen:#17181e;--bezel:#2a2c35}}
 *{box-sizing:border-box}

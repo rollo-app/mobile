@@ -1,8 +1,9 @@
 /// <reference types="node" />
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { gzipSync } from "node:zlib";
 
 let dist: string;
 
@@ -146,7 +147,13 @@ describe("the home mockups", () => {
     expect(section("inicio")).toMatch(/<span class="photo" style="--a:#[0-9a-f]{6};--b:#[0-9a-f]{6}"/);
     const style = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
     expect(style).toContain("linear-gradient(135deg,var(--a),var(--b))");
-    expect(style).not.toMatch(/(?<!\.js-motion[^{]*)\{[^}]*filter:\s*blur/);
+    const unscoped = style
+      .split("}")
+      .map((rule) => rule.split("{"))
+      .filter(([selector, body]) => body && /filter:\s*blur/.test(body) && !/\.js-motion/.test(selector!));
+    expect(unscoped).toEqual([]);
+    expect(style).toMatch(/\.js-motion #revelado \.photo\[data-reveal\]\{[^}]*filter:blur\(10px\) sepia\(\.8\)/);
+    expect(style).toMatch(/\.js-motion \[data-enter\]\{opacity:0;transform:translateY\(16px\)\}/);
   });
 
   it("shows the map pins with initials, the feed row and the profile header", () => {
@@ -209,5 +216,36 @@ describe("the home CTA contrast", () => {
     const rule = style.match(/(?:^|[}\s])\.btn\{([^}]*)\}/)?.[1] ?? "";
     expect(rule).toContain("font-weight:700");
     expect(Number(rule.match(/font-size:(\d+(?:\.\d+)?)px/)?.[1])).toBeGreaterThanOrEqual(19);
+  });
+});
+
+describe("the home motion", () => {
+  const html = () => read("index.html");
+
+  it("ships a Motion bundle under 30 KB gzipped and the landing script", () => {
+    expect(existsSync(join(dist, "motion.js"))).toBe(true);
+    expect(gzipSync(readFileSync(join(dist, "motion.js"))).length).toBeLessThanOrEqual(30000);
+    expect(existsSync(join(dist, "landing.js"))).toBe(true);
+  });
+
+  it("loads motion.js before landing.js, both deferred", () => {
+    const a = html().indexOf('<script src="/motion.js" defer></script>');
+    const b = html().indexOf('<script src="/landing.js" defer></script>');
+    expect(a).toBeGreaterThan(-1);
+    expect(b).toBeGreaterThan(a);
+  });
+
+  describe("head script", () => {
+    const script = () => html().match(/<head>[\s\S]*?<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
+    const run = (matches: boolean) => {
+      const add = jest.fn();
+      new Function("document", "matchMedia", script())({ documentElement: { classList: { add } } }, () => ({ matches }));
+      return add;
+    };
+
+    it("enables js-motion unless Reduce Motion is on", () => {
+      expect(run(false)).toHaveBeenCalledWith("js-motion");
+      expect(run(true)).not.toHaveBeenCalled();
+    });
   });
 });

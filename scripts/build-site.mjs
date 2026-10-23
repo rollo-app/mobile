@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
 import { marked } from "marked";
 import { homeCss, homeHtml } from "./site/home.mjs";
 import { mockups, mockupsCss } from "./site/mockups.mjs";
@@ -119,6 +120,15 @@ write("index.html", page({
   css: homeCss + mockupsCss,
   wide: true,
 }));
+await build({
+  entryPoints: [join(root, "scripts", "site", "motion-entry.mjs")],
+  bundle: true,
+  minify: true,
+  format: "iife",
+  globalName: "Motion",
+  outfile: join(dist, "motion.js"),
+});
+copyFileSync(join(root, "scripts", "site", "landing.js"), join(dist, "landing.js"));
 if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
 const soporte = `<h2>Soporte</h2>
 <p>Escribinos a <a href="mailto:soporte@juanifraga.com">soporte@juanifraga.com</a> y te respondemos.</p>
