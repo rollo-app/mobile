@@ -365,15 +365,17 @@ jest.mock("expo-background-task", () => ({
   Object.defineProperty(Stack, "Toolbar", { value: Toolbar, configurable: true });
 }
 
-// Local notifications are native: tests get a mock they can inspect.
+// Notifications are native: tests get a mock they can inspect. Permission starts "never asked".
 jest.mock("expo-notifications", () => ({
-  SchedulableTriggerInputTypes: { DATE: "date" },
   setNotificationHandler: jest.fn(),
-  scheduleNotificationAsync: jest.fn(async () => "id"),
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
-  getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
-  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
-  useLastNotificationResponse: jest.fn(() => null),
+  getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true, status: "undetermined" })),
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true, status: "granted" })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ type: "expo", data: "ExponentPushToken[test-token]" })),
+  getLastNotificationResponseAsync: jest.fn(async () => null),
+  clearLastNotificationResponseAsync: jest.fn(async () => {}),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
 // Saving to Photos is native (expo-media-library): in tests the permission is granted and the album doesn't exist.
@@ -402,6 +404,12 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
     DarkroomIntro: ({ title, date }: { title: string; date: string }) =>
       h(View, null, h(Text, null, "Se reveló"), h(Text, null, title), h(Text, null, date)),
   };
+});
+// The like heart (Reanimated) is a plain marker while it shows.
+jest.mock("@/features/likes/heart-burst", () => {
+  const { createElement: h } = require("react");
+  const { View } = require("react-native");
+  return { HeartBurst: ({ burst }: { burst: number }) => (burst > 0 ? h(View, { testID: "heart-burst" }) : null) };
 });
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));

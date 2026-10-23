@@ -21,6 +21,8 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,
+  likeCount: 0,
+  likedByMe: false,
 });
 
 // 0 day, 1 a, 2 b, 3 day, 4 c, 5 outro

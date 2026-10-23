@@ -6,9 +6,9 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { fetchFriends } from "@/features/friends/actions";
 import { friendsKey } from "@/features/friends/use-friends";
-import { requestRevealPermission } from "@/features/notifications/reveal";
+import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { createTrip } from "@/features/trips/actions";
-import { canCreate, defaultStart } from "@/features/trips/create-form";
+import { canCreate, defaultStart, effectiveStart, endAfter, revealNotBefore, type StartMode } from "@/features/trips/create-form";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { colors } from "@/ui/theme";
 
@@ -23,6 +23,7 @@ export default function CreateScreen() {
   const queryClient = useQueryClient();
   const initialStart = useMemo(() => defaultStart(Date.now()), []);
   const [name, setName] = useState("");
+  const [startMode, setStartMode] = useState<StartMode>("now");
   const [startsAt, setStartsAt] = useState(initialStart);
   const [endsAt, setEndsAt] = useState(initialStart + 72 * HOUR);
   const [revealMode, setRevealMode] = useState<RevealMode>("end");
@@ -41,13 +42,24 @@ export default function CreateScreen() {
     setRevealMode(mode);
   }
 
+  function chooseStart(mode: StartMode) {
+    setStartMode(mode);
+    // "Now" is at most the moment of submit; with a chosen date the end and the custom reveal must stay after it.
+    const start = effectiveStart(mode, startsAt, Date.now());
+    const end = endAfter(endsAt, start);
+    if (end !== endsAt) {
+      setEndsAt(end);
+      setCustomReveal((reveal) => revealNotBefore(reveal, end));
+    }
+  }
+
   async function submit() {
     setError(null);
     setLoading(true);
     try {
       await createTrip({
         name,
-        startsAt,
+        startsAt: effectiveStart(startMode, startsAt, Date.now()),
         endsAt,
         revealAt,
         dailyPhotoLimit: photos,
@@ -56,24 +68,26 @@ export default function CreateScreen() {
       });
       await queryClient.invalidateQueries({ queryKey: myTripsKey });
       router.dismissTo("/roll");
-      void requestRevealPermission();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo crear el rollo");
       return;
     } finally {
       setLoading(false);
     }
-    await offerFriends();
+    await offerNext();
   }
 
-  // The roll exists and is active by now: if you have friends, offer to add them. Failing here shows nothing.
-  async function offerFriends() {
+  // The roll exists and is active by now. Notifications are offered first (once), then, if you have
+  // friends, adding them. Failing to load friends shows nothing: they can be added later from the board.
+  async function offerNext() {
+    let hasFriends = false;
     try {
       const friends = await queryClient.ensureQueryData({ queryKey: friendsKey, queryFn: fetchFriends });
-      if (friends.length > 0) router.push("/add-friends");
+      hasFriends = friends.length > 0;
     } catch {
-      // Without friends loaded, the roll stays as is; they can be added later from the board.
+      // Without friends loaded, the roll stays as is.
     }
+    await offerPushAfterJoining(hasFriends ? "/add-friends" : undefined);
   }
 
   return (
@@ -100,12 +114,23 @@ export default function CreateScreen() {
           </Section>
 
           <Section title="Cuándo">
-            <DatePicker
-              title="Empieza"
-              selection={new Date(startsAt)}
-              displayedComponents={[...DATE_TIME]}
-              onDateChange={(date) => setStartsAt(date.getTime())}
-            />
+            <Picker
+              label="Empieza"
+              selection={startMode}
+              onSelectionChange={chooseStart}
+              modifiers={[pickerStyle("segmented")]}
+            >
+              <Text modifiers={[tag("now")]}>Ahora</Text>
+              <Text modifiers={[tag("custom")]}>Otra fecha</Text>
+            </Picker>
+            {startMode === "custom" && (
+              <DatePicker
+                title="Empieza"
+                selection={new Date(startsAt)}
+                displayedComponents={[...DATE_TIME]}
+                onDateChange={(date) => setStartsAt(date.getTime())}
+              />
+            )}
             <DatePicker
               title="Termina"
               selection={new Date(endsAt)}

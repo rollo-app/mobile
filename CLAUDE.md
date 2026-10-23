@@ -14,7 +14,7 @@ Decisiones de producto:
 
 - **Solo iOS** en la primera versión. **Con cuentas:** login con **email + código de 6 caracteres (letras y números, vale 5 min)** (sin
   contraseña), obligatorio al abrir la app (`app/(auth)/`: email → código → "Completá tu perfil" si es nueva o
-  no tiene nombre). El perfil es **nombre + foto + descripción opcional** (`bio`, hasta 150 caracteres y 3 renglones; `GET/PATCH /me`, foto con `expo-image-picker` 1:1 →
+  no tiene nombre). El perfil es **nombre + foto + descripción opcional** (`bio`, hasta 150 caracteres y 3 renglones; `GET/PATCH /me`, foto con `expo-image-picker` (cámara: recorte nativo 1:1; galería: PHPicker sin edición + recorte propio en `/crop-avatar`, `avatar-crop.tsx`) →
   512 px JPEG → `POST /me/avatar` → PUT → complete; sin foto, círculo con la inicial y `memberColor`). Además tiene un **nombre de usuario único** (`@usuario`, `PATCH /me`): se pide en "Completá tu perfil" junto al nombre
   (sugerido desde el email, con chequeo de disponibilidad) y se muestra en Perfil, Amigos, miembros y Feed. Crear rollo
   o unirse es solo con el código de 6 (`POST /trips/join`; el server pide nombre en el perfil). **La sesión es un
@@ -22,7 +22,8 @@ Decisiones de producto:
   sesión local y vuelve al login (`setUnauthorizedHandler` en `src/api/client.ts`). Los rollos salen de
   `GET /me/trips` (cache de TanStack Query); el rollo activo es el último que abriste y solo se guarda su id
   (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
-  cola de fotos pendientes.
+  cola de fotos pendientes. Si `POST /auth/logout` no llega al server, esa sesión queda en `rollo.pendingLogout`
+  (SecureStore) y se reintenta en silencio al abrir la app, al volver a primer plano y al volver la red (`src/features/auth/pending-logout.ts`).
   **Link mágico:** el mail del código trae además un botón a `rollo.juanifraga.com/entrar#t=<token>&e=<email>` (fragmento:
   no llega a ningún server). Esa página estática solo abre `rollo://login?token=…&email=…` y borra el fragmento de la barra.
   La ruta `app/login.tsx` (fuera del grupo protegido, `src/features/auth/magic-link-screen.tsx`) llama a
@@ -118,7 +119,21 @@ Decisiones de producto:
   está en curso (una vez por rollo) un candado grande se sacude y se abre (SF Symbol `lock` → `lock.open` con `.symbolEffect(.replace.magic)`,
   módulo local `modules/rollo-symbol`; sin el módulo nativo cae a `expo-symbols`) con un "clac" y pasa a cámara. Texto "Arrancó el rollo.
   Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En "Tus rollos" el badge del rollo en curso dice LIVE.
-- **A futuro (no para enero):** feeds públicos de rollos, buscar perfiles públicos y avisar cuando te suman a un rollo (push).
+- **Notificaciones push** (`src/features/notifications/`): las manda el backend con Expo Push Service. El token se registra con
+  `PUT /me/push-tokens/{token}` atado a la sesión y se borra al cerrar sesión y cuando un `401` la cierra (así un celular que cambia de
+  cuenta no recibe avisos de la anterior). **Permiso con explicación propia** (`/push-primer`, `push-primer.tsx`): se ofrece una sola vez,
+  después de crear o unirse a un rollo (`offerPushAfterJoining`; clave nueva `rollo.pushPrimerSeen`, no se renombra); si ya había permiso
+  el token se registra en silencio, y si lo negó no pasa nada (queda el aviso en Ajustes). **Tocar una push** abre `data.url` (ruta de la
+  app, nunca otro host) y, si trae `trip`/`tripId`, ese rollo pasa a ser el activo (`notification-target.ts`, `use-notification-response.ts`);
+  `/roll` y `/reveal` abren la tab Rollo (un revelado sin ver se reproduce desde ahí). **Seis avisos:** te sumaron a un rollo, nuevo amigo,
+  arrancó el rollo, se reveló, destacaron tu foto y le gustó tu foto. Nunca por acciones propias ni de usuarios bloqueados. Se **sacó el aviso
+  local del revelado**: al abrir la app se cancelan los `reveal.*` que dejaron versiones viejas (`legacy-reveal.ts`).
+  **Ajustes → Notificaciones** (`settings-screen.tsx`, `GET/PATCH /me/settings`): un switch por aviso (`addedToTrip`, `newFriend`, `tripStarted`,
+  `tripRevealed`, `photoFeatured`, `photoLiked`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
+- **"Me gusta"** (`src/features/likes/`): solo fotos reveladas (y destacadas en un perfil). Corazón con contador en el visor de la galería y
+  en el de destacadas; doble toque en la foto da el me gusta (con `HeartBurst`), así que un toque simple espera 250 ms (`tap-gate.ts`) antes de
+  contar como toque simple. En las historias el doble toque también da me gusta, sin contador. Es optimista y con cache (`like-cache.ts`).
+- **A futuro (no para enero):** feeds públicos de rollos y buscar perfiles públicos.
 
 ## Navegación y diseño
 
@@ -138,7 +153,7 @@ Decisiones de producto:
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
 - Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
-  ahí se ve el email, de solo lectura), "Perfil público", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Ver revelado" y "Ver candado", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
+  ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Ver revelado" y "Ver candado", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
   "Cerrar sesión" / "Borrar cuenta".
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
@@ -184,6 +199,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
   **`react-native-pulsar`** (hápticos continuos), **`expo-audio`** (plugin con `enableBackgroundPlayback: false`: no toca la sesión de audio de
   la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados). Agregarlos o cambiarlos
   pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
+- `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`; `app.config.ts` solo cambia nombre y
@@ -208,7 +224,7 @@ src/
                           __tests__/      tests de esa lógica, al lado del código
                         Dominios: auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
-                        (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications, roll (tablero), moderation (denunciar y bloquear: menú en Feed, visores y perfil de otro, Ajustes → Bloqueados; los errores van con `burnt`).
+                        (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications (push, permiso, Ajustes → Notificaciones), likes (me gusta), roll (tablero), moderation (denunciar y bloquear: menú en Feed, visores y perfil de otro, Ajustes → Bloqueados; los errores van con `burnt`).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, SwitchRow, Button,
                         Field, Body, Footnote, ErrorText, Loading
   api/                  cliente generado del contrato (schema.d.ts NO se edita a mano) + client.ts
@@ -260,7 +276,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 953 tests
+npm test                      # 1046 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -324,7 +340,9 @@ Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Jua
   que se agregan **solo en local, sin commitear**, antes de `npx eas-cli@latest submit -p ios --profile production`.
   `ascAppId` (6825843502) es el Apple ID de la app en App Store Connect. El export compliance ya va en el build
   (`usesNonExemptEncryption: false`).
-- El entitlement de push sigue sacado (`./plugins/without-push-entitlement`) hasta que usemos push.
+- **Push solo en producción/TestFlight:** `./plugins/without-push-entitlement` se aplica únicamente a la variante dev de `app.config.ts`
+  (la cuenta gratis no tiene push); la de producción lleva el entitlement. En el dev build registrar el token falla en silencio y no llegan
+  avisos. Para probarlas: `npx expo prebuild --clean` + build nuevo de EAS.
 - Pendiente para la revisión de la App Store (no para TestFlight): cuenta de prueba para el revisor en el backend,
   URL de política de privacidad y las etiquetas de privacidad.
 
@@ -334,7 +352,7 @@ Hecho: crear rollo configurable (fechas, cupos, revelado), unirse con código, e
 preview, cola offline con subida en segundo plano, cache persistente, Mapa (pins agrupados, carrusel, filtros)
 con el Feed adentro, Amigos (tab, link de amistad, perfil con rollos en común, sumar a un rollo), fotos destacadas en el
 perfil (grilla, mapa por zonas, perfil público o solo amigos, perfil de cualquier miembro o autor), identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa · Presentación · Amigos · Perfil, cuentas (email + código, perfil con foto y descripción), presentación
-(enfoque + historias), galería con visor y descargas a Fotos, y aviso local del revelado. Corre en el iPhone
+(enfoque + historias), galería con visor y descargas a Fotos, y notificaciones push (seis avisos, permiso, Ajustes) con "me gusta" en los visores. Corre en el iPhone
 con dev build contra el backend local.
 
 Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Rollo,

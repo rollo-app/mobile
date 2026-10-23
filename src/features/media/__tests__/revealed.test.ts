@@ -48,6 +48,18 @@ describe("revealed photos", () => {
 
     expect(photo).toMatchObject({ featuredByMe: false, featureBlocked: false });
   });
+
+  it("carries how many people like it and whether you do", () => {
+    const [photo] = toRevealedPhotos([item({ likeCount: 4, likedByMe: true })]);
+
+    expect(photo).toMatchObject({ likeCount: 4, likedByMe: true });
+  });
+
+  it("defaults the likes to none when the server leaves them out", () => {
+    const [photo] = toRevealedPhotos([item()]);
+
+    expect(photo).toMatchObject({ likeCount: 0, likedByMe: false });
+  });
 });
 
 describe("media source", () => {

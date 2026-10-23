@@ -1,6 +1,7 @@
 import { ApiError, createApiClient, setUnauthorizedHandler } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
+import { forgetPushToken } from "@/features/notifications/push-token";
 import { clearActiveTripId } from "@/storage/active-trip";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@/storage/session";
 
@@ -59,7 +60,13 @@ export async function authedClient() {
 
 export const SESSION_INVALID = "Sesión inválida, volvé a entrar";
 
-// A 401 closes the session once, but only if it's still the one the server rejected.
+// A 401 closes the session once, but only if it's still the one the server rejected. Then, like
+// "Cerrar sesión", this phone's push token is forgotten (best effort, after the sign-out so it never
+// delays it; with the rejected session, so its own 401 finds that session already closed).
 setUnauthorizedHandler((rejected) => {
-  void getSessionToken().then((current) => (current === rejected ? signOut() : undefined));
+  void getSessionToken().then(async (current) => {
+    if (current !== rejected) return;
+    await signOut();
+    void forgetPushToken(rejected);
+  });
 });

@@ -87,6 +87,23 @@ describe("logout", () => {
     expect(await getSessionToken()).toBeNull();
   });
 
+  it("first unregisters this phone's push token, while the session is still valid", async () => {
+    const Notifications = jest.mocked(require("expo-notifications") as typeof import("expo-notifications"));
+    Notifications.getPermissionsAsync.mockResolvedValueOnce({ granted: true, canAskAgain: true, status: "granted" } as never);
+    await setSessionToken("tok");
+    const fetchMock = mockFetch(204);
+
+    await logout();
+
+    const calls = fetchMock.mock.calls.map(([r]) => r as Request);
+    expect(calls.map((r) => `${r.method} ${new URL(r.url).pathname}`)).toEqual([
+      "DELETE /me/push-tokens/ExponentPushToken%5Btest-token%5D",
+      "POST /auth/logout",
+    ]);
+    expect(calls[0]!.headers.get("authorization")).toBe("Bearer tok");
+    expect(await getSessionToken()).toBeNull();
+  });
+
   it("clears the local session even without connection", async () => {
     await setSessionToken("tok");
     globalThis.fetch = jest.fn(async () => {
