@@ -50,7 +50,7 @@ Respuesta general: **No usamos datos para rastrear.** No hay publicidad, ni se c
 - **Resend** recibe el email para mandar el código: ya cubierto en "Dirección de correo electrónico".
 - **Cloudflare** aloja todo: es proveedor de infraestructura, no cambia las respuestas.
 - **Dirección IP**: se guarda para limitar intentos (login y links de amistad). Apple la considera dentro de "Identificadores"/"Diagnósticos" solo si se usa para eso de forma vinculada. Recomendación: **no marcar nada extra** (se usa solo para seguridad y antiabuso, y está dicho en la política). Si querés ser ultra conservador, podés sumar "Datos de uso → Otros datos de uso" vinculado, solo funcionalidad; no es obligatorio.
-- **Eliminar la cuenta en la app**: ya existe (Perfil → Borrar cuenta). Apple lo exige y lo vas a poder indicar al revisar la app.
+- **Eliminar la cuenta en la app**: ya existe (Perfil → Ajustes → Borrar cuenta). Apple lo exige y lo vas a poder indicar al revisar la app.
 - **Cuenta para App Review**: el backend soporta `REVIEW_EMAIL`/`REVIEW_CODE`. Cargalos como secrets y ponelos en "Información de revisión de la app".
 - **Contenido generado por usuarios (guideline 1.2)**: antes de enviar a revisión tienen que estar andando denunciar y bloquear (se están construyendo), más el contacto de soporte en la ficha.
 - **Clasificación por edades**: respondé el cuestionario con "contenido generado por usuarios: sí"; probablemente da 12+ o 17+ según cómo respondas sobre contenido no filtrado. Edad mínima de la política: 13.

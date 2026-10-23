@@ -104,7 +104,7 @@ const home = `<div class="brand">${logo(56)}<h1>Rollo</h1></div>
 <h3>&iquest;C&oacute;mo me sumo a un rollo?</h3>
 <p>Con el c&oacute;digo de 6 caracteres que te pasa alguien del rollo. Lo ingres&aacute;s en la app y listo.</p>
 <h3>&iquest;C&oacute;mo borro mi cuenta?</h3>
-<p>Desde Perfil &rarr; Borrar cuenta. Es definitivo: se borran tus fotos y videos de todos los rollos, tu membres&iacute;a, tus amistades, tu foto de perfil y tu email. Los detalles est&aacute;n en la <a href="/privacidad">pol&iacute;tica de privacidad</a>.</p>
+<p>Desde Perfil &rarr; Ajustes &rarr; Borrar cuenta. Es definitivo: se borran tus fotos y videos de todos los rollos, tu membres&iacute;a, tus amistades, tu foto de perfil y tu email. Los detalles est&aacute;n en la <a href="/privacidad">pol&iacute;tica de privacidad</a>.</p>
 <h3>&iquest;C&oacute;mo denuncio una foto o bloqueo a alguien?</h3>
 <p>Desde la app, en la foto o en el perfil de la persona. Tambi&eacute;n nos pod&eacute;s escribir a <a href="mailto:soporte@juanifraga.com">soporte@juanifraga.com</a>.</p>
 <h3>&iquest;Hay versi&oacute;n para Android?</h3>
