@@ -16,6 +16,8 @@ export type UploaderDeps = {
   putFile: (uri: string, url: string, contentType: string) => Promise<number>;
   /** Whether the local file still exists. */
   fileExists: (uri: string) => Promise<boolean>;
+  /** Byte size of a local file, null if unknown. Used for items queued before the size was persisted. */
+  fileSize?: (uri: string) => Promise<number | null>;
   /** Deletes the Documents/pending/<id> folder. */
   removeFiles: (id: string) => Promise<void>;
   /** Called with the trip each time an upload is confirmed (the quota and the total change). */
@@ -98,46 +100,65 @@ export function createUploader(deps: UploaderDeps) {
     }
   }
 
+  /**
+   * The body of the registration request, built in one place. `thumbSizeBytes` is resolved by the caller
+   * (persisted, or measured from disk for old queue rows) and joins the body once the contract has it.
+   */
+  function registerBody(m: PendingMedia, _thumbSizeBytes: number | null) {
+    return {
+      id: m.id,
+      type: m.type,
+      takenAt: m.takenAt,
+      lat: m.lat,
+      lng: m.lng,
+      accuracyM: m.accuracyM,
+      caption: m.caption,
+      durationS: m.durationS,
+      width: m.width,
+      height: m.height,
+      sizeBytes: m.sizeBytes,
+      thumbhash: m.thumbhash,
+    };
+  }
+
   /** Uploads an item end to end. Throws if anything fails. */
   async function send(m: PendingMedia, token: string) {
     const api = createApiClient({ baseUrl: deps.apiUrl, token });
+    const thumbSizeBytes = m.thumbSizeBytes ?? (await deps.fileSize?.(m.thumbUri).catch(() => null)) ?? null;
     const register = () =>
       unwrap(
         api.POST("/trips/{tripId}/media", {
           params: { path: { tripId: m.tripId } },
-          body: {
-            id: m.id,
-            type: m.type,
-            takenAt: m.takenAt,
-            lat: m.lat,
-            lng: m.lng,
-            accuracyM: m.accuracyM,
-            caption: m.caption,
-            durationS: m.durationS,
-            width: m.width,
-            height: m.height,
-            sizeBytes: m.sizeBytes,
-            thumbhash: m.thumbhash,
-          },
+          body: registerBody(m, thumbSizeBytes),
         }),
       );
 
     let registered = await register();
-    if ("upload" in registered) {
+    // One re-register per pass (same id): fresh URLs after a 403, or a fresh pending record after a 404 on confirm.
+    // The next attempt after that goes through the normal backoff, so it can never loop.
+    let reRegistered = false;
+    while ("upload" in registered) {
       try {
         await putAll(m, registered.upload);
       } catch (e) {
-        // Expired URL: the server gives new URLs for the same id.
-        if (!(e instanceof PutFailed && e.status === 403)) throw e;
-        registered = await register();
-        if ("upload" in registered) await putAll(m, registered.upload);
-      }
-      if ("upload" in registered) {
-        try {
-          await unwrap(api.POST("/media/{mediaId}/complete", { params: { path: { mediaId: m.id } } }));
-        } catch (e) {
-          throw e instanceof ApiError ? new CompleteFailed(e) : e;
+        if (e instanceof PutFailed && e.status === 403 && !reRegistered) {
+          reRegistered = true;
+          registered = await register();
+          continue;
         }
+        throw e;
+      }
+      try {
+        await unwrap(api.POST("/media/{mediaId}/complete", { params: { path: { mediaId: m.id } } }));
+        return;
+      } catch (e) {
+        // The server lost the pending record (cleaned up): register and upload it again.
+        if (e instanceof ApiError && e.status === 404 && !reRegistered) {
+          reRegistered = true;
+          registered = await register();
+          continue;
+        }
+        throw e instanceof ApiError ? new CompleteFailed(e) : e;
       }
     }
   }

@@ -29,7 +29,7 @@ describe("upload queue", () => {
 
     await queue.enqueue(item());
 
-    expect(await queue.pending()).toEqual([{ ...item(), attempts: 0, retryAt: null }]);
+    expect(await queue.pending()).toEqual([{ ...item(), thumbSizeBytes: null, attempts: 0, retryAt: null }]);
   });
 
   it("returns pending items in the order they were shot", async () => {
@@ -117,6 +117,33 @@ describe("upload queue", () => {
     await queue.markFailed(item().id, "revealed");
 
     expect(await (await createQueue(db)).pending()).toEqual([]);
+  });
+
+  it("persists thumbSizeBytes and reads it back; null when never set", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "a", thumbSizeBytes: 54_321 }));
+    await queue.enqueue(item({ id: "b" }));
+
+    expect((await queue.pending()).map((m) => [m.id, m.thumbSizeBytes])).toEqual([
+      ["a", 54_321],
+      ["b", null],
+    ]);
+  });
+
+  it("adds the thumb_size_bytes column to an old database, null for old rows", async () => {
+    const db = memoryDb();
+    await db.execAsync(`CREATE TABLE pending_media (
+      id TEXT PRIMARY KEY NOT NULL, trip_id TEXT NOT NULL, type TEXT NOT NULL, taken_at INTEGER NOT NULL,
+      day TEXT NOT NULL, lat REAL, lng REAL, accuracy_m REAL, caption TEXT, duration_s REAL, width INTEGER,
+      height INTEGER, size_bytes INTEGER NOT NULL, original_uri TEXT NOT NULL, thumb_uri TEXT NOT NULL,
+      thumbhash TEXT, attempts INTEGER NOT NULL DEFAULT 0, retry_at INTEGER, failed_reason TEXT);`);
+    await db.runAsync(
+      "INSERT INTO pending_media (id, trip_id, type, taken_at, day, size_bytes, original_uri, thumb_uri) VALUES ('old', 't', 'photo', 1, '2027-01-12', 1, 'o', 't')",
+    );
+
+    const queue = await createQueue(db);
+
+    expect((await queue.pending())[0]).toMatchObject({ id: "old", thumbSizeBytes: null });
   });
 
   it("migrates an old database without the new columns", async () => {

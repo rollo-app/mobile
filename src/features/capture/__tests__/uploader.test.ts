@@ -360,6 +360,110 @@ describe("uploader", () => {
     });
   });
 
+  describe("recovery when the server lost the pending upload", () => {
+    function serverThat(completeResponses: Response[]) {
+      let registers = 0;
+      routes.push((c) => {
+        if (c.method === "POST" && c.url.endsWith(`/trips/${TRIP}/media`)) {
+          registers += 1;
+          return registered(item().id, registers);
+        }
+        if (c.url.endsWith("/complete")) return completeResponses.shift() ?? json(200, { id: item().id, status: "uploaded" });
+      });
+      return () => registers;
+    }
+
+    it("404 on confirm: registers the same id again, uploads again and confirms", async () => {
+      const registers = serverThat([json(404, { error: "No existe" })]);
+      await queue.enqueue(item());
+
+      await createUploader(deps).run();
+
+      expect(registers()).toBe(2);
+      expect(puts.map((p) => p.url)).toEqual([
+        `https://r2.test/${item().id}/original?v=1`,
+        `https://r2.test/${item().id}/thumb?v=1`,
+        `https://r2.test/${item().id}/original?v=2`,
+        `https://r2.test/${item().id}/thumb?v=2`,
+      ]);
+      expect(calls.filter((c) => c.url.endsWith("/trips/" + TRIP + "/media")).map((c) => (c.body as { id: string }).id)).toEqual([
+        item().id,
+        item().id,
+      ]);
+      expect(await queue.pending()).toEqual([]);
+      expect(await queue.failed()).toEqual([]);
+    });
+
+    it("404 on confirm twice in the same pass: gives up as deleted, with a single re-register", async () => {
+      const registers = serverThat([json(404, { error: "No existe" }), json(404, { error: "No existe" })]);
+      await queue.enqueue(item());
+
+      await createUploader(deps).run();
+
+      expect(registers()).toBe(2);
+      expect(await queue.failed()).toEqual([expect.objectContaining({ failedReason: "deleted" })]);
+    });
+
+    it("403 on PUT then 404 on confirm in one pass: only one re-register, stays out of a loop", async () => {
+      const registers = serverThat([json(404, { error: "No existe" }), json(404, { error: "No existe" })]);
+      putStatus = (url) => (url.endsWith("v=1") ? 403 : 200);
+      await queue.enqueue(item());
+
+      await createUploader(deps).run();
+
+      expect(registers()).toBe(2);
+      expect(puts.length).toBeLessThanOrEqual(3);
+    });
+
+    it("a second 403 in the same pass stays pending with its attempt, with no further registers", async () => {
+      const registers = serverThat([]);
+      putStatus = () => 403;
+      await queue.enqueue(item());
+
+      await createUploader(deps).run();
+
+      expect(registers()).toBe(2);
+      expect(puts).toHaveLength(2);
+      expect(await queue.pending()).toEqual([expect.objectContaining({ attempts: 1 })]);
+      expect(await queue.failed()).toEqual([]);
+    });
+  });
+
+  describe("thumbSizeBytes", () => {
+    it("still sends the register body without it until the contract has it", async () => {
+      happyServer();
+      await queue.enqueue(item({ thumbSizeBytes: 123_456 }));
+
+      await createUploader(deps).run();
+
+      expect(calls[0]!.body).not.toHaveProperty("thumbSizeBytes");
+    });
+
+    it("measures the thumb from disk when an older version queued it without the size", async () => {
+      happyServer();
+      const sized: string[] = [];
+      deps.fileSize = async (uri) => {
+        sized.push(uri);
+        return 4321;
+      };
+      await queue.enqueue(item());
+
+      await createUploader(deps).run();
+
+      expect(sized).toEqual([item().thumbUri]);
+    });
+
+    it("does not touch the disk when the size was persisted", async () => {
+      happyServer();
+      deps.fileSize = jest.fn(async () => 1);
+      await queue.enqueue(item({ thumbSizeBytes: 999 }));
+
+      await createUploader(deps).run();
+
+      expect(deps.fileSize).not.toHaveBeenCalled();
+    });
+  });
+
   describe("server rejections", () => {
     it("429 (quota): marks it failed for good, does not retry it and does not delete files", async () => {
       routes.push(() => json(429, { error: "Se terminó el rollo de hoy" }));

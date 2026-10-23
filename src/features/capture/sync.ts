@@ -23,6 +23,7 @@ function getUploader() {
         });
         return result.status;
       },
+      fileSize: async (uri) => new File(uri).size ?? null,
       fileExists: async (uri) => {
         return new File(uri).exists;
       },

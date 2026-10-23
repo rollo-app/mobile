@@ -9,6 +9,9 @@ import { embedMetadata } from "@/features/exif/embed";
 /** Photos at print resolution; the thumb is what shows in the gallery. */
 const ORIGINAL_MAX = 4000;
 const THUMB_MAX = 800;
+/** JPEG quality of the original photo (≈82 % keeps print quality at a much smaller upload). */
+const ORIGINAL_JPEG_QUALITY = 0.82;
+const THUMB_JPEG_QUALITY = 0.8;
 
 export type PreparedMedia = {
   originalUri: string;
@@ -16,12 +19,14 @@ export type PreparedMedia = {
   width: number | null;
   height: number | null;
   sizeBytes: number;
+  /** Exact byte size of the thumb file on disk. */
+  thumbSizeBytes: number;
   durationS: number | null;
   thumbhash: string | null;
 };
 
 /**
- * Prepares a capture for the queue: original (photo ≤4000 px JPEG 88 % or the video
+ * Prepares a capture for the queue: original (photo ≤4000 px JPEG 82 % or the video
  * already exported at 1080p by the camera), 800 px thumb and its ThumbHash.
  * Resizing re-encodes the JPEG and drops its EXIF, so photos get theirs written back from `metadata`
  * (time in the roll's zone, GPS, caption, author). Videos are moved as the camera exported them.
@@ -42,15 +47,15 @@ export async function prepareMedia(asset: ImagePickerAsset, id: string, metadata
   if (isVideo) {
     await new File(asset.uri).move(original);
     const frame = await VideoThumbnails.getThumbnailAsync(original.uri, { time: 0, quality: 0.9 });
-    await saveResized(frame.uri, frame.width, frame.height, THUMB_MAX, 0.8, thumb);
+    await saveResized(frame.uri, frame.width, frame.height, THUMB_MAX, THUMB_JPEG_QUALITY, thumb);
     await deleteQuietly(frame.uri);
   } else {
-    const saved = await saveResized(asset.uri, asset.width, asset.height, ORIGINAL_MAX, 0.88, original);
+    const saved = await saveResized(asset.uri, asset.width, asset.height, ORIGINAL_MAX, ORIGINAL_JPEG_QUALITY, original);
     width = saved.width;
     height = saved.height;
     // Best effort: a photo without metadata is still worth sending.
     await embedMetadata(original, metadata).catch(() => {});
-    await saveResized(original.uri, saved.width, saved.height, THUMB_MAX, 0.8, thumb);
+    await saveResized(original.uri, saved.width, saved.height, THUMB_MAX, THUMB_JPEG_QUALITY, thumb);
     await deleteQuietly(asset.uri);
   }
 
@@ -60,6 +65,7 @@ export async function prepareMedia(asset: ImagePickerAsset, id: string, metadata
     width,
     height,
     sizeBytes: original.size ?? 0,
+    thumbSizeBytes: thumb.size ?? 0,
     durationS: isVideo && asset.duration ? Math.round(asset.duration / 100) / 10 : null,
     thumbhash: await Image.generateThumbhashAsync(thumb.uri).catch(() => null),
   };

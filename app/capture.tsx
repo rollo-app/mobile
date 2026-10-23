@@ -55,7 +55,7 @@ export default function CaptureScreen() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: mediaTypesFor(left.current),
       videoMaxDuration: MAX_VIDEO_S,
-      videoExportPreset: ImagePicker.VideoExportPreset.H264_1920x1080,
+      videoExportPreset: ImagePicker.VideoExportPreset.HEVC_1920x1080,
       quality: 1,
       exif: false,
     });

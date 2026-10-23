@@ -78,6 +78,7 @@ beforeEach(async () => {
     width: 4000,
     height: 3000,
     sizeBytes: 2_500_000,
+    thumbSizeBytes: 90_000,
     durationS: null,
     thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   });

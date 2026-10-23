@@ -21,6 +21,8 @@ export type QueuedMedia = {
   width: number | null;
   height: number | null;
   sizeBytes: number;
+  /** Exact byte size of the thumb file; null/absent for items queued by older versions. */
+  thumbSizeBytes?: number | null;
   originalUri: string;
   thumbUri: string;
   thumbhash: string | null;
@@ -70,6 +72,7 @@ const SCHEMA = `
 const ADDED_COLUMNS = [
   ["retry_at", "INTEGER"],
   ["failed_reason", "TEXT"],
+  ["thumb_size_bytes", "INTEGER"],
 ] as const;
 
 type Row = {
@@ -92,6 +95,7 @@ type Row = {
   attempts: number;
   retry_at: number | null;
   failed_reason: string | null;
+  thumb_size_bytes: number | null;
 };
 
 const fromRow = (r: Row): PendingMedia => ({
@@ -108,6 +112,7 @@ const fromRow = (r: Row): PendingMedia => ({
   width: r.width,
   height: r.height,
   sizeBytes: r.size_bytes,
+  thumbSizeBytes: r.thumb_size_bytes ?? null,
   originalUri: r.original_uri,
   thumbUri: r.thumb_uri,
   thumbhash: r.thumbhash,
@@ -127,10 +132,10 @@ export async function createQueue(db: QueueDb) {
       await db.runAsync(
         `INSERT OR IGNORE INTO pending_media
           (id, trip_id, type, taken_at, day, lat, lng, accuracy_m, caption, duration_s, width, height,
-           size_bytes, original_uri, thumb_uri, thumbhash)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           size_bytes, original_uri, thumb_uri, thumbhash, thumb_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         m.id, m.tripId, m.type, m.takenAt, m.day, m.lat, m.lng, m.accuracyM, m.caption, m.durationS,
-        m.width, m.height, m.sizeBytes, m.originalUri, m.thumbUri, m.thumbhash,
+        m.width, m.height, m.sizeBytes, m.originalUri, m.thumbUri, m.thumbhash, m.thumbSizeBytes ?? null,
       );
     },
 
