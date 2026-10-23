@@ -59,4 +59,16 @@ describe("useRollStarted", () => {
     await flush();
     expect(push).toHaveBeenCalledTimes(1);
   });
+
+  it("shows the moment once when two checks for the same roll overlap", async () => {
+    // Two runs of the effect in flight at once (the tabs layout re-rendering while the trip settles):
+    // both read "not seen" before either one remembers it.
+    await renderHook(() => {
+      useRollStarted("trip-2", "active", true);
+      useRollStarted("trip-2", "active", true);
+    });
+    await flush();
+    await flush();
+    expect(push).toHaveBeenCalledTimes(1);
+  });
 });
