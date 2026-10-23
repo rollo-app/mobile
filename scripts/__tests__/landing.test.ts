@@ -216,7 +216,7 @@ describe("the home in App Store mode", () => {
       expect(() => {
         try {
           execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], {
-            env: { ...process.env, SITE_DIST: out, SITE_STORE_MODE: "appstore" },
+            env: { ...process.env, SITE_DIST: out, SITE_STORE_MODE: "appstore", SITE_APP_STORE_BADGE: join(out, "missing", "app-store-badge.svg") },
             stdio: "pipe",
           });
         } catch (error) {
@@ -319,6 +319,15 @@ describe("the home motion", () => {
       run({ Motion: { animate, inView, scroll: jest.fn(), stagger: jest.fn() } }, () => [section]);
       expect(animate).toHaveBeenCalledWith(section, { opacity: [0, 1], y: [16, 0] }, expect.any(Object));
       for (const [, keyframes] of animate.mock.calls) expect(keyframes).not.toHaveProperty("transform");
+    });
+
+    it("watches sections with amount \"some\", not a numeric fraction that tall stacked sections never reach on a short viewport", () => {
+      const inView = jest.fn();
+      run({ Motion: { animate: jest.fn(), inView, scroll: jest.fn(), stagger: jest.fn() } }, () => [{}]);
+      expect(inView).toHaveBeenCalledTimes(1);
+      const options = inView.mock.calls[0][2];
+      expect(options.amount).toBe("some");
+      expect(options.margin).toBe("0px 0px -10% 0px");
     });
 
     it("marks motion as on when init succeeds", () => {

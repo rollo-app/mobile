@@ -319,6 +319,9 @@ Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y m
 - **Botón de la home:** constantes `STORE_MODE` (`"beta"` por defecto, o `SITE_STORE_MODE=appstore`) y `APP_STORE_URL` en
   `build-site.mjs`. En modo `appstore` el botón pasa a ser el badge oficial de Apple, que hay que bajar a
   `scripts/site/app-store-badge.svg` (no se dibuja a mano); sin ese archivo o sin `APP_STORE_URL` el build falla.
+  El deploy no setea `SITE_STORE_MODE`, así que lo que sale es el default del código. **Para cambiar cuando Apple apruebe:** cambiar
+  el default `"beta"` → `"appstore"` en `build-site.mjs`, completar `APP_STORE_URL` y agregar el badge oficial (la ruta del badge se
+  puede pisar con `SITE_APP_STORE_BADGE`, lo usa el test).
 - **Animaciones:** Motion (`animate`, `scroll`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
   `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
   Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.

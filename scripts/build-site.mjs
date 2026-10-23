@@ -13,11 +13,13 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
 
 const SITE_URL = "https://rollo.juanifraga.com";
+// Switch after Apple approves the app: change the default "beta" -> "appstore", set APP_STORE_URL and add the official badge file
+// (scripts/site/app-store-badge.svg). The deploy does not set SITE_STORE_MODE, so this default is what ships.
 /** @type {"beta" | "appstore"} */
 const STORE_MODE = process.env.SITE_STORE_MODE ?? "beta";
 const TESTFLIGHT_URL = "https://testflight.apple.com/join/Q557gZkR";
 const APP_STORE_URL = null; // filled in when the app is approved
-const APP_STORE_BADGE = join(root, "scripts", "site", "app-store-badge.svg");
+const APP_STORE_BADGE = process.env.SITE_APP_STORE_BADGE ?? join(root, "scripts", "site", "app-store-badge.svg");
 
 if (STORE_MODE !== "beta" && STORE_MODE !== "appstore") throw new Error(`Unknown SITE_STORE_MODE: ${STORE_MODE}`);
 if (STORE_MODE === "appstore") {

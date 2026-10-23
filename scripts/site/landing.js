@@ -28,7 +28,9 @@
         function () {
           animate(el, { opacity: [0, 1], y: [16, 0] }, { duration: 0.6, ease: "easeOut" });
         },
-        { amount: 0.2 },
+        // amount "some" (threshold 0), not a number: a numeric amount is a fraction of the element's own height, and a tall stacked
+        // section on a short landscape phone never reaches it. The negative bottom margin still waits until it is a bit inside.
+        { amount: "some", margin: "0px 0px -10% 0px" },
       );
     });
 
