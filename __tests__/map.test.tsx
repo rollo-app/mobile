@@ -26,6 +26,13 @@ const { __imagesProps: imagesProps, __mapMounts: mapMounts } = jest.requireMock(
   __imagesProps: { current: Record<string, any> };
   __mapMounts: { current: number };
 };
+const { __cameraProps: cameraProps } = jest.requireMock("@maplibre/maplibre-react-native") as {
+  __cameraProps: { current: Record<string, any> | null };
+};
+const location = jest.requireMock("expo-location") as {
+  getForegroundPermissionsAsync: jest.Mock;
+  getLastKnownPositionAsync: jest.Mock;
+};
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -107,6 +114,59 @@ beforeEach(async () => {
 });
 
 describe("Map", () => {
+  describe("starting view", () => {
+    beforeEach(() => {
+      cameraProps.current = null;
+    });
+
+    it("with no pins, the trip not in progress and no location permission, starts on the whole world", async () => {
+      mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, startsAt: Date.now() + DAY, endsAt: Date.now() + 9 * DAY } });
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await screen.findByLabelText("mapa");
+      expect(cameraProps.current!.initialViewState).toEqual({ center: [0, 20], zoom: 1 });
+    });
+
+    it("with pins, starts framing them", async () => {
+      mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, startsAt: Date.now() + DAY, endsAt: Date.now() + 9 * DAY } });
+      mocked.fetchFeed.mockResolvedValue(feed([feedItem({ id: "a", lat: -34.9, lng: -56.2 }), feedItem({ id: "b", lat: -34.5, lng: -58.4 })]));
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await screen.findByLabelText("mapa");
+      expect(cameraProps.current!.initialViewState).toEqual({ bounds: [-58.4, -34.9, -56.2, -34.5], padding: expect.any(Object) });
+    });
+
+    it("with no pins but location permission, starts where you are at city level, without asking", async () => {
+      location.getForegroundPermissionsAsync.mockResolvedValue({ granted: true });
+      location.getLastKnownPositionAsync.mockResolvedValue({ coords: { latitude: -34.9, longitude: -56.16 } });
+      mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, startsAt: Date.now() + DAY, endsAt: Date.now() + 9 * DAY } });
+      try {
+        await renderRouter(routes, { initialUrl: "/map" });
+
+        await screen.findByLabelText("mapa");
+        expect(cameraProps.current!.initialViewState).toEqual({ center: [-56.16, -34.9], zoom: 10 });
+      } finally {
+        location.getForegroundPermissionsAsync.mockResolvedValue({ granted: false });
+        location.getLastKnownPositionAsync.mockResolvedValue(null);
+      }
+    });
+
+    it("with the trip in progress and location permission, starts where you are", async () => {
+      location.getForegroundPermissionsAsync.mockResolvedValue({ granted: true });
+      location.getLastKnownPositionAsync.mockResolvedValue({ coords: { latitude: -34.9, longitude: -56.16 } });
+      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      try {
+        await renderRouter(routes, { initialUrl: "/map" });
+
+        await screen.findByLabelText("mapa");
+        expect(cameraProps.current!.initialViewState).toEqual({ center: [-56.16, -34.9], zoom: 12 });
+      } finally {
+        location.getForegroundPermissionsAsync.mockResolvedValue({ granted: false });
+        location.getLastKnownPositionAsync.mockResolvedValue(null);
+      }
+    });
+  });
+
   it("with no photos with a location it shows the map with a small notice", async () => {
     await renderRouter(routes, { initialUrl: "/map" });
 
