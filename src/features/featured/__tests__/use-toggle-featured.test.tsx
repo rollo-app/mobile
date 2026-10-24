@@ -87,8 +87,8 @@ describe("useToggleFeatured", () => {
       await done;
     });
     expect(featuredInCache("a")).toBe(true);
-    expect(result.current.pending.size).toBe(0);
-    expect(result.current.error).toBeNull();
+    await waitFor(() => expect(result.current.pending.size).toBe(0));
+    await waitFor(() => expect(result.current.error).toBeNull());
     expect(client.getQueryState(featuredKey(USER.id))?.isInvalidated).toBe(true);
   });
 
@@ -127,8 +127,8 @@ describe("useToggleFeatured", () => {
       await done;
     });
     expect(featuredInCache("a")).toBe(false);
-    expect(result.current.error).toBe("Podés destacar hasta 60 fotos");
-    expect(result.current.pending.size).toBe(0);
+    await waitFor(() => expect(result.current.error).toBe("Podés destacar hasta 60 fotos"));
+    await waitFor(() => expect(result.current.pending.size).toBe(0));
   });
 
   it("ignores a second toggle of the same photo while the first is pending", async () => {
@@ -168,13 +168,13 @@ describe("useToggleFeatured", () => {
     await act(async () => {
       await result.current.toggle({ id: "a", featuredByMe: false }, "t1");
     });
-    expect(result.current.error).toBe("Este perfil es privado");
+    await waitFor(() => expect(result.current.error).toBe("Este perfil es privado"));
 
     globalThis.fetch = jest.fn(async () => new Response(null, { status: 204 })) as unknown as typeof fetch;
     await act(async () => {
       await result.current.toggle({ id: "a", featuredByMe: false }, "t1");
     });
-    expect(result.current.error).toBeNull();
+    await waitFor(() => expect(result.current.error).toBeNull());
     expect(featuredInCache("a")).toBe(true);
   });
 

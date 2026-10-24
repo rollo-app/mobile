@@ -514,7 +514,10 @@ describe("Photo viewer", () => {
   });
 
   it("reports someone else's photo and moves on to the next one", async () => {
-    moderation.reportMedia.mockReset().mockResolvedValue(undefined);
+    // Like the server: once reported, the photo is gone from the refetched feed too.
+    moderation.reportMedia.mockReset().mockImplementation(async () => {
+      mocked.fetchFeed.mockResolvedValue(feed(two().items.filter((i) => i.id !== "a")));
+    });
     const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_o, cb) => cb(0));
     await openViewer("a");
     await screen.findByText("Fede");

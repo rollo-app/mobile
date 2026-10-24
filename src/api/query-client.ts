@@ -23,6 +23,12 @@ export function createQueryClient() {
         gcTime: CACHE_MAX_AGE,
         retry: 1,
       },
+      // A mutation runs right away and fails once: with no signal the user sees OFFLINE_MESSAGE under
+      // the form instead of a request paused in silence. Local writes (the capture queue) need this too.
+      mutations: {
+        networkMode: "always",
+        retry: 0,
+      },
     },
   });
 }

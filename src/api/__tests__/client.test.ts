@@ -1,4 +1,4 @@
-import { ApiError, createApiClient, setUnauthorizedHandler, unwrap } from "../client";
+import { ApiError, createApiClient, errorMessage, setUnauthorizedHandler, unwrap } from "../client";
 
 const BASE = "https://api.test";
 
@@ -112,5 +112,19 @@ describe("unwrap", () => {
     await expect(
       unwrap(api.DELETE("/media/{mediaId}", { params: { path: { mediaId: "m1" } } })),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe("errorMessage", () => {
+  it("returns the error's own message", () => {
+    expect(errorMessage(new ApiError(400, "Código inválido"), "fallback")).toBe("Código inválido");
+  });
+
+  it("falls back for anything that isn't an Error", () => {
+    expect(errorMessage("boom", "No se pudo")).toBe("No se pudo");
+  });
+
+  it("is null when there's no error", () => {
+    expect(errorMessage(null, "No se pudo")).toBeNull();
   });
 });

@@ -1,12 +1,16 @@
 import * as Haptics from "expo-haptics";
-import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { useCallback, useRef, useState } from "react";
+import { useMutation, useMutationState, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import { errorMessage } from "@/api/client";
 import { useMe } from "@/features/auth/use-me";
 import type { Feed } from "@/features/trips/actions";
 import { feedKey } from "@/features/trips/use-feed";
 import { showPill } from "@/ui/pill";
 import { featureMedia, unfeatureMedia } from "./actions";
 import { featuredKey } from "./use-featured";
+
+const TOGGLE_KEY = ["toggle-featured"];
+type Vars = { photo: { id: string; featuredByMe: boolean }; tripId: string };
 
 function setFeaturedInFeed(client: QueryClient, tripId: string, mediaId: string, featuredByMe: boolean) {
   client.setQueryData<Feed>(feedKey(tripId), (feed) =>
@@ -22,38 +26,44 @@ function setFeaturedInFeed(client: QueryClient, tripId: string, mediaId: string,
 export function useToggleFeatured() {
   const client = useQueryClient();
   const { me } = useMe();
-  const inFlight = useRef(new Set<string>());
-  const [pending, setPending] = useState<Set<string>>(() => new Set());
-  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationKey: TOGGLE_KEY,
+    mutationFn: ({ photo }: Vars) => (photo.featuredByMe ? unfeatureMedia : featureMedia)(photo.id),
+    onMutate: async ({ photo, tripId }) => {
+      // A refetch landing mid-request would overwrite the optimistic value.
+      await client.cancelQueries({ queryKey: feedKey(tripId) });
+      setFeaturedInFeed(client, tripId, photo.id, !photo.featuredByMe);
+    },
+    onError: (_error, { photo, tripId }) => setFeaturedInFeed(client, tripId, photo.id, photo.featuredByMe),
+    onSuccess: (_data, { photo }) => {
+      if (me) void client.invalidateQueries({ queryKey: featuredKey(me.id) });
+      if (!photo.featuredByMe) {
+        showPill("Agregada a tu perfil");
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    },
+  });
+  const { mutateAsync } = mutation;
+
+  const pendingIds = useMutationState({
+    filters: { mutationKey: TOGGLE_KEY, status: "pending" },
+    select: (m) => (m.state.variables as Vars).photo.id,
+  });
+  const pending = useMemo(() => new Set(pendingIds), [pendingIds]);
 
   const toggle = useCallback(
     async (photo: { id: string; featuredByMe: boolean }, tripId: string) => {
-      if (inFlight.current.has(photo.id)) return;
-      inFlight.current.add(photo.id);
-      setPending(new Set(inFlight.current));
-      setError(null);
-
-      const next = !photo.featuredByMe;
-      // A refetch landing mid-request would overwrite the optimistic value.
-      await client.cancelQueries({ queryKey: feedKey(tripId) });
-      setFeaturedInFeed(client, tripId, photo.id, next);
-      try {
-        await (next ? featureMedia : unfeatureMedia)(photo.id);
-        if (me) void client.invalidateQueries({ queryKey: featuredKey(me.id) });
-        if (next) {
-          showPill("Agregada a tu perfil");
-          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-      } catch (e) {
-        setFeaturedInFeed(client, tripId, photo.id, photo.featuredByMe);
-        setError(e instanceof Error ? e.message : "No se pudo cambiar la foto destacada");
-      } finally {
-        inFlight.current.delete(photo.id);
-        setPending(new Set(inFlight.current));
-      }
+      const busy = client.getMutationCache().findAll({
+        mutationKey: TOGGLE_KEY,
+        status: "pending",
+        predicate: (m) => (m.state.variables as Vars).photo.id === photo.id,
+      });
+      if (busy.length > 0) return;
+      await mutateAsync({ photo, tripId }).catch(() => undefined);
     },
-    [client, me],
+    [client, mutateAsync],
   );
 
-  return { toggle, pending, error };
+  return { toggle, pending, error: errorMessage(mutation.error, "No se pudo cambiar la foto destacada") };
 }

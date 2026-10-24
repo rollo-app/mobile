@@ -90,8 +90,8 @@ describe("useToggleLike", () => {
       await done;
     });
     expect(inFeed("a")).toEqual({ likedByMe: true, likeCount: 3 });
-    expect(result.current.pending.size).toBe(0);
-    expect(result.current.error).toBeNull();
+    await waitFor(() => expect(result.current.pending.size).toBe(0));
+    await waitFor(() => expect(result.current.error).toBeNull());
   });
 
   it("unlikes with a DELETE and no haptic", async () => {
@@ -130,8 +130,8 @@ describe("useToggleLike", () => {
     });
     expect(inFeed("a")).toEqual({ likedByMe: false, likeCount: 2 });
     expect(inFeatured("a")).toEqual({ likedByMe: false, likeCount: 2 });
-    expect(result.current.error).toEqual({ mediaId: "a", message: "No encontramos esa foto" });
-    expect(result.current.pending.size).toBe(0);
+    await waitFor(() => expect(result.current.error).toEqual({ mediaId: "a", message: "No encontramos esa foto" }));
+    await waitFor(() => expect(result.current.pending.size).toBe(0));
   });
 
   it("ignores a second toggle of the same photo while the first is pending", async () => {

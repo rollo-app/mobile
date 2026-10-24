@@ -1,7 +1,8 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useCallback, useRef, useState } from "react";
+import { errorMessage } from "@/api/client";
 import { meKey } from "@/features/auth/actions";
 import { uploadAvatar } from "./actions";
 import { openCropRequest, type Photo } from "./crop-request";
@@ -28,39 +29,42 @@ async function cropInApp(photo: Photo): Promise<Photo | null> {
 export function useAvatarUpload() {
   const queryClient = useQueryClient();
   const [localUri, setLocalUri] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Camera permission denial happens before any upload, so it isn't a mutation error.
+  const [permissionError, setPermissionError] = useState<string | null>(null);
   const last = useRef<Photo | null>(null);
+
+  const upload = useMutation({
+    mutationFn: (photo: Photo) => uploadAvatar(photo),
+    onSuccess: (user) => {
+      queryClient.setQueryData(meKey, user);
+      void queryClient.invalidateQueries({ queryKey: ["trip"] });
+      void queryClient.invalidateQueries({ queryKey: ["feed"] });
+      last.current = null;
+      setLocalUri(null);
+    },
+  });
+  const { mutateAsync, reset } = upload;
 
   const send = useCallback(
     async (photo: Photo) => {
       last.current = photo;
       setLocalUri(photo.uri);
-      setError(null);
-      setUploading(true);
-      try {
-        const user = await uploadAvatar(photo);
-        queryClient.setQueryData(meKey, user);
-        void queryClient.invalidateQueries({ queryKey: ["trip"] });
-        void queryClient.invalidateQueries({ queryKey: ["feed"] });
-        last.current = null;
-        setLocalUri(null);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "No se pudo subir la foto");
-      } finally {
-        setUploading(false);
-      }
+      setPermissionError(null);
+      reset();
+      // Failures surface through `upload.error`.
+      await mutateAsync(photo).catch(() => undefined);
     },
-    [queryClient],
+    [mutateAsync, reset],
   );
 
   const pick = useCallback(
     async (source: PhotoSource) => {
-      setError(null);
+      setPermissionError(null);
+      reset();
       if (source === "camera") {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          setError("Rollo no tiene permiso para usar la cámara. Activalo en Ajustes.");
+          setPermissionError("Rollo no tiene permiso para usar la cámara. Activalo en Ajustes.");
           return;
         }
       }
@@ -76,10 +80,10 @@ export function useAvatarUpload() {
       const ready = source === "camera" || !croppable ? photo : await cropInApp(photo);
       if (ready) await send(ready);
     },
-    [send],
+    [send, reset],
   );
 
   const retry = useCallback(() => (last.current ? send(last.current) : Promise.resolve()), [send]);
 
-  return { localUri, uploading, error, pick, retry };
+  return { localUri, uploading: upload.isPending, error: permissionError ?? errorMessage(upload.error, "No se pudo subir la foto"), pick, retry };
 }
