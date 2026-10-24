@@ -1,12 +1,33 @@
-// Builds the static public site (home/support + legal pages) into site/dist.
+// Builds the static public site (home, support and legal pages) into site/dist.
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
 import { marked } from "marked";
+import { homeCss, homeHtml } from "./site/home.mjs";
+import { mockups, mockupsCss } from "./site/mockups.mjs";
+import { tokensCss } from "./site/tokens.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
+
+const SITE_URL = "https://rollo.juanifraga.com";
+// Switch after Apple approves the app: change the default "beta" -> "appstore", set APP_STORE_URL and add the official badge file
+// (scripts/site/app-store-badge.svg). The deploy does not set SITE_STORE_MODE, so this default is what ships.
+/** @type {"beta" | "appstore"} */
+const STORE_MODE = process.env.SITE_STORE_MODE ?? "beta";
+const TESTFLIGHT_URL = "https://testflight.apple.com/join/Q557gZkR";
+const APP_STORE_URL = null; // filled in when the app is approved
+const APP_STORE_BADGE = process.env.SITE_APP_STORE_BADGE ?? join(root, "scripts", "site", "app-store-badge.svg");
+
+if (STORE_MODE !== "beta" && STORE_MODE !== "appstore") throw new Error(`Unknown SITE_STORE_MODE: ${STORE_MODE}`);
+if (STORE_MODE === "appstore") {
+  if (!existsSync(APP_STORE_BADGE)) {
+    throw new Error("Missing scripts/site/app-store-badge.svg (official Apple badge) for STORE_MODE=appstore");
+  }
+  if (!APP_STORE_URL) throw new Error("Missing APP_STORE_URL for STORE_MODE=appstore");
+}
 
 const logo = (size) => `<svg class="logo" width="${size}" height="${size}" viewBox="14 14 76 76" aria-hidden="true">
 <circle cx="60" cy="60" r="34" fill="currentColor" fill-opacity="0.18"/>
@@ -20,8 +41,7 @@ const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
 <circle cx="71" cy="49" r="14" fill="#3155F5"/></svg>`;
 
 const css = `
-:root{--bg:#F2F0EB;--fg:#1c1c1e;--muted:#6c6c70;--rule:#d8d5cd;--tint:#3155F5}
-@media (prefers-color-scheme:dark){:root{--bg:#0E0F14;--fg:#f2f2f7;--muted:#98989f;--rule:#2a2c35;--tint:#5C7CFF}}
+${tokensCss}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
@@ -50,9 +70,9 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:15px}
 `;
 
 const footer = `<footer><p>&copy; 2026 Juan Ignacio Fraga &middot; Uruguay</p>
-<p><a href="/privacidad">Privacidad</a> &middot; <a href="/terminos">T&eacute;rminos</a></p></footer>`;
+<p><a href="/privacidad">Privacidad</a> &middot; <a href="/terminos">T&eacute;rminos</a> &middot; <a href="/soporte">Soporte</a></p></footer>`;
 
-const page = ({ title, description, body, header = true, head = "" }) => `<!doctype html>
+const page = ({ title, description, body, header = true, head = "", css: styles = css, wide = false }) => `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -61,10 +81,10 @@ const page = ({ title, description, body, header = true, head = "" }) => `<!doct
 <meta name="description" content="${description}">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<style>${css}</style>
+<style>${styles}</style>
 ${head}</head>
 <body>
-<div class="wrap">
+<div class="wrap${wide ? " wide" : ""}">
 ${header ? `<header class="top"><a href="/">${logo(28)}<span>Rollo</span></a></header>` : ""}
 <main>
 ${body}
@@ -87,18 +107,33 @@ const legal = (name) =>
     .replaceAll('href="privacidad.md"', 'href="/privacidad"')
     .replaceAll('href="terminos.md"', 'href="/terminos"');
 
-const home = `<div class="brand">${logo(56)}<h1>Rollo</h1></div>
-<p class="tagline">Fotos en grupo que nadie ve hasta el revelado.</p>
-<p>Una app para iPhone para sacar fotos y videos con tus amigos, como un rollo de fotos de los de antes.</p>
-
-<h2>C&oacute;mo funciona</h2>
-<ol>
-<li>Abr&iacute;s un rollo y sum&aacute;s a tus amigos con un c&oacute;digo.</li>
-<li>Cada uno saca fotos y videos, y nadie los ve, ni los propios.</li>
-<li>En el revelado aparecen todas juntas, con mapa y presentaci&oacute;n.</li>
-</ol>
-
-<h2 id="soporte">Soporte</h2>
+const home = homeHtml({
+  storeMode: STORE_MODE,
+  testflightUrl: TESTFLIGHT_URL,
+  appStoreUrl: APP_STORE_URL,
+  siteUrl: SITE_URL,
+  mockups,
+});
+write("index.html", page({
+  title: "Rollo · Fotos en grupo para iPhone",
+  description: "Rollo: fotos y videos en grupo que nadie ve hasta el revelado. App para iPhone.",
+  body: home.body,
+  head: home.head,
+  css: homeCss + mockupsCss,
+  wide: true,
+}));
+await build({
+  entryPoints: [join(root, "scripts", "site", "motion-entry.mjs")],
+  bundle: true,
+  minify: true,
+  format: "iife",
+  globalName: "Motion",
+  outfile: join(dist, "motion.js"),
+});
+copyFileSync(join(root, "scripts", "site", "landing.js"), join(dist, "landing.js"));
+if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
+copyFileSync(join(root, "scripts", "site", "og.png"), join(dist, "og.png"));
+const soporte = `<h2>Soporte</h2>
 <p>Escribinos a <a href="mailto:soporte@juanifraga.com">soporte@juanifraga.com</a> y te respondemos.</p>
 <div class="faq">
 <h3>&iquest;C&oacute;mo me sumo a un rollo?</h3>
@@ -111,11 +146,10 @@ const home = `<div class="brand">${logo(56)}<h1>Rollo</h1></div>
 <p>Por ahora Rollo es solo para iPhone.</p>
 </div>`;
 
-write("index.html", page({
-  title: "Rollo",
-  description: "Rollo: fotos y videos en grupo que nadie ve hasta el revelado. App para iPhone.",
-  body: home,
-  header: false,
+write("soporte/index.html", page({
+  title: "Soporte · Rollo",
+  description: "Soporte de Rollo: preguntas frecuentes y contacto.",
+  body: soporte,
 }));
 write("privacidad/index.html", page({
   title: "Política de privacidad · Rollo",
