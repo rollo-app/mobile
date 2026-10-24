@@ -240,8 +240,11 @@ modules/rollo-symbol/   Módulo local de Expo (Swift): vista nativa de SF Symbol
 
 Reglas:
 
-- **`app/` solo rutea.** Una pantalla no llama a la API ni tiene lógica de negocio: usa hooks y componentes
-  de `src/features`. Si una pantalla crece, lo que crece se va a su feature.
+- **`app/` solo rutea.** Un archivo de `app/` lee params y monta `<XScreen />` de su feature (`*-screen.tsx`):
+  sin estado, efectos, API ni cache. Ejemplo y detalle en `docs/arquitectura.md`.
+- **Escrituras con `useMutation`:** cada una es un hook `use-<verbo>-<cosa>.ts` en su feature que invalida el cache que
+  cambia; la pantalla navega en el `onSuccess` del `mutate` y muestra `errorMessage(mutation.error, "…")` con `ErrorText`.
+  Nada de `try/catch` + `setLoading` a mano en código nuevo.
 - **Una feature por dominio, y una feature no mete mano en otra.** Puede importar lo público de otra
   (hooks, tipos, funciones), pero si dos features necesitan la misma pieza, esa pieza se sube a un módulo
   propio (como `media` para galería y presentación) en vez de copiarla o de tocar la otra feature.
@@ -280,7 +283,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1046 tests
+npm test                      # 1162 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

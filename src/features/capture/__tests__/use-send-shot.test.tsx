@@ -1,0 +1,91 @@
+import { QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
+import type * as ImagePicker from "expo-image-picker";
+import type { ReactNode } from "react";
+import { createQueryClient } from "@/api/query-client";
+import { memoryDb } from "@/test/sqlite-memory";
+import { createQueue, type Queue } from "../queue";
+import * as media from "../media";
+import { getQueue } from "../store";
+import { syncQueue } from "../sync";
+import { pendingKey } from "../use-pending-count";
+import { pendingItemsKey } from "../use-pending-items";
+import { useSendShot } from "../use-send-shot";
+
+jest.mock("../media");
+jest.mock("../store", () => ({ getQueue: jest.fn() }));
+jest.mock("../sync", () => ({ syncQueue: jest.fn(async () => {}) }));
+jest.mock("expo-crypto", () => ({ randomUUID: () => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }));
+
+const asset = { uri: "file:///cache/IMG_1.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
+const prepared = {
+  originalUri: "file:///docs/o.jpg",
+  thumbUri: "file:///docs/t.jpg",
+  width: 10,
+  height: 10,
+  sizeBytes: 5,
+  durationS: null,
+  thumbhash: null,
+};
+let queue: Queue;
+
+beforeEach(async () => {
+  queue = await createQueue(memoryDb());
+  jest.mocked(getQueue).mockResolvedValue(queue);
+  jest.mocked(media.prepareMedia).mockResolvedValue(prepared);
+  jest.mocked(syncQueue).mockClear();
+});
+
+function setup() {
+  const queryClient = createQueryClient();
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return { queryClient, wrapper };
+}
+
+const input = {
+  tripId: "t1",
+  asset,
+  takenAt: Date.UTC(2027, 0, 5, 15),
+  timeZone: "America/Argentina/Buenos_Aires",
+  caption: "  hola  ",
+  author: "Juani",
+  fix: Promise.resolve({ lat: 1, lng: 2, accuracyM: 3 }),
+};
+
+describe("useSendShot", () => {
+  it("enqueues the shot with a trimmed caption and its fix, refreshes pending and kicks the sync", async () => {
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(pendingKey("t1"), 0);
+    queryClient.setQueryData(pendingItemsKey("t1"), []);
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync(input);
+    });
+    const [item] = await queue.pendingForTrip("t1");
+    expect(item).toMatchObject({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", type: "photo", caption: "hola", lat: 1, lng: 2, day: "2027-01-05" });
+    expect(queryClient.getQueryState(pendingKey("t1"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(pendingItemsKey("t1"))?.isInvalidated).toBe(true);
+    expect(syncQueue).toHaveBeenCalled();
+  });
+
+  it("stores a null caption when it is blank", async () => {
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ ...input, caption: "   ", fix: null });
+    });
+    const [item] = await queue.pendingForTrip("t1");
+    expect(item).toMatchObject({ caption: null, lat: null });
+  });
+
+  it("surfaces the error and does not sync when preparing fails", async () => {
+    jest.mocked(media.prepareMedia).mockRejectedValue(new Error("boom"));
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await expect(result.current.mutateAsync(input)).rejects.toThrow("boom");
+    });
+    await waitFor(() => expect(result.current.error?.message).toBe("boom"));
+    expect(syncQueue).not.toHaveBeenCalled();
+  });
+});

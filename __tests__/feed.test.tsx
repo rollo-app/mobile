@@ -257,8 +257,11 @@ describe("Feed", () => {
     afterEach(() => sheet.mockImplementation(() => {}));
 
     it("long-pressing someone else's row reports it and the row disappears", async () => {
-      moderation.reportMedia.mockResolvedValue(undefined);
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      // Like the server: once reported, the item is gone from the refetched feed too.
+      moderation.reportMedia.mockImplementation(async () => {
+        mocked.fetchFeed.mockResolvedValue(feed([]));
+      });
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
       pickReport();
