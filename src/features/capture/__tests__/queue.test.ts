@@ -161,6 +161,16 @@ describe("countPendingForTrip", () => {
     expect(await queue.countPendingForTrip("vacio")).toBe(0);
   });
 
+  it("a moment's pending selfie is not counted nor listed: the moment counts once", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "main", momentDay: "2027-01-12" }));
+    await queue.enqueue(item({ id: "selfie", momentDay: "2027-01-12", pairedWith: "main" }));
+
+    expect(await queue.countPendingForTrip(TRIP)).toBe(1);
+    expect((await queue.pendingForTrip(TRIP)).map((m) => m.id)).toEqual(["main"]);
+    expect((await queue.pending()).map((m) => m.id).sort()).toEqual(["main", "selfie"]);
+  });
+
   it("pendingForTrip returns that trip's pending items (with or without a location), excluding failed ones", async () => {
     const queue = await createQueue(memoryDb());
     await queue.enqueue(item({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1" }));

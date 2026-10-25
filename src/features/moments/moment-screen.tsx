@@ -11,7 +11,7 @@ import { localDay } from "@/features/capture/quota";
 import { useSendShot } from "@/features/capture/use-send-shot";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { MomentCamera } from "./moment-camera";
+import { CloseButton, MomentCamera } from "./moment-camera";
 import { formatLeft, momentState } from "./moment-time";
 
 type Step = { kind: "main" } | { kind: "selfie"; main: Shot } | { kind: "preview"; main: Shot; selfie: Shot | null };
@@ -20,10 +20,10 @@ type Step = { kind: "main" } | { kind: "selfie"; main: Shot } | { kind: "preview
  * The daily moment: back camera under a countdown, then (if the roll asks for it) the selfie, then the
  * regular caption screen. The window only gates taking the first photo: once you have it you can finish.
  */
-export function MomentScreen(props: { tripId?: string; day?: string; at?: number }) {
-  const { trip } = useActiveTrip();
+export function MomentScreen(props: { tripId?: string; day?: string; at?: number; selfie?: string }) {
+  const { trip, trips } = useActiveTrip();
   const tripId = props.tripId ?? trip?.id;
-  const { detail, error: detailError } = useTripDetail(tripId);
+  const { detail } = useTripDetail(tripId);
   const sendShot = useSendShot();
   const [permission, requestPermission] = useCameraPermissions();
   const [step, setStep] = useState<Step>({ kind: "main" });
@@ -32,10 +32,11 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   const fix = useRef<Promise<Fix | null> | null>(null);
 
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-  // The server rejects a selfie on a photo-only roll, so the mode is never guessed: the camera waits for
-  // the detail (cached or fresh). With no detail at all (error), the safe choice is the photo alone.
-  const withSelfie = detail?.trip.momentMode === "photo_selfie";
-  const modeKnown = !!detail || !!detailError;
+  // The camera never waits for the trip detail (with no signal it would wait forever). The selfie step comes from the
+  // notification's `selfie` param, then from the detail if it is loaded, and otherwise it is the photo alone: the
+  // server rejects a selfie on a photo-only roll, so it is never guessed.
+  const withSelfie = props.selfie === "1" ? true : props.selfie === "0" ? false : detail?.trip.momentMode === "photo_selfie";
+  const endsAt = detail?.trip.endsAt ?? trips.find((t) => t.id === tripId)?.endsAt;
   const state = props.at != null && Number.isFinite(props.at) ? momentState(props.at, now) : ({ kind: "late" } as const);
   const day = props.day ?? (props.at != null ? localDay(props.at, timeZone) : undefined);
 
@@ -90,7 +91,14 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
     );
   }
   if (step.kind === "main" && state.kind === "late") {
-    return <CaptureMessage symbol="lock.fill" title="Se pasó tu momento de hoy" body="Mañana te toca otro." />;
+    const lastDay = day != null && endsAt != null && day === localDay(endsAt, timeZone);
+    return (
+      <CaptureMessage
+        symbol="lock.fill"
+        title="Se pasó tu momento de hoy"
+        body={lastDay ? "Era el último del rollo." : "Mañana te toca otro."}
+      />
+    );
   }
   if (permission && !permission.granted && permission.status !== "undetermined") {
     return (
@@ -102,7 +110,13 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
       />
     );
   }
-  if (!permission?.granted || !modeKnown) return <View style={styles.dark} />;
+  if (!permission?.granted) {
+    return (
+      <View style={styles.dark}>
+        <CloseButton onPress={() => router.back()} />
+      </View>
+    );
+  }
 
   if (step.kind === "selfie") {
     return (

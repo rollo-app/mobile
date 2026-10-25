@@ -112,10 +112,10 @@ Decisiones de producto:
   **inicio y fin** (no "cantidad de días").
 - **Momento del día (modo viaje, estilo BeReal)** (`src/features/moments/`): un aviso por día a una hora random distinta para cada uno, dentro de una
   franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Foto + selfie"). Hay **5 minutos** para sacar una foto extra, **aparte del
-  cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"). Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
-  inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…`);
-  `cancelMomentNotifications()` las borra (al cerrar sesión, borrar la cuenta y apagar el switch). La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
-  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (`expo-camera`, propia, fullScreenModal) tiene cuenta regresiva y, si el rollo es "Foto + selfie", saca
+  cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la selfie pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
+  inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
+  `cancelMomentNotifications()` las borra, y descarta también las ya entregadas (al cerrar sesión, borrar la cuenta y apagar el switch). Tocar el aviso conserva `trip` en la ruta. La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
+  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (`expo-camera`, propia, fullScreenModal) no espera el detalle del rollo (abre ya; el paso de selfie sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y, si el rollo es "Foto + selfie", saca
   la selfie (~1080 px) como foto aparte vinculada a la principal; en Rollo hay un banner "Tu momento · quedan m:ss" mientras la ventana está abierta; en el revelado la foto del
   momento lleva un badge y la selfie va de recuadro. **Ajustes → Notificaciones → "Momento del día"** (`dailyMoment`): apagarlo hace el `PATCH` y cancela los `moment.*`; prenderlo corre
   `syncMoments()`. En Desarrollo, "Probar momento ahora" programa uno en 10 s para el rollo activo. Diseño en `docs/superpowers/specs/2026-10-25-momento-diario-design.md`.
@@ -311,7 +311,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1365 tests
+npm test                      # 1377 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

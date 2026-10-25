@@ -20,19 +20,21 @@ const MINIMUM_INTERVAL_MIN = 15;
 
 /** One upload pass with a time budget. Never throws: it returns the result iOS expects. */
 export async function runBackgroundUpload(): Promise<BackgroundTask.BackgroundTaskResult> {
-  // Keeps the daily-moment notifications fresh while the app is closed; its own failure never blocks uploads.
+  let result = BackgroundTask.BackgroundTaskResult.Success;
+  try {
+    await runUploadPass({ deadline: Date.now() + BACKGROUND_BUDGET_MS });
+  } catch (e) {
+    console.warn("Falló la subida en segundo plano", e);
+    result = BackgroundTask.BackgroundTaskResult.Failed;
+  }
+  // Keeps the daily-moment notifications fresh while the app is closed. It runs after the uploads, so a slow
+  // sync never eats their budget, and its own failure never changes the result.
   try {
     await syncMoments();
   } catch (e) {
     console.warn("Falló la sincronización de momentos en segundo plano", e);
   }
-  try {
-    await runUploadPass({ deadline: Date.now() + BACKGROUND_BUDGET_MS });
-    return BackgroundTask.BackgroundTaskResult.Success;
-  } catch (e) {
-    console.warn("Falló la subida en segundo plano", e);
-    return BackgroundTask.BackgroundTaskResult.Failed;
-  }
+  return result;
 }
 
 // Must be at module level and imported before rendering (app/_layout.tsx), because iOS can launch

@@ -17,6 +17,7 @@ let down: boolean;
 let tripIds: string[];
 let failing: Set<string>;
 let gate: Promise<void> | null;
+let modes: Record<string, "off" | "photo" | "photo_selfie">;
 
 beforeEach(async () => {
   jest.clearAllMocks();
@@ -28,6 +29,7 @@ beforeEach(async () => {
   tripIds = ["t1"];
   failing = new Set();
   gate = null;
+  modes = {};
   notifications.getAllScheduledNotificationsAsync.mockImplementation(async () => [...store.values()] as never);
   notifications.cancelScheduledNotificationAsync.mockImplementation(async (id) => void store.delete(id));
   notifications.scheduleNotificationAsync.mockImplementation((async (req: { identifier: string; trigger: { date: number } }) => {
@@ -38,7 +40,7 @@ beforeEach(async () => {
   globalThis.fetch = jest.fn(async (req: Request) => {
     if (down) throw new TypeError("Network request failed");
     if (req.url.endsWith("/me/trips")) {
-      return json({ trips: tripIds.map((id) => tripSummary(id, id === "t1" ? "Tandil" : id, { startsAt: NOW - HOUR, endsAt: NOW + 48 * HOUR, revealed: false })) });
+      return json({ trips: tripIds.map((id) => tripSummary(id, id === "t1" ? "Tandil" : id, { startsAt: NOW - HOUR, endsAt: NOW + 48 * HOUR, revealed: false, momentMode: modes[id] ?? "off" })) });
     }
     const id = /trips\/(\w+)\/moments/.exec(req.url)![1]!;
     if (gate) await gate;
@@ -60,10 +62,21 @@ describe("syncMoments", () => {
       content: {
         title: "Es tu momento",
         body: "Tenés 5 minutos para sacar tu foto de Tandil.",
-        data: { url: `/moment?trip=t1&day=2027-01-10&at=${NOW + HOUR}` },
+        data: { url: `/moment?trip=t1&day=2027-01-10&at=${NOW + HOUR}&selfie=0` },
       },
       trigger: { type: "date", date: NOW + HOUR },
     });
+  });
+
+  it("puts selfie=1 in the url for a photo_selfie rollo and selfie=0 for a photo one", async () => {
+    tripIds = ["t1", "t2"];
+    modes = { t1: "photo_selfie", t2: "photo" };
+    moments = { t1: [{ day: "2027-01-10", notifyAt: NOW + HOUR }], t2: [{ day: "2027-01-10", notifyAt: NOW + 2 * HOUR }] };
+    await syncMoments();
+
+    const urls = Object.fromEntries(notifications.scheduleNotificationAsync.mock.calls.map(([r]) => [r.identifier, (r.content.data as { url: string }).url]));
+    expect(urls["moment.t1.2027-01-10"]).toBe(`/moment?trip=t1&day=2027-01-10&at=${NOW + HOUR}&selfie=1`);
+    expect(urls["moment.t2.2027-01-10"]).toBe(`/moment?trip=t2&day=2027-01-10&at=${NOW + 2 * HOUR}&selfie=0`);
   });
 
   it("does not duplicate on a second run and cancels a moment that is gone", async () => {
@@ -156,6 +169,18 @@ describe("cancelMomentNotifications", () => {
   it("cancels every moment.* and nothing else", async () => {
     await cancelMomentNotifications();
     expect([...store.keys()]).toEqual(["reveal.t1", "other"]);
+  });
+
+  it("also dismisses the already delivered moment.* notifications (so the next account can't tap them)", async () => {
+    notifications.getPresentedNotificationsAsync.mockResolvedValue([
+      { request: { identifier: "moment.t1.d0" } },
+      { request: { identifier: "friend.1" } },
+    ] as never);
+    await signOut();
+
+    expect(notifications.dismissNotificationAsync).toHaveBeenCalledTimes(1);
+    expect(notifications.dismissNotificationAsync).toHaveBeenCalledWith("moment.t1.d0");
+    notifications.getPresentedNotificationsAsync.mockResolvedValue([]);
   });
 
   it("cancels only one trip's moments when given a trip", async () => {

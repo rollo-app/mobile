@@ -3769,6 +3769,11 @@ export interface components {
             revealed: boolean;
             role: components["schemas"]["Role"];
             totalUploaded: number;
+            /**
+             * @description Daily moment: off, a photo, or a photo plus a selfie
+             * @enum {string}
+             */
+            momentMode: "off" | "photo" | "photo_selfie";
             /** @description ThumbHash of the most recently taken uploaded photo or video of the rollo (null if none); the app derives the rollo's color from it */
             coverThumbhash: string | null;
         };

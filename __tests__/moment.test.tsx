@@ -178,17 +178,80 @@ describe("Moment", () => {
     expect(screen.queryByRole("button", { name: "Cerrar" })).toBeNull();
   });
 
-  it("does not show the shutter until the trip detail is known, then follows its real mode", async () => {
-    let resolve!: (d: actions.TripDetail) => void;
-    trips.fetchTrip.mockReturnValue(new Promise((r) => (resolve = r)));
-    await openMoment(Date.now() - 10_000);
+  it("never waits for the trip detail: with it pending forever and selfie=1 in the url it shoots the photo and then the selfie", async () => {
+    trips.fetchTrip.mockReturnValue(new Promise(() => {}));
+    await openMoment(Date.now() - 10_000, `&trip=${SUR}&selfie=1`);
 
-    expect(screen.queryByRole("button", { name: "Sacar foto" })).toBeNull();
-    expect(await queue.pending()).toHaveLength(0);
-
-    await act(async () => resolve(tripDetail("photo")));
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+    expect(await screen.findByTestId("camera-front")).toBeVisible();
+    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/selfie.jpg", width: 1500, height: 2000 });
+    await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(await queue.pending()).toHaveLength(2);
+  });
+
+  it("with selfie=0 in the url there is no selfie step even if the detail says photo_selfie", async () => {
+    await openMoment(Date.now() - 10_000, `&trip=${SUR}&selfie=0`);
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+
     expect(await screen.findByRole("button", { name: "Mandar al rollo" })).toBeVisible();
     expect(screen.queryByTestId("camera-front")).toBeNull();
+  });
+
+  it("with no selfie param and no detail it is photo-only", async () => {
+    trips.fetchTrip.mockReturnValue(new Promise(() => {}));
+    await openMoment(Date.now() - 10_000);
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+
+    expect(await screen.findByRole("button", { name: "Mandar al rollo" })).toBeVisible();
+    expect(screen.queryByTestId("camera-front")).toBeNull();
+  });
+
+  it("with no selfie param it follows the detail once it is loaded", async () => {
+    await openMoment(Date.now() - 10_000);
+    await waitFor(() => expect(trips.fetchTrip).toHaveBeenCalled());
+    await act(async () => {});
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+
+    expect(await screen.findByTestId("camera-front")).toBeVisible();
+  });
+
+  it("shows Cerrar while the camera permission is still loading", async () => {
+    useCameraPermissions.mockReturnValueOnce([null, jest.fn()]);
+    useCameraPermissions.mockReturnValue([null, jest.fn()]);
+    await openMoment(Date.now() - 10_000);
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Cerrar" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    useCameraPermissions.mockReset();
+    useCameraPermissions.mockReturnValue([{ granted: true, canAskAgain: true, status: "granted" }, jest.fn()]);
+  });
+
+  it("when taking the picture fails it shows an inline error and lets the user retry", async () => {
+    takePicture.mockRejectedValueOnce(new Error("camera busy"));
+    await openMoment(Date.now() - 10_000, `&trip=${SUR}&selfie=0`);
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+
+    expect(await screen.findByText("No se pudo sacar la foto. Probá de nuevo.")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
+    expect(await screen.findByRole("button", { name: "Mandar al rollo" })).toBeVisible();
+  });
+
+  it("on the last day of the rollo the late screen says it was the last one", async () => {
+    trips.fetchTrip.mockResolvedValue({ ...tripDetail("photo"), trip: { ...tripDetail("photo").trip, endsAt: Date.parse("2027-01-05T20:00:00Z") } });
+    await openMoment(Date.now() - 400_000);
+
+    expect(await screen.findByText("Era el último del rollo.")).toBeVisible();
+    expect(screen.queryByText("Mañana te toca otro.")).toBeNull();
+  });
+
+  it("the last day also comes from the rollo list when the detail is not loaded", async () => {
+    trips.fetchTrip.mockReturnValue(new Promise(() => {}));
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin", endsAt: Date.parse("2027-01-05T20:00:00Z") })] });
+    await openMoment(Date.now() - 400_000);
+
+    expect(await screen.findByText("Era el último del rollo.")).toBeVisible();
   });
 });

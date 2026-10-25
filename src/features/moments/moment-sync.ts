@@ -4,7 +4,7 @@ import { fetchMyTrips } from "@/features/trips/actions";
 import { fetchMyMoments } from "./actions";
 import { cancelMomentNotifications, MOMENT_PREFIX } from "./cancel";
 import { globalCancelledSince, isSuperseded, serialized, startSync, tripCancelledSince } from "./lock";
-import { planMoments, tripsToSync, type PlannedMoment, type TripMoments } from "./plan";
+import { planMoments, tripsToSync, type MomentMode, type PlannedMoment, type TripMoments } from "./plan";
 
 export { cancelMomentNotifications };
 
@@ -36,7 +36,7 @@ export async function syncMoments(): Promise<void> {
 async function apply(
   stamp: ReturnType<typeof startSync>,
   session: string,
-  wanted: { id: string; name: string }[],
+  wanted: { id: string; name: string; momentMode?: MomentMode }[],
   results: PromiseSettledResult<{ day: string; notifyAt: number }[]>[],
   now: number,
 ): Promise<void> {
@@ -50,7 +50,7 @@ async function apply(
     wanted.forEach((t, i) => {
       const r = results[i]!;
       if (tripCancelledSince(stamp, t.id)) return;
-      if (r.status === "fulfilled") fetched.push({ tripId: t.id, tripName: t.name, moments: r.value });
+      if (r.status === "fulfilled") fetched.push({ tripId: t.id, tripName: t.name, momentMode: t.momentMode, moments: r.value });
       else failed.add(t.id);
     });
     const planned = planMoments(fetched, now);
@@ -76,7 +76,8 @@ export async function scheduleMomentNotification(p: PlannedMoment): Promise<void
     content: {
       title: "Es tu momento",
       body: `Tenés 5 minutos para sacar tu foto de ${p.tripName}.`,
-      data: { url: `/moment?trip=${p.tripId}&day=${p.day}&at=${p.notifyAt}` },
+      // The camera must not wait for the trip detail (no signal), so the mode travels in the url.
+      data: { url: `/moment?trip=${p.tripId}&day=${p.day}&at=${p.notifyAt}${p.momentMode ? `&selfie=${p.momentMode === "photo_selfie" ? 1 : 0}` : ""}` },
     },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: p.notifyAt },
   });

@@ -94,7 +94,7 @@ describe("useSendShot", () => {
         selfie: { asset: selfieAsset, takenAt: input.takenAt + 4000 },
       });
     });
-    const items = await queue.pendingForTrip("t1");
+    const items = await queue.pending();
     expect(items).toHaveLength(2);
     expect(items[0]).toMatchObject({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", momentDay: "2027-01-05", pairedWith: null });
     expect(items[1]).toMatchObject({

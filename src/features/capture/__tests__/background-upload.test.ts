@@ -31,7 +31,7 @@ describe("background upload task", () => {
     expect(deadline).toBeLessThanOrEqual(Date.now() + BACKGROUND_BUDGET_MS);
   });
 
-  it("syncs the moment notifications before the upload pass, and a failure there doesn't stop the pass", async () => {
+  it("syncs the moment notifications after the upload pass, and a failure there doesn't change the result", async () => {
     const order: string[] = [];
     jest.spyOn(console, "warn").mockImplementation(() => {});
     jest.spyOn(moments, "syncMoments").mockImplementation(async () => {
@@ -41,7 +41,16 @@ describe("background upload task", () => {
     jest.spyOn(sync, "runUploadPass").mockImplementation(async () => void order.push("upload"));
 
     await expect(runBackgroundUpload()).resolves.toBe(BackgroundTask.BackgroundTaskResult.Success);
-    expect(order).toEqual(["moments", "upload"]);
+    expect(order).toEqual(["upload", "moments"]);
+  });
+
+  it("still syncs the moments when the upload pass fails, and reports the failure", async () => {
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+    const syncMoments = jest.spyOn(moments, "syncMoments").mockResolvedValue();
+    jest.spyOn(sync, "runUploadPass").mockRejectedValue(new Error("sqlite"));
+
+    await expect(runBackgroundUpload()).resolves.toBe(BackgroundTask.BackgroundTaskResult.Failed);
+    expect(syncMoments).toHaveBeenCalled();
   });
 
   it("reports failure without throwing when the pass blows up", async () => {

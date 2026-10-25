@@ -191,10 +191,10 @@ export async function createQueue(db: QueueDb) {
       );
     },
 
-    /** Pending items of a trip that have a location (for the map), excluding failed ones. */
+    /** Pending items of a trip (for the map and the counts), excluding failed ones and a moment's selfie (the moment counts once). */
     async pendingForTrip(tripId: string): Promise<PendingMedia[]> {
       const rows = await db.getAllAsync<Row>(
-        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL ORDER BY taken_at",
+        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL AND paired_with IS NULL ORDER BY taken_at",
         tripId,
       );
       return rows.map(fromRow);
@@ -203,7 +203,7 @@ export async function createQueue(db: QueueDb) {
     /** Everything captured and not uploaded for a trip, any day, excluding failed ones. */
     async countPendingForTrip(tripId: string) {
       const rows = await db.getAllAsync<{ n: number }>(
-        "SELECT COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL",
+        "SELECT COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL AND paired_with IS NULL",
         tripId,
       );
       return rows[0]?.n ?? 0;

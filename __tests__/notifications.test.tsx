@@ -246,7 +246,7 @@ describe("tapping a push", () => {
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
     await waitFor(() => expect(screen).toHavePathname("/moment"));
-    expect(screen).toHaveSearchParams({ day: "2027-01-12", at: String(at) });
+    expect(screen).toHaveSearchParams({ trip: OTRO, day: "2027-01-12", at: String(at) });
     expect(await getActiveTripId()).toBe(OTRO);
     await settle();
   });

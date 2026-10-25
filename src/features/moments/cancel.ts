@@ -18,6 +18,13 @@ async function cancelNow(tripId?: string): Promise<void> {
         .filter((n) => n.identifier.startsWith(prefix))
         .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
     );
+    // Already delivered ones sit in the notification center: dismiss them so the next account can't tap them.
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    await Promise.all(
+      presented
+        .filter((n) => n.request.identifier.startsWith(prefix))
+        .map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
+    );
   } catch {
     // Best effort: a stale notification is harmless, the next sync cleans it.
   }
