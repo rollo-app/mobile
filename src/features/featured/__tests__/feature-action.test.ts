@@ -20,4 +20,9 @@ describe("featureActionAvailable", () => {
   it("still lets you take a moment photo off your profile if it was already there", () => {
     expect(featureActionAvailable({ featuredByMe: true, canFeature: false, momentDay: "2027-01-12" })).toBe(true);
   });
+
+  it("is never offered for an archived photo", () => {
+    expect(featureActionAvailable({ featuredByMe: false, canFeature: true, archived: true })).toBe(false);
+    expect(featureActionAvailable({ featuredByMe: true, canFeature: true, archived: true })).toBe(false);
+  });
 });

@@ -20,6 +20,7 @@ const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto =>
   thumbPath: "/t",
   originalPath: "/o",
   momentDay: null,
+  archived: false,
   selfie: null,
   authorUserId: "u-m1",
   featuredByMe: false,

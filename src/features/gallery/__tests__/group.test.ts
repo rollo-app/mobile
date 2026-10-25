@@ -24,6 +24,7 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   likedByMe: false,
   commentCount: 0,
   momentDay: null,
+  archived: false,
   selfie: null,
 });
 

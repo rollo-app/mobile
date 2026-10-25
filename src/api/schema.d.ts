@@ -2791,8 +2791,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete a photo or video from the trip (admin, before the reveal)
-         * @description Once sent, a photo can be neither deleted nor retaken. The exception is the admin, in case someone sends something inappropriate: they can delete any photo of the trip before the reveal. The files are deleted but the quota is **not given back** to anyone, and the id cannot be registered again.
+         * Delete a photo or video: the admin before the reveal, the author after it
+         * @description **Before the reveal** only the admin can delete (in case someone sends something inappropriate): any photo or video of the trip; anyone else gets 403. The files are deleted but the quota is **not given back** to anyone, and the id cannot be registered again. **After the reveal** only the author can delete their own photo, for good: it disappears for everyone, with its files, likes, comments and every profile that featured it. Another member gets 403 (the admin 409, as before). A video is 400. Deleting a daily moment's main photo deletes its linked image too; the linked image's own id is 400.
          */
         delete: {
             parameters: {
@@ -2811,6 +2811,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
                 /** @description Missing or invalid session token */
                 401: {
@@ -2850,6 +2859,174 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{mediaId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Archive your photo: only you keep seeing it
+         * @description It disappears for everyone else everywhere (feed, downloads, likes, comments, "Tu actividad", profiles), right away. It leaves every profile where it was featured, yours included, and unarchiving does not put it back. In your own feed it comes with `archived: true`. Author only, photos only, once the rollo is revealed, and while you are an active member (else 404). Another member gets 403; before the reveal 409; a video 400. A daily moment's main photo takes its linked image along; the linked image's own id is 400. Idempotent.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Archived */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{mediaId}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unarchive your photo: everyone sees it again
+         * @description It is not featured again anywhere (it can be featured again). Author only, photos only, once the rollo is revealed, and while you are an active member (else 404). Another member gets 403; before the reveal 409; a video 400. A daily moment's main photo takes its linked image along; the linked image's own id is 400. Idempotent.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Unarchived */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4319,6 +4496,8 @@ export interface components {
             likeCount?: number;
             /** @description Only after the reveal: you like it */
             likedByMe?: boolean;
+            /** @description Only after the reveal: its author archived it. Archived items only reach their author (everyone else never gets them), so it is only ever true in your own feed */
+            archived?: boolean;
             /** @description Only after the reveal: how many comments you see on it (not the deleted ones, nor those of blocked users or ones you reported). Always 0 for videos */
             commentCount?: number;
             /** @description Trip-local date (YYYY-MM-DD) when this photo is the answer to a daily moment; absent for ordinary photos */
