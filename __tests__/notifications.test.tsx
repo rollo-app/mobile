@@ -233,6 +233,19 @@ describe("tapping a push", () => {
     expect(await getActiveTripId()).toBe(OTRO);
   });
 
+  it("a moment's local notification makes its roll active and opens /moment with its day and time", async () => {
+    const at = Date.now();
+    notifications.getLastNotificationResponseAsync.mockResolvedValue(
+      tapped(`/moment?trip=${OTRO}&day=2027-01-12&at=${at}`, `moment.${OTRO}.2027-01-12`),
+    );
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+
+    await waitFor(() => expect(screen).toHavePathname("/moment"));
+    expect(screen).toHaveSearchParams({ day: "2027-01-12", at: String(at) });
+    expect(await getActiveTripId()).toBe(OTRO);
+    await settle();
+  });
+
   it("signed out it waits for the login, then opens", async () => {
     await clearSessionToken();
     queryClient.clear();

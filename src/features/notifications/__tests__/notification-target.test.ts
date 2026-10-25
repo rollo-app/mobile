@@ -49,3 +49,13 @@ describe("notificationTarget", () => {
     expect(notificationTarget(response(undefined))).toBeNull();
   });
 });
+
+describe("notificationTarget: moment", () => {
+  it("a moment keeps its day and time, and its trip becomes the active one", () => {
+    expect(notificationTarget(response({ url: "/moment?trip=t1&day=2027-01-12&at=1800000000000" }))).toEqual({
+      tripId: "t1",
+      tab: false,
+      href: "/moment?day=2027-01-12&at=1800000000000",
+    });
+  });
+});
