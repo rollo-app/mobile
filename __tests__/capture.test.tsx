@@ -1,6 +1,5 @@
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
-import * as ImagePicker from "expo-image-picker";
 import * as actions from "@/features/trips/actions";
 import * as media from "@/features/capture/media";
 import { startFix } from "@/features/capture/location";
@@ -23,22 +22,21 @@ jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(),
   NotificationFeedbackType: { Success: "success" },
 }));
-jest.mock("expo-image-picker", () => ({
-  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
-  launchCameraAsync: jest.fn(),
-}));
 
 const trips = jest.mocked(actions);
-const picker = jest.mocked(ImagePicker);
 const mediaMock = jest.mocked(media);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
+const { __takePictureAsync: takePicture, useCameraPermissions } = jest.requireMock("expo-camera") as {
+  __takePictureAsync: jest.Mock;
+  useCameraPermissions: jest.Mock;
+};
 const { syncQueue } = jest.requireMock("@/features/capture/sync") as { syncQueue: jest.Mock };
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const TZ = "America/Argentina/Buenos_Aires";
 const DAY = 24 * 60 * 60 * 1000;
 
-const photo = { uri: "file:///cache/IMG_1.jpg", type: "image", width: 4032, height: 3024 } as ImagePicker.ImagePickerAsset;
+const photo = { uri: "file:///cache/Camera/IMG_1.jpg", width: 4032, height: 3024 };
 
 function tripDetail(photosLeft: number, mode: "daily" | "total" = "daily"): actions.TripDetail {
   return {
@@ -72,7 +70,8 @@ let queue: Queue;
 beforeEach(async () => {
   queue = await createQueue(memoryDb());
   getQueue.mockResolvedValue(queue);
-  picker.launchCameraAsync.mockReset();
+  takePicture.mockReset();
+  takePicture.mockResolvedValue(photo);
   syncQueue.mockReset();
   syncQueue.mockResolvedValue(undefined);
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
@@ -94,39 +93,106 @@ async function openCapture() {
   await act(async () => router.push("/capture"));
 }
 
+async function shoot() {
+  await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+}
+
 describe("Capture", () => {
-  // Presenting the camera while the screen is still animating in (e.g. replacing "Arrancó el rollo")
-  // fails silently on iOS and leaves the screen black: it waits until the screen is on screen.
-  it("opens the camera only once the screen finished appearing", async () => {
-    picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
-    queryClient.setQueryData(["trip", SUR], tripDetail(7), { updatedAt: Date.now() });
-    await renderRouter(routes, { initialUrl: "/roll" });
-    await act(async () => router.push("/capture"));
-    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
-
-    const appear = screen.container.queryAll((node) => typeof node.props.onAppear === "function").at(-1);
-    await act(async () => appear!.props.onAppear());
-    await act(async () => {}); // the quota check before opening it
-
-    expect(picker.launchCameraAsync).toHaveBeenCalled(); // no timers advanced: it was the appearance
-  });
-
-  it("opens the system camera for photos only, and goes back if you cancel", async () => {
-    picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
+  it("opens the in-app camera on the back one and Cerrar goes back without queueing anything", async () => {
     await openCapture();
 
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Cerrar" }));
+
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(picker.launchCameraAsync).toHaveBeenCalledWith(expect.objectContaining({ mediaTypes: ["images"] }));
-    expect(picker.launchCameraAsync.mock.calls[0]![0]).not.toHaveProperty("videoMaxDuration");
+    expect(await queue.pending()).toHaveLength(0);
+    expect(takePicture).not.toHaveBeenCalled();
   });
 
+  it("takes the picture at full quality and goes straight to the caption: no Repetir, no Usar foto, no Cerrar", async () => {
+    await openCapture();
+    await shoot();
+
+    expect(await screen.findByLabelText("Caption")).toBeVisible();
+    expect(takePicture).toHaveBeenCalledWith(expect.objectContaining({ quality: 1 }));
+    expect(screen.queryByRole("button", { name: "Repetir" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Usar foto" })).toBeNull();
+    expect(screen.queryByTestId("camera-back")).toBeNull();
+  });
+
+  it("the camera can be flipped, and a front photo is prepared like any other (no 1080 limit)", async () => {
+    await openCapture();
+    await fireEvent.press(await screen.findByRole("button", { name: "Dar vuelta la cámara" }));
+    expect(await screen.findByTestId("camera-front")).toBeVisible();
+    await shoot();
+    await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(mediaMock.prepareMedia.mock.calls[0]![3]).toBeUndefined();
+  });
+
+  it("the flash button cycles automático, prendido, apagado and sets the camera's flash", async () => {
+    await openCapture();
+    expect((await screen.findByTestId("camera-back")).props.flash).toBe("auto");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Flash automático" }));
+    expect(screen.getByTestId("camera-back").props.flash).toBe("on");
+    await fireEvent.press(screen.getByRole("button", { name: "Flash prendido" }));
+    expect(screen.getByTestId("camera-back").props.flash).toBe("off");
+    await fireEvent.press(screen.getByRole("button", { name: "Flash apagado" }));
+    expect(screen.getByTestId("camera-back").props.flash).toBe("auto");
+  });
+
+  it("pinching the camera view zooms and spreading back out zooms out", async () => {
+    await openCapture();
+    const area = await screen.findByTestId("camera-pinch");
+    expect((await screen.findByTestId("camera-back")).props.zoom).toBe(0);
+    const touches = (gap: number) => ({ nativeEvent: { touches: [{ pageX: 100, pageY: 100 }, { pageX: 100 + gap, pageY: 100 }] } });
+
+    await fireEvent(area, "responderGrant", touches(100));
+    await fireEvent(area, "responderMove", touches(300));
+    const zoomed = screen.getByTestId("camera-back").props.zoom as number;
+    expect(zoomed).toBeGreaterThan(0);
+    expect(zoomed).toBeLessThanOrEqual(1);
+    await fireEvent(area, "responderMove", touches(100));
+    expect(screen.getByTestId("camera-back").props.zoom).toBe(0);
+  });
+
+  it("without camera permission it shows the message with a way to open Ajustes and no camera", async () => {
+    useCameraPermissions.mockReturnValue([{ granted: false, canAskAgain: false, status: "denied" }, jest.fn()]);
+    try {
+      await openCapture();
+      expect(await screen.findByText("Rollo necesita la cámara")).toBeVisible();
+      expect(screen.getByRole("button", { name: "Abrir Ajustes" })).toBeVisible();
+      expect(screen.queryByTestId("camera-back")).toBeNull();
+    } finally {
+      useCameraPermissions.mockReset();
+      useCameraPermissions.mockReturnValue([{ granted: true, canAskAgain: true, status: "granted" }, jest.fn()]);
+    }
+  });
+
+  it("starts the location fix when the camera opens, before any photo", async () => {
+    jest.mocked(startFix).mockClear();
+    await openCapture();
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
+    expect(startFix).toHaveBeenCalledTimes(1);
+  });
+
+  it("when taking the picture fails it shows an inline error and lets the user retry", async () => {
+    takePicture.mockRejectedValueOnce(new Error("camera busy"));
+    await openCapture();
+    await shoot();
+    expect(await screen.findByText("No se pudo sacar la foto. Probá de nuevo.")).toBeVisible();
+    await shoot();
+    expect(await screen.findByRole("button", { name: "Mandar al rollo" })).toBeVisible();
+  });
   it("with no photos left today it shows the lock and does not open the camera", async () => {
     trips.fetchTrip.mockResolvedValue(tripDetail(0));
     await openCapture();
 
     expect(await screen.findByText("Se terminó el rollo de hoy")).toBeVisible();
     expect(screen.getByText("Mañana tenés 10 fotos nuevas.")).toBeVisible();
-    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("camera-back")).toBeNull();
   });
 
   it("with a total limit and no photos left it says you used all of the rollo's", async () => {
@@ -135,7 +201,7 @@ describe("Capture", () => {
 
     expect(await screen.findByText("Ya usaste todas tus fotos del rollo")).toBeVisible();
     expect(screen.queryByText("Se terminó el rollo de hoy")).toBeNull();
-    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("camera-back")).toBeNull();
   });
 
   it("with a total limit, what is in the queue from any day counts toward what is left", async () => {
@@ -156,7 +222,6 @@ describe("Capture", () => {
 
   it("with a daily limit, yesterday's queue does not count toward today's", async () => {
     trips.fetchTrip.mockResolvedValue(tripDetail(1));
-    picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
     await queue.enqueue({
       id: "de-ayer",
       tripId: SUR,
@@ -168,7 +233,7 @@ describe("Capture", () => {
     });
     await openCapture();
 
-    await waitFor(() => expect(picker.launchCameraAsync).toHaveBeenCalled());
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
   });
 
   it("before the roll starts it says so and does not open the camera", async () => {
@@ -178,7 +243,7 @@ describe("Capture", () => {
 
     expect(await screen.findByText("Este rollo todavía no empezó")).toBeVisible();
     expect(screen.getByText("Arranca el 29 de octubre a las 19:00.")).toBeVisible();
-    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("camera-back")).toBeNull();
   });
 
   it("waits for the saved active trip instead of deciding with the first one in the list", async () => {
@@ -193,10 +258,9 @@ describe("Capture", () => {
     queryClient.setQueryData(["trip", OTHER], upcoming, { updatedAt: Date.now() });
     queryClient.setQueryData(["trip", SUR], tripDetail(7), { updatedAt: Date.now() });
     trips.fetchTrip.mockImplementation(async (id: string) => (id === OTHER ? upcoming : tripDetail(7)));
-    picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
     await openCapture();
 
-    await waitFor(() => expect(picker.launchCameraAsync).toHaveBeenCalled());
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
     expect(screen.queryByText("Este rollo todavía no empezó")).toBeNull();
   });
 
@@ -210,7 +274,7 @@ describe("Capture", () => {
 
     expect(await screen.findByText("Este rollo ya terminó")).toBeVisible();
     expect(screen.getByText("Se revela el 24 de enero a las 11:00.")).toBeVisible();
-    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("camera-back")).toBeNull();
   });
 
   it("once revealed it says no more photos can be taken and does not open the camera", async () => {
@@ -220,7 +284,7 @@ describe("Capture", () => {
 
     expect(await screen.findByText("Este rollo ya se reveló")).toBeVisible();
     expect(screen.getByText("Ya no se pueden sacar fotos.")).toBeVisible();
-    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("camera-back")).toBeNull();
   });
 
   it("with no signal it computes the quota from the trip's saved data", async () => {
@@ -229,7 +293,7 @@ describe("Capture", () => {
     await openCapture();
 
     expect(await screen.findByText("Se terminó el rollo de hoy")).toBeVisible();
-    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("camera-back")).toBeNull();
   });
 
   it("what is in the queue, not yet uploaded, also counts toward the quota", async () => {
@@ -249,8 +313,8 @@ describe("Capture", () => {
   });
 
   it("after shooting it shows a heavily blurred photo with a caption and no way out but sending it", async () => {
-    picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
     await openCapture();
+    await shoot();
 
     expect(await screen.findByRole("button", { name: "Mandar al rollo" })).toBeVisible();
     expect(screen.getByLabelText("Caption")).toBeVisible();
@@ -259,13 +323,12 @@ describe("Capture", () => {
     // "The shot is the shot": no retake and no cancel, so you can't discard it.
     expect(screen.queryByRole("button", { name: "Repetir" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancelar" })).toBeNull();
-    expect(picker.launchCameraAsync).toHaveBeenCalledTimes(1);
-    expect(mediaMock.discard).not.toHaveBeenCalled();
+        expect(mediaMock.discard).not.toHaveBeenCalled();
   });
 
   it("sending saves it to the queue with time, location and caption, and goes back", async () => {
-    picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
     await openCapture();
+    await shoot();
 
     await fireEvent.changeText(await screen.findByLabelText("Caption"), "  el viento no perdona ");
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
@@ -296,8 +359,8 @@ describe("Capture", () => {
   it("waits for the location before preparing the photo, since the EXIF needs it", async () => {
     let resolveFix: (fix: { lat: number; lng: number; accuracyM: number }) => void = () => {};
     jest.mocked(startFix).mockReturnValueOnce(new Promise((resolve) => (resolveFix = resolve)));
-    picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
     await openCapture();
+    await shoot();
     const send = await screen.findByRole("button", { name: "Mandar al rollo" });
     mediaMock.prepareMedia.mockClear();
     let pressed: Promise<unknown> = Promise.resolve();
@@ -313,8 +376,8 @@ describe("Capture", () => {
   });
 
   it("sending triggers the queue upload, with the photo already enqueued", async () => {
-    picker.launchCameraAsync.mockResolvedValue({ canceled: false, assets: [photo] });
     await openCapture();
+    await shoot();
     const send = await screen.findByRole("button", { name: "Mandar al rollo" });
     syncQueue.mockClear(); // the upload at app startup does not count
     let queuedWhenSyncing = 0;

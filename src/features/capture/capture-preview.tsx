@@ -1,12 +1,12 @@
 import { Image } from "expo-image";
-import type * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import { ErrorText } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
-export type Shot = { asset: ImagePicker.ImagePickerAsset; takenAt: number };
+export type Shot = { photo: CapturedPhoto; takenAt: number };
 
 // Strong enough that the photo can't be recognized: the shot is the shot, you only get to caption it.
 const BLUR_RADIUS = 100;
@@ -27,7 +27,7 @@ export function CapturePreview(props: {
   return (
     <KeyboardAvoidingView behavior="padding" style={[styles.dark, { paddingTop: insets.top }]}>
       <Pressable accessible={false} onPress={Keyboard.dismiss} style={styles.photo}>
-        <Image source={{ uri: props.shot.asset.uri }} style={styles.photo} contentFit="cover" blurRadius={BLUR_RADIUS} accessible={false} />
+        <Image source={{ uri: props.shot.photo.uri }} style={styles.photo} contentFit="cover" blurRadius={BLUR_RADIUS} accessible={false} />
       </Pressable>
 
       <View style={[styles.bottom, { paddingBottom: keyboardOpen ? spacing.sm : insets.bottom + spacing.md }]}>

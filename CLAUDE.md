@@ -36,8 +36,10 @@ Decisiones de producto:
   y el mismo email entra; con otra cuenta muestra "Ya tenés la sesión iniciada con…" y **nunca cambia de cuenta sola**.
   Si el link venció, "Volver a pedir un código" abre `/email` con el email puesto. Próximo paso: Universal Links
   (`https://…/entrar` abre la app directo, sin la página), que piden la cuenta paga.
-- **Cámara nativa del sistema** (`expo-image-picker` → `launchCameraAsync`), no una cámara propia:
-  funciona mejor, sobre todo en video. Lo que se saca **no queda en el carrete**: se sube y se borra
+- **Cámara propia** (`expo-camera`, módulo compartido `src/features/camera/`, la misma de la captura y del momento): la del sistema
+  (`launchCameraAsync`) siempre muestra "Repetir / Usar foto" después de sacar y no se puede evitar, y sin videos ya no hace falta.
+  Controles: disparador, "Cerrar" (antes de sacar), "Dar vuelta la cámara" (arranca en la trasera), flash que rota automático / prendido / apagado
+  (arranca en automático) y zoom con pellizco. `expo-image-picker` queda solo para la foto de perfil. Lo que se saca **no queda en el carrete**: se sube y se borra
   del caché local.
 - **Fotos a resolución completa** (~4000 px, JPEG 85–90 %, para imprimir) + **thumbnail ~800 px** que
   genera el celular. **Sin videos en rollos nuevos** (la cámara saca solo fotos; los videos de rollos viejos se siguen viendo).
@@ -56,7 +58,7 @@ Decisiones de producto:
   sacó fotos el grupo (grilla de 30 km), desde 3 días antes del inicio hasta el fin del rollo (antes del inicio, solo
   con Wi‑Fi; tope ~400 MB). Los packs usan el mismo `file://` de estilo que el MapView, se nombran
   `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Ajustes → "Mapa sin señal" (ajuste del celular, no del rollo).
-- **Captura:** cámara nativa solo de fotos. **No hay "Repetir"** ("la sacada es la que es"): después de la cámara, la pantalla del caption
+- **Captura:** cámara propia (`CaptureScreen`) solo de fotos, a resolución completa de la trasera (`quality: 1`; la frontal va con el procesamiento normal, el 1080 px es solo del momento). **No hay "Repetir"** ("la sacada es la que es"): al disparar va directo a la pantalla del caption, la pantalla del caption
   muestra la foto **muy difuminada** (`blurRadius`), con caption opcional y "Mandar al rollo". No hay forma de salir sin mandarla (sin
   "Cancelar" ni gesto de cerrar). Una vez mandada no se puede repetir ni ver.
 - **Antes del revelado** no se ve ninguna foto, solo su **ThumbHash** (colores difusos, lo genera el
@@ -235,7 +237,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
   **`react-native-pulsar`** (hápticos continuos), **`expo-audio`** (plugin con `enableBackgroundPlayback: false`: no toca la sesión de audio de
   la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados). Agregarlos o cambiarlos
   pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
-- `expo-camera` (cámara del momento del día) es nativo: agregarlo pide `npx expo prebuild --clean` + `npx expo run:ios --device`.
+- `expo-camera` (cámara de la captura y del momento del día) es nativo: agregarlo pide `npx expo prebuild --clean` + `npx expo run:ios --device`.
 - `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
@@ -259,7 +261,7 @@ src/
                           *.ts            lógica pura, testeable sin React
                           *.tsx           componentes propios del dominio
                           __tests__/      tests de esa lógica, al lado del código
-                        Dominios: moments (momento del día: planificador de avisos locales, cámara con cuenta regresiva y dos cámaras, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
+                        Dominios: camera (la cámara propia compartida: disparador, flash, zoom, dar vuelta; la usan capture y moments), moments (momento del día: planificador de avisos locales, cuenta regresiva y dos cámaras, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
                         (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications (push, permiso, Ajustes → Notificaciones), likes (me gusta), roll (tablero), moderation (denunciar y bloquear: menú en Feed, visores y perfil de otro, Ajustes → Bloqueados; los errores van con `burnt`).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, SwitchRow, Button,
@@ -316,7 +318,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1390 tests
+npm test                      # 1401 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

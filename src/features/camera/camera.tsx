@@ -3,8 +3,10 @@ import { useRef, useState } from "react";
 import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type * as ImagePicker from "expo-image-picker";
 import { ErrorText } from "@/ui/components";
+import type { CapturedPhoto } from "./captured-photo";
+import { flashLabel, flashSymbol, nextFlash, type FlashMode } from "./flash";
+import { pinchZoom, touchDistance } from "./pinch-zoom";
 import { spacing, type } from "@/ui/theme";
 
 /** The round "Cerrar" over a dark screen. */
@@ -23,8 +25,11 @@ export function CloseButton(props: { onPress: () => void }) {
   );
 }
 
-/** A full-screen camera with a shutter; `title` sits on top (the countdown or the prompt for the second shot). */
-export function MomentCamera(props: {
+/**
+ * The app's camera, full screen: shutter, flash, pinch to zoom and (when `onFlip` is given) flip. `title` sits on top
+ * (the moment's countdown or the prompt for its second shot).
+ */
+export function Camera(props: {
   facing: "back" | "front";
   title: string;
   /** A line under the title (what the two shots are for). */
@@ -33,12 +38,15 @@ export function MomentCamera(props: {
   onFlip?: () => void;
   /** Only the first-shot step can be closed: once the main photo exists the only way out is sending it. */
   onClose?: () => void;
-  onCapture: (asset: ImagePicker.ImagePickerAsset) => void;
+  onCapture: (photo: CapturedPhoto) => void;
 }) {
   const insets = useSafeAreaInsets();
   const camera = useRef<CameraView>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [flash, setFlash] = useState<FlashMode>("auto");
+  const [zoom, setZoom] = useState(0);
+  const pinch = useRef({ startZoom: 0, startDistance: 0 });
 
   async function shoot() {
     if (busy || !camera.current) return;
@@ -46,7 +54,7 @@ export function MomentCamera(props: {
     setFailed(false);
     try {
       const picture = await camera.current.takePictureAsync({ quality: 1, exif: false });
-      props.onCapture({ uri: picture.uri, width: picture.width, height: picture.height, type: "image" } as ImagePicker.ImagePickerAsset);
+      props.onCapture({ uri: picture.uri, width: picture.width, height: picture.height });
     } catch {
       setFailed(true);
     } finally {
@@ -56,7 +64,21 @@ export function MomentCamera(props: {
 
   return (
     <View style={styles.dark}>
-      <CameraView ref={camera} facing={props.facing} style={StyleSheet.absoluteFill} />
+      <CameraView ref={camera} facing={props.facing} flash={flash} zoom={zoom} style={StyleSheet.absoluteFill} />
+      <View
+        testID="camera-pinch"
+        style={StyleSheet.absoluteFill}
+        onStartShouldSetResponder={() => true}
+        onResponderGrant={(e) => {
+          pinch.current = { startZoom: zoom, startDistance: touchDistance(e.nativeEvent.touches) };
+        }}
+        onResponderMove={(e) => {
+          const { touches } = e.nativeEvent;
+          if (touches.length < 2) return;
+          if (pinch.current.startDistance <= 0) pinch.current = { startZoom: zoom, startDistance: touchDistance(touches) };
+          setZoom(pinchZoom(pinch.current.startZoom, pinch.current.startDistance, touchDistance(touches)));
+        }}
+      />
       <Text style={[type.headline, styles.title, { top: insets.top + spacing.md }]}>{props.title}</Text>
       {props.notice ? <Text style={[type.subhead, styles.notice, { top: insets.top + spacing.md + 28 }]}>{props.notice}</Text> : null}
       {props.onClose && <CloseButton onPress={props.onClose} />}
@@ -67,7 +89,17 @@ export function MomentCamera(props: {
           </View>
         )}
         <View style={styles.shutterRow}>
-          <View style={styles.side} />
+          <View style={[styles.side, styles.left]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={flashLabel[flash]}
+              hitSlop={12}
+              onPress={() => setFlash(nextFlash)}
+              style={styles.round}
+            >
+              <SymbolView name={flashSymbol[flash]} size={22} tintColor="#fff" />
+            </Pressable>
+          </View>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Sacar foto"
@@ -79,7 +111,7 @@ export function MomentCamera(props: {
           </Pressable>
           <View style={styles.side}>
             {props.onFlip && (
-              <Pressable accessibilityRole="button" accessibilityLabel="Dar vuelta la cámara" hitSlop={12} onPress={props.onFlip} style={styles.flip}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Dar vuelta la cámara" hitSlop={12} onPress={props.onFlip} style={styles.round}>
                 <SymbolView name="arrow.triangle.2.circlepath.camera" size={22} tintColor="#fff" />
               </Pressable>
             )}
@@ -96,7 +128,8 @@ const styles = StyleSheet.create({
   notice: { position: "absolute", alignSelf: "center", color: "#fff", textAlign: "center", paddingHorizontal: spacing.lg },
   shutterRow: { flexDirection: "row", alignItems: "center", alignSelf: "stretch", paddingHorizontal: spacing.lg },
   side: { flex: 1, alignItems: "flex-end" },
-  flip: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
+  left: { alignItems: "flex-start" },
+  round: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
   close: { position: "absolute", left: spacing.md, width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
   error: { marginBottom: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.5)" },
   bottom: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },
