@@ -15,7 +15,7 @@ export type TabsConfig = {
  * What the tab bar looks like for each phase. NativeTabs can't add or remove tabs on the fly, so
  * the tabs stay and the roll and camera ones change icon, label and behavior after the reveal.
  */
-export function tabsFor(phase: RollPhase | null, left: { photos: number; videos: number } | null, hasTrip = true): TabsConfig {
+export function tabsFor(phase: RollPhase | null, left: { photos: number } | null, hasTrip = true): TabsConfig {
   if (!hasTrip) {
     return {
       roll: { sf: { default: "film", selected: "film.fill" }, md: "movie", label: "Rollo" },
@@ -30,13 +30,13 @@ export function tabsFor(phase: RollPhase | null, left: { photos: number; videos:
   }
   // Outside the shooting phase the camera is closed, whatever the quota says.
   const closed = phase !== null && phase !== "active";
-  const locked = closed || (left !== null && left.photos === 0 && left.videos === 0);
+  const locked = closed || (left !== null && left.photos === 0);
   return {
     roll: { sf: { default: "film", selected: "film.fill" }, md: "movie", label: "Rollo" },
     camera: {
       sf: locked ? "lock.fill" : "camera.fill",
       md: locked ? "lock" : "photo_camera",
-      label: closed ? "Cámara, rollo cerrado" : locked ? "Cámara, sin fotos por hoy" : "Cámara",
+      label: closed ? "Cámara, rollo cerrado" : locked ? "Cámara, sin fotos" : "Cámara",
       target: "/capture",
       badge: !closed && left !== null && left.photos > 0 ? String(left.photos) : null,
     },

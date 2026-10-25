@@ -8,11 +8,9 @@ import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { CaptureMessage } from "./capture-message";
 import { CapturePreview, type Shot } from "./capture-preview";
-import { closedMessage, mediaTypesFor, type Left } from "./capture-copy";
+import { closedMessage, exhaustedMessage } from "./capture-copy";
 import { startFix, type Fix } from "./location";
-import { discard, videoPoster } from "./media";
-import { localDay, remaining } from "./quota";
-import { getQueue } from "./store";
+import { loadLeft } from "./load-left";
 import { useSendShot } from "./use-send-shot";
 
 type State =
@@ -22,12 +20,11 @@ type State =
   | { kind: "no-permission" }
   | { kind: "preview"; shot: Shot };
 
-const MAX_VIDEO_S = 15;
 // If the screen never reports that it appeared, open the camera anyway after this.
 const APPEAR_FALLBACK_MS = 1000;
 
 /**
- * Capture: system camera → preview (retake or send, with caption) → queue.
+ * Capture: system camera → blurred shot with a caption → queue. There is no retake: the shot is the shot.
  * Once in the roll it can't be seen again until the reveal.
  */
 export function CaptureScreen() {
@@ -37,7 +34,6 @@ export function CaptureScreen() {
   const [state, setState] = useState<State>({ kind: "waiting" });
   const [caption, setCaption] = useState("");
   const started = useRef(false);
-  const left = useRef<Left>(null);
   const fix = useRef<Promise<Fix | null> | null>(null);
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -62,17 +58,13 @@ export function CaptureScreen() {
 
     fix.current ??= startFix();
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: mediaTypesFor(left.current),
-      videoMaxDuration: MAX_VIDEO_S,
-      videoExportPreset: ImagePicker.VideoExportPreset.H264_1920x1080,
+      mediaTypes: ["images"],
       quality: 1,
       exif: false,
     });
     if (result.canceled || !result.assets?.[0]) return router.back();
 
-    const asset = result.assets[0];
-    const poster = asset.type === "video" ? await videoPoster(asset.uri) : asset.uri;
-    setState({ kind: "preview", shot: { asset, takenAt: Date.now(), poster } });
+    setState({ kind: "preview", shot: { asset: result.assets[0], takenAt: Date.now() } });
   }
 
   // Once we know the quota (or that there's no signal to know it), open the camera or show the lock.
@@ -82,21 +74,11 @@ export function CaptureScreen() {
     const closed = detail && closedMessage(detail.trip, Date.now());
     if (closed) return setState({ kind: "closed", ...closed });
     (async () => {
-      const day = localDay(Date.now(), timeZone);
-      const pending = await (await getQueue()).countPending(trip.id, day);
-      left.current = remaining(detail?.today ?? null, day, pending);
-      if (left.current && left.current.photos === 0 && left.current.videos === 0) return setState({ kind: "locked" });
+      const left = detail ? await loadLeft(detail, Date.now()) : null;
+      if (left && left.photos === 0) return setState({ kind: "locked" });
       await openCamera();
     })();
   }, [appeared, loaded, trip, detail, detailError, timeZone]);
-
-  async function retake(shot: Shot) {
-    await discard(shot.asset.uri);
-    setCaption("");
-    sendShot.reset();
-    setState({ kind: "waiting" });
-    await openCamera();
-  }
 
   function send(shot: Shot) {
     if (!trip) return;
@@ -120,17 +102,8 @@ export function CaptureScreen() {
   }
 
   if (state.kind === "locked") {
-    return (
-      <CaptureMessage
-        symbol="lock.fill"
-        title="Se terminó el rollo de hoy"
-        body={
-          detail
-            ? `Mañana tenés ${detail.trip.dailyPhotoLimit} fotos y ${detail.trip.dailyVideoLimit} videos nuevos.`
-            : "Mañana se renueva."
-        }
-      />
-    );
+    const { title, body } = exhaustedMessage(detail?.trip ?? null);
+    return <CaptureMessage symbol="lock.fill" title={title} body={body} />;
   }
   if (state.kind === "closed") return <CaptureMessage symbol="lock.fill" title={state.title} body={state.body} />;
   if (state.kind === "no-permission") {
@@ -152,7 +125,6 @@ export function CaptureScreen() {
       onCaption={setCaption}
       sending={sendShot.isPending}
       error={errorMessage(sendShot.error, "No se pudo guardar. Probá de nuevo.")}
-      onRetake={() => retake(state.shot)}
       onSend={() => send(state.shot)}
     />
   );

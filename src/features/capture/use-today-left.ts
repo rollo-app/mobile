@@ -1,24 +1,20 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import type { TripDetail } from "@/features/trips/actions";
-import { localDay, remaining } from "./quota";
-import { getQueue } from "./store";
+import { loadLeft } from "./load-left";
 
 /**
- * Photos and videos you have left today on the trip, discounting what is in the queue.
+ * Photos you have left on the trip (today's, or the whole rollo's with a total limit), discounting what is in the queue.
  * `null` while unknown. Recomputed when returning to the screen (e.g. when closing the camera).
  */
 export function useTodayLeft(tripId: string | undefined, detail: TripDetail | null) {
-  const [left, setLeft] = useState<{ photos: number; videos: number } | null>(null);
+  const [left, setLeft] = useState<{ photos: number } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       if (!tripId || !detail) return;
       let active = true;
-      const day = localDay(Date.now(), detail.trip.timezone);
-      getQueue()
-        .then((queue) => queue.countPending(tripId, day))
-        .then((pending) => active && setLeft(remaining(detail.today, day, pending)));
+      loadLeft(detail, Date.now()).then((next) => active && setLeft(next));
       return () => {
         active = false;
       };

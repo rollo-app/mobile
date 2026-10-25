@@ -20,19 +20,19 @@ afterEach(() => {
 describe("PillHost", () => {
   it("renders nothing until a pill is shown", async () => {
     await render(<PillHost />);
-    expect(screen.queryByText("Agregada a tu perfil", { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByText("Destacada en tu perfil", { includeHiddenElements: true })).toBeNull();
   });
 
   it("shows the text, announces it and hides it after the timers", async () => {
     await render(<PillHost />);
     await act(async () => {
-      showPill("Agregada a tu perfil");
+      showPill("Destacada en tu perfil");
     });
-    expect(screen.getByText("Agregada a tu perfil", { includeHiddenElements: true })).toBeTruthy();
-    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith("Agregada a tu perfil");
+    expect(screen.getByText("Destacada en tu perfil", { includeHiddenElements: true })).toBeTruthy();
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith("Destacada en tu perfil");
     await act(async () => {
       jest.advanceTimersByTime(3000);
     });
-    expect(screen.queryByText("Agregada a tu perfil", { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByText("Destacada en tu perfil", { includeHiddenElements: true })).toBeNull();
   });
 });

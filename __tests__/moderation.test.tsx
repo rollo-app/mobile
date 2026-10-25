@@ -103,6 +103,8 @@ describe("Members", () => {
         revealed: false,
         dailyPhotoLimit: 10,
         dailyVideoLimit: 3,
+        photoLimitMode: "daily",
+        totalPhotoLimit: null,
       },
       me,
       members: [me, member("m2", "u2", "Cami", "member", true)],

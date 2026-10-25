@@ -34,6 +34,8 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   revealed: false,
   dailyPhotoLimit: 10,
   dailyVideoLimit: 3,
+  photoLimitMode: "daily",
+  totalPhotoLimit: null,
   ...overrides,
 });
 
@@ -88,8 +90,20 @@ describe("Roll", () => {
 
     expect(await screen.findByLabelText("12 en el rollo")).toBeVisible();
     expect(screen.getByText("7 de 10")).toBeVisible();
-    expect(screen.getByText("2 de 3")).toBeVisible();
+    expect(screen.queryByText("Videos")).toBeNull();
     expect(screen.getByText("en 9 días")).toBeVisible();
+  });
+
+  it("with a total limit it shows what you have left in the whole rollo", async () => {
+    mocked.fetchTrip.mockResolvedValue(
+      detail({ trip: trip({ photoLimitMode: "total", totalPhotoLimit: 20 }), today: { date: "2027-01-05", photosLeft: 13, videosLeft: 0 } }),
+    );
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findByLabelText("12 en el rollo");
+    expect(screen.getByText("Te quedan")).toBeVisible();
+    expect(screen.getByText("13 de 20")).toBeVisible();
+    expect(screen.queryByText("Hoy")).toBeNull();
   });
 
   const TZ = "America/Argentina/Buenos_Aires";
@@ -446,7 +460,7 @@ describe("Create roll", () => {
     expect(button).toBeEnabled();
   });
 
-  it("starts at the next full hour, lasts 3 days and allows 10 photos and 3 videos a day", async () => {
+  it("starts at the next full hour, lasts 3 days and allows 10 photos a day, with no videos", async () => {
     await renderRouter(routes, { initialUrl: "/create" });
     await screen.findByRole("button", { name: "Crear" });
     await fireEvent.press(screen.getByRole("button", { name: "Otra fecha" }));
@@ -457,7 +471,8 @@ describe("Create roll", () => {
     expect(start - Date.now()).toBeLessThanOrEqual(HOUR);
     expect(dateOf("Termina")).toBe(start + 72 * HOUR);
     expect(screen.getByLabelText("10 fotos")).toBeVisible();
-    expect(screen.getByLabelText("3 videos")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Por día" })).toBeSelected();
+    expect(screen.queryByLabelText(/video/)).toBeNull();
     expect(screen.getByText("Hasta el revelado nadie ve las fotos, ni las propias.")).toBeVisible();
     expect(screen.getByText("Cada día se renueva a la medianoche.")).toBeVisible();
   });
@@ -474,9 +489,7 @@ describe("Create roll", () => {
     const start = dateOf("Empieza");
     await changeDate("Termina", start + 5 * 24 * HOUR);
     await fireEvent(screen.getByLabelText("10 fotos"), "valueChange", 25);
-    await fireEvent(screen.getByLabelText("3 videos"), "valueChange", 0);
     expect(screen.getByLabelText("25 fotos")).toBeVisible();
-    expect(screen.getByLabelText("0 videos")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
@@ -485,10 +498,24 @@ describe("Create roll", () => {
       startsAt: start,
       endsAt: start + 5 * 24 * HOUR,
       revealAt: start + 5 * 24 * HOUR,
-      dailyPhotoLimit: 25,
-      dailyVideoLimit: 0,
+      photoLimit: { mode: "daily", perDay: 25 },
       timezone: tz,
     });
+  });
+
+  it("lets the admin choose a total for the whole rollo instead of a daily limit", async () => {
+    mocked.createTrip.mockResolvedValue(trip());
+    mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: "/create" });
+    await fillNames();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Todo el rollo" }));
+    expect(screen.getByLabelText("20 fotos")).toBeVisible();
+    expect(screen.getByText("Es el total de cada persona para todo el rollo.")).toBeVisible();
+    await fireEvent(screen.getByLabelText("20 fotos"), "valueChange", 36);
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ photoLimit: { mode: "total", total: 36 } }));
   });
 
   it("lets you pick another reveal moment, 12 hours after the end by default", async () => {

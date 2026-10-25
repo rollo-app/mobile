@@ -3343,7 +3343,15 @@ export interface components {
             revealAt: number;
             revealed: boolean;
             dailyPhotoLimit: number;
+            /** @description Legacy: new rollos have no videos (0) */
             dailyVideoLimit: number;
+            /**
+             * @description daily: dailyPhotoLimit per person per local day; total: totalPhotoLimit per person for the whole rollo
+             * @enum {string}
+             */
+            photoLimitMode: "daily" | "total";
+            /** @description Photos per person in the whole rollo; null in daily mode */
+            totalPhotoLimit: number | null;
         };
         Member: {
             /**
@@ -3390,8 +3398,18 @@ export interface components {
             revealAt: number;
             /** @default 10 */
             dailyPhotoLimit?: number;
-            /** @default 3 */
+            /**
+             * @description Legacy: rollos have no videos, omit it
+             * @default 0
+             */
             dailyVideoLimit?: number;
+            /**
+             * @default daily
+             * @enum {string}
+             */
+            photoLimitMode?: "daily" | "total";
+            /** @description Photos per person in the whole rollo; required when photoLimitMode is total, ignored otherwise */
+            totalPhotoLimit?: number;
         };
         JoinTripRequest: {
             /** @example HUB5FT */
@@ -3407,7 +3425,7 @@ export interface components {
                  * @example 2027-01-12
                  */
                 date: string;
-                /** @description 0 outside the rollo's dates */
+                /** @description Photos left today (daily mode) or in the whole rollo (total mode); 0 outside the rollo's dates */
                 photosLeft: number;
                 /** @description 0 outside the rollo's dates */
                 videosLeft: number;
@@ -3425,6 +3443,8 @@ export interface components {
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
+            /** @description Only for rollos in total mode */
+            totalPhotoLimit?: number;
         };
         AddMembersResponse: {
             results: {

@@ -40,6 +40,8 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     revealed: true,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
     ...over,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },

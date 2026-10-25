@@ -6,42 +6,28 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ErrorText } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
-export type Shot = { asset: ImagePicker.ImagePickerAsset; takenAt: number; poster: string };
+export type Shot = { asset: ImagePicker.ImagePickerAsset; takenAt: number };
 
-/** Preview of the shot: retake or send, with an optional caption. */
+// Strong enough that the photo can't be recognized: the shot is the shot, you only get to caption it.
+const BLUR_RADIUS = 60;
+
+/** The shot, blurred, with an optional caption. There is no retake or cancel: the only way out is sending it. */
 export function CapturePreview(props: {
   shot: Shot;
   caption: string;
   onCaption: (text: string) => void;
   sending: boolean;
   error: string | null;
-  onRetake: () => void;
   onSend: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
-  const { asset, poster } = props.shot;
   // Normal column (no absolute positioning): when the keyboard opens, the controls rise with it
   // and the photo shrinks into the remaining space, instead of being covered.
   return (
-    <KeyboardAvoidingView behavior="padding" style={styles.dark}>
-      <View style={[styles.top, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Repetir"
-          disabled={props.sending}
-          onPress={props.onRetake}
-          style={({ pressed }) => [styles.glass, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Text style={[type.body, styles.light]}>Repetir</Text>
-        </Pressable>
-        {asset.type === "video" && asset.duration ? (
-          <Text style={[type.footnote, styles.dim]}>{`Video · ${Math.round(asset.duration / 1000)} s`}</Text>
-        ) : null}
-      </View>
-
+    <KeyboardAvoidingView behavior="padding" style={[styles.dark, { paddingTop: insets.top }]}>
       <Pressable accessible={false} onPress={Keyboard.dismiss} style={styles.photo}>
-        <Image source={{ uri: poster }} style={styles.photo} contentFit="contain" />
+        <Image source={{ uri: props.shot.asset.uri }} style={styles.photo} contentFit="cover" blurRadius={BLUR_RADIUS} accessible={false} />
       </Pressable>
 
       <View style={[styles.bottom, { paddingBottom: keyboardOpen ? spacing.sm : insets.bottom + spacing.md }]}>
@@ -93,11 +79,8 @@ function useKeyboardOpen() {
 // The preview is always dark, like the camera: the photo takes the lead.
 const styles = StyleSheet.create({
   dark: { flex: 1, backgroundColor: "#000" },
-  top: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   photo: { flex: 1 },
   bottom: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
-  glass: { backgroundColor: "rgba(0,0,0,0.45)", borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: 10 },
-  light: { color: "#fff" },
   dim: { color: "rgba(255,255,255,0.75)" },
   caption: { color: "#fff", backgroundColor: "rgba(0,0,0,0.5)", borderRadius: radius.lg, borderCurve: "continuous", paddingHorizontal: 18, minHeight: 50 },
   sendRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

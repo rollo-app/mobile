@@ -39,6 +39,8 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, blockedByMe: false },
   members: [

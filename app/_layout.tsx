@@ -135,7 +135,8 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
-          <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          {/* No swipe to dismiss: once shot, the only way out of the caption screen is sending it. */}
+          <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
           {/* The lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen
