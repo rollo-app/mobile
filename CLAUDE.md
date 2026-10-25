@@ -166,6 +166,7 @@ Decisiones de producto:
   está en curso (una vez por rollo) un candado grande se sacude y se abre (SF Symbol `lock` → `lock.open` con `.symbolEffect(.replace.magic)`,
   módulo local `modules/rollo-symbol`; sin el módulo nativo cae a `expo-symbols`) con un "clac" y pasa a cámara. Texto "Arrancó el rollo.
   Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En "Tus rollos" el badge del rollo en curso dice LIVE.
+  "Tus rollos" se agrupa con `groupTrips` (`src/features/trips/group-trips.ts`): en curso, próximos y sin revelar arriba; "Revelados" (últimos 3 meses por fecha de revelado); y "Anteriores · N" colapsado (se abre solo si el rollo activo está ahí, sin recordar nada).
 - **Notificaciones push** (`src/features/notifications/`): las manda el backend con Expo Push Service. El token se registra con
   `PUT /me/push-tokens/{token}` atado a la sesión y se borra al cerrar sesión y cuando un `401` la cierra (así un celular que cambia de
   cuenta no recibe avisos de la anterior). **Permiso con explicación propia** (`/push-primer`, `push-primer.tsx`): se ofrece una sola vez,
@@ -344,7 +345,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1470 tests
+npm test                      # 1481 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

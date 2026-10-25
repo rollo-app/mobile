@@ -410,6 +410,68 @@ describe("Trip picker", () => {
     expect(screen.getAllByText(/^(LIVE|Revelado)$/)).toHaveLength(2);
   });
 
+  describe("grouping", () => {
+    const OLD = "55555555-5555-4555-8555-555555555555";
+    const revealedAgo = (id: string, name: string, days: number) => {
+      const now = Date.now();
+      return tripSummary(id, name, { startsAt: now - (days + 8) * DAY, endsAt: now - (days + 1) * DAY, revealAt: now - days * DAY, revealed: true });
+    };
+
+    it("shows recent revealed rolls under 'Revelados' and keeps the old ones collapsed", async () => {
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10), revealedAgo(OLD, "Mendoza", 200)], active: BARILOCHE });
+      await renderRouter(routes, { initialUrl: "/trips" });
+
+      expect(await screen.findByText("Revelados")).toBeVisible();
+      expect(screen.getByRole("button", { name: "Bariloche, revelado" })).toBeVisible();
+      expect(screen.getByText("Anteriores · 1")).toBeVisible();
+      expect(screen.getByRole("button", { name: "Anteriores, 1" }).props.accessibilityState).toMatchObject({ expanded: false });
+      expect(screen.queryByRole("button", { name: "Mendoza, revelado" })).toBeNull();
+    });
+
+    it("expands the old rolls inline when you tap 'Anteriores' and collapses them again", async () => {
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10), revealedAgo(OLD, "Mendoza", 200)], active: BARILOCHE });
+      await renderRouter(routes, { initialUrl: "/trips" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Anteriores, 1" }));
+      expect(screen.getByRole("button", { name: "Mendoza, revelado" })).toBeVisible();
+
+      await fireEvent.press(screen.getByRole("button", { name: "Anteriores, 1" }));
+      expect(screen.queryByRole("button", { name: "Mendoza, revelado" })).toBeNull();
+    });
+
+    it("starts expanded when the active roll is an old one", async () => {
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10), revealedAgo(OLD, "Mendoza", 200)], active: OLD });
+      await renderRouter(routes, { initialUrl: "/trips" });
+
+      expect(await screen.findByRole("button", { name: "Mendoza, revelado" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "Mendoza, revelado" }).props.accessibilityState).toMatchObject({ selected: true });
+    });
+
+    it("has no 'Anteriores' row without old rolls", async () => {
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10)], active: BARILOCHE });
+      await renderRouter(routes, { initialUrl: "/trips" });
+
+      await screen.findByText("Revelados");
+      expect(screen.queryByText(/^Anteriores/)).toBeNull();
+    });
+
+    it("choosing an old roll makes it the active one", async () => {
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10), revealedAgo(OLD, "Mendoza", 200)], active: BARILOCHE });
+      await renderRouter(routes, { initialUrl: "/trips" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Anteriores, 1" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Mendoza, revelado" }));
+
+      await waitFor(() => expect(screen).toHavePathname("/roll"));
+      expect(await getActiveTripId()).toBe(OLD);
+    });
+  });
+
   it("has shortcuts to start a roll or join", async () => {
     await saveTrip(SUR, "Viaje al sur");
     await renderRouter(routes, { initialUrl: "/trips" });
