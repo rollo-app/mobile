@@ -1,4 +1,26 @@
-import { INFO_TOPICS, infoTopic, isInfoTopicId } from "../topics";
+import { INFO_TOPICS, infoTopic, isInfoTopicId, splitButtonNames } from "../topics";
+
+describe("splitButtonNames", () => {
+  it("turns quoted button names into highlighted parts without the quotes", () => {
+    expect(splitButtonNames('Con "Ahora" empieza apenas lo creás.')).toEqual([
+      { text: "Con ", button: false },
+      { text: "Ahora", button: true },
+      { text: " empieza apenas lo creás.", button: false },
+    ]);
+  });
+
+  it("handles several names and names at the edges", () => {
+    expect(splitButtonNames('"Desde" y "Hasta"')).toEqual([
+      { text: "Desde", button: true },
+      { text: " y ", button: false },
+      { text: "Hasta", button: true },
+    ]);
+  });
+
+  it("leaves a paragraph without quotes as one plain part", () => {
+    expect(splitButtonNames("El momento del día no gasta cupo.")).toEqual([{ text: "El momento del día no gasta cupo.", button: false }]);
+  });
+});
 
 describe("info topics", () => {
   it("has a non-empty title and body for every topic, keyed by its own id", () => {
@@ -15,7 +37,7 @@ describe("info topics", () => {
   it("covers every place that shows an info button", () => {
     expect(Object.keys(INFO_TOPICS).sort()).toEqual(
       [
-        "dates", "reveal", "quota", "moment", "momentWindow", "privateRollo",
+        "dates", "reveal", "quota", "moment", "privateRollo",
         "publicProfile", "othersProfiles", "offlineMap", "inviteCode",
       ].sort(),
     );

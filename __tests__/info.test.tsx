@@ -35,8 +35,17 @@ async function opensSheet(url: string, topic: InfoTopicId) {
   await fireEvent.press(await buttonFor(topic));
   expect(screen).toHavePathname(`/info/${topic}`);
   expect(await screen.findByText(INFO_TOPICS[topic].title)).toBeVisible();
-  expect(screen.getByText(INFO_TOPICS[topic].body.split("\n\n")[0]!)).toBeVisible();
+  // Button names show without their quotes.
+  expect(screen.getByText(INFO_TOPICS[topic].body.split("\n\n")[0]!.replaceAll('"', ""))).toBeVisible();
 }
+
+it("shows button names bold in the app's tint, without the quotes", async () => {
+  await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+  await renderRouter(routes, { initialUrl: "/info/dates" });
+  const name = await screen.findByText("Ahora");
+  expect(name).toHaveStyle({ fontWeight: "600" });
+  expect(screen.queryByText(/"Ahora"/)).toBeNull();
+});
 
 beforeEach(async () => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
@@ -50,7 +59,7 @@ beforeEach(async () => {
 });
 
 describe("info buttons", () => {
-  it.each<InfoTopicId>(["dates", "reveal", "quota", "moment", "momentWindow", "privateRollo"])(
+  it.each<InfoTopicId>(["dates", "reveal", "quota", "moment", "privateRollo"])(
     "Crear rollo: %s opens its sheet",
     (topic) => opensSheet("/create", topic),
   );

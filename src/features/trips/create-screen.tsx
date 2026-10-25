@@ -223,15 +223,12 @@ export function CreateScreen() {
             </Picker>
             {momentMode !== "off" && (
               <>
-                <HStack spacing={8}>
-                  <DatePicker
-                    title="Desde"
-                    selection={dateAtMinutes(momentStart)}
-                    displayedComponents={[...TIME]}
-                    onDateChange={(date) => setMomentStart(minutesOfDay(date))}
-                  />
-                  <NativeInfoButton topic="momentWindow" />
-                </HStack>
+                <DatePicker
+                  title="Desde"
+                  selection={dateAtMinutes(momentStart)}
+                  displayedComponents={[...TIME]}
+                  onDateChange={(date) => setMomentStart(minutesOfDay(date))}
+                />
                 <DatePicker
                   title="Hasta"
                   selection={dateAtMinutes(momentEnd)}
@@ -242,11 +239,8 @@ export function CreateScreen() {
             )}
           </Section>
 
-          <Section footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
-            <HStack spacing={8}>
-              <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
-              <NativeInfoButton topic="privateRollo" />
-            </HStack>
+          <Section header={infoHeader("Privacidad", "privateRollo")} footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
+            <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
           </Section>
         </Form>
       </Host>

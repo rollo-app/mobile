@@ -28,14 +28,8 @@ const topics = {
     title: "Momento del día",
     body:
       "Una vez por día la app le avisa a cada uno, a una hora al azar y distinta para cada persona, dentro de la franja que elijas. Desde el aviso hay 5 minutos para sacar una foto extra (con \"Dos cámaras\", una con cada cámara). Pasado ese tiempo se pierde.\n\n" +
+      "La franja va de \"Desde\" a \"Hasta\", en la hora del rollo. Por defecto, de 9:00 a 23:00.\n\n" +
       "Se ve en el Feed apenas se sube, antes del revelado. El aviso suena aunque no tengas señal.",
-  },
-  momentWindow: {
-    id: "momentWindow",
-    title: "Franja del momento",
-    body:
-      "El aviso de cada día llega a una hora al azar entre \"Desde\" y \"Hasta\". Cada persona recibe el suyo a una hora distinta.\n\n" +
-      "Son horas de la zona horaria del rollo. Por defecto, de 9:00 a 23:00.",
   },
   privateRollo: {
     id: "privateRollo",
@@ -84,4 +78,14 @@ export function isInfoTopicId(value: unknown): value is InfoTopicId {
 /** The topic for a route param, or undefined when it isn't a known one. */
 export function infoTopic(id: string | string[] | undefined): (InfoTopic & { id: InfoTopicId }) | undefined {
   return isInfoTopicId(id) ? INFO_TOPICS[id] : undefined;
+}
+
+export type BodyPart = { text: string; button: boolean };
+
+/** Splits a paragraph on its quoted button names ("Ahora"), so the sheet can highlight them without the quotes. */
+export function splitButtonNames(paragraph: string): BodyPart[] {
+  return paragraph
+    .split('"')
+    .map((text, i) => ({ text, button: i % 2 === 1 }))
+    .filter((part) => part.text !== "");
 }
