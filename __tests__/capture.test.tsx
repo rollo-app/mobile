@@ -1,5 +1,6 @@
 import { router } from "expo-router";
-import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { StyleSheet } from "react-native";
+import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
 import * as media from "@/features/capture/media";
 import { startFix } from "@/features/capture/location";
@@ -23,7 +24,15 @@ jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success" },
 }));
 
+jest.mock("expo-image-manipulator", () => {
+  const ctx = { crop: jest.fn(), renderAsync: jest.fn(), saveAsync: jest.fn() };
+  ctx.crop.mockReturnValue(ctx);
+  ctx.renderAsync.mockResolvedValue(ctx);
+  return { ImageManipulator: { manipulate: jest.fn(() => ctx), __ctx: ctx }, SaveFormat: { JPEG: "jpeg" } };
+});
+
 const trips = jest.mocked(actions);
+const manipulator = jest.requireMock("expo-image-manipulator").ImageManipulator as { manipulate: jest.Mock; __ctx: { crop: jest.Mock; saveAsync: jest.Mock } };
 const mediaMock = jest.mocked(media);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 const { __takePictureAsync: takePicture, useCameraPermissions } = jest.requireMock("expo-camera") as {
@@ -129,6 +138,37 @@ describe("Capture", () => {
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(mediaMock.prepareMedia.mock.calls[0]![3]).toBeUndefined();
+  });
+
+  it("shows the preview in a full-width 3:4 frame, with the pinch area on the frame and the controls outside it", async () => {
+    await openCapture();
+    const frame = await screen.findByTestId("camera-frame");
+    expect(StyleSheet.flatten(frame.props.style)).toMatchObject({ aspectRatio: 3 / 4, width: expect.any(Number) });
+    expect(screen.getByTestId("camera-back").props.pictureSize).toBeUndefined();
+    expect(within(frame).getByTestId("camera-back")).toBeTruthy();
+    expect(within(frame).getByTestId("camera-pinch")).toBeTruthy();
+    expect(within(frame).queryByRole("button", { name: "Sacar foto" })).toBeNull();
+    expect(within(frame).queryByRole("button", { name: /Flash/ })).toBeNull();
+  });
+
+  it("keeps a 4:3 photo as it came (no re-encoding)", async () => {
+    await openCapture();
+    await shoot();
+    await screen.findByLabelText("Caption");
+    expect(manipulator.manipulate).not.toHaveBeenCalled();
+  });
+
+  it("center-crops a photo that is not 4:3 (never stretches it) before the caption", async () => {
+    takePicture.mockResolvedValue({ uri: "file:///cache/Camera/tall.jpg", width: 2250, height: 4000 });
+    manipulator.__ctx.saveAsync.mockResolvedValue({ uri: "file:///cache/Manipulated/tall.jpg", width: 2250, height: 3000 });
+    await openCapture();
+    await shoot();
+    await screen.findByLabelText("Caption");
+    expect(manipulator.manipulate).toHaveBeenCalledWith("file:///cache/Camera/tall.jpg");
+    expect(manipulator.__ctx.crop).toHaveBeenCalledWith({ originX: 0, originY: 500, width: 2250, height: 3000 });
+    await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(mediaMock.prepareMedia.mock.lastCall![0]).toMatchObject({ uri: "file:///cache/Manipulated/tall.jpg", width: 2250, height: 3000 });
   });
 
   it("the flash button cycles automático, prendido, apagado and sets the camera's flash", async () => {

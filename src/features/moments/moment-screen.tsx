@@ -89,6 +89,7 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
     return (
       <CapturePreview
         shot={step.main}
+        inset={step.selfie?.photo ?? null}
         caption={caption}
         onCaption={setCaption}
         sending={sendShot.isPending}

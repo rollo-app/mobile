@@ -4,6 +4,7 @@ import { Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput,
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import { ErrorText } from "@/ui/components";
+import { insetFrame } from "@/ui/inset-frame";
 import { colors, radius, spacing, type } from "@/ui/theme";
 
 export type Shot = { photo: CapturedPhoto; takenAt: number };
@@ -19,6 +20,8 @@ export function CapturePreview(props: {
   sending: boolean;
   error: string | null;
   onSend: () => void;
+  /** The moment's second shot: also blurred, in the top-left corner like the viewers' inset (only visual, no swapping). */
+  inset?: CapturedPhoto | null;
 }) {
   const insets = useSafeAreaInsets();
   const keyboardOpen = useKeyboardOpen();
@@ -28,6 +31,18 @@ export function CapturePreview(props: {
     <KeyboardAvoidingView behavior="padding" style={[styles.dark, { paddingTop: insets.top }]}>
       <Pressable accessible={false} onPress={Keyboard.dismiss} style={styles.photo}>
         <Image source={{ uri: props.shot.photo.uri }} style={styles.photo} contentFit="cover" blurRadius={BLUR_RADIUS} accessible={false} />
+        {props.inset && (
+          <View testID="caption-inset" style={[insetFrame.frame, styles.inset, { top: spacing.sm }]}>
+            <Image
+              testID="caption-inset-image"
+              source={{ uri: props.inset.uri }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              blurRadius={BLUR_RADIUS}
+              accessible={false}
+            />
+          </View>
+        )}
       </Pressable>
 
       <View style={[styles.bottom, { paddingBottom: keyboardOpen ? spacing.sm : insets.bottom + spacing.md }]}>
@@ -80,6 +95,7 @@ function useKeyboardOpen() {
 const styles = StyleSheet.create({
   dark: { flex: 1, backgroundColor: "#000" },
   photo: { flex: 1 },
+  inset: { position: "absolute", left: spacing.md },
   bottom: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   dim: { color: "rgba(255,255,255,0.75)" },
   caption: { color: "#fff", backgroundColor: "rgba(0,0,0,0.5)", borderRadius: radius.lg, borderCurve: "continuous", paddingHorizontal: 18, minHeight: 50 },
