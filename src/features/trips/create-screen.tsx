@@ -197,14 +197,16 @@ export function CreateScreen() {
               <Text>
                 {momentMode === "off"
                   ? "Sin aviso diario."
-                  : "Una vez por día, a una hora distinta para cada uno y dentro de esta franja, todos tienen 5 minutos para sacar una foto."}
+                  : momentMode === "photo"
+                    ? "Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto."
+                    : "Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto con cada cámara; la primera es la grande."}
               </Text>
             }
           >
             <Picker selection={momentMode} onSelectionChange={setMomentMode} modifiers={[pickerStyle("segmented")]}>
               <Text modifiers={[tag("off")]}>Apagado</Text>
               <Text modifiers={[tag("photo")]}>Solo foto</Text>
-              <Text modifiers={[tag("photo_selfie")]}>Dos fotos</Text>
+              <Text modifiers={[tag("photo_selfie")]}>Dos cámaras</Text>
             </Picker>
             {momentMode !== "off" && (
               <>

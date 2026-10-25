@@ -542,13 +542,23 @@ describe("Create roll", () => {
     it("defaults to two photos from 9:00 to 23:00", async () => {
       await renderRouter(routes, { initialUrl: "/create" });
       await fillNames();
-      expect(screen.getByRole("button", { name: "Dos fotos" })).toBeSelected();
+      expect(screen.getByRole("button", { name: "Dos cámaras" })).toBeSelected();
       expect(new Date(dateOf("Desde")).getHours()).toBe(9);
       expect(new Date(dateOf("Hasta")).getHours()).toBe(23);
       await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
       expect(mocked.createTrip).toHaveBeenCalledWith(
         expect.objectContaining({ momentMode: "photo_selfie", momentWindowStart: 540, momentWindowEnd: 1380 }),
       );
+    });
+
+    it("shows a footer for each mode", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      expect(screen.getByText("Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto con cada cámara; la primera es la grande.")).toBeTruthy();
+      await fireEvent.press(screen.getByRole("button", { name: "Solo foto" }));
+      expect(screen.getByText("Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto.")).toBeTruthy();
+      await fireEvent.press(screen.getByRole("button", { name: "Apagado" }));
+      expect(screen.getByText("Sin aviso diario.")).toBeTruthy();
     });
 
     it("hides the window when off and sends off", async () => {

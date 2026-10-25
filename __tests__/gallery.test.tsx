@@ -586,6 +586,15 @@ describe("Photo viewer", () => {
     expect(screen.queryByRole("menuitem", { name: "Denunciar" })).toBeNull();
   });
 
+  it("your own moment photo has no feature-block option", async () => {
+    const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
+    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine, momentDay: "2027-01-12" })]));
+    await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
+    await screen.findByRole("button", { name: /Me gusta|Sacar el me gusta/ }).catch(() => null);
+    expect(screen.queryByRole("menuitem", { name: "No dejar que la destaquen" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Dejar que la destaquen" })).toBeNull();
+  });
+
   it("someone else's photo has no feature-block option", async () => {
     await openViewer("a");
     await screen.findByRole("button", { name: "Agregar a tu perfil" });

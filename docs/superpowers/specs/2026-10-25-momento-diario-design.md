@@ -29,7 +29,7 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
 - **Se puede apagar** en Ajustes → Notificaciones (switch "Momento del día").
 - **En el revelado** va mezclada con las demás fotos, distinguida (ver "Selfie y badge").
 - *(Decisión de Claude)* **El momento se puede apagar para todo el rollo** al crearlo (una noche de fiesta no lo necesita).
-  Prendido por defecto. Al crear: "Momento del día" → Apagado / Solo foto / Dos fotos (default Dos fotos).
+  Prendido por defecto. Al crear: "Momento del día" → Apagado / Solo foto / Dos cámaras (default Dos cámaras).
 - *(Decisión de Claude)* **La config no se edita después de crear el rollo** en esta versión (evita re-sortear momentos ya
   bajados a los celulares).
 

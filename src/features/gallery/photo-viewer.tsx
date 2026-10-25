@@ -199,7 +199,7 @@ export function PhotoViewer({
     ? []
     : !own
       ? [{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]
-      : photo.type === "photo"
+      : photo.type === "photo" && !photo.momentDay // moment photos can never be featured
         ? [
             {
               id: photo.featureBlocked ? "unblock" : "block",
