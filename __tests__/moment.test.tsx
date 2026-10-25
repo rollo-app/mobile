@@ -22,6 +22,7 @@ jest.mock("expo-crypto", () => {
 });
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(),
+  selectionAsync: jest.fn(async () => {}),
   NotificationFeedbackType: { Success: "success" },
 }));
 
@@ -329,5 +330,18 @@ describe("Moment", () => {
     await openMoment(Date.now() - 400_000);
 
     expect(await screen.findByText("Era el último del rollo.")).toBeVisible();
+  });
+
+  it("the self-timer works in the moment too: the countdown shoots at 0 and that photo is the main", async () => {
+    trips.fetchTrip.mockResolvedValue(tripDetail("photo"));
+    await openMoment(Date.now() - 10_000);
+    await fireEvent.press(await screen.findByRole("button", { name: "Temporizador: apagado" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
+    expect(screen.getByTestId("timer-countdown")).toHaveTextContent("3");
+    expect(takePhoto).not.toHaveBeenCalled();
+    // renderRouter runs on Jest's fake timers.
+    for (let s = 0; s < 3; s++) await act(async () => jest.advanceTimersByTime(1000));
+    expect(takePhoto).toHaveBeenCalledTimes(1);
+    expect(await screen.findByLabelText("Caption")).toBeVisible();
   });
 });

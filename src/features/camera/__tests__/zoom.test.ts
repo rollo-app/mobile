@@ -1,4 +1,4 @@
-import { activePreset, formatFactor, pinchZoom, touchDistance, zoomLevels, type ZoomDevice } from "../zoom";
+import { activePreset, expandTarget, formatFactor, frontExpand, isExpanded, pinchZoom, touchDistance, zoomLevels, type ZoomDevice } from "../zoom";
 
 // Real AVFoundation numbers: zoom factors are relative to the virtual device's widest lens, and
 // `zoomLensSwitchFactors` (= virtualDeviceSwitchOverVideoZoomFactors) are where it hands over to the next lens.
@@ -108,5 +108,42 @@ describe("pinchZoom", () => {
   it("measures the distance between two touches", () => {
     expect(touchDistance([{ pageX: 0, pageY: 0 }, { pageX: 3, pageY: 4 }])).toBe(5);
     expect(touchDistance([{ pageX: 0, pageY: 0 }])).toBe(0);
+  });
+});
+
+describe("front camera framing (Ampliar encuadre)", () => {
+  // iOS 18+ reports displayableZoomFactor = zoom × displayVideoZoomFactorMultiplier: on an iPhone 11+ front camera the
+  // Camera app's 1× is a crop of a wider sensor, so raw zoom 1 shows as 0,8× and 1× is raw 1,25.
+  it("puts the front 1x where the device says it is displayed as 1x, keeping the real minimum", () => {
+    expect(zoomLevels({ ...front, displayMultiplier: 0.8 })).toEqual({ neutral: 1.25, min: 1, max: 12.5, presets: [] });
+  });
+
+  it("ignores a missing, invalid or >= 1 multiplier (and the back camera never uses it)", () => {
+    expect(zoomLevels({ ...front, displayMultiplier: 1 }).neutral).toBe(1);
+    expect(zoomLevels({ ...front, displayMultiplier: Number.NaN }).neutral).toBe(1);
+    expect(zoomLevels({ ...front, displayMultiplier: 0 }).neutral).toBe(1);
+    expect(zoomLevels({ ...triple3x, displayMultiplier: 0.5 }).neutral).toBe(2);
+  });
+
+  it("never puts 1x past the device's maximum", () => {
+    expect(zoomLevels({ ...front, maxZoom: 1.1, displayMultiplier: 0.5 }).neutral).toBe(1.1);
+  });
+
+  it("offers expanding only on a front camera whose minimum is wider than its 1x", () => {
+    expect(frontExpand(zoomLevels({ ...front, displayMultiplier: 0.8 }), "front")).toEqual({ neutral: 1.25, wide: 1 });
+    expect(frontExpand(zoomLevels(front), "front")).toBeNull();
+    expect(frontExpand(zoomLevels(triple3x), "back")).toBeNull();
+  });
+
+  it("toggles between 1x (default) and the widest framing", () => {
+    const expand = { neutral: 1.25, wide: 1 };
+    expect(isExpanded(expand, 1.25)).toBe(false);
+    expect(expandTarget(expand, 1.25)).toBe(1);
+    expect(isExpanded(expand, 1)).toBe(true);
+    expect(expandTarget(expand, 1)).toBe(1.25);
+    // A pinch in between counts as expanded only once it is wider than 1x.
+    expect(isExpanded(expand, 1.2)).toBe(true);
+    expect(isExpanded(expand, 1.4)).toBe(false);
+    expect(expandTarget(expand, 1.4)).toBe(1);
   });
 });

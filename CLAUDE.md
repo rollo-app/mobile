@@ -50,14 +50,27 @@ Decisiones de producto:
   `zoomLensSwitchFactors`; si no, el mínimo) y se abre siempre ahí (también al dar vuelta). Chips abajo y al centro del recuadro: "0,5" solo con
   ultra gran angular, 1, 2 y cada teleobjetivo (los siguientes cambios de lente ÷ 1×: [2, 6] → 3×, [2, 10] → 5×); el activo va en cobalto con el valor en
   vivo ("1,4×"). Adelante no hay chips. Tocar un chip hace una rampa suave (`startZoomAnimation`); pellizco continuo (`controller.setZoom`) del mínimo real a 5× el
-  teleobjetivo más largo (15× / 25×, como iOS) o 10× sin tele, nunca más allá del máximo real del formato activo. Tocar el
-  recuadro enfoca ahí.
+  teleobjetivo más largo (15× / 25×, como iOS) o 10× sin tele, nunca más allá del máximo real del formato activo.
+  **Adelante, "Ampliar encuadre" / "Reducir encuadre"** en vez de chips (`frontExpand` de `zoom.ts`): el 1× de la frontal sale de
+  `displayableZoomFactor / zoom` del controller al arrancar (iOS 18+ `displayVideoZoomFactorMultiplier`; en un iPhone 11+ la selfie por
+  defecto es un recorte) y el botón hace rampa entre ese 1× (por defecto) y el mínimo real; si el mínimo no es más ancho, no aparece.
+  **Exposición como iOS** (`exposure.ts`): tocar el recuadro mide enfoque, exposición y balance de blancos ahí (`focusTo` con
+  `modes` según `supportsFocus/Exposure/WhiteBalanceMetering`, `autoResetAfter: null`: no vuelve solo al centro) y muestra el cuadrado
+  de enfoque con el sol; después, arrastrar un dedo arriba/abajo cambia el EV (prop `exposure`, 50 pt por paso, ±2 EV como la cámara de iOS
+  y nunca más allá de `minExposureBias`/`maxExposureBias` reales); el valor queda hasta tocar en otro lado (vuelve a 0) o remontar/dar vuelta la cámara.
+  VoiceOver: "Exposición" ajustable de a 1/3 de paso. El pellizco (dos dedos) sigue igual. **Low-light boost** automático donde el
+  dispositivo lo tiene (`enableLowLightBoost={device.supportsLowLightBoost}`).
+  **Cuadrícula** 3×3 (botón `grid`, cobalto prendida) que el celular recuerda (`rollo.cameraGrid`, `src/storage/camera-grid.ts`) y
+  **temporizador** apagado → 3 s → 10 s (`timer.ts`, botón `timer`, no se guarda): el disparador arranca una cuenta grande sobre la vista
+  con un háptico por segundo y saca en 0; tocarlo de nuevo ("Cancelar temporizador") la corta. En el momento también vale y la foto
+  cuenta por su hora de captura, con las reglas de siempre.
   **Vista y foto en 4:3** (`frame.ts`): la vista es un recuadro de ancho completo en 3:4 (como la cámara de iOS) con los controles en las bandas negras
-  (arriba "Cerrar", título y flash; abajo disparador y dar vuelta); si igual la foto no saliera 4:3, `ensureFourThree` recorta centrado con
+  (arriba una fila con "Cerrar" a la izquierda y flash, temporizador y cuadrícula a la derecha, y el título y el aviso del momento
+  debajo; abajo disparador y dar vuelta); si igual la foto no saliera 4:3, `ensureFourThree` recorta centrado con
   `expo-image-manipulator` (nunca estira). En el momento, el caption muestra la segunda foto difuminada en un recuadro
   arriba a la izquierda (`insetFrame` de `src/ui/inset-frame.ts`, el mismo del visor).
   Controles: disparador, "Cerrar" (antes de sacar), "Dar vuelta la cámara" (arranca en la trasera), flash que rota automático / prendido / apagado
-  (arranca en automático) y zoom. Permiso con `useCameraPermission` de VisionCamera (sin permiso: "Rollo necesita la cámara" + "Abrir Ajustes"); el texto
+  (arranca en automático), temporizador, cuadrícula, zoom y exposición. Permiso con `useCameraPermission` de VisionCamera (sin permiso: "Rollo necesita la cámara" + "Abrir Ajustes"); el texto
   del permiso va en `ios.infoPlist.NSCameraUsageDescription` de `app.json` (VisionCamera v5 no trae config plugin). `expo-image-picker` queda solo para la
   foto de perfil. Lo que se saca **no queda en el carrete**: se sube y se borra del caché local.
 - **Fotos a resolución completa** (~4000 px, JPEG 85–90 %, para imprimir) + **thumbnail ~800 px** que
@@ -285,6 +298,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 - `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
+- Clave de SecureStore de la cámara (no se renombra): `rollo.cameraGrid` (`"1"`/`"0"`, cuadrícula prendida; ajuste del celular).
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`; `app.config.ts` solo cambia nombre y
   bundle id según `APP_VARIANT` (ver Apple).
 
@@ -362,7 +376,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1522 tests
+npm test                      # 1558 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

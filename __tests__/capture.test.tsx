@@ -21,6 +21,7 @@ jest.mock("@/features/capture/sync", () => ({ syncQueue: jest.fn(async () => {})
 jest.mock("expo-crypto", () => ({ randomUUID: () => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }));
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(),
+  selectionAsync: jest.fn(async () => {}),
   NotificationFeedbackType: { Success: "success" },
 }));
 
@@ -43,7 +44,7 @@ const vision = jest.requireMock("react-native-vision-camera") as {
   __photo: (path: string, width: number, height: number, orientation?: string, isMirrored?: boolean) => { dispose: jest.Mock };
   __capturePhoto: jest.Mock;
   __focusTo: jest.Mock;
-  __controller: { minZoom: number; maxZoom: number; setZoom: jest.Mock };
+  __controller: { minZoom: number; maxZoom: number; zoom: number; displayableZoomFactor: number; setZoom: jest.Mock };
   __startZoomAnimation: jest.Mock;
   __granted: unknown;
   useCameraDevices: jest.Mock;
@@ -100,6 +101,8 @@ beforeEach(async () => {
   vision.useCameraDevices.mockReturnValue([vision.__devices.back, vision.__devices.front]);
   vision.__focusTo.mockClear();
   vision.__controller.maxZoom = 123.75;
+  vision.__controller.zoom = 1;
+  vision.__controller.displayableZoomFactor = 1;
   vision.__controller.setZoom.mockClear();
   vision.__startZoomAnimation.mockClear();
   vision.usePhotoOutput.mock.results.forEach((r) => r.value.prepareSettings.mockClear());
@@ -374,7 +377,7 @@ describe("Capture", () => {
     const tap = { nativeEvent: { touches: [{ pageX: 50, pageY: 80 }], locationX: 40, locationY: 60, pageX: 50, pageY: 80 } };
     await fireEvent(area, "responderGrant", tap);
     await fireEvent(area, "responderRelease", { nativeEvent: { touches: [], locationX: 40, locationY: 60, pageX: 50, pageY: 80 } });
-    expect(vision.__focusTo).toHaveBeenCalledWith({ x: 40, y: 60 });
+    expect(vision.__focusTo).toHaveBeenCalledWith({ x: 40, y: 60 }, { modes: ["AF", "AE", "AWB"], autoResetAfter: null });
   });
 
   it("does not ask for camera permission over the lock", async () => {
@@ -622,5 +625,238 @@ describe("Capture", () => {
 
     await waitFor(() => expect(syncQueue).toHaveBeenCalledTimes(1));
     expect(queuedWhenSyncing).toBe(1);
+  });
+});
+
+describe("Camera extras (like the iPhone's camera)", () => {
+  const SecureStore = jest.requireMock("expo-secure-store") as { getItemAsync: jest.Mock; setItemAsync: jest.Mock };
+  const Haptics = jest.requireMock("expo-haptics") as { selectionAsync: jest.Mock };
+  const at = (x: number, y: number) => ({ nativeEvent: { touches: [{ pageX: x + 10, pageY: y + 20 }], locationX: x, locationY: y, pageX: x + 10, pageY: y + 20 } });
+  const lifted = (x: number, y: number) => ({ nativeEvent: { touches: [], locationX: x, locationY: y, pageX: x + 10, pageY: y + 20 } });
+
+  async function tap(x: number, y: number) {
+    const area = screen.getByTestId("camera-pinch");
+    await fireEvent(area, "responderGrant", at(x, y));
+    await fireEvent(area, "responderRelease", lifted(x, y));
+  }
+
+  /** One finger from (x, y) moved `dy` points down (negative = up), then lifted. */
+  async function drag(x: number, y: number, dy: number) {
+    const area = screen.getByTestId("camera-pinch");
+    await fireEvent(area, "responderGrant", at(x, y));
+    await fireEvent(area, "responderMove", at(x, y + dy));
+    await fireEvent(area, "responderRelease", lifted(x, y + dy));
+  }
+
+  const exposure = (testID = "camera-back") => screen.getByTestId(testID).props.exposure as number | undefined;
+
+  describe("Ampliar encuadre (front camera)", () => {
+    it("on a front camera whose 1x is a crop, it opens at 1x and the button ramps to the widest framing and back", async () => {
+      vision.__controller.displayableZoomFactor = 0.8; // raw 1 shows as 0,8×: 1× is raw 1,25
+      await openCapture();
+      await fireEvent.press(await screen.findByRole("button", { name: "Dar vuelta la cámara" }));
+      await startSession("camera-front");
+      expect(screen.getByTestId("camera-front").props.zoom).toBe(1.25);
+      expect(screen.queryByTestId("zoom-chips")).toBeNull();
+
+      await fireEvent.press(screen.getByRole("button", { name: "Ampliar encuadre" }));
+      expect(vision.__startZoomAnimation).toHaveBeenLastCalledWith(1, expect.any(Number));
+      await fireEvent.press(screen.getByRole("button", { name: "Reducir encuadre" }));
+      expect(vision.__startZoomAnimation).toHaveBeenLastCalledWith(1.25, expect.any(Number));
+      expect(screen.getByRole("button", { name: "Ampliar encuadre" })).toBeVisible();
+    });
+
+    it("is hidden when the front camera cannot frame wider, and never on the back camera", async () => {
+      await openCapture();
+      await startSession();
+      expect(screen.queryByRole("button", { name: "Ampliar encuadre" })).toBeNull();
+      await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
+      await startSession("camera-front");
+      expect(screen.queryByRole("button", { name: "Ampliar encuadre" })).toBeNull();
+    });
+  });
+
+  describe("exposure", () => {
+    it("a tap meters focus and exposure there and shows the focus square with the exposure control", async () => {
+      await openCapture();
+      await startSession();
+      expect(screen.queryByTestId("focus-square")).toBeNull();
+      await tap(40, 60);
+      expect(vision.__focusTo).toHaveBeenCalledWith({ x: 40, y: 60 }, { modes: ["AF", "AE", "AWB"], autoResetAfter: null });
+      expect(screen.getByTestId("focus-square")).toBeVisible();
+      expect(screen.getByRole("adjustable", { name: "Exposición" })).toBeTruthy();
+      expect(exposure()).toBe(0);
+    });
+
+    it("a fixed-focus selfie camera still meters exposure on a tap", async () => {
+      vision.useCameraDevices.mockReturnValue([vision.__devices.back, vision.__device({ id: "front-ff", position: "front", supportsFocusMetering: false, supportsWhiteBalanceMetering: false })]);
+      await openCapture();
+      await fireEvent.press(await screen.findByRole("button", { name: "Dar vuelta la cámara" }));
+      await startSession("camera-front");
+      await tap(10, 20);
+      expect(vision.__focusTo).toHaveBeenCalledWith({ x: 10, y: 20 }, { modes: ["AE"], autoResetAfter: null });
+    });
+
+    it("after a tap, dragging up brightens and down darkens, within ±2 EV (the device allows ±8)", async () => {
+      await openCapture();
+      await startSession();
+      await tap(40, 60);
+      await drag(200, 300, -50);
+      expect(exposure()).toBeCloseTo(1);
+      await drag(200, 300, -25); // continues from the current bias
+      expect(exposure()).toBeCloseTo(1.5);
+      expect(screen.getByRole("adjustable", { name: "Exposición" }).props.accessibilityValue).toEqual({ text: "+1,5" });
+      await drag(200, 300, -5000);
+      expect(exposure()).toBe(2);
+      await drag(200, 300, 5000);
+      expect(exposure()).toBe(-2);
+      expect(vision.__focusTo).toHaveBeenCalledTimes(1); // a drag is not a tap
+    });
+
+    it("the bias holds until a tap somewhere else resets it to 0", async () => {
+      await openCapture();
+      await startSession();
+      await tap(40, 60);
+      await drag(200, 300, -50);
+      await tap(100, 120);
+      expect(exposure()).toBe(0);
+      expect(vision.__focusTo).toHaveBeenLastCalledWith({ x: 100, y: 120 }, expect.anything());
+    });
+
+    it("a drag before any tap does nothing to the exposure", async () => {
+      await openCapture();
+      await startSession();
+      await drag(200, 300, -100);
+      expect(exposure()).toBe(0);
+      expect(screen.queryByTestId("focus-square")).toBeNull();
+    });
+
+    it("VoiceOver adjusts it a third of a stop at a time", async () => {
+      await openCapture();
+      await startSession();
+      await tap(40, 60);
+      const control = screen.getByRole("adjustable", { name: "Exposición" });
+      await fireEvent(control, "accessibilityAction", { nativeEvent: { actionName: "increment" } });
+      expect(exposure()).toBeCloseTo(1 / 3);
+      await fireEvent(control, "accessibilityAction", { nativeEvent: { actionName: "decrement" } });
+      await fireEvent(control, "accessibilityAction", { nativeEvent: { actionName: "decrement" } });
+      expect(exposure()).toBeCloseTo(-1 / 3);
+    });
+
+    it("pinching after a tap still zooms and leaves the exposure alone", async () => {
+      await openCapture();
+      await startSession();
+      await tap(40, 60);
+      const area = screen.getByTestId("camera-pinch");
+      const touches = (gap: number) => ({ nativeEvent: { touches: [{ pageX: 100, pageY: 100 }, { pageX: 100 + gap, pageY: 100 }] } });
+      await fireEvent(area, "responderGrant", touches(100));
+      await fireEvent(area, "responderMove", touches(140));
+      await fireEvent(area, "responderMove", { nativeEvent: { touches: [{ pageX: 100, pageY: 40 }] } }); // one finger lifted, the other moves up
+      expect(vision.__controller.setZoom.mock.lastCall![0]).toBeCloseTo(2.8);
+      expect(exposure()).toBe(0);
+    });
+
+    it("a device that cannot bias exposure still focuses, with no exposure control", async () => {
+      vision.useCameraDevices.mockReturnValue([vision.__device({ id: "nobias", supportsExposureBias: false, minExposureBias: 0, maxExposureBias: 0 })]);
+      await openCapture();
+      await startSession();
+      await tap(40, 60);
+      expect(screen.getByTestId("focus-square")).toBeVisible();
+      expect(screen.queryByRole("adjustable", { name: "Exposición" })).toBeNull();
+      expect(exposure()).toBeUndefined();
+    });
+
+    it("flipping the camera starts over with no focus point and no bias", async () => {
+      await openCapture();
+      await startSession();
+      await tap(40, 60);
+      await drag(200, 300, -50);
+      await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
+      await startSession("camera-front");
+      expect(exposure("camera-front")).toBe(0);
+      expect(screen.queryByTestId("focus-square")).toBeNull();
+    });
+  });
+
+  it("turns on the automatic low-light boost when the device supports it", async () => {
+    await openCapture();
+    expect((await screen.findByTestId("camera-back")).props.enableLowLightBoost).toBe(true);
+  });
+
+  it("leaves the low-light boost alone on a device without it (VisionCamera throws even for false there)", async () => {
+    vision.useCameraDevices.mockReturnValue([vision.__device({ id: "nolow", supportsLowLightBoost: false })]);
+    await openCapture();
+    expect((await screen.findByTestId("camera-back")).props.enableLowLightBoost).toBeUndefined();
+  });
+
+  describe("Cuadrícula", () => {
+    it("toggles the rule-of-thirds grid and remembers it on the phone", async () => {
+      await openCapture();
+      const button = await screen.findByRole("button", { name: "Cuadrícula" });
+      expect(button).not.toBeSelected();
+      expect(screen.queryByTestId("camera-grid")).toBeNull();
+      await fireEvent.press(button);
+      expect(screen.getByTestId("camera-grid")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Cuadrícula" })).toBeSelected();
+      await waitFor(() => expect(SecureStore.setItemAsync).toHaveBeenLastCalledWith("rollo.cameraGrid", "1"));
+      await fireEvent.press(screen.getByRole("button", { name: "Cuadrícula" }));
+      expect(screen.queryByTestId("camera-grid")).toBeNull();
+      await waitFor(() => expect(SecureStore.setItemAsync).toHaveBeenLastCalledWith("rollo.cameraGrid", "0"));
+    });
+
+    it("opens with the grid on when the phone remembers it", async () => {
+      await SecureStore.setItemAsync("rollo.cameraGrid", "1");
+      await openCapture();
+      expect(await screen.findByTestId("camera-grid")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Cuadrícula" })).toBeSelected();
+    });
+  });
+
+  describe("Temporizador", () => {
+    // renderRouter already runs on Jest's fake timers: each step advances the clock one second.
+    const second = () => act(async () => jest.advanceTimersByTime(1000));
+
+    it("cycles apagado → 3 → 10 segundos → apagado", async () => {
+      await openCapture();
+      await fireEvent.press(await screen.findByRole("button", { name: "Temporizador: apagado" }));
+      expect(screen.getByRole("button", { name: "Temporizador: 3 segundos" })).toBeSelected();
+      await fireEvent.press(screen.getByRole("button", { name: "Temporizador: 3 segundos" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Temporizador: 10 segundos" }));
+      expect(screen.getByRole("button", { name: "Temporizador: apagado" })).not.toBeSelected();
+    });
+
+    it("counts down over the preview with a tick per second and shoots at 0", async () => {
+      await openCapture();
+      await startSession();
+      await fireEvent.press(await screen.findByRole("button", { name: "Temporizador: apagado" }));
+      Haptics.selectionAsync.mockClear();
+      await shoot();
+      expect(screen.getByTestId("timer-countdown")).toHaveTextContent("3");
+      expect(takePhoto).not.toHaveBeenCalled();
+      await second();
+      expect(screen.getByTestId("timer-countdown")).toHaveTextContent("2");
+      await second();
+      expect(screen.getByTestId("timer-countdown")).toHaveTextContent("1");
+      expect(takePhoto).not.toHaveBeenCalled();
+      expect(Haptics.selectionAsync).toHaveBeenCalledTimes(3);
+      await second();
+      expect(takePhoto).toHaveBeenCalledTimes(1);
+      expect(await screen.findByLabelText("Caption")).toBeVisible();
+    });
+
+    it("tapping the shutter during the countdown cancels it", async () => {
+      await openCapture();
+      await startSession();
+      await fireEvent.press(await screen.findByRole("button", { name: "Temporizador: apagado" }));
+      await shoot();
+      await second();
+      expect(screen.getByTestId("timer-countdown")).toHaveTextContent("2");
+      await fireEvent.press(screen.getByRole("button", { name: "Cancelar temporizador" }));
+      expect(screen.queryByTestId("timer-countdown")).toBeNull();
+      for (let i = 0; i < 10; i++) await second();
+      expect(takePhoto).not.toHaveBeenCalled();
+      expect(screen.queryByTestId("timer-countdown")).toBeNull();
+      expect(screen.getByRole("button", { name: "Sacar foto" })).toBeVisible();
+    });
   });
 });
