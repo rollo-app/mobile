@@ -2962,6 +2962,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/likes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Photos you liked
+         * @description Only yours. The photos you liked and can open today, most recent like first, paginated with `cursor`. Filtered by the server: a photo drops out if its rollo is not revealed or you left it and no profile you can see still features it, the profile became private, you are not friends anymore, the photo was un-featured, there is a block with its author or you reported it (the like is kept and the photo comes back if you regain access). `source` says where to open it: the rollo wins over a profile.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description `nextCursor` of the previous page */
+                    cursor?: string;
+                    /** @description Page size (default 60) */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page of liked photos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyLikes"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3590,6 +3652,49 @@ export interface components {
             lat: number;
             lng: number;
         } | null;
+        MyLikes: {
+            /** @description Most recent like first */
+            items: components["schemas"]["LikedPhoto"][];
+            /** @description null on the last page */
+            nextCursor: string | null;
+            /** @description How many liked photos you can see today, across all pages */
+            total: number;
+        };
+        LikedPhoto: {
+            /** Format: uuid */
+            mediaId: string;
+            /** @description When you liked it (epoch ms) */
+            likedAt: number;
+            /** Format: uuid */
+            authorUserId: string;
+            /** @description Who took it (for the badge on the thumbnail) */
+            author: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                username: string | null;
+                avatarUrl: string | null;
+            };
+            /** @example /trips/<tripId>/media/<mediaId>/thumb */
+            thumbPath: string;
+            thumbHash: string | null;
+            source: components["schemas"]["LikedPhotoSource"];
+        };
+        /** @description Where you can open the photo today. `trip`: you are an active member of its revealed rollo. `featured`: you see it on that profile (the rollo is never revealed). If both work, it is `trip`. */
+        LikedPhotoSource: {
+            /** @enum {string} */
+            kind: "trip";
+            /** Format: uuid */
+            tripId: string;
+        } | {
+            /** @enum {string} */
+            kind: "featured";
+            /**
+             * Format: uuid
+             * @description Owner of the profile where it is featured
+             */
+            userId: string;
+        };
     };
     responses: never;
     parameters: never;
