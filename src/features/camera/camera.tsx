@@ -1,10 +1,12 @@
 import { CameraView } from "expo-camera";
 import { useRef, useState } from "react";
 import { SymbolView } from "expo-symbols";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ErrorText } from "@/ui/components";
 import type { CapturedPhoto } from "./captured-photo";
+import { ensureFourThree } from "./crop-photo";
+import { FRAME_ASPECT } from "./frame";
 import { flashLabel, flashSymbol, nextFlash, type FlashMode } from "./flash";
 import { pinchZoom, touchDistance } from "./pinch-zoom";
 import { spacing, type } from "@/ui/theme";
@@ -26,8 +28,13 @@ export function CloseButton(props: { onPress: () => void }) {
 }
 
 /**
- * The app's camera, full screen: shutter, flash, pinch to zoom and (when `onFlip` is given) flip. `title` sits on top
- * (the moment's countdown or the prompt for its second shot).
+ * The app's camera: the preview is a full-width 3:4 frame (what the sensor's 4:3 photo really is, like the iPhone's camera),
+ * with the controls on the black bands around it: "Cerrar", title and flash above, shutter and flip below. Pinch to zoom
+ * works on the frame. `title` is the moment's countdown or the prompt for its second shot.
+ *
+ * expo-camera on iOS takes the photo with the `photo` preset (the sensor's largest 4:3, the default `pictureSize`) and
+ * crops it to the view's aspect, so a 3:4 view gives exactly what the frame shows, at full resolution, on both cameras.
+ * `ratio` is Android-only and `getAvailablePictureSizesAsync` is a fixed list on iOS, so neither is used.
  */
 export function Camera(props: {
   facing: "back" | "front";
@@ -41,6 +48,7 @@ export function Camera(props: {
   onCapture: (photo: CapturedPhoto) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const camera = useRef<CameraView>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -54,7 +62,7 @@ export function Camera(props: {
     setFailed(false);
     try {
       const picture = await camera.current.takePictureAsync({ quality: 1, exif: false });
-      props.onCapture({ uri: picture.uri, width: picture.width, height: picture.height });
+      props.onCapture(await ensureFourThree({ uri: picture.uri, width: picture.width, height: picture.height }));
     } catch {
       setFailed(true);
     } finally {
@@ -64,28 +72,41 @@ export function Camera(props: {
 
   return (
     <View style={styles.dark}>
-      <CameraView ref={camera} facing={props.facing} flash={flash} zoom={zoom} style={StyleSheet.absoluteFill} />
-      <View
-        testID="camera-pinch"
-        style={StyleSheet.absoluteFill}
-        onStartShouldSetResponder={() => true}
-        onResponderGrant={(e) => {
-          pinch.current = { startZoom: zoom, startDistance: touchDistance(e.nativeEvent.touches) };
-        }}
-        onResponderMove={(e) => {
-          const { touches } = e.nativeEvent;
-          if (touches.length < 2) {
-            // A finger lifted: the next two-finger gesture starts over from the current zoom.
-            pinch.current.startDistance = 0;
-            return;
-          }
-          if (pinch.current.startDistance <= 0) pinch.current = { startZoom: zoom, startDistance: touchDistance(touches) };
-          setZoom(pinchZoom(pinch.current.startZoom, pinch.current.startDistance, touchDistance(touches)));
-        }}
-      />
+      <View testID="camera-frame" style={{ width, aspectRatio: FRAME_ASPECT, marginTop: insets.top + (props.notice ? 88 : 56), overflow: "hidden" }}>
+        <CameraView ref={camera} facing={props.facing} flash={flash} zoom={zoom} style={StyleSheet.absoluteFill} />
+        <View
+          testID="camera-pinch"
+          style={StyleSheet.absoluteFill}
+          onStartShouldSetResponder={() => true}
+          onResponderGrant={(e) => {
+            pinch.current = { startZoom: zoom, startDistance: touchDistance(e.nativeEvent.touches) };
+          }}
+          onResponderMove={(e) => {
+            const { touches } = e.nativeEvent;
+            if (touches.length < 2) {
+              // A finger lifted: the next two-finger gesture starts over from the current zoom.
+              pinch.current.startDistance = 0;
+              return;
+            }
+            if (pinch.current.startDistance <= 0) pinch.current = { startZoom: zoom, startDistance: touchDistance(touches) };
+            setZoom(pinchZoom(pinch.current.startZoom, pinch.current.startDistance, touchDistance(touches)));
+          }}
+        />
+      </View>
       <Text style={[type.headline, styles.title, { top: insets.top + spacing.md }]}>{props.title}</Text>
       {props.notice ? <Text style={[type.subhead, styles.notice, { top: insets.top + spacing.md + 28 }]}>{props.notice}</Text> : null}
       {props.onClose && <CloseButton onPress={props.onClose} />}
+      <View style={[styles.flash, { top: insets.top + spacing.sm }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={flashLabel[flash]}
+          hitSlop={12}
+          onPress={() => setFlash(nextFlash)}
+          style={styles.round}
+        >
+          <SymbolView name={flashSymbol[flash]} size={22} tintColor="#fff" />
+        </Pressable>
+      </View>
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
         {failed && (
           <View style={styles.error}>
@@ -93,17 +114,7 @@ export function Camera(props: {
           </View>
         )}
         <View style={styles.shutterRow}>
-          <View style={[styles.side, styles.left]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={flashLabel[flash]}
-              hitSlop={12}
-              onPress={() => setFlash(nextFlash)}
-              style={styles.round}
-            >
-              <SymbolView name={flashSymbol[flash]} size={22} tintColor="#fff" />
-            </Pressable>
-          </View>
+          <View style={[styles.side, styles.left]} />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Sacar foto"
@@ -134,6 +145,7 @@ const styles = StyleSheet.create({
   side: { flex: 1, alignItems: "flex-end" },
   left: { alignItems: "flex-start" },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
+  flash: { position: "absolute", right: spacing.md },
   close: { position: "absolute", left: spacing.md, width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
   error: { marginBottom: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.5)" },
   bottom: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },
