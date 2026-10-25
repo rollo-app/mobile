@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { queryClient } from "@/api/query-client";
 import { tripSummary } from "@/test/account";
 import { clearSessionToken, setSessionToken } from "@/storage/session";
+import { signOut } from "@/features/auth/session";
 import { cancelMomentNotifications, syncMoments } from "../moment-sync";
 
 const notifications = jest.mocked(Notifications);
@@ -117,6 +118,18 @@ describe("syncMoments with several rollos and races", () => {
     release();
     await Promise.all([sync, cancel]);
 
+    expect(ids()).toEqual([]);
+  });
+
+  it("cancelling and signing out resolve promptly while a moments fetch hangs forever", async () => {
+    store.set("moment.t1.2027-01-09", { identifier: "moment.t1.2027-01-09", trigger: { date: 1 } });
+    gate = new Promise<void>(() => {});
+    void syncMoments();
+    await new Promise((r) => setTimeout(r, 20));
+    const timeout = new Promise((r) => setTimeout(() => r("timeout"), 500));
+
+    expect(await Promise.race([cancelMomentNotifications().then(() => "done"), timeout])).toBe("done");
+    expect(await Promise.race([signOut().then(() => "done"), timeout])).toBe("done");
     expect(ids()).toEqual([]);
   });
 

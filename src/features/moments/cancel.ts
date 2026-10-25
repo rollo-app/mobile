@@ -1,10 +1,11 @@
 import * as Notifications from "expo-notifications";
-import { serialized } from "./lock";
+import { bumpEpoch, serialized } from "./lock";
 
 export const MOMENT_PREFIX = "moment.";
 
 /** Cancels every scheduled `moment.*` notification, or only those of one trip. Never throws. */
 export function cancelMomentNotifications(tripId?: string): Promise<void> {
+  bumpEpoch(tripId); // synchronous: any sync fetching right now drops what this invalidates
   return serialized(() => cancelNow(tripId));
 }
 

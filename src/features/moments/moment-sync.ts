@@ -3,21 +3,19 @@ import { getSession } from "@/features/auth/session";
 import { fetchMyTrips } from "@/features/trips/actions";
 import { fetchMyMoments } from "./actions";
 import { cancelMomentNotifications, MOMENT_PREFIX } from "./cancel";
-import { serialized } from "./lock";
+import { globalCancelledSince, isSuperseded, serialized, startSync, tripCancelledSince } from "./lock";
 import { planMoments, tripsToSync, type PlannedMoment, type TripMoments } from "./plan";
 
 export { cancelMomentNotifications };
 
 /**
  * Moves the system's scheduled moment notifications to match the server. Never throws.
- * Serialized with every other sync and cancellation.
+ * The fetches run outside the lock (a hanging network never blocks a cancellation); only the
+ * check-and-apply phase is serialized.
  */
-export function syncMoments(): Promise<void> {
-  return serialized(syncNow);
-}
-
-async function syncNow(): Promise<void> {
+export async function syncMoments(): Promise<void> {
   try {
+    const stamp = startSync();
     const session = await getSession();
     if (!session) return;
     const { trips } = await fetchMyTrips();
@@ -29,18 +27,34 @@ async function syncNow(): Promise<void> {
     // No trip answered at all (e.g. no signal): touch nothing.
     if (wanted.length > 0 && results.every((r) => r.status === "rejected")) return;
 
+    await serialized(() => apply(stamp, session, wanted, results, now));
+  } catch {
+    // The next sync tries again; whatever is scheduled keeps working.
+  }
+}
+
+async function apply(
+  stamp: ReturnType<typeof startSync>,
+  session: string,
+  wanted: { id: string; name: string }[],
+  results: PromiseSettledResult<{ day: string; notifyAt: number }[]>[],
+  now: number,
+): Promise<void> {
+  try {
+    // A newer sync is on its way, or the session/rollo was closed while we were fetching: don't revive anything.
+    if (isSuperseded(stamp) || globalCancelledSince(stamp)) return;
+    if ((await getSession()) !== session) return;
+
     const fetched: TripMoments[] = [];
     const failed = new Set<string>();
     wanted.forEach((t, i) => {
       const r = results[i]!;
+      if (tripCancelledSince(stamp, t.id)) return;
       if (r.status === "fulfilled") fetched.push({ tripId: t.id, tripName: t.name, moments: r.value });
       else failed.add(t.id);
     });
     const planned = planMoments(fetched, now);
     const keep = new Set(planned.map((p) => p.id));
-
-    // The session may have ended (or changed) while we were fetching: don't revive anything.
-    if ((await getSession()) !== session) return;
 
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     const stale = (id: string) =>
