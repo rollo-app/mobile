@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
 import * as media from "@/features/capture/media";
 import { queryClient } from "@/api/query-client";
@@ -181,6 +181,29 @@ describe("Moment", () => {
     const linkedCall = calls.find((c) => (c[0] as { uri: string }).uri.endsWith("second-back.jpg"))!;
     expect(mainCall[3]).toEqual({ maxDimension: 1080 });
     expect(linkedCall[3]).toBeUndefined();
+  });
+
+  it("the caption of a two-camera moment also shows the second photo, blurred, in an inset (no swapping)", async () => {
+    await openMoment(Date.now() - 10_000);
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/selfie.jpg", width: 1500, height: 2000 });
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+
+    await screen.findByLabelText("Caption");
+    const inset = screen.getByTestId("caption-inset");
+    expect(inset).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Ver la otra foto" })).toBeNull();
+    const image = within(inset).getByTestId("caption-inset-image");
+    expect([image.props.source].flat()).toEqual([{ uri: "file:///cache/Camera/selfie.jpg" }]);
+    expect(image.props.blurRadius).toBeGreaterThan(0);
+  });
+
+  it("the caption of a one-photo moment has no inset", async () => {
+    trips.fetchTrip.mockResolvedValue(tripDetail("photo"));
+    await openMoment(Date.now() - 10_000);
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+    await screen.findByLabelText("Caption");
+    expect(screen.queryByTestId("caption-inset")).toBeNull();
   });
 
   it("in a photo roll it goes straight to the caption after the photo", async () => {
