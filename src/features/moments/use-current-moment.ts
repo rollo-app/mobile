@@ -9,7 +9,7 @@ type Delivered = { identifier: string; data: Record<string, unknown> }[];
  * The moment that fired and is still open, or null. Reads what iOS has delivered on mount and when the app
  * returns to foreground, and ticks every second while one is open so the countdown moves and the banner disappears.
  */
-export function useCurrentMoment(): (CurrentMoment & { now: number }) | null {
+export function useCurrentMoment(): CurrentMoment | null {
   const [delivered, setDelivered] = useState<Delivered>([]);
   const [now, setNow] = useState(Date.now());
 
@@ -31,7 +31,12 @@ export function useCurrentMoment(): (CurrentMoment & { now: number }) | null {
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active") load();
     });
-    return () => subscription.remove();
+    // A moment that fires while the app is open on Rollo.
+    const received = Notifications.addNotificationReceivedListener(load);
+    return () => {
+      subscription.remove();
+      received.remove();
+    };
   }, [load]);
 
   const moment = currentMoment(delivered, now);
@@ -42,5 +47,5 @@ export function useCurrentMoment(): (CurrentMoment & { now: number }) | null {
     return () => clearInterval(timer);
   }, [open]);
 
-  return moment ? { ...moment, now } : null;
+  return moment;
 }

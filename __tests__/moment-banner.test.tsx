@@ -1,5 +1,5 @@
 import * as Notifications from "expo-notifications";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
@@ -77,6 +77,18 @@ describe("Moment banner in Rollo", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: /^Tu momento · quedan/ }));
     expect(screen).toHavePathname("/moment");
+  });
+
+  it("appears when the moment fires while Rollo is open", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    expect(await screen.findByText("En el rollo")).toBeVisible();
+    expect(screen.queryByText(/Tu momento/)).toBeNull();
+
+    presented.mockResolvedValue(deliveredAt(Date.now()));
+    const listener = (Notifications.addNotificationReceivedListener as jest.Mock).mock.calls.at(-1)![0];
+    await act(async () => listener({}));
+
+    expect(await screen.findByText(/^Tu momento · quedan/)).toBeVisible();
   });
 
   it("goes away when the window closes", async () => {
