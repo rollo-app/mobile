@@ -111,13 +111,18 @@ Decisiones de producto:
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
 - **Momento del día (modo viaje, estilo BeReal)** (`src/features/moments/`): un aviso por día a una hora random distinta para cada uno, dentro de una
-  franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Foto + selfie"). Hay **5 minutos** para sacar una foto extra, **aparte del
-  cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la selfie pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
+  franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Dos fotos"). Hay **5 minutos** para sacar una foto extra, **aparte del
+  cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la imagen vinculada pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
   inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
   `cancelMomentNotifications()` las borra, y descarta también las ya entregadas (al cerrar sesión, borrar la cuenta y apagar el switch). Tocar el aviso conserva `trip` en la ruta. La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
-  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (`expo-camera`, propia, fullScreenModal) no espera el detalle del rollo (abre ya; el paso de selfie sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y, si el rollo es "Foto + selfie", saca
-  la selfie (~1080 px) como foto aparte vinculada a la principal; en Rollo hay un banner "Tu momento · quedan m:ss" mientras la ventana está abierta; en el revelado la foto del
-  momento lleva un badge y la selfie va de recuadro. **Ajustes → Notificaciones → "Momento del día"** (`dailyMoment`): apagarlo hace el `PATCH` y cancela los `moment.*`; prenderlo corre
+  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (`expo-camera`, propia, fullScreenModal) no espera el detalle del rollo (abre ya; que haya segunda foto sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y arranca en la trasera, con un botón nativo "Dar vuelta la cámara" antes de sacar
+  (también en "Solo foto"). **La primera foto que se saca es la principal**, sea de la trasera o de la frontal; si el rollo es "Dos fotos" (aviso "Sacás con las dos cámaras. La
+  primera va a ser la grande."), la cámara pasa sola a **la otra** ("Ahora con la otra cámara.", sin dar vuelta) y esa segunda va como foto aparte vinculada (`pairedWith`). La imagen
+  de la frontal se achica a 1080 px (`prepareMedia`), sea la primera o la segunda; la de la trasera va normal. El nombre `selfie` del contrato y del código significa "la imagen vinculada";
+  ningún texto visible lo dice; en Rollo hay un banner "Tu momento · quedan m:ss" mientras la ventana está abierta; en el revelado la foto del
+  momento lleva un badge y la otra imagen va de recuadro ("Ver la otra foto"; tocarlo intercambia solo para quien mira). **El momento no se destaca en el perfil** (ninguna de las dos imágenes: sin
+  "Agregar a tu perfil" en el visor ni en el menú de la grilla; el server lo rechaza y manda `canFeature: false`); me gusta y comentarios van a la principal. "Guardar todo" baja las dos imágenes de cada momento y, en el visor,
+  "Guardar en Fotos" guarda la que se ve grande (`withLinkedImages` / `linkedImage` en `gallery/save.ts`; el export para fotolibro todavía no existe: cuando se haga tiene que incluir la vinculada). **Ajustes → Notificaciones → "Momento del día"** (`dailyMoment`): apagarlo hace el `PATCH` y cancela los `moment.*`; prenderlo corre
   `syncMoments()`. En Desarrollo, "Probar momento ahora" programa uno en 10 s para el rollo activo. Diseño en `docs/superpowers/specs/2026-10-25-momento-diario-design.md`.
 - **Cupo diario o total** (a futuro, mismo diseño): al crear el rollo se elige si el límite es por día (como hoy, 10 por
   persona por día) o total del viaje (por ejemplo 20 por persona en todo el rollo).
@@ -254,7 +259,7 @@ src/
                           *.ts            lógica pura, testeable sin React
                           *.tsx           componentes propios del dominio
                           __tests__/      tests de esa lógica, al lado del código
-                        Dominios: moments (momento del día: planificador de avisos locales, cámara con cuenta regresiva y selfie, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
+                        Dominios: moments (momento del día: planificador de avisos locales, cámara con cuenta regresiva y dos cámaras, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
                         (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications (push, permiso, Ajustes → Notificaciones), likes (me gusta), roll (tablero), moderation (denunciar y bloquear: menú en Feed, visores y perfil de otro, Ajustes → Bloqueados; los errores van con `burnt`).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, SwitchRow, Button,
@@ -311,7 +316,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1377 tests
+npm test                      # 1388 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

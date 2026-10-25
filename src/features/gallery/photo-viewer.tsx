@@ -29,7 +29,7 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { OverlayCornerSymbol, OverlayIconButton, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
 import { spacing, tintHex, type } from "@/ui/theme";
 import { PermissionNotice } from "./permission-notice";
-import { PermissionDeniedError } from "./save";
+import { PermissionDeniedError, linkedImage } from "./save";
 import { useSaver } from "./use-saver";
 
 type SaveState = "idle" | "saving" | "saved" | "failed" | "denied";
@@ -144,6 +144,8 @@ export function PhotoViewer({
   const [saves, setSaves] = useState<Record<string, SaveState>>({});
   const toggle = useCallback(() => setChrome((v) => !v), []);
 
+  // "Guardar" saves the image that is big: the moment's linked one once it was swapped in.
+  const savedTarget = (p: RevealedPhoto) => (selfieBig[p.id] && p.selfie ? linkedImage(p) : p);
   async function save(target: RevealedPhoto) {
     if (!saver) return;
     setSaves((s) => ({ ...s, [target.id]: "saving" }));
@@ -185,7 +187,7 @@ export function PhotoViewer({
     if (current >= photos.length - 1) router.back();
   }
 
-  const state = (photo && saves[photo.id]) || "idle";
+  const state = (photo && saves[savedTarget(photo).id]) || "idle";
   const featuring = !!photo && featured.pending.has(photo.id);
   const featureError = photo && featureTarget === photo.id ? (blockError ?? featured.error) : null;
   const liking = !!photo && likes.pending.has(photo.id);
@@ -325,7 +327,7 @@ export function PhotoViewer({
                   label={state === "saved" ? "Guardada" : "Guardar en Fotos"}
                   busy={state === "saving"}
                   disabled={state === "saved" || !saver}
-                  onPress={() => void save(photo)}
+                  onPress={() => void save(savedTarget(photo))}
                 />
               </View>
               {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}

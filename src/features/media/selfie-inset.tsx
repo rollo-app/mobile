@@ -5,7 +5,7 @@ import { mediaSource, type RevealedPhoto } from "./revealed";
 const SIZE = 72;
 
 /**
- * The small picture of a moment: the selfie while the photo is big, the photo while the selfie is big.
+ * The small picture of a moment: the linked image while the main is big, the main while the linked one is big.
  * Tapping it swaps the two.
  */
 export function SelfieInset({
@@ -17,7 +17,7 @@ export function SelfieInset({
 }: {
   photo: Pick<RevealedPhoto, "thumbPath" | "selfie">;
   token: string;
-  /** The selfie is the big picture now (so the inset shows the photo). */
+  /** The linked image is the big picture now (so the inset shows the main). */
   selfieBig: boolean;
   onToggle: () => void;
   style?: StyleProp<ViewStyle>;
@@ -27,7 +27,7 @@ export function SelfieInset({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={selfieBig ? "Ver la foto" : "Ver la selfie"}
+      accessibilityLabel="Ver la otra foto"
       onPress={onToggle}
       // A hold on it doesn't pause a story behind it.
       onLongPress={() => {}}

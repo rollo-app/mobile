@@ -204,7 +204,7 @@ export function CreateScreen() {
             <Picker selection={momentMode} onSelectionChange={setMomentMode} modifiers={[pickerStyle("segmented")]}>
               <Text modifiers={[tag("off")]}>Apagado</Text>
               <Text modifiers={[tag("photo")]}>Solo foto</Text>
-              <Text modifiers={[tag("photo_selfie")]}>Foto + selfie</Text>
+              <Text modifiers={[tag("photo_selfie")]}>Dos fotos</Text>
             </Picker>
             {momentMode !== "off" && (
               <>

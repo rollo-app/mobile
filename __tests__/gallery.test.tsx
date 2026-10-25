@@ -706,37 +706,70 @@ describe("Daily moment in the gallery", () => {
       await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
     };
 
-    it("shows the selfie inset and tapping it swaps the big photo and the inset", async () => {
+    it("shows the other image as an inset and tapping it swaps the big photo and the inset", async () => {
       await openMoment();
-      const inset = await screen.findByRole("button", { name: "Ver la selfie" });
+      const inset = await screen.findByRole("button", { name: "Ver la otra foto" });
       await fireEvent.press(inset);
-      expect(await screen.findByRole("button", { name: "Ver la foto" })).toBeVisible();
-      expect(screen.queryByRole("button", { name: "Ver la selfie" })).toBeNull();
-      await fireEvent.press(screen.getByRole("button", { name: "Ver la foto" }));
-      expect(await screen.findByRole("button", { name: "Ver la selfie" })).toBeVisible();
+      // Going back is also "Ver la otra foto"; nothing says selfie.
+      expect(await screen.findByRole("button", { name: "Ver la otra foto" })).toBeVisible();
+      expect(screen.queryByRole("button", { name: /selfie/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Ver la foto" })).toBeNull();
     });
 
-    it("likes, comments and featuring still act on the main photo while the selfie is big", async () => {
+    it("likes and comments still act on the main photo while the other image is big", async () => {
       await openMoment();
-      await fireEvent.press(await screen.findByRole("button", { name: "Ver la selfie" }));
+      await fireEvent.press(await screen.findByRole("button", { name: "Ver la otra foto" }));
       await fireEvent.press(await screen.findByRole("button", { name: "Me gusta" }));
       await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("mom"));
-      await fireEvent.press(screen.getByRole("button", { name: "Agregar a tu perfil" }));
-      await waitFor(() => expect(featured.featureMedia).toHaveBeenCalledWith("mom"));
+    });
+
+    it("a moment photo has no Agregar a tu perfil in the viewer, nor in the grid menu", async () => {
+      await openMoment();
+      await screen.findByRole("button", { name: "Me gusta" });
+      expect(screen.queryByRole("button", { name: "Agregar a tu perfil" })).toBeNull();
+    });
+
+    it("Guardar saves the image that is big: the main, and the linked one after swapping", async () => {
+      await openMoment();
+      await fireEvent.press(await screen.findByRole("button", { name: "Guardar en Fotos" }));
+      await waitFor(() => expect(mockSaveOne).toHaveBeenCalledWith(expect.objectContaining({ id: "mom" })));
+      mockSaveOne.mockClear();
+      await fireEvent.press(screen.getByRole("button", { name: "Ver la otra foto" }));
+      await fireEvent.press(await screen.findByRole("button", { name: "Guardar en Fotos" }));
+      await waitFor(() => expect(mockSaveOne).toHaveBeenCalledWith(expect.objectContaining({ id: "self", originalPath: "/m/self/original" })));
     });
 
     it("shows the badge instead of the inset when there is no selfie", async () => {
       await openMoment("solo");
       await screen.findByTestId("viewer-info");
       expect(screen.getByTestId("moment-badge")).toBeVisible();
-      expect(screen.queryByRole("button", { name: "Ver la selfie" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Ver la otra foto" })).toBeNull();
     });
 
     it("shows neither on an ordinary photo", async () => {
       await openMoment("plain");
       await screen.findByTestId("viewer-info");
       expect(screen.queryByTestId("moment-badge")).toBeNull();
-      expect(screen.queryByRole("button", { name: "Ver la selfie" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Ver la otra foto" })).toBeNull();
     });
+  });
+
+  it("the grid menu offers no Agregar a tu perfil on moment photos", async () => {
+    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    await open();
+    await screen.findAllByRole("button", { name: /Foto de Fede/ });
+    // Only the ordinary photo has a menu.
+    expect(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })).toHaveLength(1);
+  });
+
+  it("Guardar todo includes the linked image of each moment", async () => {
+    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    await open();
+    await screen.findAllByRole("button", { name: /Foto de Fede/ });
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
+    expect(alert).toHaveBeenCalledWith("Guardar 4 fotos en Fotos", expect.any(String), expect.any(Array));
+    await confirmSave();
+    await waitFor(() => expect(mockSaveOne).toHaveBeenCalledTimes(4));
+    expect(mockSaveOne).toHaveBeenCalledWith(expect.objectContaining({ id: "self" }));
   });
 });

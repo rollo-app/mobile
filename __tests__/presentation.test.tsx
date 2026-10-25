@@ -286,7 +286,7 @@ describe("Presentation: likes", () => {
 describe("Presentation: daily moment", () => {
   const selfie = { id: "s", width: 1080, height: 1440, thumbhash: null, files: { thumb: "/m/s/thumb", original: "/m/s/original" } };
 
-  it("shows the selfie inset on a moment photo and tapping it swaps, without advancing the story", async () => {
+  it("shows the other-image inset on a moment photo and tapping it swaps, without advancing the story", async () => {
     mocked.fetchFeed.mockResolvedValue({
       revealed: true,
       revealAt: Date.parse("2027-01-14T12:00:00Z"),
@@ -294,8 +294,8 @@ describe("Presentation: daily moment", () => {
     });
     await renderRouter(routes, { initialUrl: "/presentation" });
     await tap();
-    await fireEvent.press(await screen.findByRole("button", { name: "Ver la selfie" }));
-    expect(await screen.findByRole("button", { name: "Ver la foto" })).toBeVisible();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver la otra foto" }));
+    expect(await screen.findByRole("button", { name: "Ver la otra foto" })).toBeVisible();
     expect(screen.getByText("el viento")).toBeVisible();
   });
 

@@ -539,10 +539,10 @@ describe("Create roll", () => {
       mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
     });
 
-    it("defaults to photo + selfie from 9:00 to 23:00", async () => {
+    it("defaults to two photos from 9:00 to 23:00", async () => {
       await renderRouter(routes, { initialUrl: "/create" });
       await fillNames();
-      expect(screen.getByRole("button", { name: "Foto + selfie" })).toBeSelected();
+      expect(screen.getByRole("button", { name: "Dos fotos" })).toBeSelected();
       expect(new Date(dateOf("Desde")).getHours()).toBe(9);
       expect(new Date(dateOf("Hasta")).getHours()).toBe(23);
       await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
