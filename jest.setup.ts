@@ -266,8 +266,17 @@ jest.mock("@expo/ui/swift-ui", () => {
     Host: Wrap,
     Form: Wrap,
     Text: ({ children }: any) => h(RNText, null, children),
-    Section: ({ title, footer, children }: any) =>
-      h(View, null, title && h(RNText, null, title), children, footer),
+    Section: ({ title, header, footer, children }: any) =>
+      h(View, null, title && h(RNText, null, title), header, children, footer),
+    HStack: Wrap,
+    Spacer: () => null,
+    Image: () => null,
+    Button: ({ onPress, modifiers, children }: any) =>
+      h(
+        Pressable,
+        { accessibilityRole: "button", accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel, onPress },
+        children,
+      ),
     TextField: ({ placeholder, onTextChange }: any) =>
       h(TextInput, { placeholder, onChangeText: onTextChange }),
     DatePicker: ({ title, selection, range }: any) =>
@@ -310,6 +319,8 @@ jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   labelsHidden: () => ({ labelsHidden: true }),
   disabled: (disabled = true) => ({ disabled }),
   accessibilityLabel: (accessibilityLabel: string) => ({ accessibilityLabel }),
+  buttonStyle: (style: string) => ({ buttonStyle: style }),
+  font: (params: unknown) => ({ font: params }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).

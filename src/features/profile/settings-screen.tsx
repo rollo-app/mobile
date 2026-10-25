@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Alert } from "react-native";
 import { deleteAccount, logout } from "@/features/auth/actions";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
+import { InfoButton } from "@/features/info/info-button";
 import { usePrivacySettings } from "@/features/featured/use-privacy-settings";
 import { useBlocked } from "@/features/moderation/use-blocked";
 import { OfflineMapRow } from "@/features/map/offline-map-row";
@@ -48,12 +49,15 @@ export function SettingsScreen() {
       </Section>
 
       <Section footer="Si está apagado, solo tus amigos ven tus fotos destacadas y tu lista de amigos.">
-        <SwitchRow label="Perfil público" value={visibility.isPublic} onValueChange={(v) => void visibility.setPublic(v)} />
+        <SwitchRow label="Perfil público" labelAccessory={<InfoButton topic="publicProfile" />} value={visibility.isPublic} onValueChange={(v) => void visibility.setPublic(v)} />
       </Section>
       {visibility.error && <ErrorText>{visibility.error}</ErrorText>}
 
       <Section footer="Si lo apagás, nadie puede agregar tus fotos a su perfil. Las que ya están en un perfil se sacan. Vos siempre podés destacar las tuyas.">
-        <SwitchRow label="Permitir que agreguen mis fotos a su perfil" value={privacy.allowFeaturing} onValueChange={privacy.set} />
+        <SwitchRow
+          label="Permitir que agreguen mis fotos a su perfil"
+          labelAccessory={<InfoButton topic="othersProfiles" />}
+          value={privacy.allowFeaturing} onValueChange={privacy.set} />
       </Section>
       {privacy.error && <ErrorText>{privacy.error}</ErrorText>}
 

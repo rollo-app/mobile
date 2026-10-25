@@ -27,6 +27,7 @@ import CreateScreen from "../../app/create";
 import CropAvatarScreen from "../../app/crop-avatar";
 import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
+import InfoRoute from "../../app/info/[topic]";
 import JoinScreen from "../../app/join";
 import LoginLinkRoute from "../../app/login";
 import MomentRoute from "../../app/moment";
@@ -50,6 +51,7 @@ export const routes = {
   index: IndexScreen,
   "+not-found": NotFound,
   join: JoinScreen,
+  "info/[topic]": InfoRoute,
   create: CreateScreen,
   "crop-avatar": CropAvatarScreen,
   trips: TripsScreen,

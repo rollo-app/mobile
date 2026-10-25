@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Share } from "react-native";
+import { InfoButton } from "@/features/info/info-button";
 import { FeaturingSection } from "@/features/featured/featuring-section";
 import { useLeaveTrip } from "@/features/friends/use-leave-trip";
 import { Avatar } from "@/features/profile/avatar";
@@ -26,7 +27,7 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
         </Section>
       )}
 
-      <Section title="Invitar" footer="Con este código se suman al rollo.">
+      <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer="Con este código se suman al rollo.">
         <Row label="Código" value={detail.trip.joinCode} />
         <Row label="Compartir invitación" onPress={() => void share()} />
       </Section>
