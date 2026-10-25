@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
 import { Directory, Paths } from "expo-file-system";
-import type * as ImagePicker from "expo-image-picker";
+import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import type { Fix } from "./location";
 import { prepareMedia } from "./media";
 import { localDay } from "./quota";
@@ -12,7 +12,7 @@ import { pendingItemsKey } from "./use-pending-items";
 
 export type SendShotInput = {
   tripId: string;
-  asset: ImagePicker.ImagePickerAsset;
+  photo: CapturedPhoto;
   takenAt: number;
   timeZone: string;
   caption: string;
@@ -24,7 +24,7 @@ export type SendShotInput = {
   /** Which camera took `asset` (moment shots only). */
   facing?: Facing;
   /** The second image of a moment (the other camera): enqueued after the main, paired with it. */
-  selfie?: { asset: ImagePicker.ImagePickerAsset; takenAt: number; facing?: Facing };
+  selfie?: { photo: CapturedPhoto; takenAt: number; facing?: Facing };
 };
 
 type Facing = "front" | "back";
@@ -34,25 +34,25 @@ const FRONT_MAX = 1080;
 
 function prepareFor(
   facing: Facing | undefined,
-  ...args: [asset: ImagePicker.ImagePickerAsset, id: string, metadata: Parameters<typeof prepareMedia>[2]]
+  ...args: [photo: CapturedPhoto, id: string, metadata: Parameters<typeof prepareMedia>[2]]
 ) {
   return facing === "front" ? prepareMedia(...args, { maxDimension: FRONT_MAX }) : prepareMedia(...args);
 }
 
 async function sendShot(input: SendShotInput) {
-  const { tripId, asset, takenAt, timeZone, author } = input;
+  const { tripId, photo, takenAt, timeZone, author } = input;
   const caption = input.caption.trim() || null;
   const id = Crypto.randomUUID();
   // The EXIF written into the photo needs the fix, so prepare after it (it has its own timeout).
   const location = await input.fix;
-  const prepared = await prepareFor(input.facing, asset, id, { takenAt, timeZone, location, caption, author });
+  const prepared = await prepareFor(input.facing, photo, id, { takenAt, timeZone, location, caption, author });
   const withSelfie = input.selfie && input.momentDay ? { selfie: input.selfie, momentDay: input.momentDay } : null;
   const selfieId = Crypto.randomUUID();
   let selfiePrepared: Awaited<ReturnType<typeof prepareMedia>> | null = null;
   if (withSelfie) {
     // Prepare both before enqueuing anything: if the linked one fails, no orphan main stays queued.
     try {
-      selfiePrepared = await prepareFor(withSelfie.selfie.facing, withSelfie.selfie.asset, selfieId, {
+      selfiePrepared = await prepareFor(withSelfie.selfie.facing, withSelfie.selfie.photo, selfieId, {
         takenAt: withSelfie.selfie.takenAt,
         timeZone,
         location,
@@ -73,7 +73,7 @@ async function sendShot(input: SendShotInput) {
   await queue.enqueue({
     id,
     tripId,
-    type: asset.type === "video" ? "video" : "photo",
+    type: "photo",
     takenAt,
     day: localDay(takenAt, timeZone),
     lat: location?.lat ?? null,

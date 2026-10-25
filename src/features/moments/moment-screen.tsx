@@ -4,6 +4,8 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import { errorMessage } from "@/api/client";
+import { Camera, CloseButton } from "@/features/camera/camera";
+import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import { CaptureMessage } from "@/features/capture/capture-message";
 import { CapturePreview, type Shot } from "@/features/capture/capture-preview";
 import { startFix, type Fix } from "@/features/capture/location";
@@ -11,7 +13,6 @@ import { localDay } from "@/features/capture/quota";
 import { useSendShot } from "@/features/capture/use-send-shot";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { CloseButton, MomentCamera } from "./moment-camera";
 import { formatLeft, momentState } from "./moment-time";
 
 type Facing = "back" | "front";
@@ -65,7 +66,7 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
     sendShot.mutate(
       {
         tripId,
-        asset: main.asset,
+        photo: main.photo,
         takenAt: main.takenAt,
         facing: main.facing,
         timeZone,
@@ -127,24 +128,24 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   if (step.kind === "second") {
     const other: Facing = step.main.facing === "back" ? "front" : "back";
     return (
-      <MomentCamera
+      <Camera
         key={`second-${other}`}
         facing={other}
         title="Ahora con la otra cámara."
-        onCapture={(asset) => setStep({ kind: "preview", main: step.main, selfie: { asset, takenAt: Date.now(), facing: other } })}
+        onCapture={(photo) => setStep({ kind: "preview", main: step.main, selfie: { photo, takenAt: Date.now(), facing: other } })}
       />
     );
   }
   return (
-    <MomentCamera
+    <Camera
       key={`first-${firstFacing}`}
       facing={firstFacing}
       onClose={() => router.back()}
       onFlip={() => setFirstFacing((f) => (f === "back" ? "front" : "back"))}
       title={state.kind === "open" ? `Tu momento · quedan ${formatLeft(state.leftMs)}` : ""}
       notice={withSelfie ? "Sacás con las dos cámaras. La primera va a ser la grande." : undefined}
-      onCapture={(asset) => {
-        const main = { asset, takenAt: Date.now(), facing: firstFacing };
+      onCapture={(photo) => {
+        const main = { photo, takenAt: Date.now(), facing: firstFacing };
         setStep(withSelfie ? { kind: "second", main } : { kind: "preview", main, selfie: null });
       }}
     />
