@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -37,6 +37,9 @@ export function CloseButton(props: { onPress: () => void }) {
 /** Every shot: the chosen flash, and the lens correction the iPhone's camera applies (ultra-wide and front). */
 const captureSettings = (flash: FlashMode): CapturePhotoSettings => ({ flashMode: flash, enableDistortionCorrection: true });
 
+/** How fast a chip tap ramps the zoom (AVFoundation's rate: doublings per second), about 0.2 s from 1× to 3×. */
+const ZOOM_RAMP_RATE = 8;
+
 /** A finger that moves less than this is a tap (focus), not a gesture. */
 const TAP_SLOP = 10;
 
@@ -46,7 +49,7 @@ const TAP_SLOP = 10;
  * below. Over the bottom of the frame, the zoom chips. `title` is the moment's countdown or the prompt for its second shot.
  *
  * Quality: the back camera is the multi-camera with the most lenses (iOS switches lenses while zooming), the photo output
- * asks for the device's largest 4:3 photo (48 MP where there is one) with `quality` prioritization (iOS then applies Smart
+ * asks for the device's largest 4:3 photo up to ~24 MP with `quality` prioritization (iOS then applies Smart
  * HDR / Deep Fusion by itself) and the session is biased to that resolution. See `device.ts` and `zoom.ts`.
  */
 export function Camera(props: {
@@ -73,18 +76,52 @@ export function Camera(props: {
   const photoOutput = usePhotoOutput({ targetResolution, containerFormat: "jpeg", quality: 1, qualityPrioritization: "quality" });
   const outputs = useMemo(() => [photoOutput], [photoOutput]);
   const constraints = useMemo(() => [{ resolutionBias: photoOutput }], [photoOutput]);
+  // The running session (after `onStarted`): its controller knows the active format's real zoom range.
+  const [running, setRunning] = useState<{ deviceId: string; minZoom: number; maxZoom: number } | null>(null);
+  const session = running && device && running.deviceId === device.id ? running : null;
   useEffect(() => {
-    // Warms up the capture pipeline for the next shot (a 48 MP "quality" photo otherwise pays for it on the first one).
-    photoOutput.prepareSettings([captureSettings(flash)]).catch(() => {});
-  }, [photoOutput, flash]);
+    // Warms up the capture pipeline once the outputs are configured, so the first "quality" shot doesn't pay for it.
+    if (session) photoOutput.prepareSettings([captureSettings(flash)]).catch(() => {});
+  }, [session, photoOutput, flash]);
 
-  // Zoom is raw device zoom; each device starts at its 1x (the wide lens), so flipping starts over.
-  const levels = useMemo(() => (device ? zoomLevels(device) : null), [device]);
+  const warned = useRef(false);
+  const onError = useCallback((error: Error) => {
+    // A rejected zoom or a session hiccup: not worth an error screen (or LogBox), but worth one line in the log.
+    if (warned.current) return;
+    warned.current = true;
+    console.warn(`Cámara: ${error.message}`);
+  }, []);
+
+  // Zoom is raw device zoom; each device starts at its 1x (the wide lens), so flipping starts over. The `zoom` prop only
+  // sets that start: pinch and chips drive the controller directly (a chip ramps like the iPhone's camera).
+  const levels = useMemo(
+    () =>
+      device
+        ? zoomLevels({
+            position: device.position,
+            minZoom: Math.max(device.minZoom, session?.minZoom ?? 0),
+            maxZoom: Math.min(device.maxZoom, session?.maxZoom ?? Infinity),
+            zoomLensSwitchFactors: device.zoomLensSwitchFactors,
+            physicalDevices: device.physicalDevices,
+          })
+        : null,
+    [device, session],
+  );
   const [zoomState, setZoomState] = useState<{ deviceId: string; zoom: number } | null>(null);
   const zoom = levels && device ? (zoomState?.deviceId === device.id ? zoomState.zoom : levels.neutral) : 1;
-  const setZoom = (next: number) => device && setZoomState({ deviceId: device.id, zoom: next });
   const factor = levels ? zoom / levels.neutral : 1;
   const chip = levels ? activePreset(levels.presets, factor) : undefined;
+
+  function applyZoom(next: number, ramp: boolean) {
+    if (!device || !session) return;
+    setZoomState({ deviceId: device.id, zoom: next });
+    try {
+      const done = ramp ? camera.current?.startZoomAnimation(next, ZOOM_RAMP_RATE) : camera.current?.controller?.setZoom(next);
+      done?.catch(onError);
+    } catch (error) {
+      onError(error as Error);
+    }
+  }
 
   const touch = useRef({ startZoom: 0, startDistance: 0, x: 0, y: 0, pageX: 0, pageY: 0, gesture: false });
 
@@ -95,13 +132,14 @@ export function Camera(props: {
     try {
       const photo = await photoOutput.capturePhoto(captureSettings(flash), {});
       let shot: CapturedPhoto;
+      const mirrored = photo.isMirrored;
       try {
         const path = await photo.saveToTemporaryFileAsync();
         shot = { uri: path.startsWith("file://") ? path : `file://${path}`, ...uprightSize(photo.width, photo.height, photo.orientation) };
       } finally {
         photo.dispose();
       }
-      props.onCapture(await ensureFourThree(shot));
+      props.onCapture(await ensureFourThree(shot, { mirrored }));
     } catch {
       setFailed(true);
     } finally {
@@ -119,7 +157,13 @@ export function Camera(props: {
             isActive
             outputs={outputs}
             constraints={constraints}
-            zoom={zoom}
+            mirrorMode="auto"
+            zoom={levels.neutral}
+            onStarted={() => {
+              const controller = camera.current?.controller;
+              if (controller) setRunning({ deviceId: device.id, minZoom: controller.minZoom, maxZoom: controller.maxZoom });
+            }}
+            onError={onError}
             style={StyleSheet.absoluteFill}
           />
         )}
@@ -143,7 +187,7 @@ export function Camera(props: {
             touch.current.gesture = true;
             if (!levels) return;
             if (touch.current.startDistance <= 0) touch.current = { ...touch.current, startZoom: zoom, startDistance: touchDistance(touches) };
-            setZoom(pinchZoom(levels, touch.current.startZoom, touch.current.startDistance, touchDistance(touches)));
+            applyZoom(pinchZoom(levels, touch.current.startZoom, touch.current.startDistance, touchDistance(touches)), false);
           }}
           onResponderRelease={() => {
             if (touch.current.gesture || !device?.supportsFocusMetering) return;
@@ -161,7 +205,7 @@ export function Camera(props: {
                   accessibilityLabel={`Zoom ${formatFactor(preset)}×`}
                   accessibilityState={{ selected: active }}
                   hitSlop={6}
-                  onPress={() => setZoom(preset * levels.neutral)}
+                  onPress={() => applyZoom(preset * levels.neutral, true)}
                   style={[styles.zoomChip, active && styles.zoomChipActive]}
                 >
                   <Text style={[styles.zoomText, active && { color: tintHex.dark }]}>

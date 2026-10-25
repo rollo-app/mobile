@@ -25,22 +25,26 @@ jest.mock("expo-haptics", () => ({
 }));
 
 jest.mock("expo-image-manipulator", () => {
-  const ctx = { crop: jest.fn(), renderAsync: jest.fn(), saveAsync: jest.fn() };
+  const ctx = { crop: jest.fn(), flip: jest.fn(), renderAsync: jest.fn(), saveAsync: jest.fn() };
   ctx.crop.mockReturnValue(ctx);
+  ctx.flip.mockReturnValue(ctx);
   ctx.renderAsync.mockResolvedValue(ctx);
   return { ImageManipulator: { manipulate: jest.fn(() => ctx), __ctx: ctx }, SaveFormat: { JPEG: "jpeg" } };
 });
 
 const trips = jest.mocked(actions);
-const manipulator = jest.requireMock("expo-image-manipulator").ImageManipulator as { manipulate: jest.Mock; __ctx: { crop: jest.Mock; saveAsync: jest.Mock } };
+const manipulator = jest.requireMock("expo-image-manipulator").ImageManipulator as { manipulate: jest.Mock; __ctx: { crop: jest.Mock; flip: jest.Mock; saveAsync: jest.Mock } };
+const files = jest.requireMock("expo-file-system").File as { deleted: number };
 const mediaMock = jest.mocked(media);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
 const vision = jest.requireMock("react-native-vision-camera") as {
   __device: (overrides: Record<string, unknown>) => unknown;
   __devices: { back: unknown; front: unknown };
-  __photo: (path: string, width: number, height: number, orientation?: string) => unknown;
+  __photo: (path: string, width: number, height: number, orientation?: string, isMirrored?: boolean) => { dispose: jest.Mock };
   __capturePhoto: jest.Mock;
   __focusTo: jest.Mock;
+  __controller: { minZoom: number; maxZoom: number; setZoom: jest.Mock };
+  __startZoomAnimation: jest.Mock;
   __granted: unknown;
   useCameraDevices: jest.Mock;
   useCameraPermission: jest.Mock;
@@ -95,6 +99,13 @@ beforeEach(async () => {
   vision.useCameraDevices.mockReset();
   vision.useCameraDevices.mockReturnValue([vision.__devices.back, vision.__devices.front]);
   vision.__focusTo.mockClear();
+  vision.__controller.maxZoom = 123.75;
+  vision.__controller.setZoom.mockClear();
+  vision.__startZoomAnimation.mockClear();
+  vision.usePhotoOutput.mock.results.forEach((r) => r.value.prepareSettings.mockClear());
+  manipulator.manipulate.mockClear();
+  manipulator.__ctx.flip.mockClear();
+  manipulator.__ctx.crop.mockClear();
   syncQueue.mockReset();
   syncQueue.mockResolvedValue(undefined);
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
@@ -114,6 +125,12 @@ async function openCapture() {
   await renderRouter(routes, { initialUrl: "/roll" });
   // No testRouter.push: it asserts the route and the capture may return right away.
   await act(async () => router.push("/capture"));
+}
+
+/** The session started: VisionCamera fires `onStarted` once the outputs are configured. */
+async function startSession(testID = "camera-back") {
+  const camera = await screen.findByTestId(testID);
+  await act(async () => camera.props.onStarted());
 }
 
 async function shoot() {
@@ -172,12 +189,39 @@ describe("Capture", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(mediaMock.prepareMedia.mock.lastCall![0]).toEqual(photo);
+    expect(files.deleted).toBe(0);
   });
 
-  it("asks for the device's largest 4:3 photo (48 MP here) and biases the session to it", async () => {
+  it("frees the native photo once it is on disk", async () => {
+    const shot = vision.__photo("/cache/Camera/IMG_1.jpg", 4032, 3024);
+    takePhoto.mockResolvedValueOnce(shot);
+    await openCapture();
+    await shoot();
+    await screen.findByLabelText("Caption");
+    expect(shot.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("a front photo comes out unmirrored like the iPhone's camera (the preview stays mirrored), and the mirrored file is deleted", async () => {
+    takePhoto.mockImplementation(async () => vision.__photo("/cache/Camera/selfie.jpg", 4032, 3024, "leftMirrored" as never, true));
+    manipulator.__ctx.saveAsync.mockResolvedValue({ uri: "file:///cache/Manipulated/selfie.jpg", width: 3024, height: 4032 });
+    await openCapture();
+    await fireEvent.press(await screen.findByRole("button", { name: "Dar vuelta la cámara" }));
+    expect((await screen.findByTestId("camera-front")).props.mirrorMode).toBe("auto");
+    await shoot();
+    await screen.findByLabelText("Caption");
+    expect(manipulator.manipulate).toHaveBeenCalledWith("file:///cache/Camera/selfie.jpg");
+    expect(manipulator.__ctx.flip).toHaveBeenCalledWith("horizontal");
+    expect(manipulator.__ctx.crop).not.toHaveBeenCalled();
+    expect(files.deleted).toBe(1);
+    await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(mediaMock.prepareMedia.mock.lastCall![0]).toEqual({ uri: "file:///cache/Manipulated/selfie.jpg", width: 3024, height: 4032 });
+  });
+
+  it("asks for the device's largest 4:3 photo up to 24 MP (not 48) and biases the session to it", async () => {
     await openCapture();
     const camera = await screen.findByTestId("camera-back");
-    expect(vision.usePhotoOutput).toHaveBeenLastCalledWith(expect.objectContaining({ targetResolution: { width: 6048, height: 8064 } }));
+    expect(vision.usePhotoOutput).toHaveBeenLastCalledWith(expect.objectContaining({ targetResolution: { width: 4284, height: 5712 } }));
     const output = vision.usePhotoOutput.mock.results.at(-1)!.value;
     expect(camera.props.outputs).toEqual([output]);
     expect(camera.props.constraints).toEqual([{ resolutionBias: output }]);
@@ -192,6 +236,8 @@ describe("Capture", () => {
     await screen.findByLabelText("Caption");
     expect(manipulator.manipulate).toHaveBeenCalledWith("file:///cache/Camera/tall.jpg");
     expect(manipulator.__ctx.crop).toHaveBeenCalledWith({ originX: 0, originY: 500, width: 2250, height: 3000 });
+    expect(manipulator.__ctx.flip).not.toHaveBeenCalled();
+    expect(files.deleted).toBe(1);
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(mediaMock.prepareMedia.mock.lastCall![0]).toMatchObject({ uri: "file:///cache/Manipulated/tall.jpg", width: 2250, height: 3000 });
@@ -209,6 +255,34 @@ describe("Capture", () => {
     expect(takePhoto).toHaveBeenCalledWith(expect.objectContaining({ flashMode: "on" }), {});
   });
 
+  it("warms up the capture once the session is running, and again when the flash changes", async () => {
+    await openCapture();
+    const output = vision.usePhotoOutput.mock.results.at(-1)!.value;
+    await screen.findByTestId("camera-back");
+    expect(output.prepareSettings).not.toHaveBeenCalled();
+    await startSession();
+    expect(output.prepareSettings).toHaveBeenLastCalledWith([{ flashMode: "auto", enableDistortionCorrection: true }]);
+    await fireEvent.press(screen.getByRole("button", { name: "Flash automático" }));
+    expect(output.prepareSettings).toHaveBeenLastCalledWith([{ flashMode: "on", enableDistortionCorrection: true }]);
+  });
+
+  it("camera errors are logged once as a warning, never as an error screen", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const error = jest.spyOn(console, "error");
+    try {
+      await openCapture();
+      const camera = await screen.findByTestId("camera-back");
+      error.mockClear();
+      camera.props.onError(new Error("zoom out of range"));
+      camera.props.onError(new Error("zoom out of range"));
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(error).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
+    }
+  });
+
   it("opens at 1x (the wide lens, not the ultra-wide) with the iPhone's chips: 0,5 · 1× · 2 · 3", async () => {
     await openCapture();
     expect((await screen.findByTestId("camera-back")).props.zoom).toBe(2);
@@ -219,13 +293,16 @@ describe("Capture", () => {
     expect(screen.getByRole("button", { name: "Zoom 1×" })).toBeSelected();
   });
 
-  it("a chip jumps to that lens: 0,5 is the device's minimum and 3 is the telephoto", async () => {
+  it("a chip ramps smoothly to that lens: 0,5 is the device's minimum and 3 is the telephoto", async () => {
     await openCapture();
-    await fireEvent.press(await screen.findByRole("button", { name: "Zoom 0,5×" }));
-    expect(screen.getByTestId("camera-back").props.zoom).toBe(1);
+    await startSession();
+    await fireEvent.press(screen.getByRole("button", { name: "Zoom 0,5×" }));
+    expect(vision.__startZoomAnimation).toHaveBeenLastCalledWith(1, expect.any(Number));
     expect(screen.getByRole("button", { name: "Zoom 0,5×" })).toBeSelected();
     await fireEvent.press(screen.getByRole("button", { name: "Zoom 3×" }));
-    expect(screen.getByTestId("camera-back").props.zoom).toBe(6);
+    expect(vision.__startZoomAnimation).toHaveBeenLastCalledWith(6, expect.any(Number));
+    expect(screen.getByRole("button", { name: "Zoom 3×" })).toBeSelected();
+    expect(vision.__controller.setZoom).not.toHaveBeenCalled();
   });
 
   it("without an ultra-wide there is no 0,5 and 1x is the minimum; a telephoto shows as its own chip", async () => {
@@ -240,7 +317,8 @@ describe("Capture", () => {
 
   it("the front camera starts at 1x with no chips, and flipping back starts over at 1x", async () => {
     await openCapture();
-    await fireEvent.press(await screen.findByRole("button", { name: "Zoom 3×" }));
+    await startSession();
+    await fireEvent.press(screen.getByRole("button", { name: "Zoom 3×" }));
     await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
     expect((await screen.findByTestId("camera-front")).props.zoom).toBe(1);
     expect(screen.queryByTestId("zoom-chips")).toBeNull();
@@ -250,31 +328,44 @@ describe("Capture", () => {
 
   it("pinching zooms continuously and the active chip shows the live value", async () => {
     await openCapture();
-    const area = await screen.findByTestId("camera-pinch");
+    await startSession();
+    const area = screen.getByTestId("camera-pinch");
     const touches = (gap: number) => ({ nativeEvent: { touches: [{ pageX: 100, pageY: 100 }, { pageX: 100 + gap, pageY: 100 }] } });
 
     await fireEvent(area, "responderGrant", touches(100));
     await fireEvent(area, "responderMove", touches(140));
-    expect(screen.getByTestId("camera-back").props.zoom).toBeCloseTo(2.8);
+    expect(vision.__controller.setZoom.mock.lastCall![0]).toBeCloseTo(2.8);
     expect(within(screen.getByTestId("zoom-chips")).getByText("1,4×")).toBeVisible();
     expect(screen.getByRole("button", { name: "Zoom 1×" })).toBeSelected();
     await fireEvent(area, "responderMove", touches(10));
-    expect(screen.getByTestId("camera-back").props.zoom).toBe(1);
+    expect(vision.__controller.setZoom).toHaveBeenLastCalledWith(1);
     await fireEvent(area, "responderMove", touches(10000));
-    expect(screen.getByTestId("camera-back").props.zoom).toBe(30);
+    expect(vision.__controller.setZoom).toHaveBeenLastCalledWith(30);
+  });
+
+  it("the pinch never goes past the running format's real maximum", async () => {
+    vision.__controller.maxZoom = 12;
+    await openCapture();
+    await startSession();
+    const area = screen.getByTestId("camera-pinch");
+    const touches = (gap: number) => ({ nativeEvent: { touches: [{ pageX: 100, pageY: 100 }, { pageX: 100 + gap, pageY: 100 }] } });
+    await fireEvent(area, "responderGrant", touches(100));
+    await fireEvent(area, "responderMove", touches(10000));
+    expect(vision.__controller.setZoom).toHaveBeenLastCalledWith(12);
   });
 
   it("a new two-finger gesture after lifting a finger starts from the current zoom, with no jump", async () => {
     await openCapture();
-    const area = await screen.findByTestId("camera-pinch");
+    await startSession();
+    const area = screen.getByTestId("camera-pinch");
     const touches = (gap: number) => ({ nativeEvent: { touches: [{ pageX: 100, pageY: 100 }, { pageX: 100 + gap, pageY: 100 }] } });
     await fireEvent(area, "responderGrant", touches(100));
     await fireEvent(area, "responderMove", touches(200));
-    const before = screen.getByTestId("camera-back").props.zoom as number;
+    const before = vision.__controller.setZoom.mock.lastCall![0] as number;
 
     await fireEvent(area, "responderMove", { nativeEvent: { touches: [{ pageX: 100, pageY: 100 }] } });
     await fireEvent(area, "responderMove", touches(400)); // second finger lands again, far apart
-    expect(screen.getByTestId("camera-back").props.zoom).toBe(before);
+    expect(vision.__controller.setZoom).toHaveBeenLastCalledWith(before);
   });
 
   it("a tap on the frame focuses there", async () => {

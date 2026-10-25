@@ -38,15 +38,19 @@ Decisiones de producto:
   (`https://…/entrar` abre la app directo, sin la página), que piden la cuenta paga.
 - **Cámara propia** (**VisionCamera** `react-native-vision-camera` v5, módulo compartido `src/features/camera/`, la misma de la captura y del momento): la del sistema
   (`launchCameraAsync`) siempre muestra "Repetir / Usar foto" después de sacar y no se puede evitar, y sin videos ya no hace falta.
-  **Calidad máxima en cada iPhone** (`device.ts`): atrás usa la cámara virtual con más lentes (triple > dual-wide > dual > gran angular), así iOS
-  cambia de lente solo al hacer zoom; adelante, la gran angular. La foto pide el **4:3 más grande** que lista el dispositivo
-  (`getSupportedResolutions("photo")`, 48 MP en los que lo tienen) con `qualityPrioritization: "quality"` (iOS aplica Smart HDR / Deep Fusion solo;
-  `photoHDR` no existe en iOS), JPEG calidad 1, corrección de lente y la sesión sesgada a esa resolución (`resolutionBias`). La foto se guarda con
-  la orientación en EXIF: `uprightSize` da vuelta ancho y alto si hace falta.
+  **Calidad máxima en cada iPhone** (`device.ts`): atrás usa la cámara virtual con más lentes (quad > triple > dual-wide > dual > gran angular), así iOS
+  cambia de lente solo al hacer zoom; adelante, la gran angular. La foto pide el **4:3 más grande hasta ~24 MP** que lista el dispositivo
+  (`getSupportedResolutions("photo")`: 5712×4284 donde está, si no 4032×3024; 48 MP no, porque `prepareMedia` la baja a 4000 px y solo suma ruido,
+  demora y archivos de ~25 MB) con `qualityPrioritization: "quality"` (iOS aplica Smart HDR / Deep Fusion solo; `photoHDR` no existe en iOS), JPEG
+  calidad 1, corrección de lente y la sesión sesgada a esa resolución (`resolutionBias`); el disparo se precalienta (`prepareSettings`) cuando arranca
+  la sesión. La foto se guarda con la orientación en EXIF: `uprightSize` da vuelta ancho y alto si hace falta. La frontal se ve espejada pero
+  **se guarda sin espejar** como en iOS (`mirrorMode: "auto"` + `ensureFourThree` la da vuelta si `photo.isMirrored`; si eso o el recorte crean otro
+  archivo, se borra el de VisionCamera). Los errores de la cámara van una sola vez a `console.warn`.
   **Zoom como iOS** (`zoom.ts`, con los datos reales del dispositivo): 1× es la gran angular (en una cámara con ultra gran angular, el primer
   `zoomLensSwitchFactors`; si no, el mínimo) y se abre siempre ahí (también al dar vuelta). Chips abajo y al centro del recuadro: "0,5" solo con
   ultra gran angular, 1, 2 y cada teleobjetivo (los siguientes cambios de lente ÷ 1×: [2, 6] → 3×, [2, 10] → 5×); el activo va en cobalto con el valor en
-  vivo ("1,4×"). Adelante no hay chips. Pellizco continuo del mínimo real a 5× el teleobjetivo más largo (15× / 25×, como iOS) o 10× sin tele. Tocar el
+  vivo ("1,4×"). Adelante no hay chips. Tocar un chip hace una rampa suave (`startZoomAnimation`); pellizco continuo (`controller.setZoom`) del mínimo real a 5× el
+  teleobjetivo más largo (15× / 25×, como iOS) o 10× sin tele, nunca más allá del máximo real del formato activo. Tocar el
   recuadro enfoca ahí.
   **Vista y foto en 4:3** (`frame.ts`): la vista es un recuadro de ancho completo en 3:4 (como la cámara de iOS) con los controles en las bandas negras
   (arriba "Cerrar", título y flash; abajo disparador y dar vuelta); si igual la foto no saliera 4:3, `ensureFourThree` recorta centrado con
@@ -340,7 +344,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1464 tests
+npm test                      # 1470 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

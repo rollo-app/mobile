@@ -18,6 +18,7 @@ describe("pickCameraDevice", () => {
   ];
 
   it("on the back takes the multi-camera with the most lenses so iOS switches lenses by itself", () => {
+    expect(pickCameraDevice([...all, dev("quad", "quad", "back")], "back")?.id).toBe("quad");
     expect(pickCameraDevice(all, "back")?.id).toBe("triple");
     expect(pickCameraDevice(all.filter((d) => d.id !== "triple"), "back")?.id).toBe("dualWide");
     expect(pickCameraDevice(all.filter((d) => !["triple", "dualWide"].includes(d.id)), "back")?.id).toBe("dual");
@@ -38,14 +39,19 @@ describe("pickCameraDevice", () => {
 });
 
 describe("bestPhotoResolution", () => {
-  it("takes the largest 4:3 photo size, upright", () => {
+  it("takes the largest 4:3 photo size up to ~24 MP, upright (48 MP only adds noise, latency and weight)", () => {
     const sizes = [
       { width: 4032, height: 3024 },
       { width: 8064, height: 6048 },
       { width: 5712, height: 4284 },
       { width: 9000, height: 5063 }, // 16:9, larger but the wrong shape
     ];
-    expect(bestPhotoResolution(sizes)).toEqual({ width: 6048, height: 8064 });
+    expect(bestPhotoResolution(sizes)).toEqual({ width: 4284, height: 5712 });
+    expect(bestPhotoResolution([{ width: 4032, height: 3024 }, { width: 8064, height: 6048 }])).toEqual({ width: 3024, height: 4032 });
+  });
+
+  it("if every 4:3 size is over the cap it takes the smallest of them", () => {
+    expect(bestPhotoResolution([{ width: 8064, height: 6048 }, { width: 9248, height: 6936 }])).toEqual({ width: 6048, height: 8064 });
   });
 
   it("without any 4:3 size it asks for 12 MP 4:3", () => {

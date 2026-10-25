@@ -1,17 +1,35 @@
+import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import type { CapturedPhoto } from "./captured-photo";
 import { centerCropTo43 } from "./frame";
 
-/** Makes sure a shot is 4:3: untouched when it is, centered crop (never a stretch) when it isn't. */
-export async function ensureFourThree(photo: CapturedPhoto): Promise<CapturedPhoto> {
+/**
+ * The shot as it is kept: 4:3 (untouched when it is, centered crop — never a stretch — when it isn't) and, when the camera
+ * mirrored it (the front one mirrors like its preview), flipped back so it is saved unmirrored like the iPhone's camera.
+ * When that makes a new file, the camera's one is deleted.
+ */
+export async function ensureFourThree(photo: CapturedPhoto, options: { mirrored?: boolean } = {}): Promise<CapturedPhoto> {
   const rect = centerCropTo43(photo.width, photo.height);
-  if (!rect) return photo;
+  if (!rect && !options.mirrored) return photo;
   try {
-    const image = await ImageManipulator.manipulate(photo.uri).crop(rect).renderAsync();
+    const ctx = ImageManipulator.manipulate(photo.uri);
+    if (options.mirrored) ctx.flip("horizontal");
+    if (rect) ctx.crop(rect);
+    const image = await ctx.renderAsync();
     const saved = await image.saveAsync({ compress: 1, format: SaveFormat.JPEG });
+    deleteQuietly(photo.uri);
     return { uri: saved.uri, width: saved.width, height: saved.height };
   } catch {
     // Better the original than no photo.
     return photo;
+  }
+}
+
+function deleteQuietly(uri: string) {
+  try {
+    const file = new File(uri);
+    if (file.exists) file.delete();
+  } catch {
+    // A temp file: the system cleans it up.
   }
 }

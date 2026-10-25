@@ -426,21 +426,24 @@ jest.mock("react-native-vision-camera", () => {
     maxZoom: 123.75,
     zoomLensSwitchFactors: [2, 6],
     physicalDevices: [{ type: "ultra-wide-angle" }, { type: "wide-angle" }, { type: "telephoto" }],
-    getSupportedResolutions: () => [{ width: 4032, height: 3024 }, { width: 8064, height: 6048 }, { width: 7680, height: 4320 }],
+    getSupportedResolutions: () => [{ width: 4032, height: 3024 }, { width: 5712, height: 4284 }, { width: 8064, height: 6048 }, { width: 7680, height: 4320 }],
   });
   const front = device({ id: "front-wide", position: "front", hasFlash: false });
   // iOS stores the photo in the sensor's orientation (landscape) with an EXIF flag: held upright that is "right".
-  const photo = (path: string, width: number, height: number, orientation = "right") => ({
+  const photo = (path: string, width: number, height: number, orientation = "right", isMirrored = false) => ({
     width,
     height,
     orientation,
-    isMirrored: false,
+    isMirrored,
     saveToTemporaryFileAsync: jest.fn(async () => path),
     dispose: jest.fn(),
   });
   const capturePhoto = jest.fn(async () => photo("/cache/Camera/shot.jpg", 4032, 3024));
   const photoOutput = { capturePhoto, prepareSettings: jest.fn(async () => {}) };
   const focusTo = jest.fn(async () => {});
+  // The running session's controller (after `onStarted`): its zoom range is the active format's.
+  const controller = { minZoom: 1, maxZoom: 123.75, setZoom: jest.fn(async (_zoom: number) => {}) };
+  const startZoomAnimation = jest.fn(async (_zoom: number, _rate: number) => {});
   const granted = { status: "authorized", hasPermission: true, canRequestPermission: false, requestPermission: jest.fn(async () => true) };
   return {
     __device: device,
@@ -448,9 +451,11 @@ jest.mock("react-native-vision-camera", () => {
     __photo: photo,
     __capturePhoto: capturePhoto,
     __focusTo: focusTo,
+    __controller: controller,
+    __startZoomAnimation: startZoomAnimation,
     __granted: granted,
     Camera: forwardRef((props: { device?: { position: string } }, ref: unknown) => {
-      useImperativeHandle(ref, () => ({ focusTo }));
+      useImperativeHandle(ref, () => ({ focusTo, startZoomAnimation, controller }));
       return createElement(View, { testID: `camera-${String(props.device?.position)}`, ...props });
     }),
     useCameraDevices: jest.fn(() => [back, front]),
