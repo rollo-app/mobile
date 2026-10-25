@@ -135,6 +135,12 @@ Decisiones de producto:
   en el de destacadas (fila de íconos sin texto: corazón, estrella, mapa, guardar; el "…" va arriba a la derecha); doble toque en la foto
   da el me gusta (sin animación: el corazón se llena), así que un toque simple espera 250 ms (`tap-gate.ts`) antes de contar como toque
   simple. En las historias, corazón abajo a la derecha sin contador: el doble toque da me gusta y tocarlo lo saca o lo pone. Es optimista y con cache (`like-cache.ts`).
+- **Tu actividad** (`src/features/activity/`, solo en tu Perfil): ícono `clock.arrow.circlepath` en la barra del Perfil, al lado del engranaje, que
+  abre `/me/activity` (lista agrupada, hoy una fila "Me gusta" con la cantidad, lista para sumar más). "Me gusta" (`/me/likes`) es una grilla con
+  las fotos que te gustaron, de la más reciente a la más vieja (`GET /me/likes`, paginado con cursor; **lo que hoy podés ver lo filtra el server**,
+  nunca la app), con la insignia del autor si no sos vos; tocar una abre el visor de la galería si `source.kind` es `trip` o el de destacadas
+  si es `featured` (`likes-target.ts`). Dar o sacar un me gusta (`use-toggle-like.ts`) invalida la query `["my-likes"]`. Vacío: "Todavía no te gustó
+  ninguna foto."; error con "Reintentar".
 - **A futuro (no para enero):** feeds públicos de rollos y buscar perfiles públicos.
 
 ## Navegación y diseño
