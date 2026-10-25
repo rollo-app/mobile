@@ -34,6 +34,8 @@ export type RevealedPhoto = {
   commentCount: number;
   /** Trip-local date of the daily moment this photo answers; null for ordinary photos. */
   momentDay: string | null;
+  /** You (its author) archived it: nobody else sees it. Only ever true on your own photos. */
+  archived: boolean;
   /** The selfie taken with a moment photo (null if none). Never likeable, commentable or featurable: those act on the main photo. */
   selfie: RevealedSelfie | null;
   thumbPath: string;
@@ -76,6 +78,7 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
               likedByMe: item.likedByMe ?? false,
               commentCount: item.commentCount ?? 0,
               momentDay: item.momentDay ?? null,
+              archived: item.archived ?? false,
               selfie: item.selfie?.files
                 ? {
                     id: item.selfie.id,

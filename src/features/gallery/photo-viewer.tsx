@@ -30,6 +30,9 @@ import { OverlayCornerSymbol, OverlayIconButton, OverlayMoreButton, overlayCorne
 import { spacing, tintHex, type } from "@/ui/theme";
 import { PermissionNotice } from "./permission-notice";
 import { PermissionDeniedError, linkedImage } from "./save";
+import { ownPhotoActions } from "./own-photo-actions";
+import { useArchivePhoto } from "./use-archive-photo";
+import { useDeletePhoto } from "./use-delete-photo";
 import { useSaver } from "./use-saver";
 
 type SaveState = "idle" | "saving" | "saved" | "failed" | "denied";
@@ -203,6 +206,14 @@ export function PhotoViewer({
     if (current >= photos.length - 1) router.back();
   }
 
+  const setArchived = useArchivePhoto();
+  const remover = useDeletePhoto();
+  async function deletePhoto(target: RevealedPhoto) {
+    if (!tripId || remover.busy || !(await remover.confirmDelete(target, tripId))) return;
+    // Same as reporting: the next photo slides in under the same index, and deleting the last one closes.
+    if (current >= photos.length - 1) router.back();
+  }
+
   const state = (photo && saves[savedTarget(photo).id]) || "idle";
   const featuring = !!photo && featured.pending.has(photo.id);
   const featureError = photo && featureTarget === photo.id ? (blockError ?? featured.error) : null;
@@ -217,16 +228,20 @@ export function PhotoViewer({
     ? []
     : !own
       ? [{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]
-      : photo.type === "photo" && !photo.momentDay // moment photos can never be featured
-        ? [
-            {
-              id: photo.featureBlocked ? "unblock" : "block",
-              title: photo.featureBlocked ? "Dejar que la destaquen" : "No dejar que la destaquen",
-              image: photo.featureBlocked ? "star" : "star.slash",
-              attributes: { disabled: blocking },
-            },
-          ]
-        : [];
+      : [
+          ...(photo.type === "photo" && !photo.momentDay // moment photos can never be featured
+            ? [
+                {
+                  id: photo.featureBlocked ? "unblock" : "block",
+                  title: photo.featureBlocked ? "Dejar que la destaquen" : "No dejar que la destaquen",
+                  image: photo.featureBlocked ? "star" : "star.slash",
+                  attributes: { disabled: blocking },
+                } as MenuAction,
+              ]
+            : []),
+          // Your own photos, once revealed: archive (only you keep seeing it) or delete for good.
+          ...(photo.type === "photo" && detail?.trip.revealed === true ? ownPhotoActions(photo) : []),
+        ];
 
   return (
     <View style={styles.fill}>
@@ -294,8 +309,11 @@ export function PhotoViewer({
               <MenuView
                 actions={menu}
                 onPressAction={({ nativeEvent }) => {
-                  if (nativeEvent.event === "report") void reportPhoto(photo);
-                  else void setBlocked(photo, nativeEvent.event === "block");
+                  const event = nativeEvent.event;
+                  if (event === "report") void reportPhoto(photo);
+                  else if (event === "archive" || event === "unarchive") tripId && setArchived(photo, tripId, event === "archive");
+                  else if (event === "delete") void deletePhoto(photo);
+                  else void setBlocked(photo, event === "block");
                 }}
               >
                 <OverlayMoreButton />
@@ -316,6 +334,7 @@ export function PhotoViewer({
                   <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
                 </Pressable>
                 <Text style={[type.subhead, styles.dim]}>{formatPinTime(photo.takenAt, timeZone)}</Text>
+                {photo.archived && <Text style={[type.subhead, styles.dim]}>Archivada</Text>}
               </View>
               {photo.caption ? <Text style={[type.quote, styles.white]}>{photo.caption}</Text> : null}
               <View style={styles.actions}>
