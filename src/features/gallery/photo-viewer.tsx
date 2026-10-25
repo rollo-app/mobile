@@ -222,7 +222,8 @@ export function PhotoViewer({
   const timeZone = detail?.trip.timezone ?? "America/Argentina/Buenos_Aires";
   // Someone else's photo can be reported; on your own photo you decide whether others may feature it.
   const own = !!photo && !!me && photo.authorUserId === me.id;
-  // Before the reveal only daily moments have files: you can look at them (and report them), nothing else (the server rejects it).
+  // Before the reveal only daily moments have files: you can look at them, comment on them and report them, nothing else
+  // (likes, saving and featuring wait for the reveal; the server rejects them).
   const readOnly = !!photo?.momentDay && detail?.trip.revealed !== true;
   const menu: MenuAction[] = !photo || !me
     ? []
@@ -341,7 +342,7 @@ export function PhotoViewer({
                 {photo.type === "photo" && !readOnly && (
                   <LikeButton liked={photo.likedByMe} count={photo.likeCount} busy={liking} onPress={() => void likes.toggle(photo)} />
                 )}
-                {photo.type === "photo" && !readOnly && (
+                {photo.type === "photo" && (
                   <CommentButton
                     count={photo.commentCount}
                     onPress={() => router.push({ pathname: "/comments/[mediaId]", params: { mediaId: photo.id } })}

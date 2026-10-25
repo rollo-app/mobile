@@ -831,12 +831,28 @@ describe("Daily moment in the viewer before the reveal", () => {
     expect(await screen.findByText("No encontramos esta foto.")).toBeVisible();
   });
 
-  it("is read-only: no like, comments, save or feature", async () => {
+  it("is read-only except for comments: no like, save or feature", async () => {
     await openMoment([moment("mom")], "mom");
-    for (const name of ["Me gusta", "Ya no me gusta", "Comentarios", "Guardar en Fotos", "Agregar a tu perfil"]) {
+    for (const name of ["Me gusta", "Ya no me gusta", "Guardar en Fotos", "Agregar a tu perfil"]) {
       expect(screen.queryByRole("button", { name })).toBeNull();
     }
     expect(screen.getByRole("button", { name: "Ver en el mapa" })).toBeVisible();
+  });
+
+  it("shows the comment bubble with its count and opens the comments sheet", async () => {
+    await openMoment([moment("mom", { commentCount: 3 })], "mom");
+    const bubble = screen.getByRole("button", { name: "Comentarios" });
+    expect(bubble).toBeVisible();
+    expect(screen.getByText("3")).toBeVisible();
+    await fireEvent.press(bubble);
+    await waitFor(() => expect(screen).toHavePathname("/comments/mom"));
+  });
+
+  it("opens the comments sheet by itself when it comes from a comment push", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: false, revealAt: Date.now() + DAY, endsAt: Date.now() + DAY } });
+    mocked.fetchFeed.mockResolvedValue(unrevealed([moment("mom")]));
+    await renderRouter(routes, { initialUrl: `/photo/mom?tripId=${SUR}&comments=1` });
+    await waitFor(() => expect(screen).toHavePathname("/comments/mom"));
   });
 
   it("a double tap on the photo does not like it", async () => {

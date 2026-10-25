@@ -86,8 +86,11 @@ viaje mientras pasa. Las fotos normales siguen ocultas hasta el revelado.
 - **Feed** (dentro de Mapa): la fila del momento muestra la foto de verdad con su recuadro en vez del ThumbHash.
 - **Mapa:** filtro "Momentos" (junto a "Solo hoy", en el menú de filtros) y los pins de momentos muestran la foto.
 - *(Decisión de Claude)* Tocarlo (fila o pin) abre el visor con las dos imágenes e intercambio, como después del revelado.
-- *(Decisión de Claude)* **Antes del revelado solo se mira:** me gusta, comentarios, guardar y destacar recién después del
-  revelado (el backend también lo exige). Después del revelado aparece mezclado con las demás, con su badge, como hasta ahora.
+- **Comentarios desde que se sube** (decisión del dueño): la foto principal del momento se comenta apenas se sube, entre
+  miembros activos y con todas las reglas de siempre (límites, borrar, denunciar, bloqueos, push `photoCommented`); el visor
+  muestra la burbuja con el contador (`commentCount` en el feed). Una foto normal sigue sin comentarios hasta el revelado.
+- *(Decisión de Claude)* **Antes del revelado, además de comentar, solo se mira:** me gusta, guardar y destacar recién después
+  del revelado (el backend también lo exige). Después del revelado aparece mezclado con las demás, con su badge, como hasta ahora.
 - **Push al resto del grupo** cuando alguien sube su momento: "{Nombre} subió su momento" (título) / "{rollo}" (cuerpo), al
   completarse la subida de la foto principal (no al registrarla), una vez por momento. Nunca al autor ni entre usuarios
   bloqueados. Switch en Ajustes → Notificaciones: "Momentos del grupo" (`momentPosted`, prendido por defecto). Tocar el aviso
