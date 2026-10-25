@@ -240,8 +240,8 @@ export function PhotoViewer({
                 } as MenuAction,
               ]
             : []),
-          // Your own photos, once revealed: archive (only you keep seeing it) or delete for good.
-          ...(photo.type === "photo" && detail?.trip.revealed === true ? ownPhotoActions(photo) : []),
+          // Your own photos and videos, once revealed: archive (only you keep seeing it) or delete for good.
+          ...(detail?.trip.revealed === true ? ownPhotoActions(photo) : []),
         ];
 
   return (

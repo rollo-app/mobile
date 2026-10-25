@@ -178,13 +178,13 @@ Decisiones de producto:
   local del revelado**: al abrir la app se cancelan los `reveal.*` que dejaron versiones viejas (`legacy-reveal.ts`).
   **Ajustes → Notificaciones** (`settings-screen.tsx`, `GET/PATCH /me/settings`): un switch por aviso (`addedToTrip`, `newFriend`, `tripStarted`,
   `tripRevealed`, `photoFeatured`, `photoLiked`, `photoCommented`, `friendRequest`, `dailyMoment` y `momentPosted`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
-- **Archivar y eliminar tus fotos** (`src/features/gallery/`: `actions.ts`, `use-archive-photo.ts`, `use-delete-photo.ts`, `own-photo-actions.ts`):
-  solo en **tus fotos** de un rollo **revelado** (no videos), desde el "…" del visor y el menú de mantener apretado de la grilla: "Archivar" /
+- **Archivar y eliminar tus fotos y videos** (`src/features/gallery/`: `actions.ts`, `use-archive-photo.ts`, `use-delete-photo.ts`, `own-photo-actions.ts`):
+  solo en **tus fotos y videos** de un rollo **revelado** (los rollos viejos tienen videos; un video no se destaca ni tiene me gusta ni comentarios), desde el "…" del visor y el menú de mantener apretado de la grilla: "Archivar" /
   "Desarchivar" y "Eliminar". **Archivar** es al instante y sin confirmar (optimista sobre el cache del feed; si falla vuelve atrás con
   `Burnt.alert` "No se pudo archivar"): la foto deja de existir para los demás (feed, mapa, historias, "Tu actividad", perfiles, me gusta,
   comentarios, descargas; lo filtra el server) y sale de todos los perfiles donde estaba destacada, también el tuyo (desarchivar no la devuelve). Vos la
   seguís viendo en la galería **atenuada con la etiqueta "Archivada"** (y "Archivada" junto a la hora en el visor), sin "Agregar a tu perfil"
-  (`featureActionAvailable`). **Eliminar** pide `Alert` nativa "¿Eliminar esta foto?" / "No se puede deshacer." con "Eliminar" destructivo; borra
+  (`featureActionAvailable`). **Eliminar** pide `Alert` nativa "¿Eliminar esta foto?" (en un video, "¿Eliminar este video?") / "No se puede deshacer." con "Eliminar" destructivo; borra
   para todos (archivos, me gusta, comentarios, destacadas), la saca del cache del feed y en el visor pasa a la siguiente o cierra si era la última;
   si falla, `Burnt.alert` "No se pudo eliminar". En un momento del día, archivar o eliminar la principal arrastra la vinculada. API:
   `POST /media/{id}/archive`, `POST /media/{id}/unarchive`, `DELETE /media/{id}` (el mismo que usa el admin antes del revelado); el feed trae
@@ -362,7 +362,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1518 tests
+npm test                      # 1522 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

@@ -251,3 +251,50 @@ describe("Photo viewer: archive and delete your photo", () => {
     expect(screen.queryByRole("menuitem", { name: "Eliminar" })).toBeNull();
   });
 });
+
+describe("your own videos (old rollos)", () => {
+  const withVideo = () =>
+    feed([
+      item("a"),
+      item("v", { type: "video", durationS: 9, canFeature: false, takenAt: Date.parse("2027-01-12T15:30:00Z") }),
+      item("fv", { type: "video", durationS: 9, canFeature: false, author: FEDE, takenAt: Date.parse("2027-01-12T17:00:00Z") }),
+    ]);
+
+  it("grid: only your own video offers Archivar and Eliminar, never Agregar a tu perfil", async () => {
+    trips.fetchFeed.mockResolvedValue(withVideo());
+    await openGrid();
+    await screen.findAllByRole("button", { name: /Video de Juani/ });
+    expect(screen.getAllByRole("menuitem", { name: "Archivar" })).toHaveLength(2);
+    expect(screen.getAllByRole("menuitem", { name: "Eliminar" })).toHaveLength(2);
+    // Only the photo "a" can be featured; the videos never are.
+    expect(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })).toHaveLength(1);
+  });
+
+  it("grid: Archivar on the video archives it and Eliminar asks about the video", async () => {
+    trips.fetchFeed.mockResolvedValue(withVideo());
+    await openGrid();
+    await screen.findAllByRole("button", { name: /Video de Juani/ });
+    await fireEvent.press(screen.getAllByRole("menuitem", { name: "Archivar" })[0]!);
+    await waitFor(() => expect(gallery.archiveMedia).toHaveBeenCalledWith("v"));
+    await fireEvent.press(screen.getAllByRole("menuitem", { name: "Eliminar" })[0]!);
+    expect(alert).toHaveBeenCalledWith("¿Eliminar este video?", "No se puede deshacer.", expect.any(Array));
+    await pressAlert("Eliminar");
+    await waitFor(() => expect(gallery.deleteMedia).toHaveBeenCalledWith("v"));
+  });
+
+  it("viewer: the … menu of your video offers Archivar and Eliminar (with the video copy)", async () => {
+    trips.fetchFeed.mockResolvedValue(withVideo());
+    await openViewer("v");
+    expect(await screen.findByRole("menuitem", { name: "Archivar" })).toBeTruthy();
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Eliminar" }));
+    expect(alert).toHaveBeenCalledWith("¿Eliminar este video?", "No se puede deshacer.", expect.any(Array));
+  });
+
+  it("viewer: someone else's video has neither", async () => {
+    trips.fetchFeed.mockResolvedValue(withVideo());
+    await openViewer("fv");
+    await screen.findByRole("menuitem", { name: "Denunciar" });
+    expect(screen.queryByRole("menuitem", { name: "Archivar" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Eliminar" })).toBeNull();
+  });
+});

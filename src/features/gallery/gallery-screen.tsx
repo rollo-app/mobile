@@ -149,7 +149,7 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, own, 
   // Long press opens the native context menu: featuring (videos and photos you can't feature have nothing to offer)
   // and, on your own photos, archive and delete. Selecting has its own taps.
   const actions: MenuAction[] = [
-    ...(featureActionAvailable(photo)
+    ...(photo.type === "photo" && featureActionAvailable(photo)
       ? [
           photo.featuredByMe
             ? ({ id: "unfeature", title: "Sacar de tu perfil", image: "person.crop.circle.badge.minus" } as MenuAction)
@@ -158,7 +158,7 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, own, 
       : []),
     ...(own ? ownPhotoActions(photo) : []),
   ];
-  if (selecting || photo.type !== "photo" || actions.length === 0) return cell;
+  if (selecting || actions.length === 0) return cell;
   return (
     <MenuView
       shouldOpenOnLongPress

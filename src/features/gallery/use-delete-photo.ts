@@ -13,7 +13,7 @@ import { deleteMedia } from "./actions";
 type Vars = { mediaId: string; tripId: string };
 
 /**
- * Deletes your own revealed photo for good, after a native confirmation. On success it leaves the roll's feed cache
+ * Deletes your own revealed photo or video for good, after a native confirmation. On success it leaves the roll's feed cache
  * right away (so the gallery and the viewer move on) and what counted it is refetched; on failure a native alert.
  * `confirmDelete` resolves true only when it was deleted.
  */
@@ -36,9 +36,9 @@ export function useDeletePhoto() {
   const { mutateAsync } = mutation;
 
   const confirmDelete = useCallback(
-    (photo: { id: string }, tripId: string) =>
+    (photo: { id: string; type?: "photo" | "video" }, tripId: string) =>
       new Promise<boolean>((resolve) =>
-        Alert.alert("¿Eliminar esta foto?", "No se puede deshacer.", [
+        Alert.alert(photo.type === "video" ? "¿Eliminar este video?" : "¿Eliminar esta foto?", "No se puede deshacer.", [
           { text: "Cancelar", style: "cancel", onPress: () => resolve(false) },
           {
             text: "Eliminar",
