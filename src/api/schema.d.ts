@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Request a login code by email
-         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts) and, only when `linkChallenge` is sent, a magic link for the same attempt (`<LOGIN_LINK_URL>#t=<token>&e=<email>`, see `/auth/email/verify-link`), bound to that challenge. Using either one consumes both. A new request invalidates the previous codes. Rate limited per email and per IP. Works for new and existing users alike.
+         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts) and, only when `linkChallenge` is sent, a magic link for the same attempt (`<LOGIN_LINK_URL>#t=<token>&e=<email>`, see `/auth/email/verify-link`), bound to that challenge. Using either one consumes both. A new request invalidates the previous codes. Rate limited per email and per IP, and capped globally per day (429). Works for new and existing users alike.
          */
         post: {
             parameters: {
@@ -359,7 +359,7 @@ export interface paths {
         put?: never;
         /**
          * Get a URL to upload your avatar
-         * @description Returns a signed URL to PUT a JPEG straight to R2. Then call POST /me/avatar/complete. Each call generates a new random file name, so the avatar URL changes when you replace it.
+         * @description Send the exact byte size of the JPEG (`sizeBytes`, max 2 MB; 400 otherwise). Returns a URL signed for exactly that Content-Length to PUT the JPEG straight to R2. Then call POST /me/avatar/complete. 503 when the storage limit is reached. A previous upload that was never completed is discarded. Each call generates a new random file name, so the avatar URL changes when you replace it.
          */
         post: {
             parameters: {
@@ -368,7 +368,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AvatarUploadRequest"];
+                };
+            };
             responses: {
                 /** @description Upload URL */
                 200: {
@@ -379,8 +383,35 @@ export interface paths {
                         "application/json": components["schemas"]["AvatarUpload"];
                     };
                 };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Storage limit reached; new uploads are paused */
+                503: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -438,6 +469,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1235,7 +1275,7 @@ export interface paths {
         get?: never;
         /**
          * Block a user
-         * @description Idempotent and one-directional. Also removes the friendship in both directions. Does not remove anyone from a rollo. Also removes the blocked user's photos from your featured list. A new block is emailed to support (at most 10 reports and blocks per user per 24 hours are emailed).
+         * @description Idempotent and one-directional. Also removes the friendship in both directions. Does not remove anyone from a rollo. Also removes the blocked user's photos from your featured list. A new block is emailed to support (at most 3 reports and blocks per user per 24 hours, and 20 per day overall, are emailed). More than 50 blocks per user per 24 hours is a 429.
          */
         put: {
             parameters: {
@@ -1275,6 +1315,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1334,7 +1383,7 @@ export interface paths {
         put?: never;
         /**
          * Report a photo or a person
-         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos). At most 10 reports and blocks per user per 24 hours are emailed to support; the rest are stored without email. 404 if the photo is not one the reporter can see; 400 if it is theirs.
+         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos). At most 3 reports and blocks per user per 24 hours (and 20 per day overall) are emailed to support; the rest are stored without email. More than 50 reports per user per 24 hours is a 429. 404 if the photo is not one the reporter can see; 400 if it is theirs.
          */
         post: {
             parameters: {
@@ -1376,6 +1425,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1860,6 +1918,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -2021,7 +2088,7 @@ export interface paths {
         put?: never;
         /**
          * Register a photo or video
-         * @description Returns signed URLs to upload the original and the thumbnail straight to R2. Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota.
+         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries).
          */
         post: {
             parameters: {
@@ -2101,6 +2168,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Storage limit reached; new uploads are paused */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -2120,7 +2196,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm the files were uploaded
-         * @description Checks that the original and the thumbnail are in R2. Only then does the photo show up in the feed.
+         * @description Checks that the original and the thumbnail are in R2 and that their sizes match what was registered. Only then does the photo show up in the feed. On a size mismatch both files are deleted and the media stays pending (register again for new URLs).
          */
         post: {
             parameters: {
@@ -2162,6 +2238,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2290,6 +2375,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2742,6 +2836,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -2802,6 +2905,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2960,6 +3072,10 @@ export interface components {
             upload: string;
             /** @description Seconds the URL stays valid */
             expiresIn: number;
+        };
+        AvatarUploadRequest: {
+            /** @description Exact byte size of the JPEG (max 2 MB); the upload URL is signed for exactly this Content-Length */
+            sizeBytes: number;
         };
         MyTrips: {
             trips: components["schemas"]["TripSummary"][];
@@ -3332,12 +3448,12 @@ export interface components {
             upload: {
                 /**
                  * Format: uri
-                 * @description PUT of the original file
+                 * @description PUT of the original file; send exactly `sizeBytes` bytes as Content-Length
                  */
                 original: string;
                 /**
                  * Format: uri
-                 * @description PUT of the JPEG thumbnail (~800px)
+                 * @description PUT of the JPEG thumbnail (~800px); send exactly `thumbSizeBytes` bytes as Content-Length
                  */
                 thumb: string;
             };
@@ -3374,7 +3490,10 @@ export interface components {
             durationS?: number | null;
             width?: number | null;
             height?: number | null;
+            /** @description Exact byte size of the original file; the upload URL is signed for exactly this Content-Length */
             sizeBytes: number;
+            /** @description Exact byte size of the thumbnail JPEG; the upload URL is signed for exactly this Content-Length */
+            thumbSizeBytes: number;
         };
         /** @enum {string} */
         MediaType: "photo" | "video";

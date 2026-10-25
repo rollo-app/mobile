@@ -46,6 +46,7 @@ let puts: Array<{ uri: string; url: string; contentType: string }>;
 let putStatus: (url: string) => number | Error;
 let removed: string[];
 let missing: Set<string>;
+let sizes: Map<string, number>;
 let now: number;
 let deps: UploaderDeps;
 
@@ -58,6 +59,10 @@ beforeEach(async () => {
   puts = [];
   removed = [];
   missing = new Set();
+  sizes = new Map([
+    ["file:///docs/pending/a/original.jpg", 2_500_000],
+    ["file:///docs/pending/a/thumb.jpg", 61_234],
+  ]);
   now = NOW;
   putStatus = () => 200;
   routes = [];
@@ -88,7 +93,7 @@ beforeEach(async () => {
       if (status instanceof Error) throw status;
       return status;
     },
-    fileExists: async (uri) => !missing.has(uri),
+    fileSize: async (uri) => (missing.has(uri) ? null : (sizes.get(uri) ?? 1000)),
     removeFiles: async (id) => {
       removed.push(id);
     },
@@ -167,9 +172,22 @@ describe("uploader", () => {
       width: 4000,
       height: 3000,
       sizeBytes: 2_500_000,
+      thumbSizeBytes: 61_234,
       thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
     });
     expect(calls[1]!.auth).toBe("Bearer tok");
+  });
+
+  it("declares the exact byte size of the files on disk, not the one stored at capture", async () => {
+    // The URLs are signed for that exact Content-Length, and the PUT sends the whole file.
+    happyServer();
+    await queue.enqueue(item({ sizeBytes: 0 }));
+    sizes.set(item().originalUri, 2_400_321);
+    sizes.set(item().thumbUri, 70_001);
+
+    await createUploader(deps).run();
+
+    expect(calls[0]!.body).toMatchObject({ sizeBytes: 2_400_321, thumbSizeBytes: 70_001 });
   });
 
   it("uploads videos as video/mp4", async () => {

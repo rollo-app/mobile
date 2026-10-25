@@ -20,6 +20,7 @@ function mockApi(routes: Route[]) {
 }
 
 beforeEach(() => setSessionToken("tok"));
+afterEach(() => jest.restoreAllMocks());
 
 describe("updateProfile", () => {
   it("sends the trimmed name and the normalized username and returns the user", async () => {
@@ -111,6 +112,32 @@ describe("uploadAvatar", () => {
       "POST /me/avatar/complete",
     ]);
     expect(result).toEqual(user);
+  });
+
+  it("declares the JPEG's exact byte size, since the URL is signed for that Content-Length", async () => {
+    const fetchMock = mockApi([
+      [/^POST \/me\/avatar$/, 200, { upload: "https://r2.test/put", expiresIn: 600 }],
+      [/^POST \/me\/avatar\/complete$/, 200, user],
+    ]);
+    jest.spyOn(File.prototype, "size", "get").mockReturnValue(73_512);
+
+    await uploadAvatar({ uri: "file:///picked.jpg", width: 1200, height: 1200 });
+
+    expect(await (fetchMock.mock.calls[0]![0] as Request).json()).toEqual({ sizeBytes: 73_512 });
+  });
+
+  it("refuses a JPEG over 2 MB without asking for a URL", async () => {
+    const fetchMock = mockApi([]);
+    jest.spyOn(File.prototype, "size", "get").mockReturnValue(2 * 1024 * 1024 + 1);
+
+    await expect(uploadAvatar({ uri: "file:///picked.jpg", width: 1200, height: 1200 })).rejects.toThrow("La foto es muy pesada");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("propagates the server's message when it can't take the upload", async () => {
+    mockApi([[/^POST \/me\/avatar$/, 503, { error: "Las subidas están en pausa. Probá más tarde." }]]);
+
+    await expect(uploadAvatar({ uri: "file:///picked.jpg", width: 1200, height: 1200 })).rejects.toThrow("Las subidas están en pausa");
   });
 
   it("doesn't upscale a smaller photo", async () => {

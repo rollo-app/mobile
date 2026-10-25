@@ -14,8 +14,8 @@ export type UploaderDeps = {
   getToken: () => Promise<string | null>;
   /** PUT of the file to the signed URL; returns the status. Rejects if there is no network. */
   putFile: (uri: string, url: string, contentType: string) => Promise<number>;
-  /** Whether the local file still exists. */
-  fileExists: (uri: string) => Promise<boolean>;
+  /** Byte size of the local file, or null if it no longer exists. */
+  fileSize: (uri: string) => Promise<number | null>;
   /** Deletes the Documents/pending/<id> folder. */
   removeFiles: (id: string) => Promise<void>;
   /** Called with the trip each time an upload is confirmed (the quota and the total change). */
@@ -98,8 +98,11 @@ export function createUploader(deps: UploaderDeps) {
     }
   }
 
-  /** Uploads an item end to end. Throws if anything fails. */
-  async function send(m: PendingMedia, token: string) {
+  /**
+   * Uploads an item end to end. Throws if anything fails. The sizes are the files' on disk: the URLs
+   * are signed for that exact Content-Length and the PUT sends the whole file.
+   */
+  async function send(m: PendingMedia, token: string, sizes: { original: number; thumb: number }) {
     const api = createApiClient({ baseUrl: deps.apiUrl, token });
     const register = () =>
       unwrap(
@@ -116,7 +119,8 @@ export function createUploader(deps: UploaderDeps) {
             durationS: m.durationS,
             width: m.width,
             height: m.height,
-            sizeBytes: m.sizeBytes,
+            sizeBytes: sizes.original,
+            thumbSizeBytes: sizes.thumb,
             thumbhash: m.thumbhash,
           },
         }),
@@ -158,11 +162,13 @@ export function createUploader(deps: UploaderDeps) {
         const token = await deps.getToken();
         // Signed out: the queue stays as it is until someone signs in again.
         if (!token) return;
-        if (!(await deps.fileExists(m.originalUri)) || !(await deps.fileExists(m.thumbUri))) {
+        const original = await deps.fileSize(m.originalUri);
+        const thumb = await deps.fileSize(m.thumbUri);
+        if (original === null || thumb === null) {
           await discard(m, "missing_file");
           continue;
         }
-        await send(m, token);
+        await send(m, token, { original, thumb });
       } catch (e) {
         const phase: Phase = e instanceof CompleteFailed ? "complete" : "register";
         // An error we can't classify is retried: it never aborts the pass or blocks the queue.

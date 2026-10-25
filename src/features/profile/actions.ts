@@ -6,6 +6,8 @@ import type { User } from "@/features/auth/actions";
 import { normalizeUsername } from "./username";
 
 const AVATAR_MAX = 512;
+/** The server's cap; the upload URL is signed for the JPEG's exact size. */
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
 export type UserProfile = Schemas["UserProfile"];
 export type ProfileVisibility = Schemas["ProfileVisibility"];
@@ -62,13 +64,15 @@ async function resizeAvatar(photo: { uri: string; width: number; height: number 
 
 /** Profile photo: resize → signed URL → PUT → complete. Returns the updated user. */
 export async function uploadAvatar(photo: { uri: string; width: number; height: number }): Promise<User> {
-  const resized = await resizeAvatar(photo);
+  const file = new File(await resizeAvatar(photo));
+  const sizeBytes = file.size ?? 0;
+  if (sizeBytes > AVATAR_MAX_BYTES) throw new ApiError(400, "La foto es muy pesada. Probá con otra.");
   const api = await authedClient();
-  const { upload } = await unwrap(api.POST("/me/avatar"));
+  const { upload } = await unwrap(api.POST("/me/avatar", { body: { sizeBytes } }));
 
   let status = 0;
   try {
-    status = (await new File(resized).upload(upload, { httpMethod: "PUT", headers: { "Content-Type": "image/jpeg" } })).status;
+    status = (await file.upload(upload, { httpMethod: "PUT", headers: { "Content-Type": "image/jpeg" } })).status;
   } catch {
     // No connection: the same message as a rejected upload.
   }

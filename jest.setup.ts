@@ -32,6 +32,9 @@ jest.mock("expo-file-system", () => {
     get exists() {
       return true;
     }
+    get size(): number | null {
+      return 48_000;
+    }
     async upload(_url: string, _options?: unknown) {
       return { status: 200, body: "" };
     }
