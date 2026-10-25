@@ -247,6 +247,7 @@ describe("Roll board · people and settings", () => {
       canSee: false,
       friendCount: 0,
       mutualCount: 0,
+      friendRequest: "none",
     });
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });

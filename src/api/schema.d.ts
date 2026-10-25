@@ -219,6 +219,161 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/friend-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Friend requests you received
+         * @description Pending ones only (the ones you rejected are gone), most recent first.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Received requests */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReceivedFriendRequests"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/friend-requests/{userId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a friend request
+         * @description Makes you friends and notifies whoever sent it (`newFriend`). 404 if there is no pending request from that user.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The new friend */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FriendResponse"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/friend-requests/{userId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a friend request
+         * @description Silent: the sender is not notified and keeps seeing it as sent. Also 204 if there was none.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Request rejected */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me": {
         parameters: {
             query?: never;
@@ -837,6 +992,115 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/friend-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a friend request
+         * @description Asks to become friends with someone whose profile you can open. They are friends only once the receiver accepts. If they already sent you one, you become friends at once (`friends`). Sending again while it is pending, or to a friend, is not an error. A request the receiver rejected is silent: you still get `sent`, nothing reaches them until 30 days after the rejection. Notifies the receiver (`friendRequest`). 400 to yourself, 404 if the user does not exist or there is a block in either direction, 429 past 30 sent requests in 24 hours.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Request status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SendFriendRequestResponse"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /**
+         * Cancel a friend request you sent
+         * @description Also 204 if there was none.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Request cancelled */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -3049,6 +3313,41 @@ export interface components {
              */
             verifier?: string;
         };
+        ReceivedFriendRequests: {
+            /** @description Pending requests to you, most recent first */
+            requests: components["schemas"]["ReceivedFriendRequest"][];
+        };
+        ReceivedFriendRequest: {
+            user: components["schemas"]["Friend"];
+            /**
+             * @description When the request was sent
+             * @example 1767225600000
+             */
+            createdAt: number;
+        };
+        Friend: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string | null;
+            avatarUrl: string | null;
+            /**
+             * @description Profile description (up to 3 lines); null if none
+             * @example Viajando por el sur
+             */
+            bio: string | null;
+        };
+        FriendResponse: {
+            friend: components["schemas"]["Friend"];
+        };
         UpdateProfileRequest: {
             /** @example Juani */
             name?: string;
@@ -3124,6 +3423,8 @@ export interface components {
             photoFeatured: boolean;
             /** @description Someone likes a photo of yours */
             photoLiked: boolean;
+            /** @description Someone sends you a friend request */
+            friendRequest: boolean;
         };
         UpdateUserSettingsRequest: {
             notifications?: {
@@ -3139,6 +3440,8 @@ export interface components {
                 photoFeatured?: boolean;
                 /** @description Someone likes a photo of yours */
                 photoLiked?: boolean;
+                /** @description Someone sends you a friend request */
+                friendRequest?: boolean;
             };
         };
         UsernameAvailability: {
@@ -3146,6 +3449,13 @@ export interface components {
             available: boolean;
             /** @description The normalized username that was checked */
             username: string;
+        };
+        SendFriendRequestResponse: {
+            /**
+             * @description sent: the request is pending (or was rejected, which the sender never sees); friends: you are friends now (they had asked you too, or you already were)
+             * @enum {string}
+             */
+            status: "sent" | "friends";
         };
         UserProfile: {
             user: components["schemas"]["PublicUser"];
@@ -3162,6 +3472,11 @@ export interface components {
             friendCount: number;
             /** @description How many of your friends are also this user's friends (0 for yourself) */
             mutualCount: number;
+            /**
+             * @description Pending friend request between you and this user: sent (you sent one, also after they rejected it: they never tell), received (they sent you one you have not answered), none (also for friends, yourself and blocks)
+             * @enum {string}
+             */
+            friendRequest: "none" | "sent" | "received";
         };
         PublicUser: {
             /**
@@ -3223,29 +3538,6 @@ export interface components {
              * @example 1767225600000
              */
             expiresAt: number;
-        };
-        FriendResponse: {
-            friend: components["schemas"]["Friend"];
-        };
-        Friend: {
-            /**
-             * Format: uuid
-             * @description User id
-             */
-            id: string;
-            /** @example Cami */
-            name: string;
-            /**
-             * @description Unique handle without the @
-             * @example cami
-             */
-            username: string | null;
-            avatarUrl: string | null;
-            /**
-             * @description Profile description (up to 3 lines); null if none
-             * @example Viajando por el sur
-             */
-            bio: string | null;
         };
         RedeemFriendRequest: {
             /** @description Friend code typed or taken from a link that is still valid */

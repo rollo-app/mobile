@@ -76,6 +76,7 @@ const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserPr
   canSee: true,
   friendCount: 12,
   mutualCount: 0,
+  friendRequest: "none",
   ...over,
 });
 

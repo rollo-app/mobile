@@ -52,3 +52,34 @@ export async function addFriendsToTrip(tripId: string, friendIds: string[]): Pro
 export async function leaveTrip(tripId: string): Promise<void> {
   await unwrap((await authedClient()).DELETE("/trips/{tripId}/members/me", { params: { path: { tripId } } }));
 }
+
+export type FriendRequest = Schemas["ReceivedFriendRequest"];
+
+/**
+ * Asks to be friends with someone whose profile you opened. `friends` when they had asked you too (or you
+ * already were): the friendship exists right away; `sent` otherwise.
+ */
+export async function sendFriendRequest(userId: string): Promise<"sent" | "friends"> {
+  const { status } = await unwrap((await authedClient()).POST("/users/{userId}/friend-request", { params: { path: { userId } } }));
+  return status;
+}
+
+/** Takes back a request you sent (also fine if there was none). */
+export async function cancelFriendRequest(userId: string): Promise<void> {
+  await unwrap((await authedClient()).DELETE("/users/{userId}/friend-request", { params: { path: { userId } } }));
+}
+
+/** Requests people sent you that are still waiting for an answer, newest first. */
+export async function fetchFriendRequests(): Promise<FriendRequest[]> {
+  return (await unwrap((await authedClient()).GET("/me/friend-requests"))).requests;
+}
+
+export async function acceptFriendRequest(userId: string): Promise<Friend> {
+  const { friend } = await unwrap((await authedClient()).POST("/me/friend-requests/{userId}/accept", { params: { path: { userId } } }));
+  return friend;
+}
+
+/** Silent: they aren't told. */
+export async function rejectFriendRequest(userId: string): Promise<void> {
+  await unwrap((await authedClient()).POST("/me/friend-requests/{userId}/reject", { params: { path: { userId } } }));
+}

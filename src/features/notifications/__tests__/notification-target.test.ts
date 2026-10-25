@@ -12,6 +12,10 @@ describe("notificationTarget", () => {
     expect(notificationTarget(response({ url: "/reveal?trip=t1" }))).toEqual({ tripId: "t1", tab: true, href: "/roll" });
   });
 
+  it("a friend request opens the Amigos tab", () => {
+    expect(notificationTarget(response({ url: "/friends" }))).toEqual({ tripId: null, tab: true, href: "/friends" });
+  });
+
   it("a profile is pushed as is, without touching the active roll", () => {
     expect(notificationTarget(response({ url: "/user/u2" }))).toEqual({ tripId: null, tab: false, href: "/user/u2" });
   });

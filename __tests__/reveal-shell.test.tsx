@@ -286,6 +286,7 @@ describe("revealed roll: Galería | Rollo", () => {
       canSee: false,
       friendCount: 0,
       mutualCount: 0,
+      friendRequest: "none",
     });
     const base = detail();
     const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const, blockedByMe: false };

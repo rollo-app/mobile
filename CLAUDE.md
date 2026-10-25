@@ -80,6 +80,7 @@ Decisiones de producto:
   desde "Sumar amigos" (sheet `add-friends`, respuesta por amigo: "Ya está" / "No disponible"); al crear un rollo, si tenés
   amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el admin
   puede "Salirme del rollo" (conserva sus fotos y puede volver con el código). Los links `https` (Universal Links) llegan con TestFlight.
+  **Solicitudes de amistad** (`friend-request-button.tsx`, `friend-requests-section.tsx`, `use-friend-request.ts`): en el perfil de otra persona, si no son amigos y no la bloqueaste, un botón debajo del encabezado según `friendRequest` (`none` → "Agregar amigo"; `sent` → "Solicitud enviada", su menú ofrece "Cancelar solicitud"; `received` → "Aceptar solicitud" y "Rechazar"). Es optimista (el perfil y la lista cambian al toque y vuelven si el server dice que no) y el error va inline. Las recibidas salen arriba en la tab Amigos, sección "Solicitudes" (solo si hay) con Aceptar / Rechazar por fila (`GET /me/friend-requests`). Rechazar es silencioso. Séptimo aviso push `friendRequest` ("Cami te mandó una solicitud de amistad", abre la tab Amigos) con su switch "Solicitudes de amistad" en Ajustes → Notificaciones.
 - **Perfil de cualquier usuario** (`src/features/friends/user-profile-screen.tsx`, `GET /users/{userId}` →
   `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
   encabezado); nombre, @, foto, **descripción** y cantidad de amigos se ven siempre ("12 amigos · 3 en común", texto
@@ -283,7 +284,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1196 tests
+npm test                      # 1218 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

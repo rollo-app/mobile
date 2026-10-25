@@ -12,6 +12,7 @@ const KINDS: { kind: NotificationKind; label: string; footer: string }[] = [
   { kind: "tripRevealed", label: "Se revela un rollo", footer: "Cuando se revelan las fotos de un rollo tuyo." },
   { kind: "photoFeatured", label: "Destacan tu foto", footer: "Cuando alguien pone una foto tuya en su perfil." },
   { kind: "photoLiked", label: "Les gusta tu foto", footer: "Cuando a alguien le gusta una foto tuya." },
+  { kind: "friendRequest", label: "Solicitudes de amistad", footer: "Cuando alguien te manda una solicitud de amistad." },
 ];
 
 /** Ajustes → Notificaciones: a switch per kind of push, and what to do if iOS doesn't let them through. */

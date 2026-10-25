@@ -1,7 +1,7 @@
 import { setSessionToken } from "@/storage/session";
 import { fetchNotificationSettings, updateNotificationSettings } from "../actions";
 
-const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true };
+const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, friendRequest: true };
 
 function mockFetch(body: unknown, status = 200) {
   const fetchMock = jest.fn(async (_req: Request) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
