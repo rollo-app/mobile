@@ -106,6 +106,20 @@ describe("useSendShot", () => {
     expect(jest.mocked(media.prepareMedia).mock.calls.at(-1)?.[0]).toBe(selfieAsset);
   });
 
+  it("when the selfie preparation fails, nothing is enqueued and the mutation errors", async () => {
+    jest.mocked(media.prepareMedia).mockResolvedValueOnce(prepared).mockRejectedValueOnce(new Error("selfie boom"));
+    const selfieAsset = { uri: "file:///cache/SELFIE.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ ...input, momentDay: "2027-01-05", selfie: { asset: selfieAsset, takenAt: input.takenAt + 4000 } }),
+      ).rejects.toThrow("selfie boom");
+    });
+    expect(await queue.pendingForTrip("t1")).toEqual([]);
+    expect(syncQueue).not.toHaveBeenCalled();
+  });
+
   it("surfaces the error and does not sync when preparing fails", async () => {
     jest.mocked(media.prepareMedia).mockRejectedValue(new Error("boom"));
     const { wrapper } = setup();

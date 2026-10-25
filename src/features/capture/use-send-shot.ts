@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
+import { Directory, Paths } from "expo-file-system";
 import type * as ImagePicker from "expo-image-picker";
 import type { Fix } from "./location";
 import { prepareMedia } from "./media";
@@ -31,6 +32,30 @@ async function sendShot(input: SendShotInput) {
   // The EXIF written into the photo needs the fix, so prepare after it (it has its own timeout).
   const location = await input.fix;
   const prepared = await prepareMedia(asset, id, { takenAt, timeZone, location, caption, author });
+  const withSelfie = input.selfie && input.momentDay ? { selfie: input.selfie, momentDay: input.momentDay } : null;
+  const selfieId = Crypto.randomUUID();
+  let selfiePrepared: Awaited<ReturnType<typeof prepareMedia>> | null = null;
+  if (withSelfie) {
+    // Prepare both before enqueuing anything: if the selfie fails, no orphan main stays queued.
+    try {
+      // TODO(A5): process with prepareMedia's maxDimension 1080 once it exists; for now like any photo.
+      selfiePrepared = await prepareMedia(withSelfie.selfie.asset, selfieId, {
+        takenAt: withSelfie.selfie.takenAt,
+        timeZone,
+        location,
+        caption: null,
+        author,
+      });
+    } catch (e) {
+      try {
+        const dir = new Directory(Paths.document, "pending", id);
+        if (dir.exists) dir.delete();
+      } catch {
+        // Best effort: the main's files are unreferenced anyway.
+      }
+      throw e;
+    }
+  }
   const queue = await getQueue();
   await queue.enqueue({
     id,
@@ -46,27 +71,18 @@ async function sendShot(input: SendShotInput) {
     pairedWith: null,
     ...prepared,
   });
-  if (input.selfie && input.momentDay) {
-    // TODO(A5): process with prepareMedia's maxDimension 1080 once it exists; for now like any photo.
-    const selfieId = Crypto.randomUUID();
-    const selfiePrepared = await prepareMedia(input.selfie.asset, selfieId, {
-      takenAt: input.selfie.takenAt,
-      timeZone,
-      location,
-      caption: null,
-      author,
-    });
+  if (withSelfie && selfiePrepared) {
     await queue.enqueue({
       id: selfieId,
       tripId,
       type: "photo",
-      takenAt: input.selfie.takenAt,
-      day: localDay(input.selfie.takenAt, timeZone),
+      takenAt: withSelfie.selfie.takenAt,
+      day: localDay(withSelfie.selfie.takenAt, timeZone),
       lat: location?.lat ?? null,
       lng: location?.lng ?? null,
       accuracyM: location?.accuracyM ?? null,
       caption: null,
-      momentDay: input.momentDay,
+      momentDay: withSelfie.momentDay,
       pairedWith: id,
       ...selfiePrepared,
     });
