@@ -63,13 +63,14 @@ async function apply(
       scheduled.filter((n) => stale(n.identifier)).map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
     );
     // Same identifier replaces the previous one, so running this twice never duplicates.
-    for (const p of planned) await schedule(p);
+    for (const p of planned) await scheduleMomentNotification(p);
   } catch {
     // The next sync tries again; whatever is scheduled keeps working.
   }
 }
 
-async function schedule(p: PlannedMoment): Promise<void> {
+/** Schedules one moment's local notification (the same identifier replaces the previous one). */
+export async function scheduleMomentNotification(p: PlannedMoment): Promise<void> {
   await Notifications.scheduleNotificationAsync({
     identifier: p.id,
     content: {

@@ -110,12 +110,15 @@ Decisiones de producto:
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
-- **Momento del día (modo viaje, estilo BeReal):** un aviso por día a una hora random distinta para cada uno, dentro de una
-  franja (9:00–23:00 por defecto, configurable al crear el rollo). Hay **5 minutos** para sacar una foto extra, **aparte del
-  cupo**; pasado ese tiempo se pierde (no hay "tardía"). Selfie sí o no lo elige el admin al crear el rollo (con cámara propia,
-  `react-native-vision-camera` o `expo-camera`; la selfie chica, ~1080 px, es una foto aparte vinculada a la principal y en la
-  app se muestra como recuadro encima). En el revelado va mezclada con las demás, con un
-  badge a definir. Diseño y preguntas abiertas en `docs/superpowers/specs/2026-10-25-momento-diario-design.md`.
+- **Momento del día (modo viaje, estilo BeReal)** (`src/features/moments/`): un aviso por día a una hora random distinta para cada uno, dentro de una
+  franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Foto + selfie"). Hay **5 minutos** para sacar una foto extra, **aparte del
+  cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"). Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
+  inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…`);
+  `cancelMomentNotifications()` las borra (al cerrar sesión, borrar la cuenta y apagar el switch). La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
+  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (`expo-camera`, propia, fullScreenModal) tiene cuenta regresiva y, si el rollo es "Foto + selfie", saca
+  la selfie (~1080 px) como foto aparte vinculada a la principal; en Rollo hay un banner "Tu momento · quedan m:ss" mientras la ventana está abierta; en el revelado la foto del
+  momento lleva un badge y la selfie va de recuadro. **Ajustes → Notificaciones → "Momento del día"** (`dailyMoment`): apagarlo hace el `PATCH` y cancela los `moment.*`; prenderlo corre
+  `syncMoments()`. En Desarrollo, "Probar momento ahora" programa uno en 10 s para el rollo activo. Diseño en `docs/superpowers/specs/2026-10-25-momento-diario-design.md`.
 - **Cupo diario o total** (a futuro, mismo diseño): al crear el rollo se elige si el límite es por día (como hoy, 10 por
   persona por día) o total del viaje (por ejemplo 20 por persona en todo el rollo).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
@@ -179,7 +182,7 @@ Decisiones de producto:
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
 - Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
-  ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Ver revelado" y "Ver candado", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
+  ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado" y "Ver candado", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
   "Cerrar sesión" / "Borrar cuenta".
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
@@ -227,6 +230,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
   **`react-native-pulsar`** (hápticos continuos), **`expo-audio`** (plugin con `enableBackgroundPlayback: false`: no toca la sesión de audio de
   la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados). Agregarlos o cambiarlos
   pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
+- `expo-camera` (cámara del momento del día) es nativo: agregarlo pide `npx expo prebuild --clean` + `npx expo run:ios --device`.
 - `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
@@ -250,7 +254,7 @@ src/
                           *.ts            lógica pura, testeable sin React
                           *.tsx           componentes propios del dominio
                           __tests__/      tests de esa lógica, al lado del código
-                        Dominios: auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
+                        Dominios: moments (momento del día: planificador de avisos locales, cámara con cuenta regresiva y selfie, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
                         (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications (push, permiso, Ajustes → Notificaciones), likes (me gusta), roll (tablero), moderation (denunciar y bloquear: menú en Feed, visores y perfil de otro, Ajustes → Bloqueados; los errores van con `burnt`).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, SwitchRow, Button,
@@ -307,7 +311,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1291 tests
+npm test                      # 1365 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

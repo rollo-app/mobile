@@ -1,5 +1,6 @@
 import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
+import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
@@ -323,6 +324,26 @@ describe("Me", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Probar subida en segundo plano" }));
 
     expect(BackgroundTask.triggerTaskWorkerForTestingAsync).toHaveBeenCalled();
+  });
+
+  it("in development, 'Probar momento ahora' schedules a moment for the active roll in 10 seconds", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    jest.mocked(Notifications.scheduleNotificationAsync).mockClear();
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    const before = Date.now();
+    await fireEvent.press(await screen.findByRole("button", { name: "Probar momento ahora" }));
+
+    await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1));
+    const req = jest.mocked(Notifications.scheduleNotificationAsync).mock.calls[0]![0] as any;
+    const at = req.trigger.date as number;
+    expect(at - before).toBeGreaterThanOrEqual(9_000);
+    expect(at - before).toBeLessThanOrEqual(12_000);
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
+    expect(req.identifier).toBe(`moment.${SUR}.${day}`);
+    expect(req.content.data.url).toBe(`/moment?trip=${SUR}&day=${day}&at=${at}`);
+    expect(req.content.title).toBe("Es tu momento");
   });
 
   it("in development, 'Ver revelado' in Ajustes opens the reveal screen", async () => {
