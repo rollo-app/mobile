@@ -677,3 +677,66 @@ describe("Photo viewer: likes", () => {
     expect(screen.queryByRole("button", { name: "Me gusta" })).toBeNull();
   });
 });
+
+describe("Daily moment in the gallery", () => {
+  const selfie = (id: string) => ({
+    id,
+    width: 1080,
+    height: 1440,
+    thumbhash: null,
+    files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
+  });
+  const momentFeed = () =>
+    feed([
+      item("plain", { takenAt: Date.parse("2027-01-12T15:00:00Z") }),
+      item("mom", { takenAt: Date.parse("2027-01-12T16:00:00Z"), momentDay: "2027-01-12", selfie: selfie("self") }),
+      item("solo", { takenAt: Date.parse("2027-01-12T17:00:00Z"), momentDay: "2027-01-12", selfie: null }),
+    ]);
+
+  it("marks the moment photos in the grid and no other", async () => {
+    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    await open();
+    await screen.findAllByRole("button", { name: /Foto de Fede/ });
+    expect(screen.getAllByTestId("moment-badge")).toHaveLength(2);
+  });
+
+  describe("viewer", () => {
+    const openMoment = async (id = "mom") => {
+      mocked.fetchFeed.mockResolvedValue(momentFeed());
+      await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
+    };
+
+    it("shows the selfie inset and tapping it swaps the big photo and the inset", async () => {
+      await openMoment();
+      const inset = await screen.findByRole("button", { name: "Ver la selfie" });
+      await fireEvent.press(inset);
+      expect(await screen.findByRole("button", { name: "Ver la foto" })).toBeVisible();
+      expect(screen.queryByRole("button", { name: "Ver la selfie" })).toBeNull();
+      await fireEvent.press(screen.getByRole("button", { name: "Ver la foto" }));
+      expect(await screen.findByRole("button", { name: "Ver la selfie" })).toBeVisible();
+    });
+
+    it("likes, comments and featuring still act on the main photo while the selfie is big", async () => {
+      await openMoment();
+      await fireEvent.press(await screen.findByRole("button", { name: "Ver la selfie" }));
+      await fireEvent.press(await screen.findByRole("button", { name: "Me gusta" }));
+      await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("mom"));
+      await fireEvent.press(screen.getByRole("button", { name: "Agregar a tu perfil" }));
+      await waitFor(() => expect(featured.featureMedia).toHaveBeenCalledWith("mom"));
+    });
+
+    it("shows the badge instead of the inset when there is no selfie", async () => {
+      await openMoment("solo");
+      await screen.findByTestId("viewer-info");
+      expect(screen.getByTestId("moment-badge")).toBeVisible();
+      expect(screen.queryByRole("button", { name: "Ver la selfie" })).toBeNull();
+    });
+
+    it("shows neither on an ordinary photo", async () => {
+      await openMoment("plain");
+      await screen.findByTestId("viewer-info");
+      expect(screen.queryByTestId("moment-badge")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Ver la selfie" })).toBeNull();
+    });
+  });
+});

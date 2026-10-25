@@ -74,6 +74,35 @@ describe("revealed photos", () => {
   });
 });
 
+describe("daily moment", () => {
+  const selfie = {
+    id: "s1",
+    width: 1080,
+    height: 1440,
+    thumbhash: "abc",
+    files: { thumb: "/m/s1/thumb", original: "/m/s1/original" },
+  };
+
+  it("carries the moment day and the selfie paths", () => {
+    const [photo] = toRevealedPhotos([item({ momentDay: "2027-01-12", selfie })]);
+
+    expect(photo).toMatchObject({
+      momentDay: "2027-01-12",
+      selfie: { id: "s1", thumbPath: "/m/s1/thumb", originalPath: "/m/s1/original", thumbhash: "abc", width: 1080, height: 1440 },
+    });
+  });
+
+  it("has no moment and no selfie on an ordinary photo, or a selfie without files", () => {
+    const [plain, noFiles] = toRevealedPhotos([
+      item(),
+      item({ id: "b", momentDay: "2027-01-12", selfie: { ...selfie, files: null } }),
+    ]);
+
+    expect(plain).toMatchObject({ momentDay: null, selfie: null });
+    expect(noFiles).toMatchObject({ momentDay: "2027-01-12", selfie: null });
+  });
+});
+
 describe("media source", () => {
   it("points to the API with the trip token", () => {
     expect(mediaSource("/trips/t/media/a/thumb", "secret", "http://api")).toEqual({

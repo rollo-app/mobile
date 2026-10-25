@@ -20,6 +20,8 @@ import { useToggleLike } from "@/features/likes/use-toggle-like";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatPinTime } from "@/features/map/pin-time";
+import { MomentBadge } from "@/features/media/moment-badge";
+import { SelfieInset } from "@/features/media/selfie-inset";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { feedKey } from "@/features/trips/use-feed";
@@ -44,6 +46,7 @@ function Page({
   photo,
   token,
   active,
+  selfieBig,
   width,
   height,
   onTap,
@@ -52,6 +55,8 @@ function Page({
   photo: RevealedPhoto;
   token: string;
   active: boolean;
+  /** The moment's selfie is the big picture (likes still go to `photo`, the main one). */
+  selfieBig: boolean;
   width: number;
   height: number;
   onTap: () => void;
@@ -78,8 +83,8 @@ function Page({
     >
       <Pressable accessibilityLabel={`Foto de ${photo.author.name}`} onPress={() => taps.tap()} style={{ width, height }}>
         <Image
-          source={mediaSource(photo.originalPath, token)}
-          placeholder={mediaSource(photo.thumbPath, token)}
+          source={mediaSource(selfieBig && photo.selfie ? photo.selfie.originalPath : photo.originalPath, token)}
+          placeholder={mediaSource(selfieBig && photo.selfie ? photo.selfie.thumbPath : photo.thumbPath, token)}
           transition={150}
           contentFit="contain"
           style={{ width, height }}
@@ -133,6 +138,8 @@ export function PhotoViewer({
     router.push({ pathname: "/comments/[mediaId]", params: { mediaId: sheetTarget.id } });
   }, [sheetTarget, router]);
 
+  // Photos whose moment selfie is the big picture now; the actions below always act on the main photo.
+  const [selfieBig, setSelfieBig] = useState<Record<string, boolean>>({});
   const [chrome, setChrome] = useState(true);
   const [saves, setSaves] = useState<Record<string, SaveState>>({});
   const toggle = useCallback(() => setChrome((v) => !v), []);
@@ -222,6 +229,7 @@ export function PhotoViewer({
               photo={item}
               token={token}
               active={i === current}
+              selfieBig={!!selfieBig[item.id]}
               width={width}
               height={height}
               onTap={toggle}
@@ -243,6 +251,17 @@ export function PhotoViewer({
           >
             <OverlayCornerSymbol name="xmark" />
           </Pressable>
+          {photo?.selfie && token ? (
+            <SelfieInset
+              photo={photo}
+              token={token}
+              selfieBig={!!selfieBig[photo.id]}
+              onToggle={() => setSelfieBig((s) => ({ ...s, [photo.id]: !s[photo.id] }))}
+              style={[styles.moment, { top: insets.top + spacing.sm + 36 + spacing.sm }]}
+            />
+          ) : photo?.momentDay ? (
+            <MomentBadge style={[styles.moment, { top: insets.top + spacing.sm + 36 + spacing.sm }]} />
+          ) : null}
           {photo && menu.length > 0 && (
             // The author's and moderation options, in the corner opposite the ✕.
             <View style={[styles.more, { top: insets.top + spacing.sm }]}>
@@ -324,6 +343,7 @@ export function PhotoViewer({
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: "#000000" },
   close: { position: "absolute", left: spacing.md },
+  moment: { position: "absolute", left: spacing.md },
   more: { position: "absolute", right: spacing.md },
   info: {
     position: "absolute",

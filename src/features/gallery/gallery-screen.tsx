@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
+import { MomentBadge, momentBadgeCorner } from "@/features/media/moment-badge";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
@@ -74,6 +75,7 @@ function sameCell(a: CellProps, b: CellProps) {
     a.photo.durationS === b.photo.durationS &&
     a.photo.author.name === b.photo.author.name &&
     a.photo.featuredByMe === b.photo.featuredByMe &&
+    a.photo.momentDay === b.photo.momentDay &&
     a.token === b.token &&
     a.size === b.size &&
     a.selecting === b.selecting &&
@@ -102,6 +104,7 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPre
           style={StyleSheet.absoluteFill}
         />
       )}
+      {photo.momentDay && <MomentBadge style={momentBadgeCorner} />}
       {photo.type === "video" && (
         <View style={styles.video}>
           <SymbolView name="play.fill" size={10} tintColor="#FFFFFF" />

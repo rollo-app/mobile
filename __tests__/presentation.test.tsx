@@ -282,3 +282,31 @@ describe("Presentation: likes", () => {
     expect(screen.queryByText("Día 2")).toBeNull();
   });
 });
+
+describe("Presentation: daily moment", () => {
+  const selfie = { id: "s", width: 1080, height: 1440, thumbhash: null, files: { thumb: "/m/s/thumb", original: "/m/s/original" } };
+
+  it("shows the selfie inset on a moment photo and tapping it swaps, without advancing the story", async () => {
+    mocked.fetchFeed.mockResolvedValue({
+      revealed: true,
+      revealAt: Date.parse("2027-01-14T12:00:00Z"),
+      items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, "el viento"), momentDay: "2027-01-12", selfie }],
+    });
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver la selfie" }));
+    expect(await screen.findByRole("button", { name: "Ver la foto" })).toBeVisible();
+    expect(screen.getByText("el viento")).toBeVisible();
+  });
+
+  it("shows the badge on a moment photo without selfie", async () => {
+    mocked.fetchFeed.mockResolvedValue({
+      revealed: true,
+      revealAt: Date.parse("2027-01-14T12:00:00Z"),
+      items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, "el viento"), momentDay: "2027-01-12" }],
+    });
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap();
+    expect(await screen.findByTestId("moment-badge")).toBeVisible();
+  });
+});

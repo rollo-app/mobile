@@ -32,8 +32,21 @@ export type RevealedPhoto = {
   likedByMe: boolean;
   /** How many comments you see on it (0 for videos). */
   commentCount: number;
+  /** Trip-local date of the daily moment this photo answers; null for ordinary photos. */
+  momentDay: string | null;
+  /** The selfie taken with a moment photo (null if none). Never likeable, commentable or featurable: those act on the main photo. */
+  selfie: RevealedSelfie | null;
   thumbPath: string;
   originalPath: string;
+};
+
+export type RevealedSelfie = {
+  id: string;
+  thumbPath: string;
+  originalPath: string;
+  thumbhash: string | null;
+  width: number | null;
+  height: number | null;
 };
 
 /** Feed items that already have files (only after the reveal), oldest first. */
@@ -62,6 +75,17 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
               likeCount: item.likeCount ?? 0,
               likedByMe: item.likedByMe ?? false,
               commentCount: item.commentCount ?? 0,
+              momentDay: item.momentDay ?? null,
+              selfie: item.selfie?.files
+                ? {
+                    id: item.selfie.id,
+                    thumbPath: item.selfie.files.thumb,
+                    originalPath: item.selfie.files.original,
+                    thumbhash: item.selfie.thumbhash,
+                    width: item.selfie.width,
+                    height: item.selfie.height,
+                  }
+                : null,
               thumbPath: item.files.thumb,
               originalPath: item.files.original,
             },

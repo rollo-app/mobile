@@ -25,6 +25,8 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   canFeature: true,
   likedByMe: false,
   commentCount: 0,
+  momentDay: null,
+  selfie: null,
 });
 
 // 0 day, 1 a, 2 b, 3 day, 4 c, 5 outro

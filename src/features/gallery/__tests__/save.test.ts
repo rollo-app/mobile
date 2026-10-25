@@ -36,6 +36,8 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   canFeature: true,
   likedByMe: false,
   commentCount: 0,
+  momentDay: null,
+  selfie: null,
 });
 
 const ctx = {
