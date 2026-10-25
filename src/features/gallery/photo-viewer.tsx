@@ -370,7 +370,7 @@ export function PhotoViewer({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: "#000000" },
-  notFound: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
+  notFound: { ...StyleSheet.absoluteFill, alignItems: "center", justifyContent: "center" },
   close: { position: "absolute", left: spacing.md },
   moment: { position: "absolute", left: spacing.md },
   more: { position: "absolute", right: spacing.md },
