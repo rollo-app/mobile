@@ -19,6 +19,7 @@ import FriendLinkRoute from "../../app/friends/[code]";
 import BlockedScreen from "../../app/blocked";
 import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
+import CommentsRoute from "../../app/comments/[mediaId]";
 import CreateScreen from "../../app/create";
 import CropAvatarScreen from "../../app/crop-avatar";
 import EditProfileScreen from "../../app/edit-profile";
@@ -62,6 +63,7 @@ export const routes = {
   reveal: RevealRoute,
   "roll-started": RollStartedScreen,
   "photo/[id]": PhotoRoute,
+  "comments/[mediaId]": CommentsRoute,
   "featured/[userId]/[mediaId]": FeaturedRoute,
   "user/[id]": UserProfileRoute,
   "user/[id]/friends": UserFriendsRoute,

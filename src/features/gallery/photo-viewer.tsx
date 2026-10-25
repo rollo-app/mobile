@@ -5,10 +5,11 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
+import { CommentButton } from "@/features/comments/comment-button";
 import { blockFeature, unblockFeature } from "@/features/featured/actions";
 import { useReport } from "@/features/moderation/use-report";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
@@ -88,7 +89,16 @@ function Page({
 }
 
 /** Full-screen pager over the roll's photos, starting at `id`. Tap hides or shows the overlay; double tap likes a photo. */
-export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: string }) {
+export function PhotoViewer({
+  id,
+  tripId: tripParam,
+  openComments,
+}: {
+  id: string;
+  tripId?: string;
+  /** Coming from a comment push: open the comments sheet on `id` once it has loaded. */
+  openComments?: boolean;
+}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -112,6 +122,15 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
   const [index, setIndex] = useState<number | null>(null);
   const current = index ?? startIndex.current ?? 0;
   const photo = photos[current];
+
+  // The comments push opens the photo with its sheet, once.
+  const commentsOpened = useRef(false);
+  const sheetTarget = openComments && !commentsOpened.current ? photos.find((p) => p.id === id && p.type === "photo") : undefined;
+  useEffect(() => {
+    if (!sheetTarget) return;
+    commentsOpened.current = true;
+    router.push({ pathname: "/comments/[mediaId]", params: { mediaId: sheetTarget.id } });
+  }, [sheetTarget, router]);
 
   const [chrome, setChrome] = useState(true);
   const [saves, setSaves] = useState<Record<string, SaveState>>({});
@@ -256,6 +275,12 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
               <View style={styles.actions}>
                 {photo.type === "photo" && (
                   <LikeButton liked={photo.likedByMe} count={photo.likeCount} busy={liking} onPress={() => void likes.toggle(photo)} />
+                )}
+                {photo.type === "photo" && (
+                  <CommentButton
+                    count={photo.commentCount}
+                    onPress={() => router.push({ pathname: "/comments/[mediaId]", params: { mediaId: photo.id } })}
+                  />
                 )}
                 {photo.type === "photo" && (
                   <OverlayIconButton

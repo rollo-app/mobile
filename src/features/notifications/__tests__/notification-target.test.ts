@@ -24,6 +24,14 @@ describe("notificationTarget", () => {
     });
   });
 
+  it("a photo with comments=1 keeps it, so the viewer opens the sheet", () => {
+    expect(notificationTarget(response({ url: "/photo/m1?tripId=t1&comments=1" }))).toEqual({
+      tripId: "t1",
+      tab: false,
+      href: "/photo/m1?tripId=t1&comments=1",
+    });
+  });
+
   it("drops the trip param from what it pushes but keeps the others", () => {
     expect(notificationTarget(response({ url: "/user/u2?trip=t1&x=1" }))).toEqual({ tripId: "t1", tab: false, href: "/user/u2?x=1" });
   });

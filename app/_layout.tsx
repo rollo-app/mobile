@@ -155,6 +155,16 @@ function RootStack() {
             name="photo/[id]"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
           />
+          {/* Comments of a photo: a sheet over the viewer. */}
+          <Stack.Screen
+            name="comments/[mediaId]"
+            options={{
+              title: "Comentarios",
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.6, 1],
+              sheetGrabberVisible: true,
+            }}
+          />
           <Stack.Screen
             name="featured/[userId]/[mediaId]"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}

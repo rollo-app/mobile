@@ -1382,8 +1382,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Report a photo or a person
-         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos). At most 3 reports and blocks per user per 24 hours (and 20 per day overall) are emailed to support; the rest are stored without email. More than 50 reports per user per 24 hours is a 429. 404 if the photo is not one the reporter can see; 400 if it is theirs.
+         * Report a photo, a comment or a person
+         * @description Send exactly one of `mediaId`, `commentId` or `userId`. Idempotent: reporting the same photo, comment or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos); a reported comment, from their comment lists and counts. At most 3 reports and blocks per user per 24 hours (and 20 per day overall) are emailed to support; the rest are stored without email. More than 50 reports per user per 24 hours is a 429. 404 if the photo or comment is not one the reporter can see (a comment: only active members of its rollo); 400 if it is theirs.
          */
         post: {
             parameters: {
@@ -2271,7 +2271,7 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
          */
         get: {
             parameters: {
@@ -2962,6 +2962,196 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/{mediaId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the comments of a photo
+         * @description Oldest first. Only active members of the photo's rollo, once it is revealed: otherwise 404 (also with a block with the photo's author). Leaves out deleted comments, comments of users blocked in either direction and the ones you reported. A video has none (empty list).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Comments */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentList"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Comment on a photo
+         * @description Plain text, up to 500 characters. Same permissions as listing; 400 for a video. Notifies the photo's author and whoever commented before (`photoCommented`), at most once every 30 minutes per photo: the comments in between are counted and added to the next push.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description The new comment */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Comment"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a comment
+         * @description The author of the comment or the author of its photo. Another member of the rollo gets 403. 404 if the comment does not exist, is already deleted, or you can't see its photo.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    commentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3124,6 +3314,8 @@ export interface components {
             photoFeatured: boolean;
             /** @description Someone likes a photo of yours */
             photoLiked: boolean;
+            /** @description Someone comments on a photo of yours, or on one you commented on */
+            photoCommented: boolean;
         };
         UpdateUserSettingsRequest: {
             notifications?: {
@@ -3139,6 +3331,8 @@ export interface components {
                 photoFeatured?: boolean;
                 /** @description Someone likes a photo of yours */
                 photoLiked?: boolean;
+                /** @description Someone comments on a photo of yours, or on one you commented on */
+                photoCommented?: boolean;
             };
         };
         UsernameAvailability: {
@@ -3286,6 +3480,8 @@ export interface components {
             mediaId?: string;
             /** @description Person to report */
             userId?: string;
+            /** @description Comment to report (on a photo of a rollo you are in) */
+            commentId?: string;
         };
         /** @enum {string} */
         ReportReason: "offensive" | "abuse" | "other";
@@ -3545,6 +3741,8 @@ export interface components {
             likeCount?: number;
             /** @description Only after the reveal: you like it */
             likedByMe?: boolean;
+            /** @description Only after the reveal: how many comments you see on it (not the deleted ones, nor those of blocked users or ones you reported). Always 0 for videos */
+            commentCount?: number;
         };
         FeaturedPhotos: {
             /** @description Most recently featured first */
@@ -3590,6 +3788,29 @@ export interface components {
             lat: number;
             lng: number;
         } | null;
+        CommentList: {
+            comments: components["schemas"]["Comment"][];
+        };
+        Comment: {
+            /** Format: uuid */
+            id: string;
+            text: string;
+            /** @description Epoch milliseconds */
+            createdAt: number;
+            author: {
+                /** Format: uuid */
+                userId: string;
+                name: string;
+                username: string | null;
+                avatarUrl: string | null;
+            };
+            /** @description You wrote it, or the photo is yours */
+            canDelete: boolean;
+        };
+        CreateCommentRequest: {
+            /** @description Plain text, trimmed, 1 to 500 characters */
+            text: string;
+        };
     };
     responses: never;
     parameters: never;

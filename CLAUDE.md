@@ -126,15 +126,22 @@ Decisiones de producto:
   después de crear o unirse a un rollo (`offerPushAfterJoining`; clave nueva `rollo.pushPrimerSeen`, no se renombra); si ya había permiso
   el token se registra en silencio, y si lo negó no pasa nada (queda el aviso en Ajustes). **Tocar una push** abre `data.url` (ruta de la
   app, nunca otro host) y, si trae `trip`/`tripId`, ese rollo pasa a ser el activo (`notification-target.ts`, `use-notification-response.ts`);
-  `/roll` y `/reveal` abren la tab Rollo (un revelado sin ver se reproduce desde ahí). **Seis avisos:** te sumaron a un rollo, nuevo amigo,
-  arrancó el rollo, se reveló, destacaron tu foto y le gustó tu foto. Nunca por acciones propias ni de usuarios bloqueados. Se **sacó el aviso
+  `/roll` y `/reveal` abren la tab Rollo (un revelado sin ver se reproduce desde ahí). **Siete avisos:** te sumaron a un rollo, nuevo amigo,
+  arrancó el rollo, se reveló, destacaron tu foto, le gustó tu foto y comentaron tu foto. Nunca por acciones propias ni de usuarios bloqueados. Se **sacó el aviso
   local del revelado**: al abrir la app se cancelan los `reveal.*` que dejaron versiones viejas (`legacy-reveal.ts`).
   **Ajustes → Notificaciones** (`settings-screen.tsx`, `GET/PATCH /me/settings`): un switch por aviso (`addedToTrip`, `newFriend`, `tripStarted`,
-  `tripRevealed`, `photoFeatured`, `photoLiked`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
+  `tripRevealed`, `photoFeatured`, `photoLiked`, `photoCommented`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
 - **"Me gusta"** (`src/features/likes/`): solo fotos reveladas (y destacadas en un perfil). Corazón con contador en el visor de la galería y
   en el de destacadas (fila de íconos sin texto: corazón, estrella, mapa, guardar; el "…" va arriba a la derecha); doble toque en la foto
   da el me gusta (sin animación: el corazón se llena), así que un toque simple espera 250 ms (`tap-gate.ts`) antes de contar como toque
   simple. En las historias, corazón abajo a la derecha sin contador: el doble toque da me gusta y tocarlo lo saca o lo pone. Es optimista y con cache (`like-cache.ts`).
+- **Comentarios** (`src/features/comments/`): solo en fotos reveladas (no videos, no en las destacadas de un perfil: mostrarían nombres y charla del
+  rollo a gente de afuera) y solo entre miembros activos del rollo. En el visor de la galería, la burbuja `bubble.left` (con la cantidad,
+  `commentCount` del feed) abre la sheet `/comments/<mediaId>` (`comments-screen.tsx`): lista (avatar, nombre, texto, "hace 5 min") y campo abajo
+  (texto plano, hasta 500, `draft.ts`). El "…" de cada fila ofrece "Borrar" (tuyo, o cualquiera si la foto es tuya: `canDelete` lo decide el server)
+  y "Denunciar" (ajeno; `useReport().reportComment`, mail a soporte como el resto de la moderación). Error al enviar: inline y no pierde lo escrito.
+  El aviso `photoCommented` ("Cami comentó tu foto", "Cami también comentó una foto") abre `/photo/<id>?tripId=…&comments=1`: el visor abre la sheet
+  una vez (`openComments`). Ajustes → Notificaciones: switch "Comentan tu foto".
 - **A futuro (no para enero):** feeds públicos de rollos y buscar perfiles públicos.
 
 ## Navegación y diseño
@@ -283,7 +290,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1196 tests
+npm test                      # 1224 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -372,7 +379,7 @@ Hecho: crear rollo configurable (fechas, cupos, revelado), unirse con código, e
 preview, cola offline con subida en segundo plano, cache persistente, Mapa (pins agrupados, carrusel, filtros)
 con el Feed adentro, Amigos (tab, link de amistad, perfil con rollos en común, sumar a un rollo), fotos destacadas en el
 perfil (grilla, mapa por zonas, perfil público o solo amigos, perfil de cualquier miembro o autor), identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa · Presentación · Amigos · Perfil, cuentas (email + código, perfil con foto y descripción), presentación
-(enfoque + historias), galería con visor y descargas a Fotos, y notificaciones push (seis avisos, permiso, Ajustes) con "me gusta" en los visores. Corre en el iPhone
+(enfoque + historias), galería con visor y descargas a Fotos, y notificaciones push (siete avisos, permiso, Ajustes) con "me gusta" en los visores. Corre en el iPhone
 con dev build contra el backend local.
 
 Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Rollo,

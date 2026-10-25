@@ -23,6 +23,7 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   featureBlocked: false,
   likeCount: 0,
   likedByMe: false,
+  commentCount: 0,
 });
 
 // 0 day, 1 a, 2 b, 3 day, 4 c, 5 outro

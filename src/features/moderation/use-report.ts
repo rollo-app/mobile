@@ -6,6 +6,7 @@ import { userKey } from "@/features/profile/use-user";
 import { feedKey } from "@/features/trips/use-feed";
 import type { Feed } from "@/features/trips/actions";
 import {
+  reportComment as reportCommentAction,
   reportMedia as reportMediaAction,
   reportUser as reportUserAction,
   type ReportReason,
@@ -66,6 +67,15 @@ export function useReport() {
       ),
     [run, queryClient],
   );
+  const reportComment = useCallback(
+    (commentId: string) =>
+      run(
+        "¿Por qué denunciás este comentario?",
+        (reason) => reportCommentAction(commentId, reason),
+        () => void queryClient.invalidateQueries({ queryKey: ["comments"] }),
+      ),
+    [run, queryClient],
+  );
   const reportUser = useCallback(
     (userId: string, name: string) =>
       run(
@@ -76,5 +86,5 @@ export function useReport() {
     [run, queryClient],
   );
 
-  return { busy: mutation.isPending, reportMedia, reportUser };
+  return { busy: mutation.isPending, reportMedia, reportComment, reportUser };
 }

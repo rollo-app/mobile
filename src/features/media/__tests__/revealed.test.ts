@@ -55,6 +55,11 @@ describe("revealed photos", () => {
     expect(photo).toMatchObject({ likeCount: 4, likedByMe: true });
   });
 
+  it("carries how many comments it has, none if the server leaves it out", () => {
+    expect(toRevealedPhotos([item({ commentCount: 3 })])[0]).toMatchObject({ commentCount: 3 });
+    expect(toRevealedPhotos([item()])[0]).toMatchObject({ commentCount: 0 });
+  });
+
   it("defaults the likes to none when the server leaves them out", () => {
     const [photo] = toRevealedPhotos([item()]);
 
