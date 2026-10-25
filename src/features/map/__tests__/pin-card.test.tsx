@@ -24,6 +24,16 @@ const item = (over: Partial<MapItem> = {}): MapItem => ({
 });
 
 describe("PinCard", () => {
+  it("shows the moment badge only on a moment photo", async () => {
+    await render(<PinCard item={item({ momentDay: "2027-01-12" })} timeZone={TZ} now={NOW} />);
+    expect(screen.getByTestId("moment-badge")).toBeTruthy();
+  });
+
+  it("has no moment badge on an ordinary photo", async () => {
+    await render(<PinCard item={item()} timeZone={TZ} now={NOW} />);
+    expect(screen.queryByTestId("moment-badge")).toBeNull();
+  });
+
   it("shows author, relative time and the blurry photo", async () => {
     await render(<PinCard item={item()} timeZone={TZ} now={NOW} />);
 

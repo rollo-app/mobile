@@ -17,6 +17,7 @@ export const tripSummary = (id: string, name: string, over: Partial<TripSummary>
   revealed: false,
   role: "admin",
   totalUploaded: 0,
+  momentMode: "off",
   coverThumbhash: null,
   ...over,
 });

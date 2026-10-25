@@ -20,6 +20,8 @@ import { useToggleLike } from "@/features/likes/use-toggle-like";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatPinTime } from "@/features/map/pin-time";
+import { MomentBadge } from "@/features/media/moment-badge";
+import { SelfieInset } from "@/features/media/selfie-inset";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { feedKey } from "@/features/trips/use-feed";
@@ -27,7 +29,7 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { OverlayCornerSymbol, OverlayIconButton, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
 import { spacing, tintHex, type } from "@/ui/theme";
 import { PermissionNotice } from "./permission-notice";
-import { PermissionDeniedError } from "./save";
+import { PermissionDeniedError, linkedImage } from "./save";
 import { useSaver } from "./use-saver";
 
 type SaveState = "idle" | "saving" | "saved" | "failed" | "denied";
@@ -44,6 +46,7 @@ function Page({
   photo,
   token,
   active,
+  selfieBig,
   width,
   height,
   onTap,
@@ -52,6 +55,8 @@ function Page({
   photo: RevealedPhoto;
   token: string;
   active: boolean;
+  /** The moment's selfie is the big picture (likes still go to `photo`, the main one). */
+  selfieBig: boolean;
   width: number;
   height: number;
   onTap: () => void;
@@ -78,8 +83,8 @@ function Page({
     >
       <Pressable accessibilityLabel={`Foto de ${photo.author.name}`} onPress={() => taps.tap()} style={{ width, height }}>
         <Image
-          source={mediaSource(photo.originalPath, token)}
-          placeholder={mediaSource(photo.thumbPath, token)}
+          source={mediaSource(selfieBig && photo.selfie ? photo.selfie.originalPath : photo.originalPath, token)}
+          placeholder={mediaSource(selfieBig && photo.selfie ? photo.selfie.thumbPath : photo.thumbPath, token)}
           transition={150}
           contentFit="contain"
           style={{ width, height }}
@@ -133,10 +138,14 @@ export function PhotoViewer({
     router.push({ pathname: "/comments/[mediaId]", params: { mediaId: sheetTarget.id } });
   }, [sheetTarget, router]);
 
+  // Photos whose moment selfie is the big picture now; the actions below always act on the main photo.
+  const [selfieBig, setSelfieBig] = useState<Record<string, boolean>>({});
   const [chrome, setChrome] = useState(true);
   const [saves, setSaves] = useState<Record<string, SaveState>>({});
   const toggle = useCallback(() => setChrome((v) => !v), []);
 
+  // "Guardar" saves the image that is big: the moment's linked one once it was swapped in.
+  const savedTarget = (p: RevealedPhoto) => (selfieBig[p.id] && p.selfie ? linkedImage(p) : p);
   async function save(target: RevealedPhoto) {
     if (!saver) return;
     setSaves((s) => ({ ...s, [target.id]: "saving" }));
@@ -178,7 +187,7 @@ export function PhotoViewer({
     if (current >= photos.length - 1) router.back();
   }
 
-  const state = (photo && saves[photo.id]) || "idle";
+  const state = (photo && saves[savedTarget(photo).id]) || "idle";
   const featuring = !!photo && featured.pending.has(photo.id);
   const featureError = photo && featureTarget === photo.id ? (blockError ?? featured.error) : null;
   const liking = !!photo && likes.pending.has(photo.id);
@@ -190,7 +199,7 @@ export function PhotoViewer({
     ? []
     : !own
       ? [{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]
-      : photo.type === "photo"
+      : photo.type === "photo" && !photo.momentDay // moment photos can never be featured
         ? [
             {
               id: photo.featureBlocked ? "unblock" : "block",
@@ -222,6 +231,7 @@ export function PhotoViewer({
               photo={item}
               token={token}
               active={i === current}
+              selfieBig={!!selfieBig[item.id]}
               width={width}
               height={height}
               onTap={toggle}
@@ -243,6 +253,17 @@ export function PhotoViewer({
           >
             <OverlayCornerSymbol name="xmark" />
           </Pressable>
+          {photo?.selfie && token ? (
+            <SelfieInset
+              photo={photo}
+              token={token}
+              selfieBig={!!selfieBig[photo.id]}
+              onToggle={() => setSelfieBig((s) => ({ ...s, [photo.id]: !s[photo.id] }))}
+              style={[styles.moment, { top: insets.top + spacing.sm + 36 + spacing.sm }]}
+            />
+          ) : photo?.momentDay ? (
+            <MomentBadge style={[styles.moment, { top: insets.top + spacing.sm + 36 + spacing.sm }]} />
+          ) : null}
           {photo && menu.length > 0 && (
             // The author's and moderation options, in the corner opposite the ✕.
             <View style={[styles.more, { top: insets.top + spacing.sm }]}>
@@ -306,7 +327,7 @@ export function PhotoViewer({
                   label={state === "saved" ? "Guardada" : "Guardar en Fotos"}
                   busy={state === "saving"}
                   disabled={state === "saved" || !saver}
-                  onPress={() => void save(photo)}
+                  onPress={() => void save(savedTarget(photo))}
                 />
               </View>
               {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
@@ -324,6 +345,7 @@ export function PhotoViewer({
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: "#000000" },
   close: { position: "absolute", left: spacing.md },
+  moment: { position: "absolute", left: spacing.md },
   more: { position: "absolute", right: spacing.md },
   info: {
     position: "absolute",

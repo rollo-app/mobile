@@ -376,12 +376,17 @@ jest.mock("expo-background-task", () => ({
 jest.mock("expo-notifications", () => ({
   setNotificationHandler: jest.fn(),
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  scheduleNotificationAsync: jest.fn(async (request: { identifier?: string }) => request.identifier ?? "id"),
+  SchedulableTriggerInputTypes: { DATE: "date" },
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
   getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true, status: "undetermined" })),
   requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true, status: "granted" })),
   getExpoPushTokenAsync: jest.fn(async () => ({ type: "expo", data: "ExponentPushToken[test-token]" })),
+  getPresentedNotificationsAsync: jest.fn(async () => []),
+  dismissNotificationAsync: jest.fn(async () => {}),
   getLastNotificationResponseAsync: jest.fn(async () => null),
   clearLastNotificationResponseAsync: jest.fn(async () => {}),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
@@ -394,6 +399,22 @@ jest.mock("expo-media-library", () => ({
 
 beforeEach(() => {
   (require("expo-file-system").File as { deleted: number }).deleted = 0;
+});
+
+// expo-camera is native: the view is an empty View whose ref takes pictures through `takePictureAsync` (drivable from tests).
+jest.mock("expo-camera", () => {
+  const { View } = require("react-native");
+  const { forwardRef, createElement, useImperativeHandle } = require("react");
+  const takePictureAsync = jest.fn(async () => ({ uri: "file:///cache/Camera/shot.jpg", width: 3000, height: 4000 }));
+  const permission = { granted: true, canAskAgain: true, status: "granted" };
+  return {
+    __takePictureAsync: takePictureAsync,
+    CameraView: forwardRef((props: Record<string, unknown>, ref: unknown) => {
+      useImperativeHandle(ref, () => ({ takePictureAsync }));
+      return createElement(View, { testID: `camera-${String(props.facing)}`, ...props });
+    }),
+    useCameraPermissions: jest.fn(() => [permission, jest.fn(async () => permission)]),
+  };
 });
 
 // expo-video is native: in tests the player is an empty object and the view an empty View.

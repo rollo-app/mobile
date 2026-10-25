@@ -14,6 +14,7 @@ const KINDS: { kind: NotificationKind; label: string; footer: string }[] = [
   { kind: "photoLiked", label: "Les gusta tu foto", footer: "Cuando a alguien le gusta una foto tuya." },
   { kind: "photoCommented", label: "Comentan tu foto", footer: "Cuando alguien comenta una foto tuya o una que comentaste." },
   { kind: "friendRequest", label: "Solicitudes de amistad", footer: "Cuando alguien te manda una solicitud de amistad." },
+  { kind: "dailyMoment", label: "Momento del día", footer: "Un aviso al día, a una hora al azar, para sacar tu foto del momento." },
 ];
 
 /** Ajustes → Notificaciones: a switch per kind of push, and what to do if iOS doesn't let them through. */

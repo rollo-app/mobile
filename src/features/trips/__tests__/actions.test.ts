@@ -18,6 +18,9 @@ const trip = {
   dailyVideoLimit: 3,
   photoLimitMode: "daily",
   totalPhotoLimit: null,
+  momentMode: "off",
+  momentWindowStart: 540,
+  momentWindowEnd: 1380,
 };
 const member = { id: "m1", userId: "u1", name: "Juani", avatarUrl: null, role: "admin" };
 

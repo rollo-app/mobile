@@ -19,6 +19,32 @@ export class PermissionDeniedError extends Error {
 
 export const albumTitle = (tripName: string) => `Rollo · ${tripName}`;
 
+/**
+ * Every image to save: each moment's linked image goes right after its main photo (it has no feed item of its own).
+ * It carries the main's author, time and place so Photos sorts and names it like the main.
+ */
+export function withLinkedImages(photos: RevealedPhoto[]): RevealedPhoto[] {
+  return photos.flatMap((p) => (p.selfie ? [p, linkedImage(p)] : [p]));
+}
+
+/** The linked image of a moment as a photo of its own (to save it). */
+export function linkedImage(main: RevealedPhoto): RevealedPhoto {
+  const linked = main.selfie!;
+  return {
+    ...main,
+    id: linked.id,
+    type: "photo",
+    caption: null,
+    durationS: null,
+    width: linked.width,
+    height: linked.height,
+    thumbhash: linked.thumbhash,
+    thumbPath: linked.thumbPath,
+    originalPath: linked.originalPath,
+    selfie: null,
+  };
+}
+
 export function estimateBytes(photos: RevealedPhoto[]): number {
   return photos.reduce((sum, p) => sum + (p.type === "video" ? VIDEO_BYTES : PHOTO_BYTES), 0);
 }

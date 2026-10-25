@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { MomentBanner } from "@/features/moments/moment-banner";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { usePendingItems } from "@/features/capture/use-pending-items";
@@ -34,6 +35,7 @@ export function RollBoard() {
         <Loading />
       ) : (
         <>
+          {phase === "active" && <MomentBanner tripId={detail.trip.id} />}
           <View style={styles.block}>
             <View style={styles.header}>
               <Text style={[type.headline, { color: colors.label }]}>En el rollo</Text>

@@ -11,11 +11,16 @@ import { hasSeenPushPrimer, markPushPrimerSeen } from "@/storage/push-primer";
 import { clearSessionToken } from "@/storage/session";
 import { signInAs, tripSummary, USER } from "@/test/account";
 import { routes } from "@/test/routes";
+import { syncMoments } from "@/features/moments/moment-sync";
 import { queryClient } from "@/api/query-client";
 
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/notifications/actions");
 jest.mock("@/features/friends/actions");
+jest.mock("@/features/moments/moment-sync", () => ({
+  ...jest.requireActual("@/features/moments/moment-sync"),
+  syncMoments: jest.fn().mockResolvedValue(undefined),
+}));
 
 const trips = jest.mocked(actions);
 const push = jest.mocked(pushActions);
@@ -42,6 +47,9 @@ const detail = (id = SUR, name = "Viaje al sur"): actions.TripDetail => ({
     featuringDisabled: false,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false },
   members: [],
@@ -230,6 +238,19 @@ describe("tapping a push", () => {
     expect(await getActiveTripId()).toBe(OTRO);
   });
 
+  it("a moment's local notification makes its roll active and opens /moment with its day and time", async () => {
+    const at = Date.now();
+    notifications.getLastNotificationResponseAsync.mockResolvedValue(
+      tapped(`/moment?trip=${OTRO}&day=2027-01-12&at=${at}`, `moment.${OTRO}.2027-01-12`),
+    );
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+
+    await waitFor(() => expect(screen).toHavePathname("/moment"));
+    expect(screen).toHaveSearchParams({ trip: OTRO, day: "2027-01-12", at: String(at) });
+    expect(await getActiveTripId()).toBe(OTRO);
+    await settle();
+  });
+
   it("signed out it waits for the login, then opens", async () => {
     await clearSessionToken();
     queryClient.clear();
@@ -246,8 +267,8 @@ describe("tapping a push", () => {
 });
 
 describe("Ajustes: Notificaciones", () => {
-  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true };
-  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad"];
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true };
+  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad", "Momento del día"];
 
   beforeEach(() => {
     push.fetchNotificationSettings.mockResolvedValue(ALL_ON);
@@ -283,6 +304,35 @@ describe("Ajustes: Notificaciones", () => {
     expect(screen.getByText("Cuando alguien comenta una foto tuya o una que comentaste.")).toBeVisible();
     // With permission there's no banner.
     expect(screen.queryByText("Las notificaciones están desactivadas")).toBeNull();
+  });
+
+  it("'Momento del día' off saves it, then leaves no moment.* scheduled", async () => {
+    permission(true, true, "granted");
+    notifications.getAllScheduledNotificationsAsync.mockResolvedValue(
+      [{ identifier: "moment.t1.2027-01-12" }, { identifier: "other" }] as never,
+    );
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    await fireEvent(await screen.findByRole("switch", { name: "Momento del día" }), "valueChange", false);
+
+    expect(push.updateNotificationSettings).toHaveBeenCalledWith({ dailyMoment: false });
+    await waitFor(() => expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("moment.t1.2027-01-12"));
+    expect(notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith("other");
+    notifications.getAllScheduledNotificationsAsync.mockResolvedValue([]);
+  });
+
+  it("'Momento del día' on saves it, then syncs the moments", async () => {
+    permission(true, true, "granted");
+    push.fetchNotificationSettings.mockResolvedValue({ ...ALL_ON, dailyMoment: false });
+    jest.mocked(syncMoments).mockClear();
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    const sw = await screen.findByRole("switch", { name: "Momento del día" });
+    expect(sw.props.value).toBe(false);
+    await fireEvent(sw, "valueChange", true);
+
+    expect(push.updateNotificationSettings).toHaveBeenCalledWith({ dailyMoment: true });
+    await waitFor(() => expect(syncMoments).toHaveBeenCalledTimes(1));
   });
 
   it("a switch saves only its own key and moves at once", async () => {

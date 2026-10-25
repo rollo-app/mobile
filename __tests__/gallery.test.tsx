@@ -56,6 +56,9 @@ const detail = (): actions.TripDetail => ({
     featuringDisabled: false,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
@@ -583,6 +586,15 @@ describe("Photo viewer", () => {
     expect(screen.queryByRole("menuitem", { name: "Denunciar" })).toBeNull();
   });
 
+  it("your own moment photo has no feature-block option", async () => {
+    const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
+    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine, momentDay: "2027-01-12" })]));
+    await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
+    await screen.findByRole("button", { name: /Me gusta|Sacar el me gusta/ }).catch(() => null);
+    expect(screen.queryByRole("menuitem", { name: "No dejar que la destaquen" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Dejar que la destaquen" })).toBeNull();
+  });
+
   it("someone else's photo has no feature-block option", async () => {
     await openViewer("a");
     await screen.findByRole("button", { name: "Agregar a tu perfil" });
@@ -672,5 +684,101 @@ describe("Photo viewer: likes", () => {
     await openOn([item("v", { type: "video", durationS: 12 })], "v");
     await screen.findByRole("button", { name: "Guardar en Fotos" });
     expect(screen.queryByRole("button", { name: "Me gusta" })).toBeNull();
+  });
+});
+
+describe("Daily moment in the gallery", () => {
+  const selfie = (id: string) => ({
+    id,
+    width: 1080,
+    height: 1440,
+    thumbhash: null,
+    files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
+  });
+  const momentFeed = () =>
+    feed([
+      item("plain", { takenAt: Date.parse("2027-01-12T15:00:00Z") }),
+      item("mom", { takenAt: Date.parse("2027-01-12T16:00:00Z"), momentDay: "2027-01-12", selfie: selfie("self") }),
+      item("solo", { takenAt: Date.parse("2027-01-12T17:00:00Z"), momentDay: "2027-01-12", selfie: null }),
+    ]);
+
+  it("marks the moment photos in the grid and no other", async () => {
+    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    await open();
+    await screen.findAllByRole("button", { name: /Foto de Fede/ });
+    expect(screen.getAllByTestId("moment-badge")).toHaveLength(2);
+  });
+
+  describe("viewer", () => {
+    const openMoment = async (id = "mom") => {
+      mocked.fetchFeed.mockResolvedValue(momentFeed());
+      await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
+    };
+
+    it("shows the other image as an inset and tapping it swaps the big photo and the inset", async () => {
+      await openMoment();
+      const inset = await screen.findByRole("button", { name: "Ver la otra foto" });
+      await fireEvent.press(inset);
+      // Going back is also "Ver la otra foto"; nothing says selfie.
+      expect(await screen.findByRole("button", { name: "Ver la otra foto" })).toBeVisible();
+      expect(screen.queryByRole("button", { name: /selfie/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Ver la foto" })).toBeNull();
+    });
+
+    it("likes and comments still act on the main photo while the other image is big", async () => {
+      await openMoment();
+      await fireEvent.press(await screen.findByRole("button", { name: "Ver la otra foto" }));
+      await fireEvent.press(await screen.findByRole("button", { name: "Me gusta" }));
+      await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("mom"));
+    });
+
+    it("a moment photo has no Agregar a tu perfil in the viewer, nor in the grid menu", async () => {
+      await openMoment();
+      await screen.findByRole("button", { name: "Me gusta" });
+      expect(screen.queryByRole("button", { name: "Agregar a tu perfil" })).toBeNull();
+    });
+
+    it("Guardar saves the image that is big: the main, and the linked one after swapping", async () => {
+      await openMoment();
+      await fireEvent.press(await screen.findByRole("button", { name: "Guardar en Fotos" }));
+      await waitFor(() => expect(mockSaveOne).toHaveBeenCalledWith(expect.objectContaining({ id: "mom" })));
+      mockSaveOne.mockClear();
+      await fireEvent.press(screen.getByRole("button", { name: "Ver la otra foto" }));
+      await fireEvent.press(await screen.findByRole("button", { name: "Guardar en Fotos" }));
+      await waitFor(() => expect(mockSaveOne).toHaveBeenCalledWith(expect.objectContaining({ id: "self", originalPath: "/m/self/original" })));
+    });
+
+    it("shows the badge instead of the inset when there is no selfie", async () => {
+      await openMoment("solo");
+      await screen.findByTestId("viewer-info");
+      expect(screen.getByTestId("moment-badge")).toBeVisible();
+      expect(screen.queryByRole("button", { name: "Ver la otra foto" })).toBeNull();
+    });
+
+    it("shows neither on an ordinary photo", async () => {
+      await openMoment("plain");
+      await screen.findByTestId("viewer-info");
+      expect(screen.queryByTestId("moment-badge")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Ver la otra foto" })).toBeNull();
+    });
+  });
+
+  it("the grid menu offers no Agregar a tu perfil on moment photos", async () => {
+    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    await open();
+    await screen.findAllByRole("button", { name: /Foto de Fede/ });
+    // Only the ordinary photo has a menu.
+    expect(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })).toHaveLength(1);
+  });
+
+  it("Guardar todo includes the linked image of each moment", async () => {
+    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    await open();
+    await screen.findAllByRole("button", { name: /Foto de Fede/ });
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
+    expect(alert).toHaveBeenCalledWith("Guardar 4 fotos en Fotos", expect.any(String), expect.any(Array));
+    await confirmSave();
+    await waitFor(() => expect(mockSaveOne).toHaveBeenCalledTimes(4));
+    expect(mockSaveOne).toHaveBeenCalledWith(expect.objectContaining({ id: "self" }));
   });
 });

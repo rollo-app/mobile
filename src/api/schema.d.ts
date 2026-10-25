@@ -1774,6 +1774,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trips/{tripId}/moments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My daily moments
+         * @description The moments of the caller for each remaining day of the trip, from today (trip local date) to the end, that can still be taken. The server draws and stores them the first time they are asked for and never re-draws. The app schedules local notifications from them. Empty when the trip has the moment off, is over or revealed, or the user turned `dailyMoment` off. Non-members and ex-members get 403, like `GET /trips/{tripId}`.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description My moments */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyMoments"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips": {
         parameters: {
             query?: never;
@@ -3710,6 +3769,11 @@ export interface components {
             revealed: boolean;
             role: components["schemas"]["Role"];
             totalUploaded: number;
+            /**
+             * @description Daily moment: off, a photo, or a photo plus a selfie
+             * @enum {string}
+             */
+            momentMode: "off" | "photo" | "photo_selfie";
             /** @description ThumbHash of the most recently taken uploaded photo or video of the rollo (null if none); the app derives the rollo's color from it */
             coverThumbhash: string | null;
         };
@@ -3736,6 +3800,8 @@ export interface components {
             photoCommented: boolean;
             /** @description Someone sends you a friend request */
             friendRequest: boolean;
+            /** @description It is your moment of the day in a rollo with the daily moment on */
+            dailyMoment: boolean;
         };
         PrivacySettings: {
             /** @description Others may feature any of your photos on their profile (on by default) */
@@ -3759,6 +3825,8 @@ export interface components {
                 photoCommented?: boolean;
                 /** @description Someone sends you a friend request */
                 friendRequest?: boolean;
+                /** @description It is your moment of the day in a rollo with the daily moment on */
+                dailyMoment?: boolean;
             };
             privacy?: {
                 /** @description Others may feature any of your photos on their profile (on by default) */
@@ -3925,6 +3993,18 @@ export interface components {
              */
             code: string;
         };
+        MyMoments: {
+            moments: components["schemas"]["Moment"][];
+        };
+        Moment: {
+            /**
+             * @description Local date of the trip (YYYY-MM-DD)
+             * @example 2027-01-12
+             */
+            day: string;
+            /** @description Epoch ms when the moment starts; the user has 5 minutes from then */
+            notifyAt: number;
+        };
         TripCreated: {
             trip: components["schemas"]["Trip"];
             member: components["schemas"]["Member"];
@@ -3969,6 +4049,15 @@ export interface components {
             photoLimitMode: "daily" | "total";
             /** @description Photos per person in the whole rollo; null in daily mode */
             totalPhotoLimit: number | null;
+            /**
+             * @description Daily moment: off, a photo, or a photo plus a selfie
+             * @enum {string}
+             */
+            momentMode: "off" | "photo" | "photo_selfie";
+            /** @description Moment window start, minutes from midnight in the rollo's time zone */
+            momentWindowStart: number;
+            /** @description Moment window end, minutes from midnight in the rollo's time zone */
+            momentWindowEnd: number;
         };
         Member: {
             /**
@@ -4034,6 +4123,22 @@ export interface components {
             photoLimitMode?: "daily" | "total";
             /** @description Photos per person in the whole rollo; required when photoLimitMode is total, ignored otherwise */
             totalPhotoLimit?: number;
+            /**
+             * @description Daily moment: off, a photo, or a photo plus a selfie. Cannot be changed after creating the rollo
+             * @default off
+             * @enum {string}
+             */
+            momentMode?: "off" | "photo" | "photo_selfie";
+            /**
+             * @description Start of the daily moment window, in minutes from midnight in the rollo's time zone (default 540 = 9:00)
+             * @default 540
+             */
+            momentWindowStart?: number;
+            /**
+             * @description End of the daily moment window, in minutes from midnight; at least 30 after the start (default 1380 = 23:00)
+             * @default 1380
+             */
+            momentWindowEnd?: number;
         };
         JoinTripRequest: {
             /** @example HUB5FT */
@@ -4147,6 +4252,16 @@ export interface components {
             sizeBytes: number;
             /** @description Exact byte size of the thumbnail JPEG; the upload URL is signed for exactly this Content-Length */
             thumbSizeBytes: number;
+            /**
+             * @description Trip-local date (YYYY-MM-DD) of the daily moment this photo answers. The member must have a moment for that day (409 otherwise, or if it already has a photo). Moment photos don't use the photo quota. Photos only.
+             * @example 2027-01-12
+             */
+            momentDay?: string | null;
+            /**
+             * Format: uuid
+             * @description Marks this photo as the selfie of a moment: the id of the member's own moment photo in the same rollo (400 otherwise). The selfie takes its moment day from that photo and doesn't use the photo quota.
+             */
+            pairedMediaId?: string | null;
         };
         /** @enum {string} */
         MediaType: "photo" | "video";
@@ -4194,7 +4309,7 @@ export interface components {
             featuredByMe?: boolean;
             /** @description Only after the reveal: the author does not let others feature it (they still can) */
             featureBlocked?: boolean;
-            /** @description Only after the reveal: whether you can feature it on your profile now (false if its rollo is private, or if its author, their rollo membership or their account does not let others; its author can unless the rollo is private) */
+            /** @description Only after the reveal: whether you can feature it on your profile now (false if its rollo is private, or if its author, their rollo membership or their account does not let others; its author can unless the rollo is private; always false for the photos of a daily moment) */
             canFeature?: boolean;
             /** @description Only after the reveal: how many people like it (one counter, also likes from profiles that feature it). Always 0 for videos */
             likeCount?: number;
@@ -4202,6 +4317,21 @@ export interface components {
             likedByMe?: boolean;
             /** @description Only after the reveal: how many comments you see on it (not the deleted ones, nor those of blocked users or ones you reported). Always 0 for videos */
             commentCount?: number;
+            /** @description Trip-local date (YYYY-MM-DD) when this photo is the answer to a daily moment; absent for ordinary photos */
+            momentDay?: string | null;
+            /** @description Only on moment photos: the selfie taken with it (null if there is none yet). Selfies are never items of their own. width/height are null before the reveal */
+            selfie?: {
+                /** Format: uuid */
+                id: string;
+                width: number | null;
+                height: number | null;
+                thumbhash: string | null;
+                /** @description Download paths; null before the reveal */
+                files: {
+                    thumb: string;
+                    original: string;
+                } | null;
+            } | null;
         };
         FeaturedPhotos: {
             /** @description Most recently featured first */

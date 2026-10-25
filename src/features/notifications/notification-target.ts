@@ -20,7 +20,8 @@ export function notificationTarget(response: Notifications.NotificationResponse 
   const tab = TAB_PATHS[pathname];
   if (tab) return { tripId, tab: true, href: tab };
 
-  params.delete("trip");
+  // The moment camera reads its roll from the href itself, so it keeps `trip`.
+  if (pathname !== "/moment") params.delete("trip");
   const rest = params.toString();
   return { tripId, tab: false, href: rest ? `${pathname}?${rest}` : pathname };
 }

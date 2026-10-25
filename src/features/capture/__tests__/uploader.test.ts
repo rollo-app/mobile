@@ -23,6 +23,8 @@ const item = (overrides: Partial<QueuedMedia> = {}): QueuedMedia => ({
   originalUri: "file:///docs/pending/a/original.jpg",
   thumbUri: "file:///docs/pending/a/thumb.jpg",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+  momentDay: null,
+  pairedWith: null,
   ...overrides,
 });
 
@@ -174,6 +176,8 @@ describe("uploader", () => {
       sizeBytes: 2_500_000,
       thumbSizeBytes: 61_234,
       thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+      momentDay: null,
+      pairedMediaId: null,
     });
     expect(calls[1]!.auth).toBe("Bearer tok");
   });
@@ -658,5 +662,88 @@ describe("uploader deadline", () => {
 
     expect(await queue.pending()).toEqual([]);
     expect(removed.sort()).toEqual([A, B]);
+  });
+});
+
+describe("uploader: moments", () => {
+  const MAIN = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const SELFIE = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const moment = (id: string, extra: Partial<QueuedMedia> = {}) =>
+    item({ id, momentDay: "2027-01-12", takenAt: id === MAIN ? 1000 : 2000, ...extra });
+
+  it("sends momentDay and pairedMediaId in the register request; a normal photo carries null", async () => {
+    happyServer();
+    await queue.enqueue(item());
+    await queue.enqueue(moment(MAIN));
+    await queue.enqueue(moment(SELFIE, { pairedWith: MAIN }));
+
+    await createUploader(deps).run();
+
+    const bodies = calls.filter((c) => c.url.endsWith("/media")).map((c) => c.body as Record<string, unknown>);
+    expect(bodies[0]).toMatchObject({ id: item().id, momentDay: null, pairedMediaId: null });
+    expect(bodies[1]).toMatchObject({ id: MAIN, momentDay: "2027-01-12", pairedMediaId: null });
+    expect(bodies[2]).toMatchObject({ id: SELFIE, momentDay: "2027-01-12", pairedMediaId: MAIN });
+  });
+
+  it("does not upload the selfie while its main is still in the queue, and does after the main completes", async () => {
+    // The selfie was shot "before" the main (older takenAt) to prove ordering is by pairing, not time.
+    happyServer();
+    await queue.enqueue(moment(MAIN, { takenAt: 5000 }));
+    await queue.enqueue(moment(SELFIE, { pairedWith: MAIN, takenAt: 1000 }));
+    // The main fails once with a server error: it stays pending.
+    let first = true;
+    routes.unshift((c) => {
+      if (first && c.method === "POST" && c.url.endsWith("/media") && (c.body as { id: string }).id === MAIN) {
+        first = false;
+        return json(500, { error: "boom" });
+      }
+    });
+
+    await createUploader(deps).run();
+    const registeredIds = () => calls.filter((c) => c.url.endsWith("/media")).map((c) => (c.body as { id: string }).id);
+    expect(registeredIds()).toEqual([MAIN]);
+    expect((await queue.pending()).map((m) => m.id).sort()).toEqual([MAIN, SELFIE].sort());
+
+    now += 10 * 60_000;
+    await createUploader(deps).run();
+
+    expect(registeredIds()).toEqual([MAIN, MAIN, SELFIE]);
+    expect(await queue.pending()).toEqual([]);
+  });
+
+  it("when the main fails for good, the selfie fails with the same reason and is not uploaded", async () => {
+    routes.push((c) =>
+      c.method === "POST" && c.url.endsWith("/media") ? json(409, { error: "Ya sacaste tu momento de hoy" }) : undefined,
+    );
+    await queue.enqueue(moment(MAIN));
+    await queue.enqueue(moment(SELFIE, { pairedWith: MAIN }));
+
+    await createUploader(deps).run();
+
+    expect(calls.filter((c) => c.url.endsWith("/media"))).toHaveLength(1);
+    expect(await queue.pending()).toEqual([]);
+    expect((await queue.failed()).map((f) => [f.id, f.failedReason])).toEqual([
+      [MAIN, "Ya sacaste tu momento de hoy"],
+      [SELFIE, "Ya sacaste tu momento de hoy"],
+    ]);
+  });
+
+  it("uploads a selfie whose main is no longer in the queue (already uploaded)", async () => {
+    happyServer();
+    await queue.enqueue(moment(SELFIE, { pairedWith: MAIN }));
+
+    await createUploader(deps).run();
+
+    expect(await queue.pending()).toEqual([]);
+    expect(calls[0]!.body).toMatchObject({ pairedMediaId: MAIN });
+  });
+
+  it("a 400 on register (invalid pairing) fails the item for good", async () => {
+    routes.push((c) => (c.method === "POST" && c.url.endsWith("/media") ? json(400, { error: "Emparejado inválido" }) : undefined));
+    await queue.enqueue(moment(SELFIE, { pairedWith: MAIN }));
+
+    await createUploader(deps).run();
+
+    expect(await queue.failed()).toEqual([expect.objectContaining({ id: SELFIE, failedReason: "Emparejado inválido" })]);
   });
 });

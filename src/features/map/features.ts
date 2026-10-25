@@ -16,6 +16,8 @@ export type MapItem = {
   thumbhash: string | null;
   /** Where the thumbnail lives; only after the reveal. */
   thumbPath?: string | null;
+  /** Trip-local date of the daily moment this photo answers; absent for ordinary photos. */
+  momentDay?: string | null;
   authorId: string;
   /** The author's user id (to open their profile); unknown only for a pending one without it. */
   authorUserId?: string;
@@ -50,6 +52,7 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
     durationS: i.durationS,
     thumbhash: i.thumbhash,
     thumbPath: i.files?.thumb ?? null,
+    momentDay: i.momentDay ?? null,
     authorId: i.author.id,
     authorUserId: i.author.userId,
     authorName: i.author.name,

@@ -1,5 +1,6 @@
 import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
+import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
@@ -37,6 +38,9 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   featuringDisabled: false,
   photoLimitMode: "daily",
   totalPhotoLimit: null,
+  momentMode: "off",
+  momentWindowStart: 540,
+  momentWindowEnd: 1380,
   ...overrides,
 });
 
@@ -322,6 +326,26 @@ describe("Me", () => {
     expect(BackgroundTask.triggerTaskWorkerForTestingAsync).toHaveBeenCalled();
   });
 
+  it("in development, 'Probar momento ahora' schedules a moment for the active roll in 10 seconds", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    jest.mocked(Notifications.scheduleNotificationAsync).mockClear();
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    const before = Date.now();
+    await fireEvent.press(await screen.findByRole("button", { name: "Probar momento ahora" }));
+
+    await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1));
+    const req = jest.mocked(Notifications.scheduleNotificationAsync).mock.calls[0]![0] as any;
+    const at = req.trigger.date as number;
+    expect(at - before).toBeGreaterThanOrEqual(9_000);
+    expect(at - before).toBeLessThanOrEqual(12_000);
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
+    expect(req.identifier).toBe(`moment.${SUR}.${day}`);
+    expect(req.content.data.url).toBe(`/moment?trip=${SUR}&day=${day}&at=${at}`);
+    expect(req.content.title).toBe("Es tu momento");
+  });
+
   it("in development, 'Ver revelado' in Ajustes opens the reveal screen", async () => {
     await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { revealed: true })] });
     mocked.fetchTrip.mockResolvedValue(detail());
@@ -502,6 +526,70 @@ describe("Create roll", () => {
       revealAt: start + 5 * 24 * HOUR,
       photoLimit: { mode: "daily", perDay: 25 },
       timezone: tz,
+      momentMode: "photo_selfie",
+      momentWindowStart: 540,
+      momentWindowEnd: 1380,
+    });
+  });
+
+  describe("Momento del día", () => {
+    beforeEach(() => {
+      mocked.createTrip.mockClear();
+      mocked.createTrip.mockResolvedValue(trip());
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+    });
+
+    it("defaults to two photos from 9:00 to 23:00", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      expect(screen.getByRole("button", { name: "Dos cámaras" })).toBeSelected();
+      expect(new Date(dateOf("Desde")).getHours()).toBe(9);
+      expect(new Date(dateOf("Hasta")).getHours()).toBe(23);
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+      expect(mocked.createTrip).toHaveBeenCalledWith(
+        expect.objectContaining({ momentMode: "photo_selfie", momentWindowStart: 540, momentWindowEnd: 1380 }),
+      );
+    });
+
+    it("shows a footer for each mode", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      expect(screen.getByText("Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto con cada cámara; la primera es la grande.")).toBeTruthy();
+      await fireEvent.press(screen.getByRole("button", { name: "Solo foto" }));
+      expect(screen.getByText("Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto.")).toBeTruthy();
+      await fireEvent.press(screen.getByRole("button", { name: "Apagado" }));
+      expect(screen.getByText("Sin aviso diario.")).toBeTruthy();
+    });
+
+    it("hides the window when off and sends off", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      await fireEvent.press(screen.getByRole("button", { name: "Apagado" }));
+      expect(screen.queryByLabelText("Desde")).toBeNull();
+      expect(screen.queryByLabelText("Hasta")).toBeNull();
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+      expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ momentMode: "off" }));
+    });
+
+    it("sends photo only", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      await fireEvent.press(screen.getByRole("button", { name: "Solo foto" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+      expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ momentMode: "photo" }));
+    });
+
+    it("sends the picked window and shows the server's reason inline", async () => {
+      mocked.createTrip.mockRejectedValue(new Error("La franja del momento tiene que durar al menos 30 minutos"));
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      await changeDate("Desde", new Date(2027, 0, 5, 22, 0).getTime());
+      await changeDate("Hasta", new Date(2027, 0, 5, 22, 15).getTime());
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+      expect(mocked.createTrip).toHaveBeenCalledWith(
+        expect.objectContaining({ momentWindowStart: 1320, momentWindowEnd: 1335 }),
+      );
+      expect(await screen.findByText("La franja del momento tiene que durar al menos 30 minutos")).toBeVisible();
     });
   });
 

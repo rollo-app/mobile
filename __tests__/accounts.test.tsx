@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { ActionSheetIOS, Alert, Linking } from "react-native";
@@ -56,6 +57,9 @@ const tripDetail = (): actions.TripDetail => ({
     featuringDisabled: false,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
@@ -399,6 +403,21 @@ describe("Profile and settings", () => {
     expect(calls).toContain("POST /auth/logout");
     expect(await getSessionToken()).toBeNull();
     expect(await queue.pending()).toHaveLength(1);
+  });
+
+  it("log out leaves no scheduled moment notifications, and only those", async () => {
+    jest.mocked(Notifications.getAllScheduledNotificationsAsync).mockResolvedValue(
+      [{ identifier: "moment.t1.2027-01-12" }, { identifier: "other" }] as never,
+    );
+    mockApi({ "POST /auth/logout": json(204) });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
+    await screen.findByLabelText("Tu email");
+
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("moment.t1.2027-01-12");
+    expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith("other");
+    jest.mocked(Notifications.getAllScheduledNotificationsAsync).mockResolvedValue([]);
   });
 
   it("delete account asks for a native confirmation with the destructive warning", async () => {

@@ -20,6 +20,8 @@ const item = (overrides: Partial<QueuedMedia> = {}): QueuedMedia => ({
   originalUri: "file:///docs/pending/a/original.jpg",
   thumbUri: "file:///docs/pending/a/thumb.jpg",
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+  momentDay: null,
+  pairedWith: null,
   ...overrides,
 });
 
@@ -159,6 +161,16 @@ describe("countPendingForTrip", () => {
     expect(await queue.countPendingForTrip("vacio")).toBe(0);
   });
 
+  it("a moment's pending selfie is not counted nor listed: the moment counts once", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "main", momentDay: "2027-01-12" }));
+    await queue.enqueue(item({ id: "selfie", momentDay: "2027-01-12", pairedWith: "main" }));
+
+    expect(await queue.countPendingForTrip(TRIP)).toBe(1);
+    expect((await queue.pendingForTrip(TRIP)).map((m) => m.id)).toEqual(["main"]);
+    expect((await queue.pending()).map((m) => m.id).sort()).toEqual(["main", "selfie"]);
+  });
+
   it("pendingForTrip returns that trip's pending items (with or without a location), excluding failed ones", async () => {
     const queue = await createQueue(memoryDb());
     await queue.enqueue(item({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1" }));
@@ -214,5 +226,50 @@ describe("failedForTrip and discard", () => {
     await queue.discard("a");
 
     expect((await queue.pending()).map((m) => m.id)).toEqual(["a"]);
+  });
+});
+
+describe("moment rows", () => {
+  it("reads an old row (without the moment columns) with momentDay and pairedWith null", async () => {
+    const db = memoryDb();
+    await db.execAsync(
+      `CREATE TABLE pending_media (id TEXT PRIMARY KEY NOT NULL, trip_id TEXT NOT NULL, type TEXT NOT NULL, taken_at INTEGER NOT NULL, day TEXT NOT NULL, lat REAL, lng REAL, accuracy_m REAL, caption TEXT, duration_s REAL, width INTEGER, height INTEGER, size_bytes INTEGER NOT NULL, original_uri TEXT NOT NULL, thumb_uri TEXT NOT NULL, thumbhash TEXT, attempts INTEGER NOT NULL DEFAULT 0)`,
+    );
+    await db.runAsync(
+      "INSERT INTO pending_media (id, trip_id, type, taken_at, day, size_bytes, original_uri, thumb_uri) VALUES ('old', 't', 'photo', 1, '2027-01-12', 1, 'o', 't')",
+    );
+    const queue = await createQueue(db);
+
+    expect((await queue.pending())[0]).toMatchObject({ id: "old", momentDay: null, pairedWith: null });
+  });
+
+  it("stores momentDay and pairedWith", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "s", momentDay: "2027-01-12", pairedWith: "m" }));
+
+    expect((await queue.pending())[0]).toMatchObject({ momentDay: "2027-01-12", pairedWith: "m" });
+  });
+
+  it("countPending does not count moment rows, per day or total", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "1" }));
+    await queue.enqueue(item({ id: "2", momentDay: "2027-01-12" }));
+    await queue.enqueue(item({ id: "3", momentDay: "2027-01-12", pairedWith: "2" }));
+
+    expect(await queue.countPending(TRIP, "2027-01-12")).toEqual({ photos: 1, videos: 0 });
+    expect(await queue.countPending(TRIP)).toEqual({ photos: 1, videos: 0 });
+  });
+
+  it("markFailed on a main also fails the rows paired with it, with the same reason", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "m", momentDay: "2027-01-12" }));
+    await queue.enqueue(item({ id: "s", momentDay: "2027-01-12", pairedWith: "m" }));
+    await queue.markFailed("m", "El rollo ya se reveló");
+
+    expect(await queue.pending()).toEqual([]);
+    expect((await queue.failed()).map((f) => [f.id, f.failedReason])).toEqual([
+      ["m", "El rollo ya se reveló"],
+      ["s", "El rollo ya se reveló"],
+    ]);
   });
 });

@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
+import { cancelMomentNotifications, syncMoments } from "@/features/moments/moment-sync";
 import { fetchNotificationSettings, updateNotificationSettings, type NotificationSettings } from "./actions";
 
 export const notificationSettingsKey = ["notification-settings"] as const;
@@ -27,6 +28,8 @@ export function useNotificationSettings() {
     try {
       const saved = await updateNotificationSettings({ [kind]: value });
       if (saving.current === 1) queryClient.setQueryData(notificationSettingsKey, saved);
+      // The moment's notifications are local: they follow the switch once the server has it.
+      if (kind === "dailyMoment") void (value ? syncMoments() : cancelMomentNotifications());
     } catch (e) {
       put(kind, !value);
       setSaveError({ kind, message: e instanceof Error ? e.message : "No se pudo guardar" });

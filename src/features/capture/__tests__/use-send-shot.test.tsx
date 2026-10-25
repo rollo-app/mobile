@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import * as Crypto from "expo-crypto";
 import type * as ImagePicker from "expo-image-picker";
 import type { ReactNode } from "react";
 import { createQueryClient } from "@/api/query-client";
@@ -15,7 +16,7 @@ import { useSendShot } from "../use-send-shot";
 jest.mock("../media");
 jest.mock("../store", () => ({ getQueue: jest.fn() }));
 jest.mock("../sync", () => ({ syncQueue: jest.fn(async () => {}) }));
-jest.mock("expo-crypto", () => ({ randomUUID: () => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }));
+jest.mock("expo-crypto", () => ({ randomUUID: jest.fn(() => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa") }));
 
 const asset = { uri: "file:///cache/IMG_1.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
 const prepared = {
@@ -76,6 +77,67 @@ describe("useSendShot", () => {
     });
     const [item] = await queue.pendingForTrip("t1");
     expect(item).toMatchObject({ caption: null, lat: null });
+  });
+
+  it("with momentDay and a selfie, enqueues the main and then the selfie paired with it", async () => {
+    jest
+      .mocked(Crypto.randomUUID)
+      .mockReturnValueOnce("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+      .mockReturnValueOnce("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    const selfieAsset = { uri: "file:///cache/SELFIE.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        ...input,
+        momentDay: "2027-01-05",
+        selfie: { asset: selfieAsset, takenAt: input.takenAt + 4000, facing: "front" },
+      });
+    });
+    const items = await queue.pending();
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", momentDay: "2027-01-05", pairedWith: null });
+    expect(items[1]).toMatchObject({
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      momentDay: "2027-01-05",
+      pairedWith: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      takenAt: input.takenAt + 4000,
+    });
+    expect(jest.mocked(media.prepareMedia).mock.calls.at(-1)?.[0]).toBe(selfieAsset);
+    expect(jest.mocked(media.prepareMedia).mock.calls.at(-1)?.[3]).toEqual({ maxDimension: 1080 });
+    expect(jest.mocked(media.prepareMedia).mock.calls.at(-2)?.[3]).toBeUndefined();
+  });
+
+  it("the 1080 px cap follows the camera, not the role: a front main is capped and a back linked image is not", async () => {
+    const linked = { uri: "file:///cache/BACK.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        ...input,
+        facing: "front",
+        momentDay: "2027-01-05",
+        selfie: { asset: linked, takenAt: input.takenAt + 4000, facing: "back" },
+      });
+    });
+    const calls = jest.mocked(media.prepareMedia).mock.calls;
+    expect(calls.at(-2)?.[3]).toEqual({ maxDimension: 1080 });
+    expect(calls.at(-1)?.[0]).toBe(linked);
+    expect(calls.at(-1)?.[3]).toBeUndefined();
+  });
+
+  it("when the selfie preparation fails, nothing is enqueued and the mutation errors", async () => {
+    jest.mocked(media.prepareMedia).mockResolvedValueOnce(prepared).mockRejectedValueOnce(new Error("selfie boom"));
+    const selfieAsset = { uri: "file:///cache/SELFIE.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync({ ...input, momentDay: "2027-01-05", selfie: { asset: selfieAsset, takenAt: input.takenAt + 4000 } }),
+      ).rejects.toThrow("selfie boom");
+    });
+    expect(await queue.pendingForTrip("t1")).toEqual([]);
+    expect(syncQueue).not.toHaveBeenCalled();
   });
 
   it("surfaces the error and does not sync when preparing fails", async () => {

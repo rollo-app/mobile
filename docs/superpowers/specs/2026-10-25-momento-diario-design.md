@@ -25,11 +25,11 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
 - **Hora distinta para cada uno.**
 - **Franja horaria** configurable al crear el rollo, por defecto **9:00 a 23:00** en la zona del rollo (`trip.timezone`).
   Nunca avisa fuera de la franja.
-- **Selfie sí o no**, configurable al crear el rollo.
+- **Una foto o dos** (la segunda con la otra cámara), configurable al crear el rollo.
 - **Se puede apagar** en Ajustes → Notificaciones (switch "Momento del día").
 - **En el revelado** va mezclada con las demás fotos, distinguida (ver "Selfie y badge").
 - *(Decisión de Claude)* **El momento se puede apagar para todo el rollo** al crearlo (una noche de fiesta no lo necesita).
-  Prendido por defecto. Al crear: "Momento del día" → Apagado / Solo foto / Foto + selfie (default Foto + selfie).
+  Prendido por defecto. Al crear: "Momento del día" → Apagado / Solo foto / Dos cámaras (default Dos cámaras).
 - *(Decisión de Claude)* **La config no se edita después de crear el rollo** en esta versión (evita re-sortear momentos ya
   bajados a los celulares).
 
@@ -85,8 +85,10 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
   propias notificaciones programadas y entregadas (`getPresentedNotificationsAsync` / `getAllScheduledNotificationsAsync`),
   sin guardarla aparte.
 - **La cámara del momento** es propia (`expo-camera`, ya es un paquete de Expo; *decisión de Claude* sobre
-  `react-native-vision-camera`), solo foto, con la **cuenta regresiva** visible. Con selfie: después de la foto principal, la
-  cámara pasa sola a la frontal y saca la selfie (~1080 px). Si se cierra la cámara antes de sacar, se puede volver a abrir
+  `react-native-vision-camera`), solo foto, con la **cuenta regresiva** visible. Arranca en la trasera y antes de la primera
+  foto se puede dar vuelta ("Dar vuelta la cámara"). **La primera foto que se saca es la principal**, sea de la trasera o de la
+  frontal. Con dos fotos, después de la primera la cámara pasa sola a la otra y saca la segunda (vinculada; ahí no se puede dar
+  vuelta). La imagen de la frontal se achica a 1080 px, sea la primera o la segunda. Si se cierra la cámara antes de sacar, se puede volver a abrir
   mientras dure la ventana.
 - Después, **la misma pantalla de caption que el resto** (foto difuminada, sin "Repetir", caption opcional, "Mandar al
   rollo"; ver el párrafo "Próximo build" de `CLAUDE.md`). Si la ventana vence mientras escribe el caption, la foto vale igual:
@@ -109,16 +111,18 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
   `in_window`. No descuenta cupo. Rechaza una segunda foto de momento para el mismo día (409). Un build viejo nunca manda
   `momentDay`, así que todo lo suyo sigue contando como foto normal.
 
-### Selfie y badge en el revelado
+### Segunda foto y badge en el revelado
 
-- **La selfie es una foto aparte, vinculada a la principal**, nunca pegada en la imagen: la principal se imprime limpia y el
+- **La segunda foto (`selfie` en el contrato: "la imagen vinculada") es una foto aparte, vinculada a la principal**, nunca pegada en la imagen: la principal se imprime limpia y el
   fotolibro elige qué usar.
 - En el **visor y las historias** se muestra como recuadro arriba a la izquierda; tocarlo intercambia las dos. Ese recuadro
   hace de badge.
 - En la **galería y el mapa** cuenta como una sola foto (la principal) con un badge chico. *(Decisión de Claude)* El badge es el
   SF Symbol `bolt.fill` blanco sobre un círculo oscuro, en la esquina, del tamaño de la insignia de autor de las destacadas.
   Sin selfie, el visor y las historias muestran ese mismo badge.
-- La selfie no se puede destacar sola ni tiene "me gusta" ni comentarios propios: todo va a la principal.
+- La vinculada no tiene "me gusta" ni comentarios propios: todo va a la principal. **El momento no se destaca en el perfil**: ninguna de
+  las dos imágenes (el server rechaza con 400 y el feed manda `canFeature: false`; la app no muestra la opción). "Descargar todo" y
+  "Guardar" incluyen la otra imagen; el recuadro dice "Ver la otra foto".
 
 ### Backend (resumen)
 

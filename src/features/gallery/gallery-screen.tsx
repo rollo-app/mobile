@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
+import { MomentBadge, momentBadgeCorner } from "@/features/media/moment-badge";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
@@ -26,6 +27,7 @@ import { PermissionNotice } from "./permission-notice";
 import {
   albumTitle,
   downloadAll,
+  withLinkedImages,
   estimateBytes,
   formatMegabytes,
   PermissionDeniedError,
@@ -74,6 +76,7 @@ function sameCell(a: CellProps, b: CellProps) {
     a.photo.durationS === b.photo.durationS &&
     a.photo.author.name === b.photo.author.name &&
     a.photo.featuredByMe === b.photo.featuredByMe &&
+    a.photo.momentDay === b.photo.momentDay &&
     a.token === b.token &&
     a.size === b.size &&
     a.selecting === b.selecting &&
@@ -102,6 +105,7 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPre
           style={StyleSheet.absoluteFill}
         />
       )}
+      {photo.momentDay && <MomentBadge style={momentBadgeCorner} />}
       {photo.type === "video" && (
         <View style={styles.video}>
           <SymbolView name="play.fill" size={10} tintColor="#FFFFFF" />
@@ -209,8 +213,10 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
   }
 
   /** `album`: put them in the roll's album; `recents`: the album was wanted but iOS access was limited. */
-  async function run(list: RevealedPhoto[], { album = false, recents = false } = {}) {
-    if (!saver || list.length === 0) return;
+  async function run(chosen: RevealedPhoto[], { album = false, recents = false } = {}) {
+    if (!saver || chosen.length === 0) return;
+    // A moment's linked image has no feed item of its own: it goes right after its main photo.
+    const list = withLinkedImages(chosen);
     const controller = new AbortController();
     abort.current = controller;
     setBar({ kind: "progress", done: 0, total: list.length });
@@ -245,9 +251,10 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
   }
 
   function confirmSaveAll() {
+    const all = withLinkedImages(photos);
     Alert.alert(
-      `Guardar ${photos.length} ${photos.length === 1 ? "foto" : "fotos"} en Fotos`,
-      `Ocupa ~${formatMegabytes(estimateBytes(photos))}. Conviene Wi-Fi.\n\nPara crear el álbum «${albumTitle(detail?.trip.name ?? "")}» iOS pide acceso a tus fotos.`,
+      `Guardar ${all.length} ${all.length === 1 ? "foto" : "fotos"} en Fotos`,
+      `Ocupa ~${formatMegabytes(estimateBytes(all))}. Conviene Wi-Fi.\n\nPara crear el álbum «${albumTitle(detail?.trip.name ?? "")}» iOS pide acceso a tus fotos.`,
       [
         { text: "Cancelar", style: "cancel" },
         { text: "Guardar", onPress: () => void saveAll() },

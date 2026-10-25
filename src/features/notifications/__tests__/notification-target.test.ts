@@ -36,6 +36,14 @@ describe("notificationTarget", () => {
     });
   });
 
+  it("a moment keeps its trip in the href (and makes it active), so the camera never uses another rollo", () => {
+    expect(notificationTarget(response({ url: "/moment?trip=t1&day=2027-01-12&at=5&selfie=1" }))).toEqual({
+      tripId: "t1",
+      tab: false,
+      href: "/moment?trip=t1&day=2027-01-12&at=5&selfie=1",
+    });
+  });
+
   it("drops the trip param from what it pushes but keeps the others", () => {
     expect(notificationTarget(response({ url: "/user/u2?trip=t1&x=1" }))).toEqual({ tripId: "t1", tab: false, href: "/user/u2?x=1" });
   });
@@ -47,5 +55,15 @@ describe("notificationTarget", () => {
     expect(notificationTarget(response({ url: "https://evil.example/x" }))).toBeNull();
     expect(notificationTarget(response({ url: "//evil.example/x" }))).toBeNull();
     expect(notificationTarget(response(undefined))).toBeNull();
+  });
+});
+
+describe("notificationTarget: moment", () => {
+  it("a moment keeps its day and time, and its trip becomes the active one", () => {
+    expect(notificationTarget(response({ url: "/moment?trip=t1&day=2027-01-12&at=1800000000000" }))).toEqual({
+      tripId: "t1",
+      tab: false,
+      href: "/moment?trip=t1&day=2027-01-12&at=1800000000000",
+    });
   });
 });
