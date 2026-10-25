@@ -35,17 +35,25 @@ const trips = jest.mocked(actions);
 const manipulator = jest.requireMock("expo-image-manipulator").ImageManipulator as { manipulate: jest.Mock; __ctx: { crop: jest.Mock; saveAsync: jest.Mock } };
 const mediaMock = jest.mocked(media);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
-const { __takePictureAsync: takePicture, useCameraPermissions } = jest.requireMock("expo-camera") as {
-  __takePictureAsync: jest.Mock;
-  useCameraPermissions: jest.Mock;
+const vision = jest.requireMock("react-native-vision-camera") as {
+  __device: (overrides: Record<string, unknown>) => unknown;
+  __devices: { back: unknown; front: unknown };
+  __photo: (path: string, width: number, height: number, orientation?: string) => unknown;
+  __capturePhoto: jest.Mock;
+  __focusTo: jest.Mock;
+  __granted: unknown;
+  useCameraDevices: jest.Mock;
+  useCameraPermission: jest.Mock;
+  usePhotoOutput: jest.Mock;
 };
+const takePhoto = vision.__capturePhoto;
+const { useCameraPermission } = vision;
 const { syncQueue } = jest.requireMock("@/features/capture/sync") as { syncQueue: jest.Mock };
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const TZ = "America/Argentina/Buenos_Aires";
 const DAY = 24 * 60 * 60 * 1000;
 
-const photo = { uri: "file:///cache/Camera/IMG_1.jpg", width: 4032, height: 3024 };
 
 function tripDetail(photosLeft: number, mode: "daily" | "total" = "daily"): actions.TripDetail {
   return {
@@ -74,13 +82,19 @@ function tripDetail(photosLeft: number, mode: "daily" | "total" = "daily"): acti
   };
 }
 
+/** What the camera hands over for the default shot: a file:// uri, upright (the sensor's 4032×3024 held portrait). */
+const photo = { uri: "file:///cache/Camera/IMG_1.jpg", width: 3024, height: 4032 };
+
 let queue: Queue;
 
 beforeEach(async () => {
   queue = await createQueue(memoryDb());
   getQueue.mockResolvedValue(queue);
-  takePicture.mockReset();
-  takePicture.mockResolvedValue(photo);
+  takePhoto.mockReset();
+  takePhoto.mockImplementation(async () => vision.__photo("/cache/Camera/IMG_1.jpg", 4032, 3024));
+  vision.useCameraDevices.mockReset();
+  vision.useCameraDevices.mockReturnValue([vision.__devices.back, vision.__devices.front]);
+  vision.__focusTo.mockClear();
   syncQueue.mockReset();
   syncQueue.mockResolvedValue(undefined);
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
@@ -115,7 +129,7 @@ describe("Capture", () => {
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(await queue.pending()).toHaveLength(0);
-    expect(takePicture).not.toHaveBeenCalled();
+    expect(takePhoto).not.toHaveBeenCalled();
   });
 
   it("takes the picture at full quality and goes straight to the caption: no Repetir, no Usar foto, no Cerrar", async () => {
@@ -123,7 +137,7 @@ describe("Capture", () => {
     await shoot();
 
     expect(await screen.findByLabelText("Caption")).toBeVisible();
-    expect(takePicture).toHaveBeenCalledWith(expect.objectContaining({ quality: 1 }));
+    expect(vision.usePhotoOutput).toHaveBeenLastCalledWith(expect.objectContaining({ quality: 1, qualityPrioritization: "quality", containerFormat: "jpeg" }));
     expect(screen.queryByRole("button", { name: "Repetir" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Usar foto" })).toBeNull();
     expect(screen.queryByTestId("camera-back")).toBeNull();
@@ -144,22 +158,34 @@ describe("Capture", () => {
     await openCapture();
     const frame = await screen.findByTestId("camera-frame");
     expect(StyleSheet.flatten(frame.props.style)).toMatchObject({ aspectRatio: 3 / 4, width: expect.any(Number) });
-    expect(screen.getByTestId("camera-back").props.pictureSize).toBeUndefined();
     expect(within(frame).getByTestId("camera-back")).toBeTruthy();
     expect(within(frame).getByTestId("camera-pinch")).toBeTruthy();
     expect(within(frame).queryByRole("button", { name: "Sacar foto" })).toBeNull();
     expect(within(frame).queryByRole("button", { name: /Flash/ })).toBeNull();
   });
 
-  it("keeps a 4:3 photo as it came (no re-encoding)", async () => {
+  it("keeps a 4:3 photo as it came (no re-encoding), upright and as a file:// uri", async () => {
     await openCapture();
     await shoot();
     await screen.findByLabelText("Caption");
     expect(manipulator.manipulate).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(mediaMock.prepareMedia.mock.lastCall![0]).toEqual(photo);
+  });
+
+  it("asks for the device's largest 4:3 photo (48 MP here) and biases the session to it", async () => {
+    await openCapture();
+    const camera = await screen.findByTestId("camera-back");
+    expect(vision.usePhotoOutput).toHaveBeenLastCalledWith(expect.objectContaining({ targetResolution: { width: 6048, height: 8064 } }));
+    const output = vision.usePhotoOutput.mock.results.at(-1)!.value;
+    expect(camera.props.outputs).toEqual([output]);
+    expect(camera.props.constraints).toEqual([{ resolutionBias: output }]);
+    expect(camera.props.isActive).toBe(true);
   });
 
   it("center-crops a photo that is not 4:3 (never stretches it) before the caption", async () => {
-    takePicture.mockResolvedValue({ uri: "file:///cache/Camera/tall.jpg", width: 2250, height: 4000 });
+    takePhoto.mockImplementation(async () => vision.__photo("/cache/Camera/tall.jpg", 2250, 4000, "up"));
     manipulator.__ctx.saveAsync.mockResolvedValue({ uri: "file:///cache/Manipulated/tall.jpg", width: 2250, height: 3000 });
     await openCapture();
     await shoot();
@@ -171,31 +197,71 @@ describe("Capture", () => {
     expect(mediaMock.prepareMedia.mock.lastCall![0]).toMatchObject({ uri: "file:///cache/Manipulated/tall.jpg", width: 2250, height: 3000 });
   });
 
-  it("the flash button cycles automático, prendido, apagado and sets the camera's flash", async () => {
+  it("the flash button cycles automático, prendido, apagado and the photo is taken with that flash", async () => {
     await openCapture();
-    expect((await screen.findByTestId("camera-back")).props.flash).toBe("auto");
-
-    await fireEvent.press(screen.getByRole("button", { name: "Flash automático" }));
-    expect(screen.getByTestId("camera-back").props.flash).toBe("on");
+    await fireEvent.press(await screen.findByRole("button", { name: "Flash automático" }));
     await fireEvent.press(screen.getByRole("button", { name: "Flash prendido" }));
-    expect(screen.getByTestId("camera-back").props.flash).toBe("off");
     await fireEvent.press(screen.getByRole("button", { name: "Flash apagado" }));
-    expect(screen.getByTestId("camera-back").props.flash).toBe("auto");
+    expect(screen.getByRole("button", { name: "Flash automático" })).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Flash automático" }));
+    await shoot();
+    await screen.findByLabelText("Caption");
+    expect(takePhoto).toHaveBeenCalledWith(expect.objectContaining({ flashMode: "on" }), {});
   });
 
-  it("pinching the camera view zooms and spreading back out zooms out", async () => {
+  it("opens at 1x (the wide lens, not the ultra-wide) with the iPhone's chips: 0,5 · 1× · 2 · 3", async () => {
+    await openCapture();
+    expect((await screen.findByTestId("camera-back")).props.zoom).toBe(2);
+    const chips = within(screen.getByTestId("zoom-chips")).getAllByRole("button");
+    expect(chips.map((c) => c.props.accessibilityLabel)).toEqual(["Zoom 0,5×", "Zoom 1×", "Zoom 2×", "Zoom 3×"]);
+    expect(within(screen.getByTestId("zoom-chips")).getByText("1×")).toBeVisible();
+    expect(within(screen.getByTestId("zoom-chips")).getByText("0,5")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Zoom 1×" })).toBeSelected();
+  });
+
+  it("a chip jumps to that lens: 0,5 is the device's minimum and 3 is the telephoto", async () => {
+    await openCapture();
+    await fireEvent.press(await screen.findByRole("button", { name: "Zoom 0,5×" }));
+    expect(screen.getByTestId("camera-back").props.zoom).toBe(1);
+    expect(screen.getByRole("button", { name: "Zoom 0,5×" })).toBeSelected();
+    await fireEvent.press(screen.getByRole("button", { name: "Zoom 3×" }));
+    expect(screen.getByTestId("camera-back").props.zoom).toBe(6);
+  });
+
+  it("without an ultra-wide there is no 0,5 and 1x is the minimum; a telephoto shows as its own chip", async () => {
+    vision.useCameraDevices.mockReturnValue([
+      vision.__device({ id: "dual", type: "dual", zoomLensSwitchFactors: [3], physicalDevices: [{ type: "wide-angle" }, { type: "telephoto" }] }),
+    ]);
+    await openCapture();
+    expect((await screen.findByTestId("camera-back")).props.zoom).toBe(1);
+    const chips = within(screen.getByTestId("zoom-chips")).getAllByRole("button");
+    expect(chips.map((c) => c.props.accessibilityLabel)).toEqual(["Zoom 1×", "Zoom 2×", "Zoom 3×"]);
+  });
+
+  it("the front camera starts at 1x with no chips, and flipping back starts over at 1x", async () => {
+    await openCapture();
+    await fireEvent.press(await screen.findByRole("button", { name: "Zoom 3×" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
+    expect((await screen.findByTestId("camera-front")).props.zoom).toBe(1);
+    expect(screen.queryByTestId("zoom-chips")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
+    expect((await screen.findByTestId("camera-back")).props.zoom).toBe(2);
+  });
+
+  it("pinching zooms continuously and the active chip shows the live value", async () => {
     await openCapture();
     const area = await screen.findByTestId("camera-pinch");
-    expect((await screen.findByTestId("camera-back")).props.zoom).toBe(0);
     const touches = (gap: number) => ({ nativeEvent: { touches: [{ pageX: 100, pageY: 100 }, { pageX: 100 + gap, pageY: 100 }] } });
 
     await fireEvent(area, "responderGrant", touches(100));
-    await fireEvent(area, "responderMove", touches(300));
-    const zoomed = screen.getByTestId("camera-back").props.zoom as number;
-    expect(zoomed).toBeGreaterThan(0);
-    expect(zoomed).toBeLessThanOrEqual(1);
-    await fireEvent(area, "responderMove", touches(100));
-    expect(screen.getByTestId("camera-back").props.zoom).toBe(0);
+    await fireEvent(area, "responderMove", touches(140));
+    expect(screen.getByTestId("camera-back").props.zoom).toBeCloseTo(2.8);
+    expect(within(screen.getByTestId("zoom-chips")).getByText("1,4×")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Zoom 1×" })).toBeSelected();
+    await fireEvent(area, "responderMove", touches(10));
+    expect(screen.getByTestId("camera-back").props.zoom).toBe(1);
+    await fireEvent(area, "responderMove", touches(10000));
+    expect(screen.getByTestId("camera-back").props.zoom).toBe(30);
   });
 
   it("a new two-finger gesture after lifting a finger starts from the current zoom, with no jump", async () => {
@@ -211,30 +277,39 @@ describe("Capture", () => {
     expect(screen.getByTestId("camera-back").props.zoom).toBe(before);
   });
 
+  it("a tap on the frame focuses there", async () => {
+    await openCapture();
+    const area = await screen.findByTestId("camera-pinch");
+    const tap = { nativeEvent: { touches: [{ pageX: 50, pageY: 80 }], locationX: 40, locationY: 60, pageX: 50, pageY: 80 } };
+    await fireEvent(area, "responderGrant", tap);
+    await fireEvent(area, "responderRelease", { nativeEvent: { touches: [], locationX: 40, locationY: 60, pageX: 50, pageY: 80 } });
+    expect(vision.__focusTo).toHaveBeenCalledWith({ x: 40, y: 60 });
+  });
+
   it("does not ask for camera permission over the lock", async () => {
     const requestPermission = jest.fn();
-    useCameraPermissions.mockReturnValue([{ granted: false, canAskAgain: true, status: "undetermined" }, requestPermission]);
+    useCameraPermission.mockReturnValue({ status: "not-determined", hasPermission: false, canRequestPermission: true, requestPermission });
     trips.fetchTrip.mockResolvedValue(tripDetail(0));
     try {
       await openCapture();
       expect(await screen.findByText("Se terminó el rollo de hoy")).toBeVisible();
       expect(requestPermission).not.toHaveBeenCalled();
     } finally {
-      useCameraPermissions.mockReset();
-      useCameraPermissions.mockReturnValue([{ granted: true, canAskAgain: true, status: "granted" }, jest.fn()]);
+      useCameraPermission.mockReset();
+      useCameraPermission.mockReturnValue(vision.__granted);
     }
   });
 
   it("without camera permission it shows the message with a way to open Ajustes and no camera", async () => {
-    useCameraPermissions.mockReturnValue([{ granted: false, canAskAgain: false, status: "denied" }, jest.fn()]);
+    useCameraPermission.mockReturnValue({ status: "denied", hasPermission: false, canRequestPermission: false, requestPermission: jest.fn() });
     try {
       await openCapture();
       expect(await screen.findByText("Rollo necesita la cámara")).toBeVisible();
       expect(screen.getByRole("button", { name: "Abrir Ajustes" })).toBeVisible();
       expect(screen.queryByTestId("camera-back")).toBeNull();
     } finally {
-      useCameraPermissions.mockReset();
-      useCameraPermissions.mockReturnValue([{ granted: true, canAskAgain: true, status: "granted" }, jest.fn()]);
+      useCameraPermission.mockReset();
+      useCameraPermission.mockReturnValue(vision.__granted);
     }
   });
 
@@ -246,7 +321,7 @@ describe("Capture", () => {
   });
 
   it("when taking the picture fails it shows an inline error and lets the user retry", async () => {
-    takePicture.mockRejectedValueOnce(new Error("camera busy"));
+    takePhoto.mockRejectedValueOnce(new Error("camera busy"));
     await openCapture();
     await shoot();
     expect(await screen.findByText("No se pudo sacar la foto. Probá de nuevo.")).toBeVisible();

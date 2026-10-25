@@ -1,8 +1,8 @@
-import { useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
+import { useCameraPermission } from "react-native-vision-camera";
 import { errorMessage } from "@/api/client";
 import { Camera } from "@/features/camera/camera";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -30,7 +30,7 @@ export function CaptureScreen() {
   const { trip, loaded } = useActiveTrip();
   const { detail, error: detailError } = useTripDetail(trip?.id);
   const sendShot = useSendShot();
-  const [permission, requestPermission] = useCameraPermissions();
+  const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission();
   const [state, setState] = useState<State>({ kind: "waiting" });
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [caption, setCaption] = useState("");
@@ -40,13 +40,13 @@ export function CaptureScreen() {
 
   useEffect(() => {
     // Only when the camera is about to show: not over the "closed" or "no photos left" messages.
-    if (state.kind === "camera" && permission?.status === "undetermined") void requestPermission();
-  }, [state.kind, permission?.status, requestPermission]);
+    if (state.kind === "camera" && canRequestPermission) void requestPermission();
+  }, [state.kind, canRequestPermission, requestPermission]);
 
   // Ask for the location as soon as the camera is up, so the fix is ready by the time the shot is sent.
   useEffect(() => {
-    if (state.kind === "camera" && permission?.granted) fix.current ??= startFix();
-  }, [state.kind, permission?.granted]);
+    if (state.kind === "camera" && hasPermission) fix.current ??= startFix();
+  }, [state.kind, hasPermission]);
 
   // Once we know the quota (or that there's no signal to know it), open the camera or show the lock.
   useEffect(() => {
@@ -88,7 +88,7 @@ export function CaptureScreen() {
   if (state.kind === "closed") return <CaptureMessage symbol="lock.fill" title={state.title} body={state.body} />;
   if (state.kind === "waiting") return <View style={styles.dark} />;
   if (state.kind === "camera") {
-    if (permission && !permission.granted && permission.status !== "undetermined") {
+    if (!hasPermission && !canRequestPermission) {
       return (
         <CaptureMessage
           symbol="camera.fill"
@@ -98,7 +98,7 @@ export function CaptureScreen() {
         />
       );
     }
-    if (!permission?.granted) return <View style={styles.dark} />;
+    if (!hasPermission) return <View style={styles.dark} />;
     return (
       <Camera
         key={facing}

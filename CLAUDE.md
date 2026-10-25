@@ -36,16 +36,26 @@ Decisiones de producto:
   y el mismo email entra; con otra cuenta muestra "Ya tenés la sesión iniciada con…" y **nunca cambia de cuenta sola**.
   Si el link venció, "Volver a pedir un código" abre `/email` con el email puesto. Próximo paso: Universal Links
   (`https://…/entrar` abre la app directo, sin la página), que piden la cuenta paga.
-- **Cámara propia** (`expo-camera`, módulo compartido `src/features/camera/`, la misma de la captura y del momento): la del sistema
+- **Cámara propia** (**VisionCamera** `react-native-vision-camera` v5, módulo compartido `src/features/camera/`, la misma de la captura y del momento): la del sistema
   (`launchCameraAsync`) siempre muestra "Repetir / Usar foto" después de sacar y no se puede evitar, y sin videos ya no hace falta.
+  **Calidad máxima en cada iPhone** (`device.ts`): atrás usa la cámara virtual con más lentes (triple > dual-wide > dual > gran angular), así iOS
+  cambia de lente solo al hacer zoom; adelante, la gran angular. La foto pide el **4:3 más grande** que lista el dispositivo
+  (`getSupportedResolutions("photo")`, 48 MP en los que lo tienen) con `qualityPrioritization: "quality"` (iOS aplica Smart HDR / Deep Fusion solo;
+  `photoHDR` no existe en iOS), JPEG calidad 1, corrección de lente y la sesión sesgada a esa resolución (`resolutionBias`). La foto se guarda con
+  la orientación en EXIF: `uprightSize` da vuelta ancho y alto si hace falta.
+  **Zoom como iOS** (`zoom.ts`, con los datos reales del dispositivo): 1× es la gran angular (en una cámara con ultra gran angular, el primer
+  `zoomLensSwitchFactors`; si no, el mínimo) y se abre siempre ahí (también al dar vuelta). Chips abajo y al centro del recuadro: "0,5" solo con
+  ultra gran angular, 1, 2 y cada teleobjetivo (los siguientes cambios de lente ÷ 1×: [2, 6] → 3×, [2, 10] → 5×); el activo va en cobalto con el valor en
+  vivo ("1,4×"). Adelante no hay chips. Pellizco continuo del mínimo real a 5× el teleobjetivo más largo (15× / 25×, como iOS) o 10× sin tele. Tocar el
+  recuadro enfoca ahí.
   **Vista y foto en 4:3** (`frame.ts`): la vista es un recuadro de ancho completo en 3:4 (como la cámara de iOS) con los controles en las bandas negras
-  (arriba "Cerrar", título y flash; abajo disparador y dar vuelta); expo-camera en iOS usa el preset `photo` (4:3 a la máxima resolución del sensor,
-  `pictureSize` por defecto) y recorta al aspecto de la vista, así que la foto es lo que muestra el recuadro; si igual no saliera 4:3,
-  `ensureFourThree` recorta centrado con `expo-image-manipulator` (nunca estira). En el momento, el caption muestra la segunda foto difuminada en un recuadro
+  (arriba "Cerrar", título y flash; abajo disparador y dar vuelta); si igual la foto no saliera 4:3, `ensureFourThree` recorta centrado con
+  `expo-image-manipulator` (nunca estira). En el momento, el caption muestra la segunda foto difuminada en un recuadro
   arriba a la izquierda (`insetFrame` de `src/ui/inset-frame.ts`, el mismo del visor).
   Controles: disparador, "Cerrar" (antes de sacar), "Dar vuelta la cámara" (arranca en la trasera), flash que rota automático / prendido / apagado
-  (arranca en automático) y zoom con pellizco. `expo-image-picker` queda solo para la foto de perfil. Lo que se saca **no queda en el carrete**: se sube y se borra
-  del caché local.
+  (arranca en automático) y zoom. Permiso con `useCameraPermission` de VisionCamera (sin permiso: "Rollo necesita la cámara" + "Abrir Ajustes"); el texto
+  del permiso va en `ios.infoPlist.NSCameraUsageDescription` de `app.json` (VisionCamera v5 no trae config plugin). `expo-image-picker` queda solo para la
+  foto de perfil. Lo que se saca **no queda en el carrete**: se sube y se borra del caché local.
 - **Fotos a resolución completa** (~4000 px, JPEG 85–90 %, para imprimir) + **thumbnail ~800 px** que
   genera el celular. **Sin videos en rollos nuevos** (la cámara saca solo fotos; los videos de rollos viejos se siguen viendo).
 - **Metadatos:** al mandar, la foto lleva EXIF (fecha/hora local del rollo con offset, GPS, `Software: Rollo`) y XMP
@@ -122,7 +132,7 @@ Decisiones de producto:
   cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la imagen vinculada pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
   inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
   `cancelMomentNotifications()` las borra, y descarta también las ya entregadas (al cerrar sesión, borrar la cuenta y apagar el switch). Tocar el aviso conserva `trip` en la ruta. La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
-  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (`expo-camera`, propia, fullScreenModal) no espera el detalle del rollo (abre ya; que haya segunda foto sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y arranca en la trasera, con un botón nativo "Dar vuelta la cámara" antes de sacar
+  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (VisionCamera, propia, fullScreenModal) no espera el detalle del rollo (abre ya; que haya segunda foto sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y arranca en la trasera, con un botón nativo "Dar vuelta la cámara" antes de sacar
   (también en "Solo foto"). **La primera foto que se saca es la principal**, sea de la trasera o de la frontal; si el rollo es "Dos cámaras" (aviso "Sacás con las dos cámaras. La
   primera va a ser la grande."), la cámara pasa sola a **la otra** ("Ahora con la otra cámara.", sin dar vuelta) y esa segunda va como foto aparte vinculada (`pairedWith`). La imagen
   de la frontal se achica a 1080 px (`prepareMedia`), sea la primera o la segunda; la de la trasera va normal. El nombre `selfie` del contrato y del código significa "la imagen vinculada";
@@ -248,7 +258,8 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
   **`react-native-pulsar`** (hápticos continuos), **`expo-audio`** (plugin con `enableBackgroundPlayback: false`: no toca la sesión de audio de
   la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados). Agregarlos o cambiarlos
   pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
-- `expo-camera` (cámara de la captura y del momento del día) es nativo: agregarlo pide `npx expo prebuild --clean` + `npx expo run:ios --device`.
+- **VisionCamera** (`react-native-vision-camera` v5 + sus dependencias `react-native-nitro-modules` y `react-native-nitro-image`; cámara de la captura y del
+  momento del día, reemplazó a `expo-camera`) es nativo: agregarlo o cambiarlo pide `npx expo prebuild --clean` + `npx expo run:ios --device`.
 - `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
@@ -329,7 +340,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1439 tests
+npm test                      # 1464 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

@@ -28,10 +28,17 @@ jest.mock("expo-haptics", () => ({
 const trips = jest.mocked(actions);
 const mediaMock = jest.mocked(media);
 const { getQueue } = jest.requireMock("@/features/capture/store") as { getQueue: jest.Mock };
-const { __takePictureAsync: takePicture, useCameraPermissions } = jest.requireMock("expo-camera") as {
-  __takePictureAsync: jest.Mock;
-  useCameraPermissions: jest.Mock;
+const vision = jest.requireMock("react-native-vision-camera") as {
+  __photo: (path: string, width: number, height: number, orientation?: string) => unknown;
+  __capturePhoto: jest.Mock;
+  __granted: unknown;
+  useCameraPermission: jest.Mock;
 };
+const takePhoto = vision.__capturePhoto;
+const { useCameraPermission } = vision;
+/** The next photo the camera takes (stored upright, so its size is as given). */
+const nextShot = (uri: string, width: number, height: number) =>
+  takePhoto.mockImplementationOnce(async () => vision.__photo(uri.replace("file://", ""), width, height, "up"));
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const TZ = "America/Argentina/Buenos_Aires";
@@ -70,7 +77,7 @@ let queue: Queue;
 beforeEach(async () => {
   queue = await createQueue(memoryDb());
   getQueue.mockResolvedValue(queue);
-  takePicture.mockClear();
+  takePhoto.mockClear();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
   trips.fetchTrip.mockResolvedValue(tripDetail("photo_selfie"));
   mediaMock.prepareMedia.mockResolvedValue({
@@ -105,12 +112,12 @@ describe("Moment", () => {
   });
 
   it("without camera permission it shows the same message as the regular capture", async () => {
-    useCameraPermissions.mockReturnValueOnce([{ granted: false, canAskAgain: false, status: "denied" }, jest.fn()]);
-    useCameraPermissions.mockReturnValue([{ granted: false, canAskAgain: false, status: "denied" }, jest.fn()]);
+    useCameraPermission.mockReturnValueOnce({ status: "denied", hasPermission: false, canRequestPermission: false, requestPermission: jest.fn() });
+    useCameraPermission.mockReturnValue({ status: "denied", hasPermission: false, canRequestPermission: false, requestPermission: jest.fn() });
     await openMoment(Date.now() - 10_000);
     expect(await screen.findByText("Rollo necesita la cámara")).toBeVisible();
-    useCameraPermissions.mockReset();
-    useCameraPermissions.mockReturnValue([{ granted: true, canAskAgain: true, status: "granted" }, jest.fn()]);
+    useCameraPermission.mockReset();
+    useCameraPermission.mockReturnValue(vision.__granted);
   });
 
   it("in a photo_selfie roll it asks for the selfie after the photo and sends both with the moment day", async () => {
@@ -119,7 +126,7 @@ describe("Moment", () => {
 
     expect(await screen.findByTestId("camera-front")).toBeVisible();
     expect(screen.getByText("Ahora con la otra cámara.")).toBeVisible();
-    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/selfie.jpg", width: 1500, height: 2000 });
+    nextShot("file:///cache/Camera/selfie.jpg", 1500, 2000);
     await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
 
     await fireEvent.changeText(await screen.findByLabelText("Caption"), "el momento");
@@ -143,7 +150,7 @@ describe("Moment", () => {
     expect(await screen.findByTestId("camera-back")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
     expect(await screen.findByTestId("camera-front")).toBeVisible();
-    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/front.jpg", width: 1500, height: 2000 });
+    nextShot("file:///cache/Camera/front.jpg", 1500, 2000);
     await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
@@ -160,14 +167,14 @@ describe("Moment", () => {
     await openMoment(Date.now() - 10_000);
     expect(await screen.findByText("Sacás con las dos cámaras. La primera va a ser la grande.")).toBeVisible();
     await fireEvent.press(await screen.findByRole("button", { name: "Dar vuelta la cámara" }));
-    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/first-front.jpg", width: 1500, height: 2000 });
+    nextShot("file:///cache/Camera/first-front.jpg", 1500, 2000);
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
 
     expect(await screen.findByTestId("camera-back")).toBeVisible();
     expect(screen.getByText("Ahora con la otra cámara.")).toBeVisible();
     expect(screen.queryByText("Sacás con las dos cámaras. La primera va a ser la grande.")).toBeNull();
     expect(screen.queryByRole("button", { name: "Dar vuelta la cámara" })).toBeNull();
-    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/second-back.jpg", width: 4000, height: 3000 });
+    nextShot("file:///cache/Camera/second-back.jpg", 4000, 3000);
     await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
@@ -186,7 +193,7 @@ describe("Moment", () => {
   it("the caption of a two-camera moment also shows the second photo, blurred, in an inset (no swapping)", async () => {
     await openMoment(Date.now() - 10_000);
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
-    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/selfie.jpg", width: 1500, height: 2000 });
+    nextShot("file:///cache/Camera/selfie.jpg", 1500, 2000);
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
 
     await screen.findByLabelText("Caption");
@@ -253,7 +260,7 @@ describe("Moment", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
     expect(await screen.findByTestId("camera-front")).toBeVisible();
-    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/selfie.jpg", width: 1500, height: 2000 });
+    nextShot("file:///cache/Camera/selfie.jpg", 1500, 2000);
     await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
 
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
@@ -287,19 +294,19 @@ describe("Moment", () => {
     expect(await screen.findByTestId("camera-front")).toBeVisible();
   });
 
-  it("shows Cerrar while the camera permission is still loading", async () => {
-    useCameraPermissions.mockReturnValueOnce([null, jest.fn()]);
-    useCameraPermissions.mockReturnValue([null, jest.fn()]);
+  it("shows Cerrar while the camera permission is being asked", async () => {
+    useCameraPermission.mockReturnValueOnce({ status: "not-determined", hasPermission: false, canRequestPermission: true, requestPermission: jest.fn(async () => false) });
+    useCameraPermission.mockReturnValue({ status: "not-determined", hasPermission: false, canRequestPermission: true, requestPermission: jest.fn(async () => false) });
     await openMoment(Date.now() - 10_000);
 
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar" }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    useCameraPermissions.mockReset();
-    useCameraPermissions.mockReturnValue([{ granted: true, canAskAgain: true, status: "granted" }, jest.fn()]);
+    useCameraPermission.mockReset();
+    useCameraPermission.mockReturnValue(vision.__granted);
   });
 
   it("when taking the picture fails it shows an inline error and lets the user retry", async () => {
-    takePicture.mockRejectedValueOnce(new Error("camera busy"));
+    takePhoto.mockRejectedValueOnce(new Error("camera busy"));
     await openMoment(Date.now() - 10_000, `&trip=${SUR}&selfie=0`);
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
 

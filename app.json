@@ -13,6 +13,7 @@
       },
       "infoPlist": {
         "CFBundleDevelopmentRegion": "es",
+        "NSCameraUsageDescription": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
         "CFBundleLocalizations": [
           "es"
         ]
@@ -48,14 +49,6 @@
           "cameraPermission": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
           "microphonePermission": "Rollo usa el micrófono para el sonido de los videos.",
           "photosPermission": "Rollo usa el acceso a tus fotos solo para crear el álbum del rollo cuando guardás todo."
-        }
-      ],
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
-          "microphonePermission": false,
-          "recordAudioAndroid": false
         }
       ],
       [

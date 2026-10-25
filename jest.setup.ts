@@ -401,19 +401,61 @@ beforeEach(() => {
   (require("expo-file-system").File as { deleted: number }).deleted = 0;
 });
 
-// expo-camera is native: the view is an empty View whose ref takes pictures through `takePictureAsync` (drivable from tests).
-jest.mock("expo-camera", () => {
+// react-native-vision-camera is native (Nitro): the view is an empty View that keeps its props (device, zoom, outputs...)
+// and whose ref focuses; devices, permission and the photo output are plain objects drivable from tests.
+// `__device` builds a device like the real ones (default: a triple camera with a 3x telephoto and 48 MP; front wide).
+jest.mock("react-native-vision-camera", () => {
   const { View } = require("react-native");
   const { forwardRef, createElement, useImperativeHandle } = require("react");
-  const takePictureAsync = jest.fn(async () => ({ uri: "file:///cache/Camera/shot.jpg", width: 3000, height: 4000 }));
-  const permission = { granted: true, canAskAgain: true, status: "granted" };
+  const device = (overrides: Record<string, unknown>) => ({
+    id: "wide",
+    type: "wide-angle",
+    position: "back",
+    minZoom: 1,
+    maxZoom: 16,
+    zoomLensSwitchFactors: [],
+    physicalDevices: [],
+    hasFlash: true,
+    supportsFocusMetering: true,
+    getSupportedResolutions: () => [{ width: 4032, height: 3024 }],
+    ...overrides,
+  });
+  const back = device({
+    id: "back-triple",
+    type: "triple",
+    maxZoom: 123.75,
+    zoomLensSwitchFactors: [2, 6],
+    physicalDevices: [{ type: "ultra-wide-angle" }, { type: "wide-angle" }, { type: "telephoto" }],
+    getSupportedResolutions: () => [{ width: 4032, height: 3024 }, { width: 8064, height: 6048 }, { width: 7680, height: 4320 }],
+  });
+  const front = device({ id: "front-wide", position: "front", hasFlash: false });
+  // iOS stores the photo in the sensor's orientation (landscape) with an EXIF flag: held upright that is "right".
+  const photo = (path: string, width: number, height: number, orientation = "right") => ({
+    width,
+    height,
+    orientation,
+    isMirrored: false,
+    saveToTemporaryFileAsync: jest.fn(async () => path),
+    dispose: jest.fn(),
+  });
+  const capturePhoto = jest.fn(async () => photo("/cache/Camera/shot.jpg", 4032, 3024));
+  const photoOutput = { capturePhoto, prepareSettings: jest.fn(async () => {}) };
+  const focusTo = jest.fn(async () => {});
+  const granted = { status: "authorized", hasPermission: true, canRequestPermission: false, requestPermission: jest.fn(async () => true) };
   return {
-    __takePictureAsync: takePictureAsync,
-    CameraView: forwardRef((props: Record<string, unknown>, ref: unknown) => {
-      useImperativeHandle(ref, () => ({ takePictureAsync }));
-      return createElement(View, { testID: `camera-${String(props.facing)}`, ...props });
+    __device: device,
+    __devices: { back, front },
+    __photo: photo,
+    __capturePhoto: capturePhoto,
+    __focusTo: focusTo,
+    __granted: granted,
+    Camera: forwardRef((props: { device?: { position: string } }, ref: unknown) => {
+      useImperativeHandle(ref, () => ({ focusTo }));
+      return createElement(View, { testID: `camera-${String(props.device?.position)}`, ...props });
     }),
-    useCameraPermissions: jest.fn(() => [permission, jest.fn(async () => permission)]),
+    useCameraDevices: jest.fn(() => [back, front]),
+    useCameraPermission: jest.fn(() => granted),
+    usePhotoOutput: jest.fn(() => photoOutput),
   };
 });
 

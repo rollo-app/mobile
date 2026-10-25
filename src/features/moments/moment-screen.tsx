@@ -1,8 +1,8 @@
-import { useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
+import { useCameraPermission } from "react-native-vision-camera";
 import { errorMessage } from "@/api/client";
 import { Camera, CloseButton } from "@/features/camera/camera";
 import type { CapturedPhoto } from "@/features/camera/captured-photo";
@@ -30,7 +30,7 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   const tripId = props.tripId ?? trip?.id;
   const { detail } = useTripDetail(tripId);
   const sendShot = useSendShot();
-  const [permission, requestPermission] = useCameraPermissions();
+  const { hasPermission, canRequestPermission, requestPermission } = useCameraPermission();
   const [step, setStep] = useState<Step>({ kind: "main" });
   const [firstFacing, setFirstFacing] = useState<Facing>("back");
   const [caption, setCaption] = useState("");
@@ -47,8 +47,8 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   const day = props.day ?? (props.at != null ? localDay(props.at, timeZone) : undefined);
 
   useEffect(() => {
-    if (permission?.status === "undetermined") void requestPermission();
-  }, [permission?.status, requestPermission]);
+    if (canRequestPermission) void requestPermission();
+  }, [canRequestPermission, requestPermission]);
 
   // The countdown ticks only while the first photo is pending.
   useEffect(() => {
@@ -58,8 +58,8 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   }, [step.kind]);
 
   useEffect(() => {
-    if (permission?.granted) fix.current ??= startFix();
-  }, [permission?.granted]);
+    if (hasPermission) fix.current ??= startFix();
+  }, [hasPermission]);
 
   function send(main: FacingShot, selfie: FacingShot | null) {
     if (!tripId || !day) return;
@@ -108,7 +108,7 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
       />
     );
   }
-  if (permission && !permission.granted && permission.status !== "undetermined") {
+  if (!hasPermission && !canRequestPermission) {
     return (
       <CaptureMessage
         symbol="camera.fill"
@@ -118,7 +118,7 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
       />
     );
   }
-  if (!permission?.granted) {
+  if (!hasPermission) {
     return (
       <View style={styles.dark}>
         <CloseButton onPress={() => router.back()} />
