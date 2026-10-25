@@ -74,7 +74,11 @@ export function Camera(props: {
         }}
         onResponderMove={(e) => {
           const { touches } = e.nativeEvent;
-          if (touches.length < 2) return;
+          if (touches.length < 2) {
+            // A finger lifted: the next two-finger gesture starts over from the current zoom.
+            pinch.current.startDistance = 0;
+            return;
+          }
           if (pinch.current.startDistance <= 0) pinch.current = { startZoom: zoom, startDistance: touchDistance(touches) };
           setZoom(pinchZoom(pinch.current.startZoom, pinch.current.startDistance, touchDistance(touches)));
         }}

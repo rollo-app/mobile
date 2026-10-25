@@ -158,6 +158,33 @@ describe("Capture", () => {
     expect(screen.getByTestId("camera-back").props.zoom).toBe(0);
   });
 
+  it("a new two-finger gesture after lifting a finger starts from the current zoom, with no jump", async () => {
+    await openCapture();
+    const area = await screen.findByTestId("camera-pinch");
+    const touches = (gap: number) => ({ nativeEvent: { touches: [{ pageX: 100, pageY: 100 }, { pageX: 100 + gap, pageY: 100 }] } });
+    await fireEvent(area, "responderGrant", touches(100));
+    await fireEvent(area, "responderMove", touches(200));
+    const before = screen.getByTestId("camera-back").props.zoom as number;
+
+    await fireEvent(area, "responderMove", { nativeEvent: { touches: [{ pageX: 100, pageY: 100 }] } });
+    await fireEvent(area, "responderMove", touches(400)); // second finger lands again, far apart
+    expect(screen.getByTestId("camera-back").props.zoom).toBe(before);
+  });
+
+  it("does not ask for camera permission over the lock", async () => {
+    const requestPermission = jest.fn();
+    useCameraPermissions.mockReturnValue([{ granted: false, canAskAgain: true, status: "undetermined" }, requestPermission]);
+    trips.fetchTrip.mockResolvedValue(tripDetail(0));
+    try {
+      await openCapture();
+      expect(await screen.findByText("Se terminó el rollo de hoy")).toBeVisible();
+      expect(requestPermission).not.toHaveBeenCalled();
+    } finally {
+      useCameraPermissions.mockReset();
+      useCameraPermissions.mockReturnValue([{ granted: true, canAskAgain: true, status: "granted" }, jest.fn()]);
+    }
+  });
+
   it("without camera permission it shows the message with a way to open Ajustes and no camera", async () => {
     useCameraPermissions.mockReturnValue([{ granted: false, canAskAgain: false, status: "denied" }, jest.fn()]);
     try {

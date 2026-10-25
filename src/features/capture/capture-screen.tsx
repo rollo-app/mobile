@@ -39,8 +39,9 @@ export function CaptureScreen() {
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
-    if (permission?.status === "undetermined") void requestPermission();
-  }, [permission?.status, requestPermission]);
+    // Only when the camera is about to show: not over the "closed" or "no photos left" messages.
+    if (state.kind === "camera" && permission?.status === "undetermined") void requestPermission();
+  }, [state.kind, permission?.status, requestPermission]);
 
   // Ask for the location as soon as the camera is up, so the fix is ready by the time the shot is sent.
   useEffect(() => {
