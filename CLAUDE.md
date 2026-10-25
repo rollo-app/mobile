@@ -199,6 +199,12 @@ Decisiones de producto:
 
 ## Navegación y diseño
 
+- **Botones "i" de ayuda** (`src/features/info/`): un `info.circle` chico junto a un encabezado o una fila abre una hoja (`/info/<topic>`, `formSheet` con `fitToContents`)
+  con título y 2–4 frases. Los textos viven todos en `topics.ts` (`INFO_TOPICS`, tipado por id); la ruta `app/info/[topic].tsx` solo los muestra. `InfoButton` es para pantallas RN
+  (`accessory` de `Row`, `labelAccessory` de `SwitchRow`, `titleAccessory` de `Section`) y `NativeInfoButton` para el Form de SwiftUI de Crear rollo. Viven en la feature y no en `ui/`
+  porque conocen el catálogo y navegan. Hoy: Crear rollo (fechas, revelado, cupo, momento, franja, rollo privado), Ajustes (perfil público, fotos en otros perfiles, mapa sin señal) y
+  "Invitar" del tablero. Un tema nuevo = una entrada en `topics.ts` + su test en `__tests__/info.test.tsx`.
+
 - **Barra de abajo nativa** (`NativeTabs` de `expo-router/native-tabs`, liquid glass en iOS 26), **solo
   íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Amigos · Perfil. La cámara es un trigger
   `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación (solo historias)
@@ -288,7 +294,7 @@ src/
                           *.ts            lógica pura, testeable sin React
                           *.tsx           componentes propios del dominio
                           __tests__/      tests de esa lógica, al lado del código
-                        Dominios: camera (la cámara propia compartida: disparador, flash, zoom, dar vuelta; la usan capture y moments), moments (momento del día: planificador de avisos locales, cuenta regresiva y dos cámaras, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
+                        Dominios: info (botones "i" con explicación), camera (la cámara propia compartida: disparador, flash, zoom, dar vuelta; la usan capture y moments), moments (momento del día: planificador de avisos locales, cuenta regresiva y dos cámaras, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
                         (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications (push, permiso, Ajustes → Notificaciones), likes (me gusta), roll (tablero), moderation (denunciar y bloquear: menú en Feed, visores y perfil de otro, Ajustes → Bloqueados; los errores van con `burnt`).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, SwitchRow, Button,
@@ -345,7 +351,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1481 tests
+npm test                      # 1497 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

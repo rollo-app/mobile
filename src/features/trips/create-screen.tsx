@@ -1,5 +1,5 @@
-import { DatePicker, Form, Host, Picker, Section, Stepper, Text, TextField, Toggle } from "@expo/ui/swift-ui";
-import { accessibilityLabel, foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
+import { DatePicker, Form, Host, HStack, Picker, Section, Spacer, Stepper, Text, TextField, Toggle } from "@expo/ui/swift-ui";
+import { accessibilityLabel, font, foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -7,6 +7,8 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { PRIVATE_ROLLO_NOTE } from "@/features/featured/featuring-section";
 import { fetchFriends } from "@/features/friends/actions";
 import { friendsKey } from "@/features/friends/use-friends";
+import { NativeInfoButton } from "@/features/info/info-button";
+import type { InfoTopicId } from "@/features/info/topics";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { errorMessage } from "@/api/client";
 import {
@@ -27,6 +29,17 @@ import { colors } from "@/ui/theme";
 const HOUR = 60 * 60 * 1000;
 const TIME = ["hourAndMinute"] as const;
 const DATE_TIME = ["date", "hourAndMinute"] as const;
+
+/** Section header with its "i" button, in the look of a grouped-list header. */
+function infoHeader(title: string, topic: InfoTopicId) {
+  return (
+    <HStack spacing={6}>
+      <Text modifiers={[font({ size: 13 }), foregroundStyle("secondary")]}>{title}</Text>
+      <NativeInfoButton topic={topic} />
+      <Spacer />
+    </HStack>
+  );
+}
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -131,7 +144,7 @@ export function CreateScreen() {
             <TextField placeholder="Nombre del rollo" maxLength={60} onTextChange={setName} />
           </Section>
 
-          <Section title="Cuándo">
+          <Section header={infoHeader("Cuándo", "dates")}>
             <Picker
               label="Empieza"
               selection={startMode}
@@ -157,7 +170,7 @@ export function CreateScreen() {
             />
           </Section>
 
-          <Section title="Revelado" footer={<Text>Hasta el revelado nadie ve las fotos, ni las propias.</Text>}>
+          <Section header={infoHeader("Revelado", "reveal")} footer={<Text>Hasta el revelado nadie ve las fotos, ni las propias.</Text>}>
             <Picker
               selection={revealMode}
               onSelectionChange={chooseReveal}
@@ -177,7 +190,7 @@ export function CreateScreen() {
           </Section>
 
           <Section
-            title="Fotos por persona"
+            header={infoHeader("Fotos por persona", "quota")}
             footer={<Text>{limitMode === "daily" ? "Cada día se renueva a la medianoche." : "Es el total de cada persona para todo el rollo."}</Text>}
           >
             <Picker selection={limitMode} onSelectionChange={setLimitMode} modifiers={[pickerStyle("segmented")]}>
@@ -192,7 +205,7 @@ export function CreateScreen() {
           </Section>
 
           <Section
-            title="Momento del día"
+            header={infoHeader("Momento del día", "moment")}
             footer={
               <Text>
                 {momentMode === "off"
@@ -210,12 +223,15 @@ export function CreateScreen() {
             </Picker>
             {momentMode !== "off" && (
               <>
-                <DatePicker
-                  title="Desde"
-                  selection={dateAtMinutes(momentStart)}
-                  displayedComponents={[...TIME]}
-                  onDateChange={(date) => setMomentStart(minutesOfDay(date))}
-                />
+                <HStack spacing={8}>
+                  <DatePicker
+                    title="Desde"
+                    selection={dateAtMinutes(momentStart)}
+                    displayedComponents={[...TIME]}
+                    onDateChange={(date) => setMomentStart(minutesOfDay(date))}
+                  />
+                  <NativeInfoButton topic="momentWindow" />
+                </HStack>
                 <DatePicker
                   title="Hasta"
                   selection={dateAtMinutes(momentEnd)}
@@ -227,7 +243,10 @@ export function CreateScreen() {
           </Section>
 
           <Section footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
-            <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
+            <HStack spacing={8}>
+              <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
+              <NativeInfoButton topic="privateRollo" />
+            </HStack>
           </Section>
         </Form>
       </Host>
