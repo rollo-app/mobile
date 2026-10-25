@@ -15,6 +15,12 @@ import type { CameraDevice } from "react-native-vision-camera";
  */
 export type ZoomDevice = Pick<CameraDevice, "position" | "minZoom" | "maxZoom" | "zoomLensSwitchFactors"> & {
   physicalDevices: readonly Pick<CameraDevice, "type">[];
+  /**
+   * The running session's `displayableZoomFactor / zoom` (iOS 18+ `displayVideoZoomFactorMultiplier`). Front only: on an
+   * iPhone 11+ the selfie camera's 1× is a crop of a wider sensor, so 1× is raw `1 / multiplier` and the minimum is the
+   * "Ampliar encuadre" framing.
+   */
+  displayMultiplier?: number;
 };
 
 export type ZoomLevels = { neutral: number; min: number; max: number; presets: number[] };
@@ -24,7 +30,13 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 export function zoomLevels(device: ZoomDevice): ZoomLevels {
   const lenses = device.physicalDevices.map((d) => d.type);
   const ultraWide = lenses.includes("ultra-wide-angle") && device.zoomLensSwitchFactors.length > 0;
-  const neutral = ultraWide ? device.zoomLensSwitchFactors[0]! : device.minZoom;
+  const m = device.displayMultiplier;
+  const frontCrop = device.position === "front" && m !== undefined && Number.isFinite(m) && m > 0 && m < 1;
+  const neutral = ultraWide
+    ? device.zoomLensSwitchFactors[0]!
+    : frontCrop
+      ? Math.min(device.maxZoom, Math.max(device.minZoom, 1 / m))
+      : device.minZoom;
   const teles = lenses.includes("telephoto")
     ? device.zoomLensSwitchFactors.filter((f) => f > neutral + 0.01).map((f) => round1(f / neutral))
     : [];
@@ -64,4 +76,23 @@ export function touchDistance(touches: readonly Touch[]) {
 export function pinchZoom(levels: ZoomLevels, startZoom: number, startDistance: number, distance: number) {
   if (startDistance <= 0) return startZoom;
   return Math.min(levels.max, Math.max(levels.min, startZoom * (distance / startDistance)));
+}
+
+/** The front camera's two framings: 1× (`neutral`, the default) and the widest (`wide`, "Ampliar encuadre"). */
+export type FrontExpand = { neutral: number; wide: number };
+
+/** Only on a front camera whose real minimum is wider than its 1×; `null` hides the button. */
+export function frontExpand(levels: ZoomLevels, position: CameraDevice["position"]): FrontExpand | null {
+  if (position !== "front" || !(levels.min < levels.neutral - 0.01)) return null;
+  return { neutral: levels.neutral, wide: levels.min };
+}
+
+/** Wider than 1× (by the button or a pinch). */
+export function isExpanded(expand: FrontExpand, zoom: number) {
+  return zoom < expand.neutral - 0.01;
+}
+
+/** Where the button goes from `zoom`: back to 1× when expanded, else to the widest. */
+export function expandTarget(expand: FrontExpand, zoom: number) {
+  return isExpanded(expand, zoom) ? expand.neutral : expand.wide;
 }

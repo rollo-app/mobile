@@ -417,6 +417,12 @@ jest.mock("react-native-vision-camera", () => {
     physicalDevices: [],
     hasFlash: true,
     supportsFocusMetering: true,
+    supportsExposureMetering: true,
+    supportsWhiteBalanceMetering: true,
+    supportsExposureBias: true,
+    minExposureBias: -8,
+    maxExposureBias: 8,
+    supportsLowLightBoost: true,
     getSupportedResolutions: () => [{ width: 4032, height: 3024 }],
     ...overrides,
   });
@@ -441,8 +447,9 @@ jest.mock("react-native-vision-camera", () => {
   const capturePhoto = jest.fn(async () => photo("/cache/Camera/shot.jpg", 4032, 3024));
   const photoOutput = { capturePhoto, prepareSettings: jest.fn(async () => {}) };
   const focusTo = jest.fn(async () => {});
-  // The running session's controller (after `onStarted`): its zoom range is the active format's.
-  const controller = { minZoom: 1, maxZoom: 123.75, setZoom: jest.fn(async (_zoom: number) => {}) };
+  // The running session's controller (after `onStarted`): its zoom range is the active format's, and
+  // `displayableZoomFactor / zoom` is iOS's display multiplier (below 1 on a front camera that can "Ampliar encuadre").
+  const controller = { minZoom: 1, maxZoom: 123.75, zoom: 1, displayableZoomFactor: 1, setZoom: jest.fn(async (_zoom: number) => {}) };
   const startZoomAnimation = jest.fn(async (_zoom: number, _rate: number) => {});
   const granted = { status: "authorized", hasPermission: true, canRequestPermission: false, requestPermission: jest.fn(async () => true) };
   return {
