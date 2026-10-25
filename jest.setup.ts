@@ -376,6 +376,8 @@ jest.mock("expo-background-task", () => ({
 jest.mock("expo-notifications", () => ({
   setNotificationHandler: jest.fn(),
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  scheduleNotificationAsync: jest.fn(async (request: { identifier?: string }) => request.identifier ?? "id"),
+  SchedulableTriggerInputTypes: { DATE: "date" },
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
   getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true, status: "undetermined" })),
   requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true, status: "granted" })),

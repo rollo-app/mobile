@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Alert } from "react-native";
 import { errorMessage } from "@/api/client";
+import { cancelMomentNotifications } from "@/features/moments/cancel";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { tripKey } from "@/features/trips/use-trip-detail";
 import { clearActiveTripId, getActiveTripId } from "@/storage/active-trip";
@@ -16,6 +17,7 @@ export function useLeaveTrip(tripId: string, tripName: string) {
       if ((await getActiveTripId()) === tripId) await clearActiveTripId();
     },
     onSuccess: async () => {
+      await cancelMomentNotifications(tripId);
       await queryClient.invalidateQueries({ queryKey: myTripsKey });
       queryClient.removeQueries({ queryKey: tripKey(tripId) });
       router.dismissTo("/roll");

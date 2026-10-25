@@ -163,6 +163,26 @@ describe("Add friends to a roll", () => {
 });
 
 describe("Leaving a roll", () => {
+  it("cancels that roll's moment notifications", async () => {
+    const N = jest.requireMock("expo-notifications") as typeof import("expo-notifications");
+    jest.mocked(N.getAllScheduledNotificationsAsync).mockResolvedValue(
+      [{ identifier: `moment.${SUR}.2027-01-12` }, { identifier: "moment.other.2027-01-12" }] as never,
+    );
+    friends.leaveTrip.mockResolvedValue();
+    await setActiveTripId(SUR);
+    await renderRouter(routes, { initialUrl: "/roll" });
+    const leave = await screen.findByRole("button", { name: "Salirme del rollo" });
+    jest.mocked(N.cancelScheduledNotificationAsync).mockClear();
+    await fireEvent.press(leave);
+    trips.fetchMyTrips.mockResolvedValue({ trips: [] });
+    await confirmLeave();
+    await screen.findByText("Todavía no tenés rollos");
+
+    expect(N.cancelScheduledNotificationAsync).toHaveBeenCalledWith(`moment.${SUR}.2027-01-12`);
+    expect(N.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith("moment.other.2027-01-12");
+    jest.mocked(N.getAllScheduledNotificationsAsync).mockResolvedValue([]);
+  });
+
   const confirmLeave = () =>
     act(async () => {
       const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];

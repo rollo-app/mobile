@@ -1,6 +1,7 @@
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { getSession } from "@/features/auth/session";
+import { syncMoments } from "@/features/moments/moment-sync";
 import { runUploadPass } from "./sync";
 
 /**
@@ -19,6 +20,12 @@ const MINIMUM_INTERVAL_MIN = 15;
 
 /** One upload pass with a time budget. Never throws: it returns the result iOS expects. */
 export async function runBackgroundUpload(): Promise<BackgroundTask.BackgroundTaskResult> {
+  // Keeps the daily-moment notifications fresh while the app is closed; its own failure never blocks uploads.
+  try {
+    await syncMoments();
+  } catch (e) {
+    console.warn("Falló la sincronización de momentos en segundo plano", e);
+  }
   try {
     await runUploadPass({ deadline: Date.now() + BACKGROUND_BUDGET_MS });
     return BackgroundTask.BackgroundTaskResult.Success;
