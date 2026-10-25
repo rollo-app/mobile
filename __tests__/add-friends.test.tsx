@@ -32,6 +32,8 @@ const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" =
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
     ...over,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, blockedByMe: false },

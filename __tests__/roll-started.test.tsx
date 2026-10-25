@@ -44,6 +44,8 @@ function tripDetail(photosLeft: number): actions.TripDetail {
       dailyPhotoLimit: 10,
       dailyVideoLimit: 3,
       featuringDisabled: false,
+      photoLimitMode: "daily",
+      totalPhotoLimit: null,
     },
     me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
     members: [],
@@ -67,6 +69,13 @@ describe("roll started", () => {
     await openRollStarted();
     expect(await screen.findByText("Arrancó el rollo.")).toBeOnTheScreen();
     expect(await screen.findByText("Tenés 7 fotos hoy.")).toBeOnTheScreen();
+  });
+
+  it("says the photos left in the whole rollo when the limit is total", async () => {
+    const d = tripDetail(18);
+    trips.fetchTrip.mockResolvedValue({ ...d, trip: { ...d.trip, photoLimitMode: "total", totalPhotoLimit: 20 } });
+    await openRollStarted();
+    expect(await screen.findByText("Tenés 18 fotos en el rollo.")).toBeOnTheScreen();
   });
 
   it("says one photo in singular", async () => {

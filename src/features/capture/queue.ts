@@ -192,12 +192,14 @@ export async function createQueue(db: QueueDb) {
       return rows[0]?.n ?? 0;
     },
 
-    /** Captured and not uploaded for a trip on a day: subtracted from the quota the server reported. */
-    async countPending(tripId: string, day: string) {
+    /**
+     * Captured and not uploaded for a trip on a day (any day if none is given, for rollos with a total limit):
+     * subtracted from the quota the server reported.
+     */
+    async countPending(tripId: string, day?: string) {
       const rows = await db.getAllAsync<{ type: MediaType; n: number }>(
-        "SELECT type, COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND day = ? AND failed_reason IS NULL GROUP BY type",
-        tripId,
-        day,
+        `SELECT type, COUNT(*) AS n FROM pending_media WHERE trip_id = ?${day === undefined ? "" : " AND day = ?"} AND failed_reason IS NULL GROUP BY type`,
+        ...(day === undefined ? [tripId] : [tripId, day]),
       );
       const count = (type: MediaType) => rows.find((r) => r.type === type)?.n ?? 0;
       return { photos: count("photo"), videos: count("video") };

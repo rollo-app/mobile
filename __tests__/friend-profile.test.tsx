@@ -49,6 +49,8 @@ const detail = (id: string, name: string, revealed: boolean): tripActions.TripDe
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false },
   members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false }],

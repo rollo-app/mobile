@@ -19,6 +19,7 @@ const DATE_TIME = ["date", "hourAndMinute"] as const;
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 type RevealMode = "end" | "custom";
+type LimitMode = "daily" | "total";
 
 export function CreateScreen() {
   const queryClient = useQueryClient();
@@ -30,8 +31,9 @@ export function CreateScreen() {
   const [revealMode, setRevealMode] = useState<RevealMode>("end");
   const [customReveal, setCustomReveal] = useState(initialStart + 84 * HOUR);
   const [photos, setPhotos] = useState(10);
-  const [videos, setVideos] = useState(3);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [limitMode, setLimitMode] = useState<LimitMode>("daily");
+  const [totalPhotos, setTotalPhotos] = useState(20);
   const create = useCreateTrip();
   const error = errorMessage(create.error, "No se pudo crear el rollo");
 
@@ -62,8 +64,7 @@ export function CreateScreen() {
         startsAt: effectiveStart(startMode, startsAt, Date.now()),
         endsAt,
         revealAt,
-        dailyPhotoLimit: photos,
-        dailyVideoLimit: videos,
+        photoLimit: limitMode === "total" ? { mode: "total", total: totalPhotos } : { mode: "daily", perDay: photos },
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         ...(isPrivate && { featuringDisabled: true }),
       },
@@ -157,9 +158,19 @@ export function CreateScreen() {
             )}
           </Section>
 
-          <Section title="Por persona, por día" footer={<Text>Cada día se renueva a la medianoche.</Text>}>
-            <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={100} onValueChange={setPhotos} />
-            <Stepper label={count(videos, "video", "videos")} value={videos} min={0} max={20} onValueChange={setVideos} />
+          <Section
+            title="Fotos por persona"
+            footer={<Text>{limitMode === "daily" ? "Cada día se renueva a la medianoche." : "Es el total de cada persona para todo el rollo."}</Text>}
+          >
+            <Picker selection={limitMode} onSelectionChange={setLimitMode} modifiers={[pickerStyle("segmented")]}>
+              <Text modifiers={[tag("daily")]}>Por día</Text>
+              <Text modifiers={[tag("total")]}>Todo el rollo</Text>
+            </Picker>
+            {limitMode === "daily" ? (
+              <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={100} onValueChange={setPhotos} />
+            ) : (
+              <Stepper label={count(totalPhotos, "foto", "fotos")} value={totalPhotos} min={1} max={500} onValueChange={setTotalPhotos} />
+            )}
           </Section>
 
           <Section footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>

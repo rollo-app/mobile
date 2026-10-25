@@ -70,6 +70,16 @@ describe("upload queue", () => {
     expect(await queue.countPending(TRIP, "2027-01-12")).toEqual({ photos: 2, videos: 1 });
   });
 
+  it("without a day it counts the whole rollo's pending items, any day", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "1", day: "2027-01-12" }));
+    await queue.enqueue(item({ id: "2", day: "2027-01-13" }));
+    await queue.enqueue(item({ id: "3", day: "2027-01-13", type: "video" }));
+    await queue.enqueue(item({ id: "4", tripId: "otro" }));
+
+    expect(await queue.countPending(TRIP)).toEqual({ photos: 2, videos: 1 });
+  });
+
   it("reopening the queue on the same database loses nothing", async () => {
     const db = memoryDb();
     await (await createQueue(db)).enqueue(item());

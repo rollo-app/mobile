@@ -7,6 +7,9 @@ export type Trip = Schemas["Trip"];
 export type TripDetail = Schemas["TripDetail"];
 export type Feed = Schemas["Feed"];
 
+/** How many photos each person can take: that many per day, or that many in the whole rollo. */
+export type PhotoLimit = { mode: "daily"; perDay: number } | { mode: "total"; total: number };
+
 /** The trips you're in, most recent first. */
 export async function fetchMyTrips(): Promise<{ trips: TripSummary[] }> {
   return unwrap((await authedClient()).GET("/me/trips"));
@@ -18,14 +21,18 @@ export async function createTrip(input: {
   startsAt: number;
   endsAt: number;
   revealAt: number;
-  dailyPhotoLimit: number;
-  dailyVideoLimit: number;
+  photoLimit: PhotoLimit;
   timezone: string;
   /** Private rollo: no photo of it goes to a profile. Left out when off. */
   featuringDisabled?: boolean;
 }): Promise<Trip> {
+  const { photoLimit, ...rest } = input;
+  const limit =
+    photoLimit.mode === "total"
+      ? { photoLimitMode: "total" as const, totalPhotoLimit: photoLimit.total }
+      : { photoLimitMode: "daily" as const, dailyPhotoLimit: photoLimit.perDay };
   const created = await unwrap(
-    (await authedClient()).POST("/trips", { body: { ...input, name: input.name.trim() } }),
+    (await authedClient()).POST("/trips", { body: { ...rest, ...limit, name: input.name.trim() } }),
   );
   await setActiveTripId(created.trip.id);
   return created.trip;

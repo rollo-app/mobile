@@ -1,4 +1,4 @@
-import { closedMessage, mediaTypesFor } from "../capture-copy";
+import { closedMessage, exhaustedMessage, photosLeftText } from "../capture-copy";
 
 const HOUR = 60 * 60 * 1000;
 const trip = (over: Partial<Parameters<typeof closedMessage>[0]> = {}) => ({
@@ -35,17 +35,25 @@ describe("closedMessage", () => {
   });
 });
 
-describe("mediaTypesFor", () => {
-  it("offers both when the quota is unknown or not exhausted", () => {
-    expect(mediaTypesFor(null)).toEqual(["images", "videos"]);
-    expect(mediaTypesFor({ photos: 2, videos: 1 })).toEqual(["images", "videos"]);
+describe("exhaustedMessage", () => {
+  it("says tomorrow's photos in a daily rollo, and treats a cached detail with no mode as daily", () => {
+    expect(exhaustedMessage({ photoLimitMode: "daily", dailyPhotoLimit: 10 })).toEqual({
+      title: "Se terminó el rollo de hoy",
+      body: "Mañana tenés 10 fotos nuevas.",
+    });
+    expect(exhaustedMessage({ dailyPhotoLimit: 1 }).body).toBe("Mañana tenés 1 foto nueva.");
+    expect(exhaustedMessage(null).body).toBe("Mañana se renueva.");
   });
 
-  it("offers only photos when no videos are left", () => {
-    expect(mediaTypesFor({ photos: 2, videos: 0 })).toEqual(["images"]);
+  it("says you used all of the rollo's photos in a total rollo", () => {
+    expect(exhaustedMessage({ photoLimitMode: "total", dailyPhotoLimit: 10 }).title).toBe("Ya usaste todas tus fotos del rollo");
   });
+});
 
-  it("offers only videos when no photos are left", () => {
-    expect(mediaTypesFor({ photos: 0, videos: 2 })).toEqual(["videos"]);
+describe("photosLeftText", () => {
+  it("counts today's or the rollo's photos, in singular and plural", () => {
+    expect(photosLeftText(7, "daily")).toBe("Tenés 7 fotos hoy.");
+    expect(photosLeftText(1, undefined)).toBe("Tenés 1 foto hoy.");
+    expect(photosLeftText(18, "total")).toBe("Tenés 18 fotos en el rollo.");
   });
 });

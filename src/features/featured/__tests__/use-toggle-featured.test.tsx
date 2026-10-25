@@ -196,7 +196,7 @@ describe("useToggleFeatured", () => {
         await done;
       });
       expect(showPill).toHaveBeenCalledTimes(1);
-      expect(showPill).toHaveBeenCalledWith("Agregada a tu perfil");
+      expect(showPill).toHaveBeenCalledWith("Destacada en tu perfil");
     });
 
     it("does not show the HUD when the server rejects", async () => {

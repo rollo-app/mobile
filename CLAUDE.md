@@ -40,10 +40,10 @@ Decisiones de producto:
   funciona mejor, sobre todo en video. Lo que se saca **no queda en el carrete**: se sube y se borra
   del caché local.
 - **Fotos a resolución completa** (~4000 px, JPEG 85–90 %, para imprimir) + **thumbnail ~800 px** que
-  genera el celular. **Videos de hasta 15 s**, comprimidos a 1080p en el celular.
+  genera el celular. **Sin videos en rollos nuevos** (la cámara saca solo fotos; los videos de rollos viejos se siguen viendo).
 - **Metadatos:** al mandar, la foto lleva EXIF (fecha/hora local del rollo con offset, GPS, `Software: Rollo`) y XMP
   con caption y autor en Unicode (`piexifjs`, JS puro). Al guardar en Fotos se inyectan si el original no tiene fecha.
-- **Límite diario** de fotos y videos por persona (lo aplica el server).
+- **Límite de fotos por persona**, que el admin elige al crear el rollo: **"Por día"** (10 por defecto) o **"Todo el rollo"** (`photoLimitMode` `daily` | `total` + `totalPhotoLimit`; 20 por defecto). Lo aplica el server. Con cupo total, el badge de la cámara, "Tenés N fotos en el rollo", el tablero ("Te quedan N de M") y la cola offline (`countPending` sin día) cuentan lo que queda en todo el rollo.
 - **Offline first:** al disparar se guardan foto, hora (UTC + zona) y GPS. Pedir ubicación apenas se
   abre la cámara; sin fix, usar la última conocida y guardar su precisión. Cola local en SQLite, subida
   en segundo plano cuando hay señal, **UUID generado en el celular** (reintentar es seguro).
@@ -56,14 +56,14 @@ Decisiones de producto:
   sacó fotos el grupo (grilla de 30 km), desde 3 días antes del inicio hasta el fin del rollo (antes del inicio, solo
   con Wi‑Fi; tope ~400 MB). Los packs usan el mismo `file://` de estilo que el MapView, se nombran
   `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Ajustes → "Mapa sin señal" (ajuste del celular, no del rollo).
-- **Captura:** cámara nativa con selector foto/video (máx. 15 s); si no quedan videos hoy, abre solo en
-  foto. Después, **preview nítido** con "Repetir" o "Mandar al rollo" + caption opcional. Una vez
-  mandada no se puede repetir ni ver.
+- **Captura:** cámara nativa solo de fotos. **No hay "Repetir"** ("la sacada es la que es"): después de la cámara, la pantalla del caption
+  muestra la foto **muy difuminada** (`blurRadius`), con caption opcional y "Mandar al rollo". No hay forma de salir sin mandarla (sin
+  "Cancelar" ni gesto de cerrar). Una vez mandada no se puede repetir ni ver.
 - **Antes del revelado** no se ve ninguna foto, solo su **ThumbHash** (colores difusos, lo genera el
   celular y el server lo devuelve en el feed). Para que den ganas de abrir la app: **mapa en vivo** con
   pins (autor y hora; con la foto de perfil del autor si tiene, hecha en JS como `tab-avatar` y registrada con `Images`, y si no la inicial sobre su color), **feed** y la hoja de contacto del rollo. Se muestra solo el total del grupo.
 - **Rollo configurable al crearlo** (lo hace el admin, formulario nativo con `@expo/ui`): nombre, inicio y fin
-  **con fecha y hora**, fotos y videos por persona por día, y **cuándo se revela** (al terminar o en otro
+  **con fecha y hora**, fotos por persona (por día o en todo el rollo), y **cuándo se revela** (al terminar o en otro
   momento, siempre igual o posterior al fin). Las fechas las valida el server; la app muestra su mensaje inline (`src/features/trips/create-form.ts` solo chequea los nombres).
 - **Privacidad de los rollos:** un rollo solo existe para sus miembros. Nadie más ve sus fotos, su nombre ni que existe
   (tampoco en el perfil de un amigo: "Rollos en común" son solo los rollos donde **los dos** son miembros activos). Si algún
@@ -94,7 +94,7 @@ Decisiones de producto:
   se hace el push, porque un push después de un modal se presentaría como otro modal.
 - **Fotos destacadas** (`src/features/featured/`): de un rollo **revelado** donde sos miembro activo destacás **fotos** (no
   videos), tuyas o de otros, hasta **60**: en el visor con el ícono de perfil "Agregar a tu perfil" / "Sacar de tu perfil" (`person.crop.circle.badge.plus` / `.badge.checkmark`) y en la
-  grilla con el menú de mantener apretado "Agregar a tu perfil" / "Sacar de tu perfil". Al agregar una, sale la pastilla "Agregada a tu perfil" (`showPill`). El autor puede "No dejar que la
+  grilla con el menú de mantener apretado "Agregar a tu perfil" / "Sacar de tu perfil". Al agregar una, sale la pastilla "Destacada en tu perfil" (`showPill`). El autor puede "No dejar que la
   destaquen" (borra las de otros y bloquea nuevas; él siempre puede destacar las suyas). Nunca sale el rollo, el caption ni la
   coordenada: la ubicación va como **zona de ~5 km** (celda de 0.05°). En un perfil, "Fotos | Mapa": la grilla (con la
   insignia del autor si no es el dueño del perfil; tocar una abre `/featured/<userId>/<mediaId>`) y el mapa por zonas.
@@ -207,7 +207,7 @@ Decisiones de producto:
     tuyas sin subir) o para confirmar una acción destructiva (borrar como admin).
   - Si un momento puntual necesita una confirmación fugaz, usar `burnt` (HUD nativo tipo AirPods), no un
     toast hecho a mano. También para los errores de denunciar y bloquear (`Burnt.alert`).
-    **Única excepción, a pedido del dueño:** al agregar una foto a tu perfil sale una pastilla chica y centrada "Agregada a tu perfil"
+    **Única excepción, a pedido del dueño:** al agregar una foto a tu perfil sale una pastilla chica y centrada "Destacada en tu perfil"
     (sin ícono; `showPill` de `src/ui/pill.ts`, `PillHost` en `app/_layout.tsx` sobre `FullWindowOverlay` para quedar encima de los modales).
 
 El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
@@ -404,7 +404,7 @@ testing externo en TestFlight (revisión de Apple) y la prueba real. El backend 
 gustaron (`docs/superpowers/specs/2026-10-23-tu-actividad-design.md`) y decidir adónde van tus fotos: no dejar que las destaquen
 en otros perfiles para todas tus fotos, por rollo o con un rollo privado del admin (`docs/superpowers/specs/2026-10-23-fotos-en-perfiles-design.md`), solicitudes de amistad desde el perfil
 de otra persona (`docs/superpowers/specs/2026-10-23-solicitudes-de-amistad-design.md`) y un cambio de texto: la pastilla pasa a decir
-"Destacada en tu perfil". Los builds de EAS se agrupan: el plan gratis da 15 de iOS por mes.
+"Destacada en tu perfil", más captura sin "Repetir", sin videos y cupo por día o de todo el rollo (`docs/superpowers/plans/2026-10-25-captura-y-cupo.md`). Los builds de EAS se agrupan: el plan gratis da 15 de iOS por mes.
 
 Pendiente (después de enero, no antes del viaje): **migrar el backend a Supabase**. La idea es que Postgres de
 Supabase reemplace a D1 y que las fotos sigan en R2 (gratis y sin costo de egress), con el Worker conectado

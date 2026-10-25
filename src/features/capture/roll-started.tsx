@@ -9,6 +9,7 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { RolloLockView, type LockPhase } from "../../../modules/rollo-symbol";
+import { photosLeftText } from "./capture-copy";
 import { useTodayLeft } from "./use-today-left";
 
 const UNLOCK_AT = 400;
@@ -48,7 +49,7 @@ export function RollStarted() {
   }));
 
   const photos = left?.photos;
-  const quota = photos === undefined ? null : photos === 1 ? "Tenés 1 foto hoy." : `Tenés ${photos} fotos hoy.`;
+  const quota = photos === undefined ? null : photosLeftText(photos, detail?.trip.photoLimitMode);
 
   return (
     <View style={[styles.fill, { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.md }]}>
