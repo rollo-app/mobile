@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { useReduceMotion } from "@/features/presentation/use-accessibility";
@@ -18,14 +18,27 @@ export const REVEAL_BACKGROUND = "#1a0000";
  * The reveal of the active roll, full screen and on its own (the stories never contain it): the
  * darkroom (`DarkroomIntro`). It always plays, and remembers it was seen as it starts.
  * When it ends, or with a tap anywhere, it replaces itself with the stories (`/presentation`).
- * Without photos or on an error it goes straight there, where that state is explained. While it
+ * Without photos (once the server confirmed it) or on an error it goes straight there, where that state is explained. While it
  * loads, a tap or `loadingTimeoutMs` also goes there.
  */
 export function RevealScreen() {
   const { trip } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
-  const { photos, token, error, loading } = useRevealedPhotos(trip?.id);
+  const { photos, token, error, loading, refetch } = useRevealedPhotos(trip?.id);
   const reduceMotion = useReduceMotion();
+  const tripId = trip?.id;
+
+  // Opened right at the reveal, the cached feed is still the one from before it (no files yet):
+  // it only gives up on the photos once the server answered.
+  const [checked, setChecked] = useState(false);
+  useEffect(() => {
+    if (!tripId) return;
+    let active = true;
+    void refetch({ cancelRefetch: false }).finally(() => active && setChecked(true));
+    return () => {
+      active = false;
+    };
+  }, [tripId, refetch]);
 
   const done = useRef(false);
   const toStories = useCallback(() => {
@@ -35,13 +48,12 @@ export function RevealScreen() {
   }, []);
 
   const ready = !!detail && !!token && photos.length > 0;
-  const nothing = !ready && !loading && (!!error || (!!detail && !!token && photos.length === 0));
+  const nothing = checked && !ready && !loading && (!!error || (!!detail && !!token && photos.length === 0));
 
   useEffect(() => {
     if (nothing) toStories();
   }, [nothing, toStories]);
 
-  const tripId = trip?.id;
   useEffect(() => {
     if (!ready || !tripId) return;
     void markRevealIntroSeen(tripId);

@@ -7,6 +7,8 @@ import { hasSeenRevealIntro, markRevealIntroSeen } from "@/storage/reveal-intro"
 import { signInAs, tripSummary } from "@/test/account";
 import { REVEAL_TIMELINE } from "@/features/reveal/timeline";
 import { routes } from "@/test/routes";
+import { queryClient } from "@/api/query-client";
+import { feedKey } from "@/features/trips/use-feed";
 
 jest.mock("@/features/trips/actions");
 // A short intro, so the hand-over to the stories happens within the test's wait.
@@ -141,6 +143,20 @@ describe("Reveal", () => {
       expect(replace).not.toHaveBeenCalled();
       replace.mockRestore();
     });
+  });
+
+  // Opened right at the reveal, the cached feed is still the one from before it (no files yet).
+  it("plays with the fresh feed instead of skipping to the stories with the cached one", async () => {
+    queryClient.setQueryData(
+      feedKey(SUR),
+      { revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), files: null }] },
+      { updatedAt: Date.now() },
+    );
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/reveal"));
+
+    await screen.findByText("Se reveló");
+    expect(screen).toHavePathname("/reveal");
   });
 
   it("plays even when it was already seen", async () => {

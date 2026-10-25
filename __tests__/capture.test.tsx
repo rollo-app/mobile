@@ -90,6 +90,22 @@ async function openCapture() {
 }
 
 describe("Capture", () => {
+  // Presenting the camera while the screen is still animating in (e.g. replacing "Arrancó el rollo")
+  // fails silently on iOS and leaves the screen black: it waits until the screen is on screen.
+  it("opens the camera only once the screen finished appearing", async () => {
+    picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
+    queryClient.setQueryData(["trip", SUR], tripDetail(7, 2), { updatedAt: Date.now() });
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/capture"));
+    expect(picker.launchCameraAsync).not.toHaveBeenCalled();
+
+    const appear = screen.container.queryAll((node) => typeof node.props.onAppear === "function").at(-1);
+    await act(async () => appear!.props.onAppear());
+    await act(async () => {}); // the quota check before opening it
+
+    expect(picker.launchCameraAsync).toHaveBeenCalled(); // no timers advanced: it was the appearance
+  });
+
   it("opens the system camera with photo and video, and goes back if you cancel", async () => {
     picker.launchCameraAsync.mockResolvedValue({ canceled: true, assets: null });
     await openCapture();

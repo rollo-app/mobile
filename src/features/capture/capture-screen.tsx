@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
+import { router, useNavigation, type NativeStackNavigationProp } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import { errorMessage } from "@/api/client";
@@ -23,6 +23,8 @@ type State =
   | { kind: "preview"; shot: Shot };
 
 const MAX_VIDEO_S = 15;
+// If the screen never reports that it appeared, open the camera anyway after this.
+const APPEAR_FALLBACK_MS = 1000;
 
 /**
  * Capture: system camera → preview (retake or send, with caption) → queue.
@@ -38,6 +40,21 @@ export function CaptureScreen() {
   const left = useRef<Left>(null);
   const fix = useRef<Promise<Fix | null> | null>(null);
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // iOS can't present the camera while this modal is still animating in (for example when it
+  // replaces "Arrancó el rollo"): the picker fails silently and the screen stays black.
+  const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
+  const [appeared, setAppeared] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setAppeared(true), APPEAR_FALLBACK_MS);
+    const unsubscribe = navigation.addListener("transitionEnd", (e) => {
+      if (!e.data.closing) setAppeared(true);
+    });
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [navigation]);
 
   async function openCamera() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -60,7 +77,7 @@ export function CaptureScreen() {
 
   // Once we know the quota (or that there's no signal to know it), open the camera or show the lock.
   useEffect(() => {
-    if (!loaded || !trip || started.current || (!detail && !detailError)) return;
+    if (!appeared || !loaded || !trip || started.current || (!detail && !detailError)) return;
     started.current = true;
     const closed = detail && closedMessage(detail.trip, Date.now());
     if (closed) return setState({ kind: "closed", ...closed });
@@ -71,7 +88,7 @@ export function CaptureScreen() {
       if (left.current && left.current.photos === 0 && left.current.videos === 0) return setState({ kind: "locked" });
       await openCamera();
     })();
-  }, [loaded, trip, detail, detailError, timeZone]);
+  }, [appeared, loaded, trip, detail, detailError, timeZone]);
 
   async function retake(shot: Shot) {
     await discard(shot.asset.uri);
