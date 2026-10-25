@@ -24,6 +24,7 @@ const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto =>
   featureBlocked: false,
   likeCount: 0,
   likedByMe: false,
+  commentCount: 0,
   ...over,
 });
 

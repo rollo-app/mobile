@@ -243,8 +243,8 @@ describe("tapping a push", () => {
 });
 
 describe("Ajustes: Notificaciones", () => {
-  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true };
-  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto"];
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true };
+  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto"];
 
   beforeEach(() => {
     push.fetchNotificationSettings.mockResolvedValue(ALL_ON);
@@ -277,6 +277,7 @@ describe("Ajustes: Notificaciones", () => {
     expect(screen.getByText("Cuando se revelan las fotos de un rollo tuyo.")).toBeVisible();
     expect(screen.getByText("Cuando alguien pone una foto tuya en su perfil.")).toBeVisible();
     expect(screen.getByText("Cuando a alguien le gusta una foto tuya.")).toBeVisible();
+    expect(screen.getByText("Cuando alguien comenta una foto tuya o una que comentaste.")).toBeVisible();
     // With permission there's no banner.
     expect(screen.queryByText("Las notificaciones están desactivadas")).toBeNull();
   });

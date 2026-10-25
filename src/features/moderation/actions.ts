@@ -9,6 +9,11 @@ export async function reportMedia(mediaId: string, reason: ReportReason): Promis
   await unwrap((await authedClient()).POST("/reports", { body: { mediaId, reason } }));
 }
 
+/** Reports a comment (of a photo of a roll you're in) to the moderators; it disappears from your lists. */
+export async function reportComment(commentId: string, reason: ReportReason): Promise<void> {
+  await unwrap((await authedClient()).POST("/reports", { body: { commentId, reason } }));
+}
+
 /** Reports a person to the moderators. */
 export async function reportUser(userId: string, reason: ReportReason): Promise<void> {
   await unwrap((await authedClient()).POST("/reports", { body: { userId, reason } }));

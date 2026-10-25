@@ -28,6 +28,8 @@ export type RevealedPhoto = {
   likeCount: number;
   /** You like it. */
   likedByMe: boolean;
+  /** How many comments you see on it (0 for videos). */
+  commentCount: number;
   thumbPath: string;
   originalPath: string;
 };
@@ -56,6 +58,7 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
               featureBlocked: item.featureBlocked ?? false,
               likeCount: item.likeCount ?? 0,
               likedByMe: item.likedByMe ?? false,
+              commentCount: item.commentCount ?? 0,
               thumbPath: item.files.thumb,
               originalPath: item.files.original,
             },

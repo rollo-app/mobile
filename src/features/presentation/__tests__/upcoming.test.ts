@@ -22,6 +22,7 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   featureBlocked: false,
   likeCount: 0,
   likedByMe: false,
+  commentCount: 0,
 });
 
 describe("upcomingPhotos", () => {
