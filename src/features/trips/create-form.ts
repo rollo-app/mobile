@@ -26,3 +26,20 @@ export function endAfter(end: number, start: number): number {
 export function revealNotBefore(reveal: number, end: number): number {
   return reveal >= end ? reveal : end + 12 * HOUR;
 }
+
+export type MomentMode = "off" | "photo" | "photo_selfie";
+
+/** Daily moment window, in minutes from midnight in the rollo's timezone: 9:00 to 23:00. */
+export const DEFAULT_MOMENT_WINDOW = { start: 540, end: 1380 };
+
+/** Minutes from local midnight of a date picked in an hour+minute picker. */
+export function minutesOfDay(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+/** A date today whose local time is `minutes` from midnight (what the time pickers show). */
+export function dateAtMinutes(minutes: number): Date {
+  const d = new Date();
+  d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return d;
+}

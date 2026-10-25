@@ -25,6 +25,10 @@ export async function createTrip(input: {
   timezone: string;
   /** Private rollo: no photo of it goes to a profile. Left out when off. */
   featuringDisabled?: boolean;
+  momentMode?: "off" | "photo" | "photo_selfie";
+  /** Minutes from midnight in `timezone`. */
+  momentWindowStart?: number;
+  momentWindowEnd?: number;
 }): Promise<Trip> {
   const { photoLimit, ...rest } = input;
   const limit =

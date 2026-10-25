@@ -9,11 +9,23 @@ import { fetchFriends } from "@/features/friends/actions";
 import { friendsKey } from "@/features/friends/use-friends";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { errorMessage } from "@/api/client";
-import { canCreate, defaultStart, effectiveStart, endAfter, revealNotBefore, type StartMode } from "@/features/trips/create-form";
+import {
+  canCreate,
+  dateAtMinutes,
+  DEFAULT_MOMENT_WINDOW,
+  defaultStart,
+  effectiveStart,
+  endAfter,
+  minutesOfDay,
+  revealNotBefore,
+  type MomentMode,
+  type StartMode,
+} from "@/features/trips/create-form";
 import { useCreateTrip } from "@/features/trips/use-create-trip";
 import { colors } from "@/ui/theme";
 
 const HOUR = 60 * 60 * 1000;
+const TIME = ["hourAndMinute"] as const;
 const DATE_TIME = ["date", "hourAndMinute"] as const;
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -34,6 +46,9 @@ export function CreateScreen() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [limitMode, setLimitMode] = useState<LimitMode>("daily");
   const [totalPhotos, setTotalPhotos] = useState(20);
+  const [momentMode, setMomentMode] = useState<MomentMode>("photo_selfie");
+  const [momentStart, setMomentStart] = useState(DEFAULT_MOMENT_WINDOW.start);
+  const [momentEnd, setMomentEnd] = useState(DEFAULT_MOMENT_WINDOW.end);
   const create = useCreateTrip();
   const error = errorMessage(create.error, "No se pudo crear el rollo");
 
@@ -66,6 +81,9 @@ export function CreateScreen() {
         revealAt,
         photoLimit: limitMode === "total" ? { mode: "total", total: totalPhotos } : { mode: "daily", perDay: photos },
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        momentMode,
+        momentWindowStart: momentStart,
+        momentWindowEnd: momentEnd,
         ...(isPrivate && { featuringDisabled: true }),
       },
       {
@@ -170,6 +188,39 @@ export function CreateScreen() {
               <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={100} onValueChange={setPhotos} />
             ) : (
               <Stepper label={count(totalPhotos, "foto", "fotos")} value={totalPhotos} min={1} max={500} onValueChange={setTotalPhotos} />
+            )}
+          </Section>
+
+          <Section
+            title="Momento del día"
+            footer={
+              <Text>
+                {momentMode === "off"
+                  ? "Sin aviso diario."
+                  : "Una vez por día, a una hora distinta para cada uno y dentro de esta franja, todos tienen 5 minutos para sacar una foto."}
+              </Text>
+            }
+          >
+            <Picker selection={momentMode} onSelectionChange={setMomentMode} modifiers={[pickerStyle("segmented")]}>
+              <Text modifiers={[tag("off")]}>Apagado</Text>
+              <Text modifiers={[tag("photo")]}>Solo foto</Text>
+              <Text modifiers={[tag("photo_selfie")]}>Foto + selfie</Text>
+            </Picker>
+            {momentMode !== "off" && (
+              <>
+                <DatePicker
+                  title="Desde"
+                  selection={dateAtMinutes(momentStart)}
+                  displayedComponents={[...TIME]}
+                  onDateChange={(date) => setMomentStart(minutesOfDay(date))}
+                />
+                <DatePicker
+                  title="Hasta"
+                  selection={dateAtMinutes(momentEnd)}
+                  displayedComponents={[...TIME]}
+                  onDateChange={(date) => setMomentEnd(minutesOfDay(date))}
+                />
+              </>
             )}
           </Section>
 

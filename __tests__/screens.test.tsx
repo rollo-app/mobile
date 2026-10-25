@@ -505,6 +505,60 @@ describe("Create roll", () => {
       revealAt: start + 5 * 24 * HOUR,
       photoLimit: { mode: "daily", perDay: 25 },
       timezone: tz,
+      momentMode: "photo_selfie",
+      momentWindowStart: 540,
+      momentWindowEnd: 1380,
+    });
+  });
+
+  describe("Momento del día", () => {
+    beforeEach(() => {
+      mocked.createTrip.mockClear();
+      mocked.createTrip.mockResolvedValue(trip());
+      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
+    });
+
+    it("defaults to photo + selfie from 9:00 to 23:00", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      expect(screen.getByRole("button", { name: "Foto + selfie" })).toBeSelected();
+      expect(new Date(dateOf("Desde")).getHours()).toBe(9);
+      expect(new Date(dateOf("Hasta")).getHours()).toBe(23);
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+      expect(mocked.createTrip).toHaveBeenCalledWith(
+        expect.objectContaining({ momentMode: "photo_selfie", momentWindowStart: 540, momentWindowEnd: 1380 }),
+      );
+    });
+
+    it("hides the window when off and sends off", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      await fireEvent.press(screen.getByRole("button", { name: "Apagado" }));
+      expect(screen.queryByLabelText("Desde")).toBeNull();
+      expect(screen.queryByLabelText("Hasta")).toBeNull();
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+      expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ momentMode: "off" }));
+    });
+
+    it("sends photo only", async () => {
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      await fireEvent.press(screen.getByRole("button", { name: "Solo foto" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+      expect(mocked.createTrip).toHaveBeenCalledWith(expect.objectContaining({ momentMode: "photo" }));
+    });
+
+    it("sends the picked window and shows the server's reason inline", async () => {
+      mocked.createTrip.mockRejectedValue(new Error("La franja del momento tiene que durar al menos 30 minutos"));
+      await renderRouter(routes, { initialUrl: "/create" });
+      await fillNames();
+      await changeDate("Desde", new Date(2027, 0, 5, 22, 0).getTime());
+      await changeDate("Hasta", new Date(2027, 0, 5, 22, 15).getTime());
+      await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+      expect(mocked.createTrip).toHaveBeenCalledWith(
+        expect.objectContaining({ momentWindowStart: 1320, momentWindowEnd: 1335 }),
+      );
+      expect(await screen.findByText("La franja del momento tiene que durar al menos 30 minutos")).toBeVisible();
     });
   });
 
