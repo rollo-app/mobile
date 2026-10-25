@@ -27,7 +27,7 @@ export type MapItem = {
   pending: boolean;
 };
 
-export type MapFilters = { day: string | null; authorId: string | null };
+export type MapFilters = { day: string | null; authorId: string | null; /** Only the photos of the daily moment. */ momentsOnly?: boolean };
 
 export type PinProperties = {
   id: string;
@@ -104,6 +104,7 @@ export function toFeatures(items: MapItem[], filters: MapFilters, readyAvatars: 
     if (i.lat === null || i.lng === null) continue;
     if (filters.day && i.day !== filters.day) continue;
     if (filters.authorId && i.authorId !== filters.authorId) continue;
+    if (filters.momentsOnly && !i.momentDay) continue;
     const avatarKey = i.authorAvatarUrl ? pinAvatarKey(i.authorId, i.authorAvatarUrl) : "";
     features.push({
       type: "Feature",

@@ -130,7 +130,13 @@ Decisiones de producto:
   momento lleva un badge y la otra imagen va de recuadro ("Ver la otra foto"; tocarlo intercambia solo para quien mira). **El momento no se destaca en el perfil** (ninguna de las dos imágenes: sin
   "Agregar a tu perfil" en el visor ni en el menú de la grilla; el server lo rechaza y manda `canFeature: false`); me gusta y comentarios van a la principal. "Guardar todo" baja las dos imágenes de cada momento y, en el visor,
   "Guardar en Fotos" guarda la que se ve grande (`withLinkedImages` / `linkedImage` en `gallery/save.ts`; el export para fotolibro todavía no existe: cuando se haga tiene que incluir la vinculada). **Ajustes → Notificaciones → "Momento del día"** (`dailyMoment`): apagarlo hace el `PATCH` y cancela los `moment.*`; prenderlo corre
-  `syncMoments()`. En Desarrollo, "Probar momento ahora" programa uno en 10 s para el rollo activo. Diseño en `docs/superpowers/specs/2026-10-25-momento-diario-design.md`.
+  `syncMoments()`. **El momento se ve apenas se sube, antes del revelado** (excepción a "nadie ve nada": las demás fotos siguen ocultas): el feed trae sus archivos
+  (`files`, con `selfie.files`) solo para fotos de momento, así que `useRevealedPhotos` antes del revelado devuelve solo momentos. En el **Feed** la fila muestra la foto de verdad con el badge
+  (`FeedRow`, con `token`) y tocarla abre el visor (`/photo/<id>?tripId=…`, no el mapa); en el **Mapa** hay un filtro "Momentos" (junto a "Solo hoy", aparece cuando el rollo ya tiene
+  algún momento) y la tarjeta del pin de un momento muestra la foto y abre el visor (las demás tarjetas siguen difuminadas y sin abrir: `canOpen` en `PinCarousel`). En el visor
+  un momento no revelado es **solo lectura** (`readOnly`): sin me gusta (tampoco con doble toque), comentarios, guardar ni destacar, porque el server los rechaza; queda "Denunciar" (el server acepta
+  denuncias de miembros antes del revelado), "Ver en el mapa" y el intercambio de imágenes. La push `momentPosted` ("{Nombre} subió su momento" / nombre del rollo, `data.url` `/photo/<id>?tripId=…`) abre ese visor y deja el rollo activo;
+  switch "Momentos del grupo" en Ajustes → Notificaciones. En Desarrollo, "Probar momento ahora" programa uno en 10 s para el rollo activo. Diseño en `docs/superpowers/specs/2026-10-25-momento-diario-design.md`.
 - **Cupo diario o total** (a futuro, mismo diseño): al crear el rollo se elige si el límite es por día (como hoy, 10 por
   persona por día) o total del viaje (por ejemplo 20 por persona en todo el rollo).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
@@ -156,7 +162,7 @@ Decisiones de producto:
   arrancó el rollo, se reveló, destacaron tu foto, le gustó tu foto y comentaron tu foto. Nunca por acciones propias ni de usuarios bloqueados. Se **sacó el aviso
   local del revelado**: al abrir la app se cancelan los `reveal.*` que dejaron versiones viejas (`legacy-reveal.ts`).
   **Ajustes → Notificaciones** (`settings-screen.tsx`, `GET/PATCH /me/settings`): un switch por aviso (`addedToTrip`, `newFriend`, `tripStarted`,
-  `tripRevealed`, `photoFeatured`, `photoLiked`, `photoCommented`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
+  `tripRevealed`, `photoFeatured`, `photoLiked`, `photoCommented`, `friendRequest`, `dailyMoment` y `momentPosted`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
 - **"Me gusta"** (`src/features/likes/`): solo fotos reveladas (y destacadas en un perfil). Corazón con contador en el visor de la galería y
   en el de destacadas (fila de íconos sin texto: corazón, estrella, mapa, guardar; el "…" va arriba a la derecha); doble toque en la foto
   da el me gusta (sin animación: el corazón se llena), así que un toque simple espera 250 ms (`tap-gate.ts`) antes de contar como toque
@@ -323,7 +329,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1414 tests
+npm test                      # 1433 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

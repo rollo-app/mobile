@@ -49,7 +49,7 @@ export type RevealedSelfie = {
   height: number | null;
 };
 
-/** Feed items that already have files (only after the reveal), oldest first. */
+/** Feed items that already have files (after the reveal; before it, only daily moments), oldest first. */
 export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] {
   return items
     .flatMap((item) =>
@@ -120,7 +120,7 @@ export function useMediaToken(key: string | undefined) {
 
 /**
  * Revealed photos of a roll plus the token needed to load them (`mediaSource`).
- * Before the reveal `photos` is empty: the feed has no files.
+ * Before the reveal `photos` holds only the daily moments (the one kind of photo the feed gives files for).
  */
 export function useRevealedPhotos(tripId: string | undefined) {
   const { feed, error, loading, refetch, isRefetching } = useFeed(tripId);

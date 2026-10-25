@@ -2708,8 +2708,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Download a file (only after the reveal)
-         * @description Streamed from R2 with the same Bearer token.
+         * Download a file (only after the reveal, except daily moment photos)
+         * @description Streamed from R2 with the same Bearer token. Before the reveal only the two images of a daily moment (main and linked) can be fetched, by active members; anything else is 403.
          */
         get: {
             parameters: {
@@ -3802,6 +3802,8 @@ export interface components {
             friendRequest: boolean;
             /** @description It is your moment of the day in a rollo with the daily moment on */
             dailyMoment: boolean;
+            /** @description Someone in a rollo you are in uploaded their daily moment */
+            momentPosted: boolean;
         };
         PrivacySettings: {
             /** @description Others may feature any of your photos on their profile (on by default) */
@@ -3827,6 +3829,8 @@ export interface components {
                 friendRequest?: boolean;
                 /** @description It is your moment of the day in a rollo with the daily moment on */
                 dailyMoment?: boolean;
+                /** @description Someone in a rollo you are in uploaded their daily moment */
+                momentPosted?: boolean;
             };
             privacy?: {
                 /** @description Others may feature any of your photos on their profile (on by default) */
@@ -4296,11 +4300,11 @@ export interface components {
                 username: string | null;
                 avatarUrl: string | null;
             };
-            /** @description Only after the reveal */
+            /** @description Only after the reveal (and for the photos of a daily moment, right away) */
             width?: number | null;
-            /** @description Only after the reveal */
+            /** @description Only after the reveal (and for the photos of a daily moment, right away) */
             height?: number | null;
-            /** @description Download paths; only after the reveal */
+            /** @description Download paths; only after the reveal, except for the photos of a daily moment (main and linked image), which any active member gets as soon as they are uploaded */
             files?: {
                 thumb: string;
                 original: string;
@@ -4319,14 +4323,14 @@ export interface components {
             commentCount?: number;
             /** @description Trip-local date (YYYY-MM-DD) when this photo is the answer to a daily moment; absent for ordinary photos */
             momentDay?: string | null;
-            /** @description Only on moment photos: the selfie taken with it (null if there is none yet). Selfies are never items of their own. width/height are null before the reveal */
+            /** @description Only on moment photos: the selfie taken with it (null if there is none yet). Selfies are never items of their own. it comes with files and dimensions right away */
             selfie?: {
                 /** Format: uuid */
                 id: string;
                 width: number | null;
                 height: number | null;
                 thumbhash: string | null;
-                /** @description Download paths; null before the reveal */
+                /** @description Download paths (the linked image of a moment is visible to active members as soon as it is uploaded) */
                 files: {
                     thumb: string;
                     original: string;

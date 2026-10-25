@@ -782,3 +782,56 @@ describe("Daily moment in the gallery", () => {
     expect(mockSaveOne).toHaveBeenCalledWith(expect.objectContaining({ id: "self" }));
   });
 });
+
+describe("Daily moment in the viewer before the reveal", () => {
+  const selfie = {
+    id: "self",
+    width: 1080,
+    height: 1440,
+    thumbhash: null,
+    files: { thumb: "/m/self/thumb", original: "/m/self/original" },
+  };
+  const unrevealed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items });
+  const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
+  const openMoment = async (items: actions.Feed["items"], id: string) => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: false, revealAt: Date.now() + DAY, endsAt: Date.now() + DAY } });
+    mocked.fetchFeed.mockResolvedValue(unrevealed(items));
+    await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
+    await screen.findByTestId("viewer-info");
+  };
+  const moment = (id: string, over: Partial<actions.Feed["items"][number]> = {}) =>
+    item(id, { momentDay: "2027-01-12", selfie, ...over });
+
+  it("finds the moment from the feed and swaps its two images", async () => {
+    await openMoment([moment("mom")], "mom");
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver la otra foto" }));
+    expect(await screen.findByRole("button", { name: "Ver la otra foto" })).toBeVisible();
+    expect(screen.getByText("Fede")).toBeVisible();
+  });
+
+  it("is read-only: no like, comments, save or feature", async () => {
+    await openMoment([moment("mom")], "mom");
+    for (const name of ["Me gusta", "Ya no me gusta", "Comentarios", "Guardar en Fotos", "Agregar a tu perfil"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    expect(screen.getByRole("button", { name: "Ver en el mapa" })).toBeVisible();
+  });
+
+  it("a double tap on the photo does not like it", async () => {
+    await openMoment([moment("mom")], "mom");
+    await fireEvent.press(screen.getByLabelText("Foto de Fede"));
+    await fireEvent.press(screen.getByLabelText("Foto de Fede"));
+    await act(async () => jest.advanceTimersByTime(300));
+    expect(likes.likeMedia).not.toHaveBeenCalled();
+  });
+
+  it("keeps Denunciar on someone else's moment (the server accepts reports before the reveal)", async () => {
+    await openMoment([moment("mom")], "mom");
+    expect(screen.getByRole("menuitem", { name: "Denunciar" })).toBeVisible();
+  });
+
+  it("your own moment has no menu at all", async () => {
+    await openMoment([moment("mine", { author: mine })], "mine");
+    expect(screen.queryByRole("menuitem")).toBeNull();
+  });
+});

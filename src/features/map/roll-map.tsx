@@ -74,6 +74,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   const hasToday = phase !== "ended" && phase !== "revealed";
   const today = hasToday && pickedToday;
   const [authorId, setAuthorId] = useState<string | null>(null);
+  const [momentsOnly, setMomentsOnly] = useState(false);
   // Photos at the tapped place or cluster and which of them is showing in the carousel.
   // `clusterId` keeps the tapped cluster highlighted while its photos are swiped.
   const [selection, setSelection] = useState<{ ids: string[]; index: number; clusterId: number | null } | null>(null);
@@ -101,8 +102,8 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   const all = useMemo(() => toFeatures(items, { day: null, authorId: null }), [items]);
   const pinAvatars = usePinAvatars(items);
   const shown = useMemo(
-    () => toFeatures(items, { day: today ? (detail?.today.date ?? null) : null, authorId }, pinAvatars.ready),
-    [items, today, authorId, detail?.today.date, pinAvatars.ready],
+    () => toFeatures(items, { day: today ? (detail?.today.date ?? null) : null, authorId, momentsOnly }, pinAvatars.ready),
+    [items, today, authorId, momentsOnly, detail?.today.date, pinAvatars.ready],
   );
   const carousel = useMemo(
     () => (selection ? itemsByTime(items, selection.ids) : []),
@@ -198,6 +199,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
     if (target.lat === null || target.lng === null) return;
     framed.current = true;
     setToday(false);
+    setMomentsOnly(false);
     setAuthorId(null);
     cameraRef.current?.flyTo({ center: [target.lng, target.lat], zoom: FOCUS_ZOOM, duration: 600 });
     const ids = itemsByTime(items, photosNear(all.features, [target.lng, target.lat], FOCUS_ZOOM).map((f) => f.properties.id)).map((i) => i.id);
@@ -271,11 +273,14 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   }, [clusterId]);
 
   const members = detail?.members ?? [];
-  const filters = { today, authorName: members.find((m) => m.id === authorId)?.name ?? null };
+  // Offered once the roll has any moment: before that the filter would only show an empty map.
+  const hasMoments = momentsOnly || items.some((i) => !!i.momentDay);
+  const filters = { today, moments: momentsOnly, authorName: members.find((m) => m.id === authorId)?.name ?? null };
   const filterColor = filterActive(filters) ? colors.tint : colors.label;
   const on = (yes: boolean) => (yes ? ("on" as const) : ("off" as const));
   const actions = [
     ...(hasToday ? [{ id: TODAY_ACTION, title: "Solo hoy", image: "calendar" as const, state: on(today) }] : []),
+    ...(hasMoments ? [{ id: MOMENTS_ACTION, title: "Momentos", image: "bolt" as const, state: on(momentsOnly) }] : []),
     {
       id: "people",
       title: "Personas",
@@ -288,6 +293,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   ];
   function onFilterAction(id: string) {
     if (id === TODAY_ACTION) setToday((t) => !t);
+    else if (id === MOMENTS_ACTION) setMomentsOnly((m) => !m);
     else setAuthorId(id === ALL_ACTION ? null : id);
   }
 
@@ -402,7 +408,9 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
                 onIndexChange={(index) => setSelection({ ...selection, index })}
                 timeZone={detail.trip.timezone}
                 token={token}
-                onOpen={detail.trip.revealed ? (item) => router.push(`/photo/${item.id}`) : undefined}
+                // After the reveal every photo opens; before it only the daily moments (the only ones with files).
+                canOpen={(item) => detail.trip.revealed || (!!item.momentDay && !!item.thumbPath)}
+                onOpen={(item) => router.push({ pathname: "/photo/[id]", params: { id: item.id, tripId: detail.trip.id } })}
                 onOpenAuthor={(item) => item.authorUserId && openProfile(item.authorUserId)}
               />
             </View>
@@ -414,6 +422,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
 }
 
 const TODAY_ACTION = "today";
+const MOMENTS_ACTION = "moments";
 const ALL_ACTION = "all";
 
 const chip = {

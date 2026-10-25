@@ -195,6 +195,8 @@ export function PhotoViewer({
   const timeZone = detail?.trip.timezone ?? "America/Argentina/Buenos_Aires";
   // Someone else's photo can be reported; on your own photo you decide whether others may feature it.
   const own = !!photo && !!me && photo.authorUserId === me.id;
+  // Before the reveal only daily moments have files: you can look at them (and report them), nothing else (the server rejects it).
+  const readOnly = !!photo?.momentDay && detail?.trip.revealed !== true;
   const menu: MenuAction[] = !photo || !me
     ? []
     : !own
@@ -235,7 +237,7 @@ export function PhotoViewer({
               width={width}
               height={height}
               onTap={toggle}
-              onDoubleTap={(target) => void likes.like(target)}
+              onDoubleTap={(target) => !readOnly && void likes.like(target)}
             />
           )}
         />
@@ -295,16 +297,16 @@ export function PhotoViewer({
               </View>
               {photo.caption ? <Text style={[type.quote, styles.white]}>{photo.caption}</Text> : null}
               <View style={styles.actions}>
-                {photo.type === "photo" && (
+                {photo.type === "photo" && !readOnly && (
                   <LikeButton liked={photo.likedByMe} count={photo.likeCount} busy={liking} onPress={() => void likes.toggle(photo)} />
                 )}
-                {photo.type === "photo" && (
+                {photo.type === "photo" && !readOnly && (
                   <CommentButton
                     count={photo.commentCount}
                     onPress={() => router.push({ pathname: "/comments/[mediaId]", params: { mediaId: photo.id } })}
                   />
                 )}
-                {photo.type === "photo" && featureActionAvailable(photo) && (
+                {photo.type === "photo" && !readOnly && featureActionAvailable(photo) && (
                   <OverlayIconButton
                     symbol={photo.featuredByMe ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.plus"}
                     symbolTestID="feature-symbol"
@@ -322,13 +324,15 @@ export function PhotoViewer({
                     onPress={() => router.navigate({ pathname: "/map", params: { focus: photo.id } })}
                   />
                 )}
-                <OverlayIconButton
-                  symbol={state === "saved" ? "checkmark" : "square.and.arrow.down"}
-                  label={state === "saved" ? "Guardada" : "Guardar en Fotos"}
-                  busy={state === "saving"}
-                  disabled={state === "saved" || !saver}
-                  onPress={() => void save(savedTarget(photo))}
-                />
+                {!readOnly && (
+                  <OverlayIconButton
+                    symbol={state === "saved" ? "checkmark" : "square.and.arrow.down"}
+                    label={state === "saved" ? "Guardada" : "Guardar en Fotos"}
+                    busy={state === "saving"}
+                    disabled={state === "saved" || !saver}
+                    onPress={() => void save(savedTarget(photo))}
+                  />
+                )}
               </View>
               {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
               {featureError && <Text style={[type.footnote, styles.dim]}>{featureError}</Text>}

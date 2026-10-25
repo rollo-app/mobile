@@ -238,6 +238,45 @@ describe("tapping a push", () => {
     expect(await getActiveTripId()).toBe(OTRO);
   });
 
+  it("the 'momentPosted' push opens the viewer on that moment of a roll that is not revealed yet, and leaves its roll active", async () => {
+    trips.fetchFeed.mockImplementation(async (id: string) => ({
+      revealed: false,
+      revealAt: Date.now() + 4 * DAY,
+      items:
+        id === OTRO
+          ? [
+              {
+                id: "mo1",
+                type: "photo",
+                takenAt: Date.parse("2027-01-12T16:10:00Z"),
+                day: "2027-01-12",
+                lat: null,
+                lng: null,
+                caption: null,
+                thumbhash: null,
+                durationS: null,
+                momentDay: "2027-01-12",
+                author: { id: "m2", userId: "u2", name: "Fede", username: null, avatarUrl: null },
+                width: 1080,
+                height: 1440,
+                files: { thumb: "/m/mo1/thumb", original: "/m/mo1/original" },
+                selfie: { id: "se1", width: 1080, height: 1440, thumbhash: null, files: { thumb: "/m/se1/thumb", original: "/m/se1/original" } },
+              },
+            ]
+          : [],
+    }) as never);
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await screen.findAllByLabelText(/cambiar de rollo$/);
+    const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)![0];
+
+    await act(async () => listener(tapped(`/photo/mo1?tripId=${OTRO}`)));
+
+    await waitFor(() => expect(screen).toHavePathname("/photo/mo1"));
+    expect(await screen.findByTestId("viewer-info")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ver la otra foto" })).toBeVisible();
+    expect(await getActiveTripId()).toBe(OTRO);
+  });
+
   it("a moment's local notification makes its roll active and opens /moment with its day and time", async () => {
     const at = Date.now();
     notifications.getLastNotificationResponseAsync.mockResolvedValue(
@@ -267,8 +306,8 @@ describe("tapping a push", () => {
 });
 
 describe("Ajustes: Notificaciones", () => {
-  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true };
-  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad", "Momento del día"];
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true, momentPosted: true };
+  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad", "Momento del día", "Momentos del grupo"];
 
   beforeEach(() => {
     push.fetchNotificationSettings.mockResolvedValue(ALL_ON);
@@ -302,8 +341,21 @@ describe("Ajustes: Notificaciones", () => {
     expect(screen.getByText("Cuando alguien pone una foto tuya en su perfil.")).toBeVisible();
     expect(screen.getByText("Cuando a alguien le gusta una foto tuya.")).toBeVisible();
     expect(screen.getByText("Cuando alguien comenta una foto tuya o una que comentaste.")).toBeVisible();
+    expect(screen.getByText("Cuando alguien del rollo sube su momento del día.")).toBeVisible();
     // With permission there's no banner.
     expect(screen.queryByText("Las notificaciones están desactivadas")).toBeNull();
+  });
+
+  it("'Momentos del grupo' saves only momentPosted", async () => {
+    permission(true, true, "granted");
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    const sw = await screen.findByRole("switch", { name: "Momentos del grupo" });
+    expect(sw.props.value).toBe(true);
+    await fireEvent(sw, "valueChange", false);
+
+    expect(push.updateNotificationSettings).toHaveBeenCalledWith({ momentPosted: false });
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Momentos del grupo" }).props.value).toBe(false));
   });
 
   it("'Momento del día' off saves it, then leaves no moment.* scheduled", async () => {
