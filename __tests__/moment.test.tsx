@@ -118,7 +118,7 @@ describe("Moment", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
 
     expect(await screen.findByTestId("camera-front")).toBeVisible();
-    expect(screen.getByText("Ahora, una selfie")).toBeVisible();
+    expect(screen.getByText("Ahora con la otra cámara.")).toBeVisible();
     takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/selfie.jpg", width: 1500, height: 2000 });
     await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
 
@@ -135,6 +135,52 @@ describe("Moment", () => {
     expect(mediaMock.prepareMedia).toHaveBeenCalledWith(expect.objectContaining({ uri: "file:///cache/Camera/selfie.jpg" }), selfie.id, expect.anything(), {
       maxDimension: 1080,
     });
+  });
+
+  it("before the first photo the camera can be flipped (starts on the back); the first photo is the main whichever camera took it", async () => {
+    trips.fetchTrip.mockResolvedValue(tripDetail("photo"));
+    await openMoment(Date.now() - 10_000);
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
+    expect(await screen.findByTestId("camera-front")).toBeVisible();
+    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/front.jpg", width: 1500, height: 2000 });
+    await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    const items = await queue.pending();
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ momentDay: MOMENT_DAY, pairedWith: null });
+    expect(mediaMock.prepareMedia).toHaveBeenCalledWith(expect.objectContaining({ uri: "file:///cache/Camera/front.jpg" }), items[0]!.id, expect.anything(), {
+      maxDimension: 1080,
+    });
+  });
+
+  it("in a photo_selfie roll a front first photo is the main (1080) and the second is the back camera (normal size), linked to it", async () => {
+    await openMoment(Date.now() - 10_000);
+    expect(await screen.findByText("Sacás con las dos cámaras. La primera va a ser la grande.")).toBeVisible();
+    await fireEvent.press(await screen.findByRole("button", { name: "Dar vuelta la cámara" }));
+    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/first-front.jpg", width: 1500, height: 2000 });
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
+    expect(screen.getByText("Ahora con la otra cámara.")).toBeVisible();
+    expect(screen.queryByText("Sacás con las dos cámaras. La primera va a ser la grande.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Dar vuelta la cámara" })).toBeNull();
+    takePicture.mockResolvedValueOnce({ uri: "file:///cache/Camera/second-back.jpg", width: 4000, height: 3000 });
+    await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    const items = await queue.pending();
+    const main = items.find((i) => i.pairedWith == null)!;
+    const linked = items.find((i) => i.pairedWith != null)!;
+    expect(linked.pairedWith).toBe(main.id);
+    const calls = mediaMock.prepareMedia.mock.calls;
+    const mainCall = calls.find((c) => (c[0] as { uri: string }).uri.endsWith("first-front.jpg"))!;
+    const linkedCall = calls.find((c) => (c[0] as { uri: string }).uri.endsWith("second-back.jpg"))!;
+    expect(mainCall[3]).toEqual({ maxDimension: 1080 });
+    expect(linkedCall[3]).toBeUndefined();
   });
 
   it("in a photo roll it goes straight to the caption after the photo", async () => {

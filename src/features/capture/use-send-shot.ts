@@ -21,12 +21,23 @@ export type SendShotInput = {
   fix: Promise<Fix | null> | null;
   /** The "momento del día" this shot belongs to (trip-local YYYY-MM-DD). */
   momentDay?: string;
-  /** Moment selfie: enqueued after the main, paired with it. */
-  selfie?: { asset: ImagePicker.ImagePickerAsset; takenAt: number };
+  /** Which camera took `asset` (moment shots only). */
+  facing?: Facing;
+  /** The second image of a moment (the other camera): enqueued after the main, paired with it. */
+  selfie?: { asset: ImagePicker.ImagePickerAsset; takenAt: number; facing?: Facing };
 };
 
-/** The moment selfie is small: it only decorates the main photo. */
-const SELFIE_MAX = 1080;
+type Facing = "front" | "back";
+
+/** The front camera's images are small whichever one was taken first: the back camera's keep the normal size. */
+const FRONT_MAX = 1080;
+
+function prepareFor(
+  facing: Facing | undefined,
+  ...args: [asset: ImagePicker.ImagePickerAsset, id: string, metadata: Parameters<typeof prepareMedia>[2]]
+) {
+  return facing === "front" ? prepareMedia(...args, { maxDimension: FRONT_MAX }) : prepareMedia(...args);
+}
 
 async function sendShot(input: SendShotInput) {
   const { tripId, asset, takenAt, timeZone, author } = input;
@@ -34,19 +45,20 @@ async function sendShot(input: SendShotInput) {
   const id = Crypto.randomUUID();
   // The EXIF written into the photo needs the fix, so prepare after it (it has its own timeout).
   const location = await input.fix;
-  const prepared = await prepareMedia(asset, id, { takenAt, timeZone, location, caption, author });
+  const prepared = await prepareFor(input.facing, asset, id, { takenAt, timeZone, location, caption, author });
   const withSelfie = input.selfie && input.momentDay ? { selfie: input.selfie, momentDay: input.momentDay } : null;
   const selfieId = Crypto.randomUUID();
   let selfiePrepared: Awaited<ReturnType<typeof prepareMedia>> | null = null;
   if (withSelfie) {
-    // Prepare both before enqueuing anything: if the selfie fails, no orphan main stays queued.
+    // Prepare both before enqueuing anything: if the linked one fails, no orphan main stays queued.
     try {
-      selfiePrepared = await prepareMedia(
-        withSelfie.selfie.asset,
-        selfieId,
-        { takenAt: withSelfie.selfie.takenAt, timeZone, location, caption: null, author },
-        { maxDimension: SELFIE_MAX },
-      );
+      selfiePrepared = await prepareFor(withSelfie.selfie.facing, withSelfie.selfie.asset, selfieId, {
+        takenAt: withSelfie.selfie.takenAt,
+        timeZone,
+        location,
+        caption: null,
+        author,
+      });
     } catch (e) {
       try {
         const dir = new Directory(Paths.document, "pending", id);

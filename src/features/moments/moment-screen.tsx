@@ -14,11 +14,15 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { CloseButton, MomentCamera } from "./moment-camera";
 import { formatLeft, momentState } from "./moment-time";
 
-type Step = { kind: "main" } | { kind: "selfie"; main: Shot } | { kind: "preview"; main: Shot; selfie: Shot | null };
+type Facing = "back" | "front";
+type FacingShot = Shot & { facing: Facing };
+type Step = { kind: "main" } | { kind: "second"; main: FacingShot } | { kind: "preview"; main: FacingShot; selfie: FacingShot | null };
 
 /**
- * The daily moment: back camera under a countdown, then (if the roll asks for it) the selfie, then the
- * regular caption screen. The window only gates taking the first photo: once you have it you can finish.
+ * The daily moment: the camera under a countdown (the back one first; it can be flipped before shooting). The first
+ * photo is the main one, whichever camera took it; if the roll asks for it the other camera takes a second one, linked
+ * to it (`selfie` in the contract means "the linked image"). Then the regular caption screen. The window only gates
+ * taking the first photo: once you have it you can finish.
  */
 export function MomentScreen(props: { tripId?: string; day?: string; at?: number; selfie?: string }) {
   const { trip, trips } = useActiveTrip();
@@ -27,14 +31,15 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   const sendShot = useSendShot();
   const [permission, requestPermission] = useCameraPermissions();
   const [step, setStep] = useState<Step>({ kind: "main" });
+  const [firstFacing, setFirstFacing] = useState<Facing>("back");
   const [caption, setCaption] = useState("");
   const [now, setNow] = useState(Date.now());
   const fix = useRef<Promise<Fix | null> | null>(null);
 
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-  // The camera never waits for the trip detail (with no signal it would wait forever). The selfie step comes from the
+  // The camera never waits for the trip detail (with no signal it would wait forever). The second shot comes from the
   // notification's `selfie` param, then from the detail if it is loaded, and otherwise it is the photo alone: the
-  // server rejects a selfie on a photo-only roll, so it is never guessed.
+  // server rejects a linked image on a photo-only roll, so it is never guessed.
   const withSelfie = props.selfie === "1" ? true : props.selfie === "0" ? false : detail?.trip.momentMode === "photo_selfie";
   const endsAt = detail?.trip.endsAt ?? trips.find((t) => t.id === tripId)?.endsAt;
   const state = props.at != null && Number.isFinite(props.at) ? momentState(props.at, now) : ({ kind: "late" } as const);
@@ -55,13 +60,14 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
     if (permission?.granted) fix.current ??= startFix();
   }, [permission?.granted]);
 
-  function send(main: Shot, selfie: Shot | null) {
+  function send(main: FacingShot, selfie: FacingShot | null) {
     if (!tripId || !day) return;
     sendShot.mutate(
       {
         tripId,
         asset: main.asset,
         takenAt: main.takenAt,
+        facing: main.facing,
         timeZone,
         caption,
         author: detail?.me.name ?? "",
@@ -118,25 +124,28 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
     );
   }
 
-  if (step.kind === "selfie") {
+  if (step.kind === "second") {
+    const other: Facing = step.main.facing === "back" ? "front" : "back";
     return (
       <MomentCamera
-        key="front"
-        facing="front"
-        title="Ahora, una selfie"
-        onCapture={(asset) => setStep({ kind: "preview", main: step.main, selfie: { asset, takenAt: Date.now() } })}
+        key={`second-${other}`}
+        facing={other}
+        title="Ahora con la otra cámara."
+        onCapture={(asset) => setStep({ kind: "preview", main: step.main, selfie: { asset, takenAt: Date.now(), facing: other } })}
       />
     );
   }
   return (
     <MomentCamera
-      key="back"
-      facing="back"
+      key={`first-${firstFacing}`}
+      facing={firstFacing}
       onClose={() => router.back()}
+      onFlip={() => setFirstFacing((f) => (f === "back" ? "front" : "back"))}
       title={state.kind === "open" ? `Tu momento · quedan ${formatLeft(state.leftMs)}` : ""}
+      notice={withSelfie ? "Sacás con las dos cámaras. La primera va a ser la grande." : undefined}
       onCapture={(asset) => {
-        const main = { asset, takenAt: Date.now() };
-        setStep(withSelfie ? { kind: "selfie", main } : { kind: "preview", main, selfie: null });
+        const main = { asset, takenAt: Date.now(), facing: firstFacing };
+        setStep(withSelfie ? { kind: "second", main } : { kind: "preview", main, selfie: null });
       }}
     />
   );

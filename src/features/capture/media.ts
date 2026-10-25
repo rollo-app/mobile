@@ -23,7 +23,7 @@ export type PreparedMedia = {
 /**
  * Prepares a capture for the queue: original (photo ≤4000 px JPEG 88 % or the video
  * already exported at 1080p by the camera), 800 px thumb and its ThumbHash.
- * `options.maxDimension` lowers the photo's long side (the moment selfie is 1080 px).
+ * `options.maxDimension` lowers the photo's long side (the front camera of a moment is 1080 px).
  * Resizing re-encodes the JPEG and drops its EXIF, so photos get theirs written back from `metadata`
  * (time in the roll's zone, GPS, caption, author). Videos are moved as the camera exported them.
  * Everything goes to Documents (not the cache, which iOS may clear during days without signal) and is

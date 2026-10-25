@@ -23,10 +23,14 @@ export function CloseButton(props: { onPress: () => void }) {
   );
 }
 
-/** A full-screen camera with a shutter; `title` sits on top (the countdown or the selfie prompt). */
+/** A full-screen camera with a shutter; `title` sits on top (the countdown or the prompt for the second shot). */
 export function MomentCamera(props: {
   facing: "back" | "front";
   title: string;
+  /** A line under the title (what the two shots are for). */
+  notice?: string;
+  /** Flips the camera: only before the first photo. */
+  onFlip?: () => void;
   /** Only the first-shot step can be closed: once the main photo exists the only way out is sending it. */
   onClose?: () => void;
   onCapture: (asset: ImagePicker.ImagePickerAsset) => void;
@@ -54,6 +58,7 @@ export function MomentCamera(props: {
     <View style={styles.dark}>
       <CameraView ref={camera} facing={props.facing} style={StyleSheet.absoluteFill} />
       <Text style={[type.headline, styles.title, { top: insets.top + spacing.md }]}>{props.title}</Text>
+      {props.notice ? <Text style={[type.subhead, styles.notice, { top: insets.top + spacing.md + 28 }]}>{props.notice}</Text> : null}
       {props.onClose && <CloseButton onPress={props.onClose} />}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
         {failed && (
@@ -61,15 +66,25 @@ export function MomentCamera(props: {
             <ErrorText>No se pudo sacar la foto. Probá de nuevo.</ErrorText>
           </View>
         )}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Sacar foto"
-          disabled={busy}
-          onPress={shoot}
-          style={({ pressed }) => [styles.shutter, { opacity: busy ? 0.5 : pressed ? 0.8 : 1 }]}
-        >
-          <View style={styles.shutterInner} />
-        </Pressable>
+        <View style={styles.shutterRow}>
+          <View style={styles.side} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sacar foto"
+            disabled={busy}
+            onPress={shoot}
+            style={({ pressed }) => [styles.shutter, { opacity: busy ? 0.5 : pressed ? 0.8 : 1 }]}
+          >
+            <View style={styles.shutterInner} />
+          </Pressable>
+          <View style={styles.side}>
+            {props.onFlip && (
+              <Pressable accessibilityRole="button" accessibilityLabel="Dar vuelta la cámara" hitSlop={12} onPress={props.onFlip} style={styles.flip}>
+                <SymbolView name="arrow.triangle.2.circlepath.camera" size={22} tintColor="#fff" />
+              </Pressable>
+            )}
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -78,6 +93,10 @@ export function MomentCamera(props: {
 const styles = StyleSheet.create({
   dark: { flex: 1, backgroundColor: "#000" },
   title: { position: "absolute", alignSelf: "center", color: "#fff", fontVariant: ["tabular-nums"] },
+  notice: { position: "absolute", alignSelf: "center", color: "#fff", textAlign: "center", paddingHorizontal: spacing.lg },
+  shutterRow: { flexDirection: "row", alignItems: "center", alignSelf: "stretch", paddingHorizontal: spacing.lg },
+  side: { flex: 1, alignItems: "flex-end" },
+  flip: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
   close: { position: "absolute", left: spacing.md, width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
   error: { marginBottom: spacing.md, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.5)" },
   bottom: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },

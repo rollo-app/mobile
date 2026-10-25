@@ -91,7 +91,7 @@ describe("useSendShot", () => {
       await result.current.mutateAsync({
         ...input,
         momentDay: "2027-01-05",
-        selfie: { asset: selfieAsset, takenAt: input.takenAt + 4000 },
+        selfie: { asset: selfieAsset, takenAt: input.takenAt + 4000, facing: "front" },
       });
     });
     const items = await queue.pending();
@@ -106,6 +106,24 @@ describe("useSendShot", () => {
     expect(jest.mocked(media.prepareMedia).mock.calls.at(-1)?.[0]).toBe(selfieAsset);
     expect(jest.mocked(media.prepareMedia).mock.calls.at(-1)?.[3]).toEqual({ maxDimension: 1080 });
     expect(jest.mocked(media.prepareMedia).mock.calls.at(-2)?.[3]).toBeUndefined();
+  });
+
+  it("the 1080 px cap follows the camera, not the role: a front main is capped and a back linked image is not", async () => {
+    const linked = { uri: "file:///cache/BACK.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        ...input,
+        facing: "front",
+        momentDay: "2027-01-05",
+        selfie: { asset: linked, takenAt: input.takenAt + 4000, facing: "back" },
+      });
+    });
+    const calls = jest.mocked(media.prepareMedia).mock.calls;
+    expect(calls.at(-2)?.[3]).toEqual({ maxDimension: 1080 });
+    expect(calls.at(-1)?.[0]).toBe(linked);
+    expect(calls.at(-1)?.[3]).toBeUndefined();
   });
 
   it("when the selfie preparation fails, nothing is enqueued and the mutation errors", async () => {
