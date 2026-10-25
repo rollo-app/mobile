@@ -219,6 +219,161 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/friend-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Friend requests you received
+         * @description Pending ones only (the ones you rejected are gone), most recent first.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Received requests */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReceivedFriendRequests"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/friend-requests/{userId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a friend request
+         * @description Makes you friends and notifies whoever sent it (`newFriend`). 404 if there is no pending request from that user.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The new friend */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FriendResponse"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/friend-requests/{userId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a friend request
+         * @description Silent: the sender is not notified and keeps seeing it as sent. Also 204 if there was none.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Request rejected */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me": {
         parameters: {
             query?: never;
@@ -842,6 +997,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{userId}/friend-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a friend request
+         * @description Asks to become friends with someone whose profile you can open. They are friends only once the receiver accepts. If they already sent you one, you become friends at once (`friends`). Sending again while it is pending, or to a friend, is not an error. A request the receiver rejected is silent: you still get `sent`, nothing reaches them until 30 days after the rejection. Notifies the receiver (`friendRequest`). 400 to yourself, 404 if the user does not exist or there is a block in either direction, 429 past 30 sent requests in 24 hours.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Request status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SendFriendRequestResponse"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /**
+         * Cancel a friend request you sent
+         * @description Also 204 if there was none.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Request cancelled */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userId}": {
         parameters: {
             query?: never;
@@ -1382,8 +1646,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Report a photo or a person
-         * @description Send `mediaId` or `userId`. Idempotent: reporting the same photo or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos). At most 3 reports and blocks per user per 24 hours (and 20 per day overall) are emailed to support; the rest are stored without email. More than 50 reports per user per 24 hours is a 429. 404 if the photo is not one the reporter can see; 400 if it is theirs.
+         * Report a photo, a comment or a person
+         * @description Send exactly one of `mediaId`, `commentId` or `userId`. Idempotent: reporting the same photo, comment or person again is a 204 and does not email support again. A reported photo disappears from the reporter's own views (and from their featured photos); a reported comment, from their comment lists and counts. At most 3 reports and blocks per user per 24 hours (and 20 per day overall) are emailed to support; the rest are stored without email. More than 50 reports per user per 24 hours is a 429. 404 if the photo or comment is not one the reporter can see (a comment: only active members of its rollo); 400 if it is theirs.
          */
         post: {
             parameters: {
@@ -1998,7 +2262,63 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Your settings in this rollo
+         * @description `allowFeaturing`: whether others may feature your photos of this rollo on their profile (on by default). Turning it off removes them from other profiles; turning it on restores nothing.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateMyMembershipRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyMembership"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/trips/{tripId}/members/{memberId}": {
@@ -2271,7 +2591,7 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
          */
         get: {
             parameters: {
@@ -2962,6 +3282,258 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/likes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Photos you liked
+         * @description Only yours. The photos you liked and can open today, most recent like first, paginated with `cursor`. Filtered by the server: a photo drops out if its rollo is not revealed or you left it and no profile you can see still features it, the profile became private, you are not friends anymore, the photo was un-featured, there is a block with its author or you reported it (the like is kept and the photo comes back if you regain access). `source` says where to open it: the rollo wins over a profile.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description `nextCursor` of the previous page */
+                    cursor?: string;
+                    /** @description Page size (default 60) */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page of liked photos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyLikes"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/{mediaId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the comments of a photo
+         * @description Oldest first. Only active members of the photo's rollo, once it is revealed: otherwise 404 (also with a block with the photo's author). Leaves out deleted comments, comments of users blocked in either direction and the ones you reported. A video has none (empty list).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Comments */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentList"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Comment on a photo
+         * @description Plain text, up to 500 characters. Same permissions as listing; 400 for a video. Notifies the photo's author and whoever commented before (`photoCommented`), at most once every 30 minutes per photo: the comments in between are counted and added to the next push.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description The new comment */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Comment"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a comment
+         * @description The author of the comment or the author of its photo. Another member of the rollo gets 403. 404 if the comment does not exist, is already deleted, or you can't see its photo.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    commentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3049,6 +3621,41 @@ export interface components {
              */
             verifier?: string;
         };
+        ReceivedFriendRequests: {
+            /** @description Pending requests to you, most recent first */
+            requests: components["schemas"]["ReceivedFriendRequest"][];
+        };
+        ReceivedFriendRequest: {
+            user: components["schemas"]["Friend"];
+            /**
+             * @description When the request was sent
+             * @example 1767225600000
+             */
+            createdAt: number;
+        };
+        Friend: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string | null;
+            avatarUrl: string | null;
+            /**
+             * @description Profile description (up to 3 lines); null if none
+             * @example Viajando por el sur
+             */
+            bio: string | null;
+        };
+        FriendResponse: {
+            friend: components["schemas"]["Friend"];
+        };
         UpdateProfileRequest: {
             /** @example Juani */
             name?: string;
@@ -3110,6 +3717,7 @@ export interface components {
         Role: "admin" | "member";
         UserSettings: {
             notifications: components["schemas"]["NotificationSettings"];
+            privacy: components["schemas"]["PrivacySettings"];
         };
         NotificationSettings: {
             /** @description Someone adds you to a rollo */
@@ -3124,6 +3732,14 @@ export interface components {
             photoFeatured: boolean;
             /** @description Someone likes a photo of yours */
             photoLiked: boolean;
+            /** @description Someone comments on a photo of yours, or on one you commented on */
+            photoCommented: boolean;
+            /** @description Someone sends you a friend request */
+            friendRequest: boolean;
+        };
+        PrivacySettings: {
+            /** @description Others may feature any of your photos on their profile (on by default) */
+            allowFeaturing: boolean;
         };
         UpdateUserSettingsRequest: {
             notifications?: {
@@ -3139,6 +3755,14 @@ export interface components {
                 photoFeatured?: boolean;
                 /** @description Someone likes a photo of yours */
                 photoLiked?: boolean;
+                /** @description Someone comments on a photo of yours, or on one you commented on */
+                photoCommented?: boolean;
+                /** @description Someone sends you a friend request */
+                friendRequest?: boolean;
+            };
+            privacy?: {
+                /** @description Others may feature any of your photos on their profile (on by default) */
+                allowFeaturing?: boolean;
             };
         };
         UsernameAvailability: {
@@ -3146,6 +3770,13 @@ export interface components {
             available: boolean;
             /** @description The normalized username that was checked */
             username: string;
+        };
+        SendFriendRequestResponse: {
+            /**
+             * @description sent: the request is pending (or was rejected, which the sender never sees); friends: you are friends now (they had asked you too, or you already were)
+             * @enum {string}
+             */
+            status: "sent" | "friends";
         };
         UserProfile: {
             user: components["schemas"]["PublicUser"];
@@ -3162,6 +3793,11 @@ export interface components {
             friendCount: number;
             /** @description How many of your friends are also this user's friends (0 for yourself) */
             mutualCount: number;
+            /**
+             * @description Pending friend request between you and this user: sent (you sent one, also after they rejected it: they never tell), received (they sent you one you have not answered), none (also for friends, yourself and blocks)
+             * @enum {string}
+             */
+            friendRequest: "none" | "sent" | "received";
         };
         PublicUser: {
             /**
@@ -3224,29 +3860,6 @@ export interface components {
              */
             expiresAt: number;
         };
-        FriendResponse: {
-            friend: components["schemas"]["Friend"];
-        };
-        Friend: {
-            /**
-             * Format: uuid
-             * @description User id
-             */
-            id: string;
-            /** @example Cami */
-            name: string;
-            /**
-             * @description Unique handle without the @
-             * @example cami
-             */
-            username: string | null;
-            avatarUrl: string | null;
-            /**
-             * @description Profile description (up to 3 lines); null if none
-             * @example Viajando por el sur
-             */
-            bio: string | null;
-        };
         RedeemFriendRequest: {
             /** @description Friend code typed or taken from a link that is still valid */
             code?: string;
@@ -3286,6 +3899,8 @@ export interface components {
             mediaId?: string;
             /** @description Person to report */
             userId?: string;
+            /** @description Comment to report (on a photo of a rollo you are in) */
+            commentId?: string;
         };
         /** @enum {string} */
         ReportReason: "offensive" | "abuse" | "other";
@@ -3345,6 +3960,8 @@ export interface components {
             dailyPhotoLimit: number;
             /** @description Legacy: new rollos have no videos (0) */
             dailyVideoLimit: number;
+            /** @description Private rollo: nobody can feature its photos on a profile, not even their author */
+            featuringDisabled: boolean;
             /**
              * @description daily: dailyPhotoLimit per person per local day; total: totalPhotoLimit per person for the whole rollo
              * @enum {string}
@@ -3372,6 +3989,8 @@ export interface components {
             role: components["schemas"]["Role"];
             /** @description Whether you blocked this member */
             blockedByMe: boolean;
+            /** @description Only on `me`: others may feature your photos of this rollo on their profile */
+            allowFeaturing?: boolean;
         };
         CreateTripRequest: {
             /** @example Viaje al sur */
@@ -3403,6 +4022,11 @@ export interface components {
              * @default 0
              */
             dailyVideoLimit?: number;
+            /**
+             * @description Private rollo: nobody can feature its photos on a profile, not even their author
+             * @default false
+             */
+            featuringDisabled?: boolean;
             /**
              * @default daily
              * @enum {string}
@@ -3443,6 +4067,8 @@ export interface components {
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
+            /** @description Private rollo. Turning it on removes every photo of the rollo from every profile; turning it off restores nothing */
+            featuringDisabled?: boolean;
             /** @description Only for rollos in total mode */
             totalPhotoLimit?: number;
         };
@@ -3459,6 +4085,13 @@ export interface components {
         AddMembersRequest: {
             /** @description User ids of your friends (1 to 50) */
             friendIds: string[];
+        };
+        MyMembership: {
+            allowFeaturing: boolean;
+        };
+        UpdateMyMembershipRequest: {
+            /** @description Others may feature your photos of this rollo. Turning it off removes them from other profiles; turning it on restores nothing */
+            allowFeaturing: boolean;
         };
         MediaRegistered: {
             /** Format: uuid */
@@ -3561,10 +4194,14 @@ export interface components {
             featuredByMe?: boolean;
             /** @description Only after the reveal: the author does not let others feature it (they still can) */
             featureBlocked?: boolean;
+            /** @description Only after the reveal: whether you can feature it on your profile now (false if its rollo is private, or if its author, their rollo membership or their account does not let others; its author can unless the rollo is private) */
+            canFeature?: boolean;
             /** @description Only after the reveal: how many people like it (one counter, also likes from profiles that feature it). Always 0 for videos */
             likeCount?: number;
             /** @description Only after the reveal: you like it */
             likedByMe?: boolean;
+            /** @description Only after the reveal: how many comments you see on it (not the deleted ones, nor those of blocked users or ones you reported). Always 0 for videos */
+            commentCount?: number;
         };
         FeaturedPhotos: {
             /** @description Most recently featured first */
@@ -3610,6 +4247,72 @@ export interface components {
             lat: number;
             lng: number;
         } | null;
+        MyLikes: {
+            /** @description Most recent like first */
+            items: components["schemas"]["LikedPhoto"][];
+            /** @description null on the last page */
+            nextCursor: string | null;
+            /** @description How many liked photos you can see today, across all pages */
+            total: number;
+        };
+        LikedPhoto: {
+            /** Format: uuid */
+            mediaId: string;
+            /** @description When you liked it (epoch ms) */
+            likedAt: number;
+            /** Format: uuid */
+            authorUserId: string;
+            /** @description Who took it (for the badge on the thumbnail) */
+            author: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                username: string | null;
+                avatarUrl: string | null;
+            };
+            /** @example /trips/<tripId>/media/<mediaId>/thumb */
+            thumbPath: string;
+            thumbHash: string | null;
+            source: components["schemas"]["LikedPhotoSource"];
+        };
+        /** @description Where you can open the photo today. `trip`: you are an active member of its revealed rollo. `featured`: you see it on that profile (the rollo is never revealed). If both work, it is `trip`. */
+        LikedPhotoSource: {
+            /** @enum {string} */
+            kind: "trip";
+            /** Format: uuid */
+            tripId: string;
+        } | {
+            /** @enum {string} */
+            kind: "featured";
+            /**
+             * Format: uuid
+             * @description Owner of the profile where it is featured
+             */
+            userId: string;
+        };
+        CommentList: {
+            comments: components["schemas"]["Comment"][];
+        };
+        Comment: {
+            /** Format: uuid */
+            id: string;
+            text: string;
+            /** @description Epoch milliseconds */
+            createdAt: number;
+            author: {
+                /** Format: uuid */
+                userId: string;
+                name: string;
+                username: string | null;
+                avatarUrl: string | null;
+            };
+            /** @description You wrote it, or the photo is yours */
+            canDelete: boolean;
+        };
+        CreateCommentRequest: {
+            /** @description Plain text, trimmed, 1 to 500 characters */
+            text: string;
+        };
     };
     responses: never;
     parameters: never;
