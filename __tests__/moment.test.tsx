@@ -161,4 +161,34 @@ describe("Moment", () => {
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect((await queue.pending())[0]).toMatchObject({ tripId: SUR });
   });
+
+  it("on the first-shot step Cerrar closes the screen and nothing is queued", async () => {
+    await openMoment(Date.now() - 10_000);
+    await fireEvent.press(await screen.findByRole("button", { name: "Cerrar" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(await queue.pending()).toHaveLength(0);
+  });
+
+  it("on the selfie step there is no Cerrar", async () => {
+    await openMoment(Date.now() - 10_000);
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+
+    expect(await screen.findByTestId("camera-front")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Cerrar" })).toBeNull();
+  });
+
+  it("does not show the shutter until the trip detail is known, then follows its real mode", async () => {
+    let resolve!: (d: actions.TripDetail) => void;
+    trips.fetchTrip.mockReturnValue(new Promise((r) => (resolve = r)));
+    await openMoment(Date.now() - 10_000);
+
+    expect(screen.queryByRole("button", { name: "Sacar foto" })).toBeNull();
+    expect(await queue.pending()).toHaveLength(0);
+
+    await act(async () => resolve(tripDetail("photo")));
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+    expect(await screen.findByRole("button", { name: "Mandar al rollo" })).toBeVisible();
+    expect(screen.queryByTestId("camera-front")).toBeNull();
+  });
 });

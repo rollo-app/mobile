@@ -1,5 +1,6 @@
 import { CameraView } from "expo-camera";
 import { useRef, useState } from "react";
+import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type * as ImagePicker from "expo-image-picker";
@@ -9,6 +10,8 @@ import { spacing, type } from "@/ui/theme";
 export function MomentCamera(props: {
   facing: "back" | "front";
   title: string;
+  /** Only the first-shot step can be closed: once the main photo exists the only way out is sending it. */
+  onClose?: () => void;
   onCapture: (asset: ImagePicker.ImagePickerAsset) => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -30,6 +33,17 @@ export function MomentCamera(props: {
     <View style={styles.dark}>
       <CameraView ref={camera} facing={props.facing} style={StyleSheet.absoluteFill} />
       <Text style={[type.headline, styles.title, { top: insets.top + spacing.md }]}>{props.title}</Text>
+      {props.onClose && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar"
+          hitSlop={12}
+          onPress={props.onClose}
+          style={[styles.close, { top: insets.top + spacing.sm }]}
+        >
+          <SymbolView name="xmark" size={18} tintColor="#fff" />
+        </Pressable>
+      )}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + spacing.lg }]}>
         <Pressable
           accessibilityRole="button"
@@ -48,6 +62,7 @@ export function MomentCamera(props: {
 const styles = StyleSheet.create({
   dark: { flex: 1, backgroundColor: "#000" },
   title: { position: "absolute", alignSelf: "center", color: "#fff", fontVariant: ["tabular-nums"] },
+  close: { position: "absolute", left: spacing.md, width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.35)" },
   bottom: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },
   shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: "#fff", alignItems: "center", justifyContent: "center" },
   shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: "#fff" },
