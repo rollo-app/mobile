@@ -9,7 +9,7 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 export type Shot = { asset: ImagePicker.ImagePickerAsset; takenAt: number };
 
 // Strong enough that the photo can't be recognized: the shot is the shot, you only get to caption it.
-const BLUR_RADIUS = 60;
+const BLUR_RADIUS = 100;
 
 /** The shot, blurred, with an optional caption. There is no retake or cancel: the only way out is sending it. */
 export function CapturePreview(props: {
