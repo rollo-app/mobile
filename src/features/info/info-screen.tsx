@@ -4,7 +4,7 @@ import { infoTopic, splitButtonNames } from "./topics";
 
 /**
  * The body of the info sheet: the topic's title and its short paragraphs. Button names (quoted in the catalog) show
- * bold in the app's tint, without the quotes. An unknown topic shows nothing.
+ * bold, without the quotes. An unknown topic shows nothing.
  */
 export function InfoScreen({ topic }: { topic: string | string[] | undefined }) {
   const found = infoTopic(topic);
@@ -33,5 +33,5 @@ export function InfoScreen({ topic }: { topic: string | string[] | undefined }) 
 
 const styles = StyleSheet.create({
   sheet: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, backgroundColor: colors.groupedBackground },
-  button: { fontWeight: "600", color: colors.tint },
+  button: { fontWeight: "600" },
 });

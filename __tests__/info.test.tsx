@@ -39,7 +39,7 @@ async function opensSheet(url: string, topic: InfoTopicId) {
   expect(screen.getByText(INFO_TOPICS[topic].body.split("\n\n")[0]!.replaceAll('"', ""))).toBeVisible();
 }
 
-it("shows button names bold in the app's tint, without the quotes", async () => {
+it("shows button names bold, without the quotes", async () => {
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   await renderRouter(routes, { initialUrl: "/info/dates" });
   const name = await screen.findByText("Ahora");
