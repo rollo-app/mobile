@@ -104,6 +104,8 @@ describe("useSendShot", () => {
       takenAt: input.takenAt + 4000,
     });
     expect(jest.mocked(media.prepareMedia).mock.calls.at(-1)?.[0]).toBe(selfieAsset);
+    expect(jest.mocked(media.prepareMedia).mock.calls.at(-1)?.[3]).toEqual({ maxDimension: 1080 });
+    expect(jest.mocked(media.prepareMedia).mock.calls.at(-2)?.[3]).toBeUndefined();
   });
 
   it("when the selfie preparation fails, nothing is enqueued and the mutation errors", async () => {

@@ -25,6 +25,9 @@ export type SendShotInput = {
   selfie?: { asset: ImagePicker.ImagePickerAsset; takenAt: number };
 };
 
+/** The moment selfie is small: it only decorates the main photo. */
+const SELFIE_MAX = 1080;
+
 async function sendShot(input: SendShotInput) {
   const { tripId, asset, takenAt, timeZone, author } = input;
   const caption = input.caption.trim() || null;
@@ -38,14 +41,12 @@ async function sendShot(input: SendShotInput) {
   if (withSelfie) {
     // Prepare both before enqueuing anything: if the selfie fails, no orphan main stays queued.
     try {
-      // TODO(A5): process with prepareMedia's maxDimension 1080 once it exists; for now like any photo.
-      selfiePrepared = await prepareMedia(withSelfie.selfie.asset, selfieId, {
-        takenAt: withSelfie.selfie.takenAt,
-        timeZone,
-        location,
-        caption: null,
-        author,
-      });
+      selfiePrepared = await prepareMedia(
+        withSelfie.selfie.asset,
+        selfieId,
+        { takenAt: withSelfie.selfie.takenAt, timeZone, location, caption: null, author },
+        { maxDimension: SELFIE_MAX },
+      );
     } catch (e) {
       try {
         const dir = new Directory(Paths.document, "pending", id);

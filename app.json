@@ -51,6 +51,14 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Rollo guarda dónde sacaste cada foto para el mapa del viaje."

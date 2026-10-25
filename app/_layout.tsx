@@ -137,6 +137,8 @@ function RootStack() {
           />
           {/* No swipe to dismiss: once shot, the only way out of the caption screen is sending it. */}
           <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
+          {/* The daily moment: camera with countdown; like capture, no swipe to dismiss. */}
+          <Stack.Screen name="moment" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
           {/* The lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen

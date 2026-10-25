@@ -23,12 +23,18 @@ export type PreparedMedia = {
 /**
  * Prepares a capture for the queue: original (photo ≤4000 px JPEG 88 % or the video
  * already exported at 1080p by the camera), 800 px thumb and its ThumbHash.
+ * `options.maxDimension` lowers the photo's long side (the moment selfie is 1080 px).
  * Resizing re-encodes the JPEG and drops its EXIF, so photos get theirs written back from `metadata`
  * (time in the roll's zone, GPS, caption, author). Videos are moved as the camera exported them.
  * Everything goes to Documents (not the cache, which iOS may clear during days without signal) and is
  * deleted only once the server confirms the upload.
  */
-export async function prepareMedia(asset: ImagePickerAsset, id: string, metadata: ExifInput): Promise<PreparedMedia> {
+export async function prepareMedia(
+  asset: ImagePickerAsset,
+  id: string,
+  metadata: ExifInput,
+  options: { maxDimension?: number } = {},
+): Promise<PreparedMedia> {
   const dir = new Directory(Paths.document, "pending", id);
   dir.create({ intermediates: true, idempotent: true });
 
@@ -45,7 +51,7 @@ export async function prepareMedia(asset: ImagePickerAsset, id: string, metadata
     await saveResized(frame.uri, frame.width, frame.height, THUMB_MAX, 0.8, thumb);
     await deleteQuietly(frame.uri);
   } else {
-    const saved = await saveResized(asset.uri, asset.width, asset.height, ORIGINAL_MAX, 0.88, original);
+    const saved = await saveResized(asset.uri, asset.width, asset.height, options.maxDimension ?? ORIGINAL_MAX, 0.88, original);
     width = saved.width;
     height = saved.height;
     // Best effort: a photo without metadata is still worth sending.
