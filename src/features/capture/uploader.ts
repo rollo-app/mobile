@@ -122,6 +122,8 @@ export function createUploader(deps: UploaderDeps) {
             sizeBytes: sizes.original,
             thumbSizeBytes: sizes.thumb,
             thumbhash: m.thumbhash,
+            momentDay: m.momentDay,
+            pairedMediaId: m.pairedWith,
           },
         }),
       );
@@ -155,8 +157,14 @@ export function createUploader(deps: UploaderDeps) {
   async function pass() {
     const skipBackoff = ignoreBackoff;
     ignoreBackoff = false;
-    const due = (await deps.queue.pending()).filter((m) => skipBackoff || m.retryAt === null || m.retryAt <= now());
+    const all = await deps.queue.pending();
+    // A selfie goes after its main (the server validates the pairing at register time).
+    const unresolved = new Set(all.map((m) => m.id));
+    const due = all
+      .filter((m) => skipBackoff || m.retryAt === null || m.retryAt <= now())
+      .sort((a, b) => Number(!!a.pairedWith) - Number(!!b.pairedWith));
     for (const m of due) {
+      if (m.pairedWith && unresolved.has(m.pairedWith)) continue;
       if (deadline !== undefined && now() >= deadline) return;
       try {
         const token = await deps.getToken();
@@ -185,6 +193,7 @@ export function createUploader(deps: UploaderDeps) {
         continue;
       }
       await deps.queue.remove(m.id);
+      unresolved.delete(m.id);
       await deps.removeFiles(m.id);
       await deps.onUploaded?.(m.tripId);
     }

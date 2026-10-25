@@ -1,5 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import * as Crypto from "expo-crypto";
 import type * as ImagePicker from "expo-image-picker";
 import type { ReactNode } from "react";
 import { createQueryClient } from "@/api/query-client";
@@ -15,7 +16,7 @@ import { useSendShot } from "../use-send-shot";
 jest.mock("../media");
 jest.mock("../store", () => ({ getQueue: jest.fn() }));
 jest.mock("../sync", () => ({ syncQueue: jest.fn(async () => {}) }));
-jest.mock("expo-crypto", () => ({ randomUUID: () => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }));
+jest.mock("expo-crypto", () => ({ randomUUID: jest.fn(() => "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa") }));
 
 const asset = { uri: "file:///cache/IMG_1.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
 const prepared = {
@@ -76,6 +77,33 @@ describe("useSendShot", () => {
     });
     const [item] = await queue.pendingForTrip("t1");
     expect(item).toMatchObject({ caption: null, lat: null });
+  });
+
+  it("with momentDay and a selfie, enqueues the main and then the selfie paired with it", async () => {
+    jest
+      .mocked(Crypto.randomUUID)
+      .mockReturnValueOnce("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+      .mockReturnValueOnce("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    const selfieAsset = { uri: "file:///cache/SELFIE.jpg", type: "image" } as ImagePicker.ImagePickerAsset;
+    const { wrapper } = setup();
+    const { result } = await renderHook(() => useSendShot(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({
+        ...input,
+        momentDay: "2027-01-05",
+        selfie: { asset: selfieAsset, takenAt: input.takenAt + 4000 },
+      });
+    });
+    const items = await queue.pendingForTrip("t1");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", momentDay: "2027-01-05", pairedWith: null });
+    expect(items[1]).toMatchObject({
+      id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      momentDay: "2027-01-05",
+      pairedWith: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      takenAt: input.takenAt + 4000,
+    });
+    expect(jest.mocked(media.prepareMedia).mock.calls.at(-1)?.[0]).toBe(selfieAsset);
   });
 
   it("surfaces the error and does not sync when preparing fails", async () => {

@@ -18,6 +18,10 @@ export type SendShotInput = {
   author: string;
   /** The location fix started when the camera opened (may resolve to null). */
   fix: Promise<Fix | null> | null;
+  /** The "momento del día" this shot belongs to (trip-local YYYY-MM-DD). */
+  momentDay?: string;
+  /** Moment selfie: enqueued after the main, paired with it. */
+  selfie?: { asset: ImagePicker.ImagePickerAsset; takenAt: number };
 };
 
 async function sendShot(input: SendShotInput) {
@@ -27,7 +31,8 @@ async function sendShot(input: SendShotInput) {
   // The EXIF written into the photo needs the fix, so prepare after it (it has its own timeout).
   const location = await input.fix;
   const prepared = await prepareMedia(asset, id, { takenAt, timeZone, location, caption, author });
-  await (await getQueue()).enqueue({
+  const queue = await getQueue();
+  await queue.enqueue({
     id,
     tripId,
     type: asset.type === "video" ? "video" : "photo",
@@ -37,8 +42,35 @@ async function sendShot(input: SendShotInput) {
     lng: location?.lng ?? null,
     accuracyM: location?.accuracyM ?? null,
     caption,
+    momentDay: input.momentDay ?? null,
+    pairedWith: null,
     ...prepared,
   });
+  if (input.selfie && input.momentDay) {
+    // TODO(A5): process with prepareMedia's maxDimension 1080 once it exists; for now like any photo.
+    const selfieId = Crypto.randomUUID();
+    const selfiePrepared = await prepareMedia(input.selfie.asset, selfieId, {
+      takenAt: input.selfie.takenAt,
+      timeZone,
+      location,
+      caption: null,
+      author,
+    });
+    await queue.enqueue({
+      id: selfieId,
+      tripId,
+      type: "photo",
+      takenAt: input.selfie.takenAt,
+      day: localDay(input.selfie.takenAt, timeZone),
+      lat: location?.lat ?? null,
+      lng: location?.lng ?? null,
+      accuracyM: location?.accuracyM ?? null,
+      caption: null,
+      momentDay: input.momentDay,
+      pairedWith: id,
+      ...selfiePrepared,
+    });
+  }
 }
 
 /**
