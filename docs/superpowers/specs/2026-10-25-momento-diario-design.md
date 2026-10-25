@@ -73,8 +73,27 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
   que el usuario no puede ver en iOS.
 - El endpoint devuelve solo los propios. La única filtración posible es que alguien intercepte el tráfico de su propio celular
   y vea **su** hora: solo se arruina la sorpresa a sí mismo. Aceptado.
-- *(Decisión de Claude)* Antes del revelado, el Feed muestra la foto del momento como cualquier otra ("Cami sacó una foto ·
-  14:32"); eso es posterior a que sonó, no filtra nada.
+- Antes del revelado, que el grupo vea el momento ya subido es posterior a que sonó: no filtra nada (ver "El momento se ve
+  apenas se sube").
+
+### El momento se ve apenas se sube (decisión del dueño, 25/10/2026)
+
+Es la excepción a "nadie ve nada hasta el revelado": cada uno tiene su momento a otra hora, así que el del día es la ventana al
+viaje mientras pasa. Las fotos normales siguen ocultas hasta el revelado.
+
+- **Lo ve todo el grupo** (miembros activos del rollo) apenas se sube, **nítido**, con sus dos imágenes. No hace falta haber
+  sacado el propio para ver el de los demás.
+- **Feed** (dentro de Mapa): la fila del momento muestra la foto de verdad con su recuadro en vez del ThumbHash.
+- **Mapa:** filtro "Momentos" (junto a "Solo hoy", en el menú de filtros) y los pins de momentos muestran la foto.
+- *(Decisión de Claude)* Tocarlo (fila o pin) abre el visor con las dos imágenes e intercambio, como después del revelado.
+- *(Decisión de Claude)* **Antes del revelado solo se mira:** me gusta, comentarios, guardar y destacar recién después del
+  revelado (el backend también lo exige). Después del revelado aparece mezclado con las demás, con su badge, como hasta ahora.
+- **Push al resto del grupo** cuando alguien sube su momento: "{Nombre} subió su momento" (título) / "{rollo}" (cuerpo), al
+  completarse la subida de la foto principal (no al registrarla), una vez por momento. Nunca al autor ni entre usuarios
+  bloqueados. Switch en Ajustes → Notificaciones: "Momentos del grupo" (`momentPosted`, prendido por defecto). Tocar el aviso
+  abre el visor de ese momento en su rollo (y lo deja como activo).
+- **Privacidad:** el feed antes del revelado devuelve archivos **solo** para fotos del momento (principal y vinculada) y solo a
+  miembros activos; una foto normal sigue sin archivos. Bloqueos y denuncias se respetan igual que después del revelado.
 
 ### Los 5 minutos en la app
 
