@@ -23,8 +23,9 @@ function getUploader() {
         });
         return result.status;
       },
-      fileExists: async (uri) => {
-        return new File(uri).exists;
+      fileSize: async (uri) => {
+        const file = new File(uri);
+        return file.exists ? (file.size ?? null) : null;
       },
       removeFiles: async (id) => {
         const dir = new Directory(Paths.document, "pending", id);
