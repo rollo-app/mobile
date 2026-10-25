@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
+import { FriendRequestsSection } from "./friend-requests-section";
 import { InviteFriend } from "./invite-friend";
 import { useFriends } from "./use-friends";
 
@@ -11,6 +12,7 @@ export function FriendsScreen() {
 
   return (
     <Screen grouped>
+      <FriendRequestsSection />
       <InviteFriend />
 
       {error && (

@@ -25,6 +25,7 @@ const profile = (blockedByMe: boolean): profileActions.UserProfile => ({
   canSee: false,
   friendCount: 0,
   mutualCount: 0,
+  friendRequest: "none",
 });
 
 beforeEach(async () => {

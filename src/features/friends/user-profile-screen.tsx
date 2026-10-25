@@ -6,6 +6,8 @@ import { ProfileHeader } from "@/features/profile/profile-header";
 import { ProfileShowcase } from "@/features/profile/profile-showcase";
 import { useUser } from "@/features/profile/use-user";
 import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
+import { FriendRequestButton } from "./friend-request-button";
+import { friendRequestUi } from "./friend-request";
 import { FriendSections } from "./friend-sections";
 
 /**
@@ -34,7 +36,8 @@ export function UserProfileScreen({ userId }: { userId: string }) {
     );
   }
 
-  const { user, isFriend, canSee, friendCount, mutualCount, blockedByMe, reportedByMe } = profile;
+  const { user, isFriend, canSee, friendCount, mutualCount, blockedByMe, reportedByMe, friendRequest } = profile;
+  const requestUi = friendRequestUi({ isFriend, isMe: me?.id === userId, blockedByMe, friendRequest });
   return (
     <Screen grouped>
       {me && me.id !== userId && (
@@ -53,6 +56,7 @@ export function UserProfileScreen({ userId }: { userId: string }) {
         badge={user.badge}
         friends={{ count: friendCount, mutual: mutualCount, canSee, onPress: () => router.push(`/user/${userId}/friends`) }}
       />
+      {requestUi && <FriendRequestButton userId={userId} state={requestUi} />}
       {reportedByMe && <Footnote>Denunciaste a esta persona</Footnote>}
       {blockedByMe ? (
         <Section>
