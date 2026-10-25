@@ -1,3 +1,4 @@
+import { featureActionAvailable } from "@/features/featured/feature-action";
 import { MenuView, type MenuAction } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -257,7 +258,7 @@ export function PhotoViewer({ id, tripId: tripParam }: { id: string; tripId?: st
                 {photo.type === "photo" && (
                   <LikeButton liked={photo.likedByMe} count={photo.likeCount} busy={liking} onPress={() => void likes.toggle(photo)} />
                 )}
-                {photo.type === "photo" && (
+                {photo.type === "photo" && featureActionAvailable(photo) && (
                   <OverlayIconButton
                     symbol={photo.featuredByMe ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.plus"}
                     symbolTestID="feature-symbol"

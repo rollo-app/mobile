@@ -29,6 +29,8 @@ beforeEach(() => {
   jest.mocked(actions).fetchFeed.mockReturnValue(new Promise(() => {}));
   featured.fetchFeatured.mockReset().mockResolvedValue([]);
   featured.unfeatureMedia.mockReset().mockResolvedValue(undefined);
+  featured.fetchPrivacySettings.mockReset().mockResolvedValue({ allowFeaturing: true });
+  featured.updatePrivacySettings.mockReset().mockImplementation(async (p) => ({ allowFeaturing: true, ...p }));
 });
 
 afterEach(() => jest.restoreAllMocks());
@@ -123,6 +125,48 @@ describe("Perfil", () => {
 
     await fireEvent.press(showcase.getByRole("button", { name: "Fotos" }));
     expect(screen.getByText(photos)).toBeVisible();
+  });
+});
+
+describe("Ajustes: Privacidad", () => {
+  const LABEL = "Permitir que agreguen mis fotos a su perfil";
+
+  it("is on by default, next to Perfil público, and explains what it does", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    expect((await screen.findByRole("switch", { name: LABEL })).props.value).toBe(true);
+    expect(screen.getByRole("switch", { name: "Perfil público" })).toBeTruthy();
+    expect(screen.getByText(/Si lo apagás, nadie puede agregar tus fotos a su perfil/)).toBeVisible();
+  });
+
+  it("reflects the saved value", async () => {
+    featured.fetchPrivacySettings.mockResolvedValue({ allowFeaturing: false });
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await waitFor(() => expect(screen.getByRole("switch", { name: LABEL }).props.value).toBe(false));
+  });
+
+  it("turning it off saves allowFeaturing false", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent(await screen.findByRole("switch", { name: LABEL }), "valueChange", false);
+
+    expect(featured.updatePrivacySettings).toHaveBeenCalledWith({ allowFeaturing: false });
+    await waitFor(() => expect(screen.getByRole("switch", { name: LABEL }).props.value).toBe(false));
+  });
+
+  it("if saving fails it shows the error inline and the switch goes back", async () => {
+    featured.updatePrivacySettings.mockRejectedValue(new Error("No hay conexión"));
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent(await screen.findByRole("switch", { name: LABEL }), "valueChange", false);
+
+    expect(await screen.findByText("No hay conexión")).toBeVisible();
+    expect(screen.getByRole("switch", { name: LABEL }).props.value).toBe(true);
   });
 });
 

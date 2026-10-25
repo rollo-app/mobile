@@ -20,6 +20,7 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   featuredByMe: false,
   featureBlocked: false,
   likeCount: 0,
+  canFeature: true,
   likedByMe: false,
 });
 

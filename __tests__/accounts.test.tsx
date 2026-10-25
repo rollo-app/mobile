@@ -53,6 +53,7 @@ const tripDetail = (): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [

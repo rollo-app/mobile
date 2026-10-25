@@ -34,6 +34,7 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   revealed: false,
   dailyPhotoLimit: 10,
   dailyVideoLimit: 3,
+  featuringDisabled: false,
   ...overrides,
 });
 

@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Alert } from "react-native";
 import { deleteAccount, logout } from "@/features/auth/actions";
 import { triggerBackgroundUploadForTesting } from "@/features/capture/background-upload";
+import { usePrivacySettings } from "@/features/featured/use-privacy-settings";
 import { useBlocked } from "@/features/moderation/use-blocked";
 import { OfflineMapRow } from "@/features/map/offline-map-row";
 import { ErrorText, Row, Screen, Section, SwitchRow } from "@/ui/components";
@@ -12,6 +13,7 @@ import { useProfileVisibility } from "./use-profile-visibility";
 /** Ajustes: the account and this phone (Editar perfil, Notificaciones, who sees your profile, offline map, sign out, delete account). */
 export function SettingsScreen() {
   const visibility = useProfileVisibility();
+  const privacy = usePrivacySettings();
   const { blocked } = useBlocked();
   const [accountError, setAccountError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -49,6 +51,11 @@ export function SettingsScreen() {
         <SwitchRow label="Perfil público" value={visibility.isPublic} onValueChange={(v) => void visibility.setPublic(v)} />
       </Section>
       {visibility.error && <ErrorText>{visibility.error}</ErrorText>}
+
+      <Section footer="Si lo apagás, nadie puede agregar tus fotos a su perfil. Las que ya están en un perfil se sacan. Vos siempre podés destacar las tuyas.">
+        <SwitchRow label="Permitir que agreguen mis fotos a su perfil" value={privacy.allowFeaturing} onValueChange={privacy.set} />
+      </Section>
+      {privacy.error && <ErrorText>{privacy.error}</ErrorText>}
 
       {__DEV__ && (
         <Section title="Desarrollo">

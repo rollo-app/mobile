@@ -21,6 +21,8 @@ export async function createTrip(input: {
   dailyPhotoLimit: number;
   dailyVideoLimit: number;
   timezone: string;
+  /** Private rollo: no photo of it goes to a profile. Left out when off. */
+  featuringDisabled?: boolean;
 }): Promise<Trip> {
   const created = await unwrap(
     (await authedClient()).POST("/trips", { body: { ...input, name: input.name.trim() } }),

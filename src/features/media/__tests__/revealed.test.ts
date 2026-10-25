@@ -49,6 +49,13 @@ describe("revealed photos", () => {
     expect(photo).toMatchObject({ featuredByMe: false, featureBlocked: false });
   });
 
+  it("carries whether you can feature it, and assumes you can when the server leaves it out", () => {
+    const [no, unknown] = toRevealedPhotos([item({ canFeature: false }), item({ id: "b" })]);
+
+    expect(no).toMatchObject({ canFeature: false });
+    expect(unknown).toMatchObject({ canFeature: true });
+  });
+
   it("carries how many people like it and whether you do", () => {
     const [photo] = toRevealedPhotos([item({ likeCount: 4, likedByMe: true })]);
 

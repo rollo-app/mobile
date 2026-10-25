@@ -97,6 +97,11 @@ Decisiones de producto:
   destaquen" (borra las de otros y bloquea nuevas; él siempre puede destacar las suyas). Nunca sale el rollo, el caption ni la
   coordenada: la ubicación va como **zona de ~5 km** (celda de 0.05°). En un perfil, "Fotos | Mapa": la grilla (con la
   insignia del autor si no es el dueño del perfil; tocar una abre `/featured/<userId>/<mediaId>`) y el mapa por zonas.
+  **Adónde pueden ir tus fotos** (cuatro niveles, gana el más restrictivo; `featuring-section.tsx`, `use-featuring-levels.ts`, `use-privacy-settings.ts`):
+  cuenta (Ajustes: "Permitir que agreguen mis fotos a su perfil", `PATCH /me/settings` `privacy.allowFeaturing`), rollo ("Tus fotos en otros perfiles" en el
+  tablero y en el segmento "Rollo", `PATCH /trips/{id}/members/me`), foto ("No dejar que la destaquen") y **rollo privado** (el admin lo elige al crear y lo cambia
+  en el tablero con confirmación, `featuringDisabled`: ninguna foto sale, ni la del autor). Apagar un nivel saca las fotos de los perfiles ajenos; prender no devuelve nada. El feed
+  trae `canFeature` por foto: sin él (o sin `featuredByMe`) no aparece "Agregar a tu perfil" en el visor ni en el menú de la grilla (`feature-action.ts`).
   **Visibilidad:** `profileVisibility` `"friends"` (por defecto) o `"public"`, con el switch "Perfil público" de Ajustes
   (`PATCH /me`, error inline): apagado, solo tus amigos ven tus destacadas y tu lista de amigos
   (la descripción y la cantidad de amigos son siempre públicas).

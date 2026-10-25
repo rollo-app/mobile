@@ -1,3 +1,4 @@
+import { featureActionAvailable } from "@/features/featured/feature-action";
 import { MenuView } from "@expo/ui/community/menu";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -124,8 +125,8 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPre
       )}
     </Pressable>
   );
-  // Long press opens the native context menu; videos can't be featured, and selecting has its own taps.
-  if (selecting || photo.type !== "photo") return cell;
+  // Long press opens the native context menu; videos can't be featured, photos you can't feature have nothing to offer, and selecting has its own taps.
+  if (selecting || photo.type !== "photo" || !featureActionAvailable(photo)) return cell;
   return (
     <MenuView
       shouldOpenOnLongPress
