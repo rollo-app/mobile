@@ -77,7 +77,7 @@ describe("friend request button on a profile", () => {
     expect(screen.getByRole("button", { name: "Agregar amigo" })).toBeVisible();
   });
 
-  it("shows 'Solicitud enviada' when you sent one and cancels it from its menu", async () => {
+  it("shows 'Solicitud enviada' when you sent one and cancels it by tapping it again", async () => {
     friendRequest = "sent";
     mocked.cancelFriendRequest.mockImplementation(async () => {
       friendRequest = "none";
@@ -85,7 +85,8 @@ describe("friend request button on a profile", () => {
     await renderRouter(routes, { initialUrl: "/user/u2" });
 
     expect(await screen.findByRole("button", { name: "Solicitud enviada" })).toBeVisible();
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Cancelar solicitud" }));
+    expect(screen.queryByRole("menuitem", { name: "Cancelar solicitud" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Solicitud enviada" }));
 
     expect(mocked.cancelFriendRequest).toHaveBeenCalledWith("u2");
     expect(await screen.findByRole("button", { name: "Agregar amigo" })).toBeVisible();

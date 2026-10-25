@@ -344,6 +344,23 @@ describe("Me", () => {
     expect(req.identifier).toBe(`moment.${SUR}.${day}`);
     expect(req.content.data.url).toBe(`/moment?trip=${SUR}&day=${day}&at=${at}`);
     expect(req.content.title).toBe("Es tu momento");
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalled();
+    expect(jest.requireMock("burnt").toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Llega en 10 segundos" }));
+  });
+
+  it("in development, 'Probar momento ahora' says so and schedules nothing without notification permission", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    jest.mocked(Notifications.scheduleNotificationAsync).mockClear();
+    jest.mocked(Notifications.requestPermissionsAsync).mockResolvedValueOnce({ granted: false, canAskAgain: false } as any);
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Probar momento ahora" }));
+
+    await waitFor(() =>
+      expect(jest.requireMock("burnt").alert).toHaveBeenCalledWith(expect.objectContaining({ title: "Activá las notificaciones" })),
+    );
+    expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
   it("in development, 'Ver revelado' in Ajustes opens the reveal screen", async () => {
