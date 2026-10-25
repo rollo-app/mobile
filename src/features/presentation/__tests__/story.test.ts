@@ -23,6 +23,7 @@ const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto =>
   featuredByMe: false,
   featureBlocked: false,
   likeCount: 0,
+  canFeature: true,
   likedByMe: false,
   commentCount: 0,
   ...over,

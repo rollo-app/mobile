@@ -1,9 +1,10 @@
-import { DatePicker, Form, Host, Picker, Section, Stepper, Text, TextField } from "@expo/ui/swift-ui";
-import { foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
+import { DatePicker, Form, Host, Picker, Section, Stepper, Text, TextField, Toggle } from "@expo/ui/swift-ui";
+import { accessibilityLabel, foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { PRIVATE_ROLLO_NOTE } from "@/features/featured/featuring-section";
 import { fetchFriends } from "@/features/friends/actions";
 import { friendsKey } from "@/features/friends/use-friends";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
@@ -30,6 +31,7 @@ export function CreateScreen() {
   const [customReveal, setCustomReveal] = useState(initialStart + 84 * HOUR);
   const [photos, setPhotos] = useState(10);
   const [videos, setVideos] = useState(3);
+  const [isPrivate, setIsPrivate] = useState(false);
   const create = useCreateTrip();
   const error = errorMessage(create.error, "No se pudo crear el rollo");
 
@@ -63,6 +65,7 @@ export function CreateScreen() {
         dailyPhotoLimit: photos,
         dailyVideoLimit: videos,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ...(isPrivate && { featuringDisabled: true }),
       },
       {
         onSuccess: () => {
@@ -157,6 +160,10 @@ export function CreateScreen() {
           <Section title="Por persona, por día" footer={<Text>Cada día se renueva a la medianoche.</Text>}>
             <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={100} onValueChange={setPhotos} />
             <Stepper label={count(videos, "video", "videos")} value={videos} min={0} max={20} onValueChange={setVideos} />
+          </Section>
+
+          <Section footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
+            <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
           </Section>
         </Form>
       </Host>

@@ -53,6 +53,7 @@ const detail = (): actions.TripDetail => ({
     revealed: true,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
@@ -364,6 +365,19 @@ describe("Gallery: featuring from the grid", () => {
     await waitFor(() => expect(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })).toHaveLength(2));
   });
 
+  it("a photo you can't feature has no Agregar a tu perfil in the menu", async () => {
+    mocked.fetchFeed.mockResolvedValue(feed([item("a", { canFeature: false }), item("b")]));
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })).toHaveLength(1);
+  });
+
+  it("a featured photo keeps Sacar de tu perfil even if you can't add it anymore", async () => {
+    mocked.fetchFeed.mockResolvedValue(feed([item("a", { featuredByMe: true, canFeature: false })]));
+    await open();
+    expect(await screen.findByRole("menuitem", { name: "Sacar de tu perfil" })).toBeTruthy();
+  });
+
   it("a photo already featured offers Sacar de tu perfil", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([item("a", { featuredByMe: true })]));
     await open();
@@ -476,6 +490,22 @@ describe("Photo viewer", () => {
     await openViewer("b");
     await fireEvent.press(await screen.findByRole("button", { name: "Guardar en Fotos" }));
     expect(await screen.findByRole("button", { name: "Abrir Ajustes" })).toBeVisible();
+  });
+
+  it("hides Agregar a tu perfil on a photo you can't feature, but shows Sacar de tu perfil on one already featured", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([item("a", { canFeature: false }), item("b", { canFeature: false, featuredByMe: true })]),
+    );
+    await renderRouter({ ...routes }, { initialUrl: `/photo/a?tripId=${SUR}` });
+    expect(await screen.findByRole("button", { name: "Guardar en Fotos" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Agregar a tu perfil" })).toBeNull();
+    expect(screen.queryByTestId("feature-symbol")).toBeNull();
+  });
+
+  it("keeps Sacar de tu perfil on a featured photo that can't be added anymore", async () => {
+    mocked.fetchFeed.mockResolvedValue(feed([item("a", { canFeature: false, featuredByMe: true })]));
+    await renderRouter({ ...routes }, { initialUrl: `/photo/a?tripId=${SUR}` });
+    expect(await screen.findByRole("button", { name: "Sacar de tu perfil" })).toBeVisible();
   });
 
   it("Agregar a tu perfil features the photo and turns into Sacar de tu perfil; again takes it off", async () => {

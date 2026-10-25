@@ -2262,7 +2262,63 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Your settings in this rollo
+         * @description `allowFeaturing`: whether others may feature your photos of this rollo on their profile (on by default). Turning it off removes them from other profiles; turning it on restores nothing.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateMyMembershipRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyMembership"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/trips/{tripId}/members/{memberId}": {
@@ -3409,6 +3465,7 @@ export interface components {
         Role: "admin" | "member";
         UserSettings: {
             notifications: components["schemas"]["NotificationSettings"];
+            privacy: components["schemas"]["PrivacySettings"];
         };
         NotificationSettings: {
             /** @description Someone adds you to a rollo */
@@ -3426,6 +3483,10 @@ export interface components {
             /** @description Someone sends you a friend request */
             friendRequest: boolean;
         };
+        PrivacySettings: {
+            /** @description Others may feature any of your photos on their profile (on by default) */
+            allowFeaturing: boolean;
+        };
         UpdateUserSettingsRequest: {
             notifications?: {
                 /** @description Someone adds you to a rollo */
@@ -3442,6 +3503,10 @@ export interface components {
                 photoLiked?: boolean;
                 /** @description Someone sends you a friend request */
                 friendRequest?: boolean;
+            };
+            privacy?: {
+                /** @description Others may feature any of your photos on their profile (on by default) */
+                allowFeaturing?: boolean;
             };
         };
         UsernameAvailability: {
@@ -3636,6 +3701,8 @@ export interface components {
             revealed: boolean;
             dailyPhotoLimit: number;
             dailyVideoLimit: number;
+            /** @description Private rollo: nobody can feature its photos on a profile, not even their author */
+            featuringDisabled: boolean;
         };
         Member: {
             /**
@@ -3656,6 +3723,8 @@ export interface components {
             role: components["schemas"]["Role"];
             /** @description Whether you blocked this member */
             blockedByMe: boolean;
+            /** @description Only on `me`: others may feature your photos of this rollo on their profile */
+            allowFeaturing?: boolean;
         };
         CreateTripRequest: {
             /** @example Viaje al sur */
@@ -3684,6 +3753,11 @@ export interface components {
             dailyPhotoLimit?: number;
             /** @default 3 */
             dailyVideoLimit?: number;
+            /**
+             * @description Private rollo: nobody can feature its photos on a profile, not even their author
+             * @default false
+             */
+            featuringDisabled?: boolean;
         };
         JoinTripRequest: {
             /** @example HUB5FT */
@@ -3717,6 +3791,8 @@ export interface components {
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
+            /** @description Private rollo. Turning it on removes every photo of the rollo from every profile; turning it off restores nothing */
+            featuringDisabled?: boolean;
         };
         AddMembersResponse: {
             results: {
@@ -3731,6 +3807,13 @@ export interface components {
         AddMembersRequest: {
             /** @description User ids of your friends (1 to 50) */
             friendIds: string[];
+        };
+        MyMembership: {
+            allowFeaturing: boolean;
+        };
+        UpdateMyMembershipRequest: {
+            /** @description Others may feature your photos of this rollo. Turning it off removes them from other profiles; turning it on restores nothing */
+            allowFeaturing: boolean;
         };
         MediaRegistered: {
             /** Format: uuid */
@@ -3833,6 +3916,8 @@ export interface components {
             featuredByMe?: boolean;
             /** @description Only after the reveal: the author does not let others feature it (they still can) */
             featureBlocked?: boolean;
+            /** @description Only after the reveal: whether you can feature it on your profile now (false if its rollo is private, or if its author, their rollo membership or their account does not let others; its author can unless the rollo is private) */
+            canFeature?: boolean;
             /** @description Only after the reveal: how many people like it (one counter, also likes from profiles that feature it). Always 0 for videos */
             likeCount?: number;
             /** @description Only after the reveal: you like it */

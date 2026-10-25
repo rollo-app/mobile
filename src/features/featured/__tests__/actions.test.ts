@@ -1,5 +1,16 @@
 import { setSessionToken } from "@/storage/session";
-import { blockFeature, featureMedia, fetchFeatured, unblockFeature, unfeatureMedia, type FeaturedPhoto } from "../actions";
+import {
+  blockFeature,
+  featureMedia,
+  fetchFeatured,
+  fetchPrivacySettings,
+  setMyFeaturing,
+  setTripPrivate,
+  unblockFeature,
+  unfeatureMedia,
+  updatePrivacySettings,
+  type FeaturedPhoto,
+} from "../actions";
 
 type Route = [RegExp, number, unknown?];
 function mockApi(routes: Route[]) {
@@ -83,5 +94,42 @@ describe("fetchFeatured", () => {
   it("propagates the private-profile error", async () => {
     mockApi([[/^GET \/users\/u1\/featured$/, 403, { error: "Este perfil es privado" }]]);
     await expect(fetchFeatured("u1")).rejects.toThrow("Este perfil es privado");
+  });
+});
+
+describe("featuring levels", () => {
+  const settings = { notifications: {}, privacy: { allowFeaturing: true } };
+
+  it("fetchPrivacySettings reads privacy from GET /me/settings", async () => {
+    mockApi([[/^GET \/me\/settings$/, 200, settings]]);
+
+    expect(await fetchPrivacySettings()).toEqual({ allowFeaturing: true });
+  });
+
+  it("updatePrivacySettings PATCHes only privacy and returns it", async () => {
+    const fetchMock = mockApi([[/^PATCH \/me\/settings$/, 200, { ...settings, privacy: { allowFeaturing: false } }]]);
+
+    expect(await updatePrivacySettings({ allowFeaturing: false })).toEqual({ allowFeaturing: false });
+    expect(await request(fetchMock).json()).toEqual({ privacy: { allowFeaturing: false } });
+  });
+
+  it("setMyFeaturing PATCHes /trips/{id}/members/me", async () => {
+    const fetchMock = mockApi([[/^PATCH \/trips\/t1\/members\/me$/, 200, { allowFeaturing: false }]]);
+
+    await setMyFeaturing("t1", false);
+    expect(await request(fetchMock).json()).toEqual({ allowFeaturing: false });
+  });
+
+  it("setTripPrivate PATCHes featuringDisabled on /trips/{id}", async () => {
+    const fetchMock = mockApi([[/^PATCH \/trips\/t1$/, 200, { trip: {} }]]);
+
+    await setTripPrivate("t1", true);
+    expect(await request(fetchMock).json()).toEqual({ featuringDisabled: true });
+  });
+
+  it("propagates the server's message", async () => {
+    mockApi([[/^PATCH \/me\/settings$/, 400, { error: "No se pudo" }]]);
+
+    await expect(updatePrivacySettings({ allowFeaturing: false })).rejects.toThrow("No se pudo");
   });
 });

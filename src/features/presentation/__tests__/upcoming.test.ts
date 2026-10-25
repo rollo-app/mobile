@@ -21,6 +21,7 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   featuredByMe: false,
   featureBlocked: false,
   likeCount: 0,
+  canFeature: true,
   likedByMe: false,
   commentCount: 0,
 });

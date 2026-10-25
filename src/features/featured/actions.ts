@@ -29,3 +29,27 @@ export async function fetchFeatured(userId: string): Promise<FeaturedPhoto[]> {
   const { photos } = await unwrap((await authedClient()).GET("/users/{userId}/featured", { params: { path: { userId } } }));
   return photos;
 }
+
+/** Who can feature your photos, account level (on by default). */
+export type PrivacySettings = Schemas["PrivacySettings"];
+
+export async function fetchPrivacySettings(): Promise<PrivacySettings> {
+  return (await unwrap((await authedClient()).GET("/me/settings"))).privacy;
+}
+
+/** Turning `allowFeaturing` off also takes your photos off other profiles; turning it on restores nothing. */
+export async function updatePrivacySettings(patch: Partial<PrivacySettings>): Promise<PrivacySettings> {
+  return (await unwrap((await authedClient()).PATCH("/me/settings", { body: { privacy: patch } }))).privacy;
+}
+
+/** Whether others may feature your photos of this rollo (off takes them off other profiles). */
+export async function setMyFeaturing(tripId: string, allowFeaturing: boolean): Promise<void> {
+  await unwrap(
+    (await authedClient()).PATCH("/trips/{tripId}/members/me", { params: { path: { tripId } }, body: { allowFeaturing } }),
+  );
+}
+
+/** Admin only: a private rollo's photos can't go to any profile, not even their author's. */
+export async function setTripPrivate(tripId: string, featuringDisabled: boolean): Promise<void> {
+  await unwrap((await authedClient()).PATCH("/trips/{tripId}", { params: { path: { tripId } }, body: { featuringDisabled } }));
+}

@@ -33,6 +33,7 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   featuredByMe: false,
   featureBlocked: false,
   likeCount: 0,
+  canFeature: true,
   likedByMe: false,
   commentCount: 0,
 });

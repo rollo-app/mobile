@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Share } from "react-native";
+import { FeaturingSection } from "@/features/featured/featuring-section";
 import { useLeaveTrip } from "@/features/friends/use-leave-trip";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
@@ -29,6 +30,8 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
         <Row label="Código" value={detail.trip.joinCode} />
         <Row label="Compartir invitación" onPress={() => void share()} />
       </Section>
+
+      <FeaturingSection detail={detail} />
 
       <Section title={`En el rollo · ${detail.members.length}`}>
         {detail.members.map((m) => (

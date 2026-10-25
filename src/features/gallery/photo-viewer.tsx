@@ -1,3 +1,4 @@
+import { featureActionAvailable } from "@/features/featured/feature-action";
 import { MenuView, type MenuAction } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -282,7 +283,7 @@ export function PhotoViewer({
                     onPress={() => router.push({ pathname: "/comments/[mediaId]", params: { mediaId: photo.id } })}
                   />
                 )}
-                {photo.type === "photo" && (
+                {photo.type === "photo" && featureActionAvailable(photo) && (
                   <OverlayIconButton
                     symbol={photo.featuredByMe ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.plus"}
                     symbolTestID="feature-symbol"
