@@ -110,7 +110,7 @@ export function PhotoViewer({
   const { width, height } = useWindowDimensions();
   const { trip } = useActiveTrip();
   const tripId = tripParam ?? trip?.id;
-  const { photos, token, loading } = useRevealedPhotos(tripId);
+  const { photos, token, loading, refetch } = useRevealedPhotos(tripId);
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
   const { me } = useMe();
@@ -124,10 +124,26 @@ export function PhotoViewer({
   const [blockError, setBlockError] = useState<string | null>(null);
 
   const startIndex = useRef<number | null>(null);
-  if (startIndex.current === null && photos.length > 0) startIndex.current = Math.max(0, photos.findIndex((p) => p.id === id));
+  // Locked only once the photo is found: a stale cached feed may not have it yet (a push for a new moment).
+  if (startIndex.current === null) {
+    const found = photos.findIndex((p) => p.id === id);
+    if (found >= 0) startIndex.current = found;
+  }
+  // The photo is missing from what we have: ask the server once; if it is still missing, say so.
+  const [missingChecked, setMissingChecked] = useState(false);
+  const missing = startIndex.current === null;
+  useEffect(() => {
+    if (!missing || !tripId) return;
+    let active = true;
+    void refetch({ cancelRefetch: false }).finally(() => active && setMissingChecked(true));
+    return () => {
+      active = false;
+    };
+  }, [missing, tripId, refetch]);
+  const notFound = missing && missingChecked && !loading;
   const [index, setIndex] = useState<number | null>(null);
   const current = index ?? startIndex.current ?? 0;
-  const photo = photos[current];
+  const photo = missing ? undefined : photos[current];
 
   // The comments push opens the photo with its sheet, once.
   const commentsOpened = useRef(false);
@@ -242,7 +258,13 @@ export function PhotoViewer({
           )}
         />
       ) : (
-        loading && <ActivityIndicator color="#FFFFFF" style={styles.fill} />
+        notFound ? (
+          <View style={styles.notFound}>
+            <Text style={[type.body, styles.dim]}>No encontramos esta foto.</Text>
+          </View>
+        ) : (
+          <ActivityIndicator color="#FFFFFF" style={styles.fill} />
+        )
       )}
 
       {chrome && (
@@ -348,6 +370,7 @@ export function PhotoViewer({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: "#000000" },
+  notFound: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   close: { position: "absolute", left: spacing.md },
   moment: { position: "absolute", left: spacing.md },
   more: { position: "absolute", right: spacing.md },

@@ -47,7 +47,8 @@ export function RevealScreen() {
     router.replace("/presentation");
   }, []);
 
-  const ready = !!detail && !!token && photos.length > 0;
+  // Before `checked` the cache may hold only the daily moments from before the reveal: wait for the full feed.
+  const ready = checked && !!detail && !!token && photos.length > 0;
   const nothing = checked && !ready && !loading && (!!error || (!!detail && !!token && photos.length === 0));
 
   useEffect(() => {

@@ -12,6 +12,8 @@ import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
+import { queryClient } from "@/api/query-client";
+import { feedKey } from "@/features/trips/use-feed";
 
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/featured/actions");
@@ -807,6 +809,26 @@ describe("Daily moment in the viewer before the reveal", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Ver la otra foto" }));
     expect(await screen.findByRole("button", { name: "Ver la otra foto" })).toBeVisible();
     expect(screen.getByText("Fede")).toBeVisible();
+  });
+
+  it("opens the pushed moment when the cached feed was missing it, once the refetch brings it", async () => {
+    const other = moment("other", { caption: "otro momento" });
+    const target = moment("target", { caption: "el objetivo", takenAt: Date.parse("2027-01-12T17:00:00Z") });
+    queryClient.setQueryData(feedKey(SUR), unrevealed([other]), { updatedAt: Date.now() });
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: false, revealAt: Date.now() + DAY, endsAt: Date.now() + DAY } });
+    mocked.fetchFeed.mockResolvedValue(unrevealed([other, target]));
+    await renderRouter(routes, { initialUrl: `/photo/target?tripId=${SUR}` });
+
+    expect(await screen.findByText("el objetivo")).toBeVisible();
+    expect(screen.queryByText("otro momento")).toBeNull();
+  });
+
+  it("says it could not find the photo when the fresh feed does not have it either", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: false, revealAt: Date.now() + DAY, endsAt: Date.now() + DAY } });
+    mocked.fetchFeed.mockResolvedValue(unrevealed([moment("other")]));
+    await renderRouter(routes, { initialUrl: `/photo/ghost?tripId=${SUR}` });
+
+    expect(await screen.findByText("No encontramos esta foto.")).toBeVisible();
   });
 
   it("is read-only: no like, comments, save or feature", async () => {
