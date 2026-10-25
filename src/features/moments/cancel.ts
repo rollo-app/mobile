@@ -1,9 +1,14 @@
 import * as Notifications from "expo-notifications";
+import { serialized } from "./lock";
 
 export const MOMENT_PREFIX = "moment.";
 
 /** Cancels every scheduled `moment.*` notification, or only those of one trip. Never throws. */
-export async function cancelMomentNotifications(tripId?: string): Promise<void> {
+export function cancelMomentNotifications(tripId?: string): Promise<void> {
+  return serialized(() => cancelNow(tripId));
+}
+
+async function cancelNow(tripId?: string): Promise<void> {
   try {
     const prefix = tripId ? `${MOMENT_PREFIX}${tripId}.` : MOMENT_PREFIX;
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
