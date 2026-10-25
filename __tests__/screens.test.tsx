@@ -37,6 +37,9 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   featuringDisabled: false,
   photoLimitMode: "daily",
   totalPhotoLimit: null,
+  momentMode: "off",
+  momentWindowStart: 540,
+  momentWindowEnd: 1380,
   ...overrides,
 });
 

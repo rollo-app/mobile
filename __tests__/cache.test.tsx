@@ -35,6 +35,9 @@ const detail = (): actions.TripDetail => ({
     featuringDisabled: false,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [

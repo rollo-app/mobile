@@ -42,6 +42,9 @@ const detail = (id = SUR, name = "Viaje al sur"): actions.TripDetail => ({
     featuringDisabled: false,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false },
   members: [],
@@ -246,7 +249,7 @@ describe("tapping a push", () => {
 });
 
 describe("Ajustes: Notificaciones", () => {
-  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true };
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true };
   const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad"];
 
   beforeEach(() => {
