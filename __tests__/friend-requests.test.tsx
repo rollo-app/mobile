@@ -159,29 +159,50 @@ describe("friend request button on a profile", () => {
   });
 });
 
-describe("Solicitudes in the Amigos tab", () => {
-  it("lists the received requests above the friends, and nothing when there are none", async () => {
+describe("Solicitudes row in the Amigos tab", () => {
+  it("shows no row when there are no requests", async () => {
     await renderRouter(routes, { initialUrl: "/friends" });
     await waitFor(() => expect(mocked.fetchFriendRequests).toHaveBeenCalled());
-    expect(screen.queryByText(/^Solicitudes/)).toBeNull();
+    expect(screen.queryByText("Solicitudes")).toBeNull();
   });
 
-  it("shows who asked, and accepting moves them to the friends list", async () => {
-    mocked.fetchFriendRequests.mockResolvedValue([{ user: cami, createdAt: Date.now() }]);
+  it("shows one row with the count that opens the requests screen", async () => {
+    mocked.fetchFriendRequests.mockResolvedValue([
+      { user: cami, createdAt: Date.now() },
+      { user: tomi, createdAt: Date.now() - 1000 },
+    ]);
+    await renderRouter(routes, { initialUrl: "/friends" });
+
+    const row = await screen.findByRole("button", { name: "Solicitudes, 2" });
+    expect(screen.queryByText("Cami")).toBeNull();
+    await fireEvent.press(row);
+
+    await waitFor(() => expect(screen).toHavePathname("/friends/requests"));
+    expect(await screen.findByText("Cami")).toBeVisible();
+    expect(screen.getByText("Tomi")).toBeVisible();
+  });
+});
+
+describe("Solicitudes screen", () => {
+  it("shows who asked, and accepting moves them to the friends list and updates the tab row", async () => {
+    mocked.fetchFriendRequests.mockResolvedValue([
+      { user: cami, createdAt: Date.now() },
+      { user: tomi, createdAt: Date.now() - 1000 },
+    ]);
     mocked.acceptFriendRequest.mockImplementation(async () => {
-      mocked.fetchFriendRequests.mockResolvedValue([]);
+      mocked.fetchFriendRequests.mockResolvedValue([{ user: tomi, createdAt: Date.now() }]);
       mocked.fetchFriends.mockResolvedValue([cami]);
       return cami;
     });
-    await renderRouter(routes, { initialUrl: "/friends" });
+    await renderRouter(routes, { initialUrl: "/friends/requests" });
 
-    expect(await screen.findByText("Solicitudes · 1")).toBeVisible();
-    expect(screen.getByText("Cami")).toBeVisible();
+    expect(await screen.findByText("Cami")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Aceptar solicitud de Cami" }));
 
     expect(mocked.acceptFriendRequest).toHaveBeenCalledWith("u2");
-    await waitFor(() => expect(screen.queryByText("Solicitudes · 1")).toBeNull());
-    expect(await screen.findByText("Amigos · 1")).toBeVisible();
+    await waitFor(() => expect(screen.queryByText("Cami")).toBeNull());
+    expect(screen.getByText("Tomi")).toBeVisible();
+    await waitFor(() => expect(mocked.fetchFriends.mock.calls.length).toBeGreaterThan(1));
   });
 
   it("rejecting removes the row", async () => {
@@ -192,33 +213,55 @@ describe("Solicitudes in the Amigos tab", () => {
     mocked.rejectFriendRequest.mockImplementation(async () => {
       mocked.fetchFriendRequests.mockResolvedValue([{ user: tomi, createdAt: Date.now() }]);
     });
-    await renderRouter(routes, { initialUrl: "/friends" });
+    await renderRouter(routes, { initialUrl: "/friends/requests" });
 
-    expect(await screen.findByText("Solicitudes · 2")).toBeVisible();
-    await fireEvent.press(screen.getByRole("button", { name: "Rechazar solicitud de Cami" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Rechazar solicitud de Cami" }));
 
     expect(mocked.rejectFriendRequest).toHaveBeenCalledWith("u2");
-    expect(await screen.findByText("Solicitudes · 1")).toBeVisible();
-    expect(within(screen.getByText("Solicitudes · 1").parent!.parent!).queryByText("Cami")).toBeNull();
+    await waitFor(() => expect(screen.queryByText("Cami")).toBeNull());
+    expect(screen.getByText("Tomi")).toBeVisible();
+  });
+
+  it("says there are none after answering the last one", async () => {
+    mocked.fetchFriendRequests.mockResolvedValue([{ user: cami, createdAt: Date.now() }]);
+    mocked.rejectFriendRequest.mockImplementation(async () => {
+      mocked.fetchFriendRequests.mockResolvedValue([]);
+    });
+    await renderRouter(routes, { initialUrl: "/friends/requests" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Rechazar solicitud de Cami" }));
+
+    expect(await screen.findByText("No tenés solicitudes pendientes.")).toBeVisible();
   });
 
   it("tapping a row opens their profile", async () => {
     mocked.fetchFriendRequests.mockResolvedValue([{ user: cami, createdAt: Date.now() }]);
-    await renderRouter(routes, { initialUrl: "/friends" });
+    await renderRouter(routes, { initialUrl: "/friends/requests" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Cami" }));
 
     await waitFor(() => expect(screen).toHavePathname("/friends/user/u2"));
   });
 
-  it("shows the error under the section when answering fails, keeping the row", async () => {
+  it("shows the error when answering fails, keeping the row", async () => {
     mocked.fetchFriendRequests.mockResolvedValue([{ user: cami, createdAt: Date.now() }]);
     mocked.acceptFriendRequest.mockRejectedValue(new Error("No hay una solicitud de esa persona"));
-    await renderRouter(routes, { initialUrl: "/friends" });
+    await renderRouter(routes, { initialUrl: "/friends/requests" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Aceptar solicitud de Cami" }));
 
     expect(await screen.findByText("No hay una solicitud de esa persona")).toBeVisible();
-    expect(screen.getByText("Solicitudes · 1")).toBeVisible();
+    expect(screen.getByText("Cami")).toBeVisible();
+  });
+
+  it("shows a retry when loading fails", async () => {
+    mocked.fetchFriendRequests.mockRejectedValueOnce(new Error("Sin conexión"));
+    mocked.fetchFriendRequests.mockResolvedValue([{ user: cami, createdAt: Date.now() }]);
+    await renderRouter(routes, { initialUrl: "/friends/requests" });
+
+    const error = await screen.findByText("Sin conexión");
+    await fireEvent.press(within(error.parent!.parent!).getByRole("button", { name: "Reintentar" }));
+
+    expect(await screen.findByText("Cami")).toBeVisible();
   });
 });

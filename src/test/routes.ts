@@ -7,6 +7,7 @@ import TabsLayout from "../../app/(tabs)/_layout";
 import CameraTab from "../../app/(tabs)/camera";
 import FriendsLayout from "../../app/(tabs)/friends/_layout";
 import FriendsTab from "../../app/(tabs)/friends/index";
+import FriendRequestsRoute from "../../app/(tabs)/friends/requests";
 import FriendProfileRoute from "../../app/(tabs)/friends/user/[id]";
 import MapLayout from "../../app/(tabs)/map/_layout";
 import MapScreen from "../../app/(tabs)/map/index";
@@ -83,6 +84,7 @@ export const routes = {
   "(tabs)/camera": CameraTab,
   "(tabs)/friends/_layout": FriendsLayout,
   "(tabs)/friends/index": FriendsTab,
+  "(tabs)/friends/requests": FriendRequestsRoute,
   "(tabs)/friends/user/[id]": FriendProfileRoute,
   "(tabs)/me/_layout": MeLayout,
   "(tabs)/me/index": MeScreen,

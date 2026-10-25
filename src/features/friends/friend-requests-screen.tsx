@@ -2,22 +2,33 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
-import { ErrorText, Row, Section } from "@/ui/components";
+import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import type { FriendRequest } from "./actions";
 import { useFriendRequest } from "./use-friend-request";
-import { useFriendRequests } from "./use-friend-requests";
+import { useFriendRequestsList } from "./use-friend-requests";
 
-/** "Solicitudes" at the top of the Amigos tab: who asked to be your friend, with accept / reject per row. Nothing if none. */
-export function FriendRequestsSection() {
-  const { requests } = useFriendRequests();
-  if (!requests || requests.length === 0) return null;
+/** All received friend requests, with accept / reject per row. Opens from the "Solicitudes" row in the Amigos tab. */
+export function FriendRequestsScreen() {
+  const { requests, error, refetch, isRefetching } = useFriendRequestsList();
   return (
-    <Section title={`Solicitudes · ${requests.length}`}>
-      {requests.map((r) => (
-        <RequestRow key={r.user.id} request={r} />
-      ))}
-    </Section>
+    <Screen grouped>
+      {error && (
+        <>
+          <ErrorText>{error}</ErrorText>
+          <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
+        </>
+      )}
+      {!error && !requests && <Loading />}
+      {requests && requests.length === 0 && <Footnote>No tenés solicitudes pendientes.</Footnote>}
+      {requests && requests.length > 0 && (
+        <Section>
+          {requests.map((r) => (
+            <RequestRow key={r.user.id} request={r} />
+          ))}
+        </Section>
+      )}
+    </Screen>
   );
 }
 
