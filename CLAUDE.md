@@ -56,8 +56,8 @@ Decisiones de producto:
   defecto es un recorte) y el botón hace rampa entre ese 1× (por defecto) y el mínimo real; si el mínimo no es más ancho, no aparece.
   **Exposición como iOS** (`exposure.ts`): tocar el recuadro mide enfoque, exposición y balance de blancos ahí (`focusTo` con
   `modes` según `supportsFocus/Exposure/WhiteBalanceMetering`, `autoResetAfter: null`: no vuelve solo al centro) y muestra el cuadrado
-  de enfoque con el sol; después, arrastrar un dedo arriba/abajo cambia el EV (prop `exposure`, 50 pt por paso, dentro de
-  `minExposureBias`/`maxExposureBias` reales); el valor queda hasta tocar en otro lado (vuelve a 0) o remontar/dar vuelta la cámara.
+  de enfoque con el sol; después, arrastrar un dedo arriba/abajo cambia el EV (prop `exposure`, 50 pt por paso, ±2 EV como la cámara de iOS
+  y nunca más allá de `minExposureBias`/`maxExposureBias` reales); el valor queda hasta tocar en otro lado (vuelve a 0) o remontar/dar vuelta la cámara.
   VoiceOver: "Exposición" ajustable de a 1/3 de paso. El pellizco (dos dedos) sigue igual. **Low-light boost** automático donde el
   dispositivo lo tiene (`enableLowLightBoost={device.supportsLowLightBoost}`).
   **Cuadrícula** 3×3 (botón `grid`, cobalto prendida) que el celular recuerda (`rollo.cameraGrid`, `src/storage/camera-grid.ts`) y

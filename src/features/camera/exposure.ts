@@ -2,8 +2,8 @@ import type { CameraDevice, MeteringMode } from "react-native-vision-camera";
 
 /**
  * Exposure like the iPhone's camera: a tap meters focus and exposure on that point, and dragging up or down afterwards
- * biases the exposure (EV) within the device's real range (`minExposureBias`/`maxExposureBias`, AVFoundation's
- * `min/maxExposureTargetBias`). Up is brighter.
+ * biases the exposure (EV) within ±2 EV like the iPhone's control, never past the device's real range
+ * (`minExposureBias`/`maxExposureBias`, AVFoundation's `min/maxExposureTargetBias`). Up is brighter.
  */
 export type BiasRange = { min: number; max: number };
 
@@ -15,9 +15,15 @@ export const EV_STEP = 1 / 3;
 
 const clamp = (range: BiasRange, value: number) => Math.min(range.max, Math.max(range.min, value));
 
+/** The iPhone's camera offers ±2 EV (AVFoundation allows ±8, too much for a short drag and a small sun slider). */
+const MAX_EV = 2;
+
+/** ±2 EV intersected with the device's real range, or `null` when it cannot bias exposure. */
 export function biasRange(device: Pick<CameraDevice, "supportsExposureBias" | "minExposureBias" | "maxExposureBias">): BiasRange | null {
-  if (!device.supportsExposureBias || !(device.maxExposureBias > device.minExposureBias)) return null;
-  return { min: device.minExposureBias, max: device.maxExposureBias };
+  if (!device.supportsExposureBias) return null;
+  const min = Math.max(-MAX_EV, device.minExposureBias);
+  const max = Math.min(MAX_EV, device.maxExposureBias);
+  return max > min ? { min, max } : null;
 }
 
 /** The bias after a drag of `dy` points (negative = up) that started at `startBias`. */

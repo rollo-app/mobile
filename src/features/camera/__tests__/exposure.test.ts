@@ -3,8 +3,9 @@ import { biasRange, dragBias, EV_STEP, formatBias, meteringModes, stepBias, sunO
 const iphone = { supportsExposureBias: true, minExposureBias: -8, maxExposureBias: 8 };
 
 describe("biasRange", () => {
-  it("is the device's real exposure bias range", () => {
-    expect(biasRange(iphone)).toEqual({ min: -8, max: 8 });
+  it("is ±2 EV like the iPhone's camera control, within the device's real range", () => {
+    expect(biasRange(iphone)).toEqual({ min: -2, max: 2 });
+    expect(biasRange({ supportsExposureBias: true, minExposureBias: -1.5, maxExposureBias: 8 })).toEqual({ min: -1.5, max: 2 });
   });
 
   it("is null when the device cannot bias exposure (or reports an empty range)", () => {

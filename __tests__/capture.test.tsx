@@ -697,7 +697,7 @@ describe("Camera extras (like the iPhone's camera)", () => {
       expect(vision.__focusTo).toHaveBeenCalledWith({ x: 10, y: 20 }, { modes: ["AE"], autoResetAfter: null });
     });
 
-    it("after a tap, dragging up brightens and down darkens, within the device's real range", async () => {
+    it("after a tap, dragging up brightens and down darkens, within ±2 EV (the device allows ±8)", async () => {
       await openCapture();
       await startSession();
       await tap(40, 60);
@@ -707,9 +707,9 @@ describe("Camera extras (like the iPhone's camera)", () => {
       expect(exposure()).toBeCloseTo(1.5);
       expect(screen.getByRole("adjustable", { name: "Exposición" }).props.accessibilityValue).toEqual({ text: "+1,5" });
       await drag(200, 300, -5000);
-      expect(exposure()).toBe(8);
+      expect(exposure()).toBe(2);
       await drag(200, 300, 5000);
-      expect(exposure()).toBe(-8);
+      expect(exposure()).toBe(-2);
       expect(vision.__focusTo).toHaveBeenCalledTimes(1); // a drag is not a tap
     });
 
