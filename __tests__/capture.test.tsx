@@ -1,3 +1,4 @@
+import { Alert } from "react-native";
 import { router } from "expo-router";
 import { StyleSheet } from "react-native";
 import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
@@ -557,7 +558,7 @@ describe("Capture", () => {
     expect(await screen.findByText("Se terminó el rollo de hoy")).toBeVisible();
   });
 
-  it("after shooting it shows a heavily blurred photo with a caption and no way out but sending it", async () => {
+  it("after shooting it shows a heavily blurred photo with a caption, and no retake", async () => {
     await openCapture();
     await shoot();
 
@@ -565,10 +566,46 @@ describe("Capture", () => {
     expect(screen.getByLabelText("Caption")).toBeVisible();
     const blurred = screen.container.queryAll((node) => node.props.blurRadius >= 40);
     expect(blurred.length).toBeGreaterThan(0);
-    // "The shot is the shot": no retake and no cancel, so you can't discard it.
     expect(screen.queryByRole("button", { name: "Repetir" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Cancelar" })).toBeNull();
-        expect(mediaMock.discard).not.toHaveBeenCalled();
+  });
+
+  it("the X asks to discard the photo; confirming deletes it and closes without queueing", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    try {
+      await openCapture();
+      await shoot();
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Descartar foto" }));
+      const [title, , buttons] = alert.mock.calls.at(-1)!;
+      expect(title).toBe("¿Descartar la foto?");
+      expect(mediaMock.discard).not.toHaveBeenCalled();
+      await act(async () => buttons!.find((b) => b.text === "Descartar")!.onPress!());
+
+      expect(mediaMock.discard).toHaveBeenCalled();
+      await waitFor(() => expect(screen).toHavePathname("/roll"));
+      expect(await queue.pending()).toEqual([]);
+    } finally {
+      alert.mockRestore();
+    }
+  });
+
+  it("cancelling the discard keeps the photo and the caption", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    try {
+      mediaMock.discard.mockClear();
+      await openCapture();
+      await shoot();
+      await fireEvent.changeText(await screen.findByLabelText("Caption"), "hola");
+
+      await fireEvent.press(screen.getByRole("button", { name: "Descartar foto" }));
+      const [, , buttons] = alert.mock.calls.at(-1)!;
+      await act(async () => buttons!.find((b) => b.text === "Cancelar")?.onPress?.());
+
+      expect(mediaMock.discard).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("Caption").props.value).toBe("hola");
+    } finally {
+      alert.mockRestore();
+    }
   });
 
   it("sending saves it to the queue with time, location and caption, and goes back", async () => {

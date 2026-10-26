@@ -91,8 +91,9 @@ Decisiones de producto:
   con Wi‑Fi; tope ~400 MB). Los packs usan el mismo `file://` de estilo que el MapView, se nombran
   `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Ajustes → "Mapa sin señal" (ajuste del celular, no del rollo).
 - **Captura:** cámara propia (`CaptureScreen`) solo de fotos, a resolución completa de la trasera (`quality: 1`; la frontal va con el procesamiento normal, el 1080 px es solo del momento). **No hay "Repetir"** ("la sacada es la que es"): al disparar va directo a la pantalla del caption, la pantalla del caption
-  muestra la foto **muy difuminada** (`blurRadius`), con caption opcional y "Mandar al rollo". No hay forma de salir sin mandarla (sin
-  "Cancelar" ni gesto de cerrar). Una vez mandada no se puede repetir ni ver.
+  muestra la foto **muy difuminada** (`blurRadius`), con caption opcional y "Mandar al rollo". No hay "Repetir": la "X" de arriba a
+  la izquierda solo la descarta (alerta "¿Descartar la foto?", borra el archivo y cierra), así nadie tiene que cerrar la app
+  para no subirla. Una vez mandada no se puede repetir ni ver.
 - **Antes del revelado** no se ve ninguna foto, solo su **ThumbHash** (colores difusos, lo genera el
   celular y el server lo devuelve en el feed). Para que den ganas de abrir la app: **mapa en vivo** con
   pins (autor y hora; con la foto de perfil del autor si tiene, hecha en JS como `tab-avatar` y registrada con `Images`, y si no la inicial sobre su color), **feed** y la hoja de contacto del rollo. Se muestra solo el total del grupo.
@@ -376,7 +377,7 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1559 tests
+npm test                      # 1561 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

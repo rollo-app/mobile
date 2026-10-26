@@ -9,6 +9,7 @@ import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { CaptureMessage } from "./capture-message";
 import { CapturePreview, type Shot } from "./capture-preview";
+import { discard } from "./media";
 import { closedMessage, exhaustedMessage } from "./capture-copy";
 import { startFix, type Fix } from "./location";
 import { loadLeft } from "./load-left";
@@ -119,6 +120,10 @@ export function CaptureScreen() {
       sending={sendShot.isPending}
       error={errorMessage(sendShot.error, "No se pudo guardar. Probá de nuevo.")}
       onSend={() => send(state.shot)}
+      onDiscard={() => {
+        void discard(state.shot.photo.uri);
+        router.back();
+      }}
     />
   );
 }

@@ -8,6 +8,7 @@ import { Camera, CloseButton } from "@/features/camera/camera";
 import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import { CaptureMessage } from "@/features/capture/capture-message";
 import { CapturePreview, type Shot } from "@/features/capture/capture-preview";
+import { discard } from "@/features/capture/media";
 import { startFix, type Fix } from "@/features/capture/location";
 import { localDay } from "@/features/capture/quota";
 import { useSendShot } from "@/features/capture/use-send-shot";
@@ -95,6 +96,11 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
         sending={sendShot.isPending}
         error={errorMessage(sendShot.error, "No se pudo guardar. Probá de nuevo.")}
         onSend={() => send(step.main, step.selfie)}
+        onDiscard={() => {
+          void discard(step.main.photo.uri);
+          if (step.selfie) void discard(step.selfie.photo.uri);
+          router.back();
+        }}
       />
     );
   }

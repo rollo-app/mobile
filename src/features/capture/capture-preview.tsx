@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { SymbolView } from "expo-symbols";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import { ErrorText } from "@/ui/components";
@@ -12,7 +13,10 @@ export type Shot = { photo: CapturedPhoto; takenAt: number };
 // Strong enough that the photo can't be recognized: the shot is the shot, you only get to caption it.
 const BLUR_RADIUS = 100;
 
-/** The shot, blurred, with an optional caption. There is no retake or cancel: the only way out is sending it. */
+/**
+ * The shot, blurred, with an optional caption. No retake: the X only discards it (after a native confirmation), so a
+ * user who doesn't want it doesn't have to kill the app.
+ */
 export function CapturePreview(props: {
   shot: Shot;
   caption: string;
@@ -20,6 +24,8 @@ export function CapturePreview(props: {
   sending: boolean;
   error: string | null;
   onSend: () => void;
+  /** Discard the shot (after the confirmation): delete its files and close. */
+  onDiscard: () => void;
   /** The moment's second shot: also blurred, in the top-left corner like the viewers' inset (only visual, no swapping). */
   inset?: CapturedPhoto | null;
 }) {
@@ -30,9 +36,24 @@ export function CapturePreview(props: {
   return (
     <KeyboardAvoidingView behavior="padding" style={[styles.dark, { paddingTop: insets.top }]}>
       <Pressable accessible={false} onPress={Keyboard.dismiss} style={styles.photo}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Descartar foto"
+          disabled={props.sending}
+          hitSlop={6}
+          onPress={() =>
+            Alert.alert("¿Descartar la foto?", "No se sube al rollo y no se puede recuperar.", [
+              { text: "Cancelar", style: "cancel" },
+              { text: "Descartar", style: "destructive", onPress: props.onDiscard },
+            ])
+          }
+          style={styles.discard}
+        >
+          <SymbolView name="xmark" size={16} tintColor="#fff" />
+        </Pressable>
         <Image source={{ uri: props.shot.photo.uri }} style={styles.photo} contentFit="cover" blurRadius={BLUR_RADIUS} accessible={false} />
         {props.inset && (
-          <View testID="caption-inset" style={[insetFrame.frame, styles.inset, { top: spacing.sm }]}>
+          <View testID="caption-inset" style={[insetFrame.frame, styles.inset, { top: spacing.sm + 44 }]}>
             <Image
               testID="caption-inset-image"
               source={{ uri: props.inset.uri }}
@@ -93,6 +114,18 @@ function useKeyboardOpen() {
 
 // The preview is always dark, like the camera: the photo takes the lead.
 const styles = StyleSheet.create({
+  discard: {
+    position: "absolute",
+    top: spacing.sm,
+    left: spacing.md,
+    zIndex: 2,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
   dark: { flex: 1, backgroundColor: "#000" },
   photo: { flex: 1 },
   inset: { position: "absolute", left: spacing.md },
