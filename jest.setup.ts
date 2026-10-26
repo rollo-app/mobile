@@ -266,8 +266,17 @@ jest.mock("@expo/ui/swift-ui", () => {
     Host: Wrap,
     Form: Wrap,
     Text: ({ children }: any) => h(RNText, null, children),
-    Section: ({ title, footer, children }: any) =>
-      h(View, null, title && h(RNText, null, title), children, footer),
+    Section: ({ title, header, footer, children }: any) =>
+      h(View, null, title && h(RNText, null, title), header, children, footer),
+    HStack: Wrap,
+    Spacer: () => null,
+    Image: () => null,
+    Button: ({ onPress, modifiers, children }: any) =>
+      h(
+        Pressable,
+        { accessibilityRole: "button", accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel, onPress },
+        children,
+      ),
     TextField: ({ placeholder, onTextChange }: any) =>
       h(TextInput, { placeholder, onChangeText: onTextChange }),
     DatePicker: ({ title, selection, range }: any) =>
@@ -310,6 +319,8 @@ jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   labelsHidden: () => ({ labelsHidden: true }),
   disabled: (disabled = true) => ({ disabled }),
   accessibilityLabel: (accessibilityLabel: string) => ({ accessibilityLabel }),
+  buttonStyle: (style: string) => ({ buttonStyle: style }),
+  font: (params: unknown) => ({ font: params }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).
@@ -376,12 +387,17 @@ jest.mock("expo-background-task", () => ({
 jest.mock("expo-notifications", () => ({
   setNotificationHandler: jest.fn(),
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  scheduleNotificationAsync: jest.fn(async (request: { identifier?: string }) => request.identifier ?? "id"),
+  SchedulableTriggerInputTypes: { DATE: "date" },
   cancelScheduledNotificationAsync: jest.fn(async () => {}),
   getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true, status: "undetermined" })),
   requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true, status: "granted" })),
   getExpoPushTokenAsync: jest.fn(async () => ({ type: "expo", data: "ExponentPushToken[test-token]" })),
+  getPresentedNotificationsAsync: jest.fn(async () => []),
+  dismissNotificationAsync: jest.fn(async () => {}),
   getLastNotificationResponseAsync: jest.fn(async () => null),
   clearLastNotificationResponseAsync: jest.fn(async () => {}),
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
@@ -394,6 +410,76 @@ jest.mock("expo-media-library", () => ({
 
 beforeEach(() => {
   (require("expo-file-system").File as { deleted: number }).deleted = 0;
+});
+
+// react-native-vision-camera is native (Nitro): the view is an empty View that keeps its props (device, zoom, outputs...)
+// and whose ref focuses; devices, permission and the photo output are plain objects drivable from tests.
+// `__device` builds a device like the real ones (default: a triple camera with a 3x telephoto and 48 MP; front wide).
+jest.mock("react-native-vision-camera", () => {
+  const { View } = require("react-native");
+  const { forwardRef, createElement, useImperativeHandle } = require("react");
+  const device = (overrides: Record<string, unknown>) => ({
+    id: "wide",
+    type: "wide-angle",
+    position: "back",
+    minZoom: 1,
+    maxZoom: 16,
+    zoomLensSwitchFactors: [],
+    physicalDevices: [],
+    hasFlash: true,
+    supportsFocusMetering: true,
+    supportsExposureMetering: true,
+    supportsWhiteBalanceMetering: true,
+    supportsExposureBias: true,
+    minExposureBias: -8,
+    maxExposureBias: 8,
+    supportsLowLightBoost: true,
+    getSupportedResolutions: () => [{ width: 4032, height: 3024 }],
+    ...overrides,
+  });
+  const back = device({
+    id: "back-triple",
+    type: "triple",
+    maxZoom: 123.75,
+    zoomLensSwitchFactors: [2, 6],
+    physicalDevices: [{ type: "ultra-wide-angle" }, { type: "wide-angle" }, { type: "telephoto" }],
+    getSupportedResolutions: () => [{ width: 4032, height: 3024 }, { width: 5712, height: 4284 }, { width: 8064, height: 6048 }, { width: 7680, height: 4320 }],
+  });
+  const front = device({ id: "front-wide", position: "front", hasFlash: false });
+  // iOS stores the photo in the sensor's orientation (landscape) with an EXIF flag: held upright that is "right".
+  const photo = (path: string, width: number, height: number, orientation = "right", isMirrored = false) => ({
+    width,
+    height,
+    orientation,
+    isMirrored,
+    saveToTemporaryFileAsync: jest.fn(async () => path),
+    dispose: jest.fn(),
+  });
+  const capturePhoto = jest.fn(async () => photo("/cache/Camera/shot.jpg", 4032, 3024));
+  const photoOutput = { capturePhoto, prepareSettings: jest.fn(async () => {}) };
+  const focusTo = jest.fn(async () => {});
+  // The running session's controller (after `onStarted`): its zoom range is the active format's, and
+  // `displayableZoomFactor / zoom` is iOS's display multiplier (below 1 on a front camera that can "Ampliar encuadre").
+  const controller = { minZoom: 1, maxZoom: 123.75, zoom: 1, displayableZoomFactor: 1, setZoom: jest.fn(async (_zoom: number) => {}) };
+  const startZoomAnimation = jest.fn(async (_zoom: number, _rate: number) => {});
+  const granted = { status: "authorized", hasPermission: true, canRequestPermission: false, requestPermission: jest.fn(async () => true) };
+  return {
+    __device: device,
+    __devices: { back, front },
+    __photo: photo,
+    __capturePhoto: capturePhoto,
+    __focusTo: focusTo,
+    __controller: controller,
+    __startZoomAnimation: startZoomAnimation,
+    __granted: granted,
+    Camera: forwardRef((props: { device?: { position: string } }, ref: unknown) => {
+      useImperativeHandle(ref, () => ({ focusTo, startZoomAnimation, controller }));
+      return createElement(View, { testID: `camera-${String(props.device?.position)}`, ...props });
+    }),
+    useCameraDevices: jest.fn(() => [back, front]),
+    useCameraPermission: jest.fn(() => granted),
+    usePhotoOutput: jest.fn(() => photoOutput),
+  };
 });
 
 // expo-video is native: in tests the player is an empty object and the view an empty View.

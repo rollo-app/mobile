@@ -1,8 +1,7 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { Image } from "expo-image";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
-import type { ImagePickerAsset } from "expo-image-picker";
-import * as VideoThumbnails from "expo-video-thumbnails";
+import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import type { ExifInput } from "@/features/exif/build-exif";
 import { embedMetadata } from "@/features/exif/embed";
 
@@ -21,53 +20,40 @@ export type PreparedMedia = {
 };
 
 /**
- * Prepares a capture for the queue: original (photo ≤4000 px JPEG 88 % or the video
- * already exported at 1080p by the camera), 800 px thumb and its ThumbHash.
+ * Prepares a photo for the queue: original (≤4000 px JPEG 88 %), 800 px thumb and its ThumbHash.
+ * `options.maxDimension` lowers the photo's long side (the front camera of a moment is 1080 px).
  * Resizing re-encodes the JPEG and drops its EXIF, so photos get theirs written back from `metadata`
- * (time in the roll's zone, GPS, caption, author). Videos are moved as the camera exported them.
+ * (time in the roll's zone, GPS, caption, author).
  * Everything goes to Documents (not the cache, which iOS may clear during days without signal) and is
  * deleted only once the server confirms the upload.
  */
-export async function prepareMedia(asset: ImagePickerAsset, id: string, metadata: ExifInput): Promise<PreparedMedia> {
+export async function prepareMedia(
+  photo: CapturedPhoto,
+  id: string,
+  metadata: ExifInput,
+  options: { maxDimension?: number } = {},
+): Promise<PreparedMedia> {
   const dir = new Directory(Paths.document, "pending", id);
   dir.create({ intermediates: true, idempotent: true });
 
-  const isVideo = asset.type === "video";
-  const original = new File(dir, isVideo ? "original.mp4" : "original.jpg");
+  const original = new File(dir, "original.jpg");
   const thumb = new File(dir, "thumb.jpg");
 
-  let width: number | null = asset.width || null;
-  let height: number | null = asset.height || null;
-
-  if (isVideo) {
-    await new File(asset.uri).move(original);
-    const frame = await VideoThumbnails.getThumbnailAsync(original.uri, { time: 0, quality: 0.9 });
-    await saveResized(frame.uri, frame.width, frame.height, THUMB_MAX, 0.8, thumb);
-    await deleteQuietly(frame.uri);
-  } else {
-    const saved = await saveResized(asset.uri, asset.width, asset.height, ORIGINAL_MAX, 0.88, original);
-    width = saved.width;
-    height = saved.height;
-    // Best effort: a photo without metadata is still worth sending.
-    await embedMetadata(original, metadata).catch(() => {});
-    await saveResized(original.uri, saved.width, saved.height, THUMB_MAX, 0.8, thumb);
-    await deleteQuietly(asset.uri);
-  }
+  const saved = await saveResized(photo.uri, photo.width, photo.height, options.maxDimension ?? ORIGINAL_MAX, 0.88, original);
+  // Best effort: a photo without metadata is still worth sending.
+  await embedMetadata(original, metadata).catch(() => {});
+  await saveResized(original.uri, saved.width, saved.height, THUMB_MAX, 0.8, thumb);
+  await deleteQuietly(photo.uri);
 
   return {
     originalUri: original.uri,
     thumbUri: thumb.uri,
-    width,
-    height,
+    width: saved.width,
+    height: saved.height,
     sizeBytes: original.size ?? 0,
-    durationS: isVideo && asset.duration ? Math.round(asset.duration / 100) / 10 : null,
+    durationS: null,
     thumbhash: await Image.generateThumbhashAsync(thumb.uri).catch(() => null),
   };
-}
-
-/** First frame of the video for the preview. */
-export async function videoPoster(uri: string): Promise<string> {
-  return (await VideoThumbnails.getThumbnailAsync(uri, { time: 0 })).uri;
 }
 
 export async function discard(uri: string) {

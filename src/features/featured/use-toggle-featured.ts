@@ -39,7 +39,7 @@ export function useToggleFeatured() {
     onSuccess: (_data, { photo }) => {
       if (me) void client.invalidateQueries({ queryKey: featuredKey(me.id) });
       if (!photo.featuredByMe) {
-        showPill("Agregada a tu perfil");
+        showPill("Destacada en tu perfil");
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
     },

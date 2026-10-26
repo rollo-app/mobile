@@ -14,6 +14,7 @@ export default function MeScreen() {
   return (
     <Screen grouped>
       <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button icon="clock.arrow.circlepath" accessibilityLabel="Tu actividad" onPress={() => router.push("/me/activity")} />
         <Stack.Toolbar.Button icon="gearshape" accessibilityLabel="Ajustes" onPress={() => router.push("/settings")} />
       </Stack.Toolbar>
       {me && (

@@ -1,0 +1,31 @@
+import * as Notifications from "expo-notifications";
+import { bumpEpoch, serialized } from "./lock";
+
+export const MOMENT_PREFIX = "moment.";
+
+/** Cancels every scheduled `moment.*` notification, or only those of one trip. Never throws. */
+export function cancelMomentNotifications(tripId?: string): Promise<void> {
+  bumpEpoch(tripId); // synchronous: any sync fetching right now drops what this invalidates
+  return serialized(() => cancelNow(tripId));
+}
+
+async function cancelNow(tripId?: string): Promise<void> {
+  try {
+    const prefix = tripId ? `${MOMENT_PREFIX}${tripId}.` : MOMENT_PREFIX;
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      scheduled
+        .filter((n) => n.identifier.startsWith(prefix))
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+    // Already delivered ones sit in the notification center: dismiss them so the next account can't tap them.
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    await Promise.all(
+      presented
+        .filter((n) => n.request.identifier.startsWith(prefix))
+        .map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
+    );
+  } catch {
+    // Best effort: a stale notification is harmless, the next sync cleans it.
+  }
+}

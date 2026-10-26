@@ -2,6 +2,7 @@ import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-q
 import * as Haptics from "expo-haptics";
 import { useCallback, useMemo } from "react";
 import { errorMessage } from "@/api/client";
+import { myLikesKey } from "@/features/activity/use-my-likes";
 import { likeMedia, unlikeMedia } from "./actions";
 import { cancelLikeRefetches, setLikedInCaches } from "./like-cache";
 
@@ -25,6 +26,8 @@ export function useToggleLike() {
       setLikedInCaches(client, photo.id, !photo.likedByMe);
     },
     onError: (_error, photo) => setLikedInCaches(client, photo.id, photo.likedByMe),
+    // Tu actividad → Me gusta lists what you like: refetch it, the server decides what is still there.
+    onSettled: () => client.invalidateQueries({ queryKey: myLikesKey }),
   });
   const { mutateAsync } = mutation;
 

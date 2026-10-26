@@ -1,10 +1,12 @@
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { likeRed } from "@/features/likes/colors";
 import { Avatar } from "@/features/profile/avatar";
+import { MomentBadge } from "@/features/media/moment-badge";
+import { SelfieInset } from "@/features/media/selfie-inset";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
 import { formatTime } from "@/features/trips/phase";
 import { spacing, type } from "@/ui/theme";
@@ -41,14 +43,18 @@ export function Slide({
   liked: boolean;
   onToggleLike: () => void;
 }) {
-  const placeholder = photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined;
+  // The moment's selfie can take the big picture (the slide is remounted per photo, so this resets).
+  const [selfieBig, setSelfieBig] = useState(false);
+  const bigThumb = selfieBig && photo.selfie ? photo.selfie.thumbPath : photo.thumbPath;
+  const bigOriginal = selfieBig && photo.selfie ? photo.selfie.originalPath : photo.originalPath;
+  const placeholder = !selfieBig && photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined;
   return (
     <View style={styles.fill}>
       {/* The media is one VoiceOver element; the author button stays reachable on its own. */}
       <View style={StyleSheet.absoluteFill} accessible accessibilityLabel={slideLabel(photo, timeZone)}>
         <Image
           style={StyleSheet.absoluteFill}
-          source={mediaSource(photo.thumbPath, token)}
+          source={mediaSource(bigThumb, token)}
           placeholder={placeholder}
           contentFit="cover"
           blurRadius={60}
@@ -60,8 +66,8 @@ export function Slide({
         ) : (
           <Image
             style={StyleSheet.absoluteFill}
-            source={mediaSource(photo.originalPath, token)}
-            placeholder={mediaSource(photo.thumbPath, token)}
+            source={mediaSource(bigOriginal, token)}
+            placeholder={mediaSource(bigThumb, token)}
             placeholderContentFit="contain"
             contentFit="contain"
             transition={200}
@@ -69,6 +75,11 @@ export function Slide({
           />
         )}
       </View>
+      {photo.selfie ? (
+        <SelfieInset photo={photo} token={token} selfieBig={selfieBig} onToggle={() => setSelfieBig((v) => !v)} style={styles.moment} />
+      ) : photo.momentDay ? (
+        <MomentBadge style={styles.moment} />
+      ) : null}
       <View style={styles.caption} pointerEvents="box-none">
         <View style={styles.header} pointerEvents="box-none">
           <View style={styles.author} pointerEvents="box-none">
@@ -136,6 +147,8 @@ function VideoSlide({
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: "#000" },
+  // Below the progress bar and the close button of the player.
+  moment: { position: "absolute", left: spacing.md, top: 96 },
   dim: { backgroundColor: "rgba(0,0,0,0.45)" },
   caption: {
     position: "absolute",

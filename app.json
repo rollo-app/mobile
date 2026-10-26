@@ -13,6 +13,7 @@
       },
       "infoPlist": {
         "CFBundleDevelopmentRegion": "es",
+        "NSCameraUsageDescription": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
         "CFBundleLocalizations": [
           "es"
         ]

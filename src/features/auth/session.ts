@@ -1,6 +1,7 @@
 import { ApiError, createApiClient, setUnauthorizedHandler } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
+import { cancelMomentNotifications } from "@/features/moments/cancel";
 import { forgetPushToken } from "@/features/notifications/push-token";
 import { clearActiveTripId } from "@/storage/active-trip";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@/storage/session";
@@ -46,6 +47,8 @@ export async function signIn(token: string): Promise<void> {
 export async function signOut(): Promise<void> {
   await clearSessionToken();
   await clearActiveTripId();
+  // The next account must not get this one's moments (covers logout, delete account and a 401).
+  await cancelMomentNotifications();
   queryClient.clear();
   known = null;
   notify(null);

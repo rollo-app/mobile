@@ -16,6 +16,8 @@ export type MapItem = {
   thumbhash: string | null;
   /** Where the thumbnail lives; only after the reveal. */
   thumbPath?: string | null;
+  /** Trip-local date of the daily moment this photo answers; absent for ordinary photos. */
+  momentDay?: string | null;
   authorId: string;
   /** The author's user id (to open their profile); unknown only for a pending one without it. */
   authorUserId?: string;
@@ -25,7 +27,7 @@ export type MapItem = {
   pending: boolean;
 };
 
-export type MapFilters = { day: string | null; authorId: string | null };
+export type MapFilters = { day: string | null; authorId: string | null; /** Only the photos of the daily moment. */ momentsOnly?: boolean };
 
 export type PinProperties = {
   id: string;
@@ -50,6 +52,7 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
     durationS: i.durationS,
     thumbhash: i.thumbhash,
     thumbPath: i.files?.thumb ?? null,
+    momentDay: i.momentDay ?? null,
     authorId: i.author.id,
     authorUserId: i.author.userId,
     authorName: i.author.name,
@@ -101,6 +104,7 @@ export function toFeatures(items: MapItem[], filters: MapFilters, readyAvatars: 
     if (i.lat === null || i.lng === null) continue;
     if (filters.day && i.day !== filters.day) continue;
     if (filters.authorId && i.authorId !== filters.authorId) continue;
+    if (filters.momentsOnly && !i.momentDay) continue;
     const avatarKey = i.authorAvatarUrl ? pinAvatarKey(i.authorId, i.authorAvatarUrl) : "";
     features.push({
       type: "Feature",

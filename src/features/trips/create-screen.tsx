@@ -1,23 +1,50 @@
-import { DatePicker, Form, Host, Picker, Section, Stepper, Text, TextField } from "@expo/ui/swift-ui";
-import { foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
+import { DatePicker, Form, Host, HStack, Picker, Section, Spacer, Stepper, Text, TextField, Toggle } from "@expo/ui/swift-ui";
+import { accessibilityLabel, font, foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { PRIVATE_ROLLO_NOTE } from "@/features/featured/featuring-section";
 import { fetchFriends } from "@/features/friends/actions";
 import { friendsKey } from "@/features/friends/use-friends";
+import { NativeInfoButton } from "@/features/info/info-button";
+import type { InfoTopicId } from "@/features/info/topics";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { errorMessage } from "@/api/client";
-import { canCreate, defaultStart, effectiveStart, endAfter, revealNotBefore, type StartMode } from "@/features/trips/create-form";
+import {
+  canCreate,
+  dateAtMinutes,
+  DEFAULT_MOMENT_WINDOW,
+  defaultStart,
+  effectiveStart,
+  endAfter,
+  minutesOfDay,
+  revealNotBefore,
+  type MomentMode,
+  type StartMode,
+} from "@/features/trips/create-form";
 import { useCreateTrip } from "@/features/trips/use-create-trip";
 import { colors } from "@/ui/theme";
 
 const HOUR = 60 * 60 * 1000;
+const TIME = ["hourAndMinute"] as const;
 const DATE_TIME = ["date", "hourAndMinute"] as const;
+
+/** Section header with its "i" button, in the look of a grouped-list header. */
+function infoHeader(title: string, topic: InfoTopicId) {
+  return (
+    <HStack spacing={6}>
+      <Text modifiers={[font({ size: 13 }), foregroundStyle("secondary")]}>{title}</Text>
+      <NativeInfoButton topic={topic} />
+      <Spacer />
+    </HStack>
+  );
+}
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 type RevealMode = "end" | "custom";
+type LimitMode = "daily" | "total";
 
 export function CreateScreen() {
   const queryClient = useQueryClient();
@@ -29,7 +56,12 @@ export function CreateScreen() {
   const [revealMode, setRevealMode] = useState<RevealMode>("end");
   const [customReveal, setCustomReveal] = useState(initialStart + 84 * HOUR);
   const [photos, setPhotos] = useState(10);
-  const [videos, setVideos] = useState(3);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [limitMode, setLimitMode] = useState<LimitMode>("daily");
+  const [totalPhotos, setTotalPhotos] = useState(20);
+  const [momentMode, setMomentMode] = useState<MomentMode>("photo_selfie");
+  const [momentStart, setMomentStart] = useState(DEFAULT_MOMENT_WINDOW.start);
+  const [momentEnd, setMomentEnd] = useState(DEFAULT_MOMENT_WINDOW.end);
   const create = useCreateTrip();
   const error = errorMessage(create.error, "No se pudo crear el rollo");
 
@@ -60,9 +92,12 @@ export function CreateScreen() {
         startsAt: effectiveStart(startMode, startsAt, Date.now()),
         endsAt,
         revealAt,
-        dailyPhotoLimit: photos,
-        dailyVideoLimit: videos,
+        photoLimit: limitMode === "total" ? { mode: "total", total: totalPhotos } : { mode: "daily", perDay: photos },
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        momentMode,
+        momentWindowStart: momentStart,
+        momentWindowEnd: momentEnd,
+        ...(isPrivate && { featuringDisabled: true }),
       },
       {
         onSuccess: () => {
@@ -109,7 +144,7 @@ export function CreateScreen() {
             <TextField placeholder="Nombre del rollo" maxLength={60} onTextChange={setName} />
           </Section>
 
-          <Section title="Cuándo">
+          <Section header={infoHeader("Cuándo", "dates")}>
             <Picker
               label="Empieza"
               selection={startMode}
@@ -135,7 +170,7 @@ export function CreateScreen() {
             />
           </Section>
 
-          <Section title="Revelado" footer={<Text>Hasta el revelado nadie ve las fotos, ni las propias.</Text>}>
+          <Section header={infoHeader("Revelado", "reveal")} footer={<Text>Hasta el revelado nadie ve las fotos, ni las propias.</Text>}>
             <Picker
               selection={revealMode}
               onSelectionChange={chooseReveal}
@@ -154,9 +189,58 @@ export function CreateScreen() {
             )}
           </Section>
 
-          <Section title="Por persona, por día" footer={<Text>Cada día se renueva a la medianoche.</Text>}>
-            <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={100} onValueChange={setPhotos} />
-            <Stepper label={count(videos, "video", "videos")} value={videos} min={0} max={20} onValueChange={setVideos} />
+          <Section
+            header={infoHeader("Fotos por persona", "quota")}
+            footer={<Text>{limitMode === "daily" ? "Cada día se renueva a la medianoche." : "Es el total de cada persona para todo el rollo."}</Text>}
+          >
+            <Picker selection={limitMode} onSelectionChange={setLimitMode} modifiers={[pickerStyle("segmented")]}>
+              <Text modifiers={[tag("daily")]}>Por día</Text>
+              <Text modifiers={[tag("total")]}>Todo el rollo</Text>
+            </Picker>
+            {limitMode === "daily" ? (
+              <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={100} onValueChange={setPhotos} />
+            ) : (
+              <Stepper label={count(totalPhotos, "foto", "fotos")} value={totalPhotos} min={1} max={500} onValueChange={setTotalPhotos} />
+            )}
+          </Section>
+
+          <Section
+            header={infoHeader("Momento del día", "moment")}
+            footer={
+              <Text>
+                {momentMode === "off"
+                  ? "Sin aviso diario."
+                  : momentMode === "photo"
+                    ? "Un aviso por día a una hora al azar para cada uno. Tienen 15 minutos para sacar una foto."
+                    : "Un aviso por día a una hora al azar para cada uno. Tienen 15 minutos para sacar una foto con cada cámara; la primera es la grande."}
+              </Text>
+            }
+          >
+            <Picker selection={momentMode} onSelectionChange={setMomentMode} modifiers={[pickerStyle("segmented")]}>
+              <Text modifiers={[tag("off")]}>Apagado</Text>
+              <Text modifiers={[tag("photo")]}>Solo foto</Text>
+              <Text modifiers={[tag("photo_selfie")]}>Dos cámaras</Text>
+            </Picker>
+            {momentMode !== "off" && (
+              <>
+                <DatePicker
+                  title="Desde"
+                  selection={dateAtMinutes(momentStart)}
+                  displayedComponents={[...TIME]}
+                  onDateChange={(date) => setMomentStart(minutesOfDay(date))}
+                />
+                <DatePicker
+                  title="Hasta"
+                  selection={dateAtMinutes(momentEnd)}
+                  displayedComponents={[...TIME]}
+                  onDateChange={(date) => setMomentEnd(minutesOfDay(date))}
+                />
+              </>
+            )}
+          </Section>
+
+          <Section header={infoHeader("Privacidad", "privateRollo")} footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
+            <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
           </Section>
         </Form>
       </Host>

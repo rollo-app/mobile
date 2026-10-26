@@ -50,6 +50,12 @@ const detail = (): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
@@ -233,6 +239,48 @@ describe("Map", () => {
     await fireEvent.press(screen.getByRole("menuitem", { name: "Solo hoy" }));
     expect(screen.getByLabelText("pin ayer")).toBeVisible();
     expect(screen.getByText("Filtros")).toBeVisible();
+  });
+
+  it("Momentos in the filter menu keeps only the daily moments and turns the pill cobalt", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([feedItem({ id: "normal" }), feedItem({ id: "mo1", momentDay: "2027-01-12", files: { thumb: "/media/mo1/thumb", original: "/media/mo1/original" } })]),
+    );
+    await renderRouter(routes, { initialUrl: "/map" });
+    expect(await screen.findByLabelText("pin normal")).toBeVisible();
+
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Momentos" }));
+
+    expect(screen.getByLabelText("pin mo1")).toBeVisible();
+    expect(screen.queryByLabelText("pin normal")).toBeNull();
+    expect(screen.getByRole("menuitem", { name: "Momentos" }).props.accessibilityState).toEqual({ checked: true });
+    // The pill now names the filter (the menu item has the same label), in cobalt.
+    expect(screen.getAllByText("Momentos").some((n) => StyleSheet.flatten(n.props.style)?.color === colors.tint)).toBe(true);
+
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Momentos" }));
+    expect(screen.getByLabelText("pin normal")).toBeVisible();
+    expect(screen.getByText("Filtros")).toBeVisible();
+  });
+
+  it("before the reveal a moment's card shows the real photo and opens the viewer; an ordinary card stays blurry and closed", async () => {
+    mocked.fetchFeed.mockResolvedValue(
+      feed([
+        feedItem({ id: "mo1", momentDay: "2027-01-12", files: { thumb: "/media/mo1/thumb", original: "/media/mo1/original" } }),
+        feedItem({ id: "normal", lat: -40, lng: -70 }),
+      ]),
+    );
+    await renderRouter({ ...routes, "photo/[id]": () => <Text>Foto</Text> }, { initialUrl: "/map" });
+
+    await fireEvent.press(await screen.findByLabelText("pin normal"));
+    expect(screen.getByTestId("pin-thumb").props.source).toEqual([]);
+    expect(screen.queryByRole("button", { name: /^Fede, / })).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText("pin mo1"));
+    await waitFor(() => expect(screen.getByTestId("pin-thumb").props.source).toEqual([expect.objectContaining({ uri: expect.stringContaining("/media/mo1/thumb") })]));
+    await fireEvent.press(screen.getByRole("button", { name: /^Fede, / }));
+
+    expect(await screen.findByText("Foto")).toBeVisible();
+    expect(screen).toHavePathname("/photo/mo1");
+    expect(screen).toHaveSearchParams({ id: "mo1", tripId: SUR });
   });
 
   it("once the roll is revealed there is no Solo hoy and no Mapa | Feed, only the people filter", async () => {

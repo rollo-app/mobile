@@ -24,6 +24,10 @@ export type QueuedMedia = {
   originalUri: string;
   thumbUri: string;
   thumbhash: string | null;
+  /** Trip-local date of the "momento del día" this row belongs to (photo or selfie); null for normal shots. */
+  momentDay?: string | null;
+  /** For a moment selfie: the id of the moment's main photo (it must be registered first). */
+  pairedWith?: string | null;
 };
 
 export type PendingMedia = QueuedMedia & {
@@ -70,6 +74,8 @@ const SCHEMA = `
 const ADDED_COLUMNS = [
   ["retry_at", "INTEGER"],
   ["failed_reason", "TEXT"],
+  ["moment_day", "TEXT"],
+  ["paired_with", "TEXT"],
 ] as const;
 
 type Row = {
@@ -92,6 +98,8 @@ type Row = {
   attempts: number;
   retry_at: number | null;
   failed_reason: string | null;
+  moment_day: string | null;
+  paired_with: string | null;
 };
 
 const fromRow = (r: Row): PendingMedia => ({
@@ -111,6 +119,8 @@ const fromRow = (r: Row): PendingMedia => ({
   originalUri: r.original_uri,
   thumbUri: r.thumb_uri,
   thumbhash: r.thumbhash,
+  momentDay: r.moment_day ?? null,
+  pairedWith: r.paired_with ?? null,
   attempts: r.attempts,
   retryAt: r.retry_at,
 });
@@ -127,10 +137,11 @@ export async function createQueue(db: QueueDb) {
       await db.runAsync(
         `INSERT OR IGNORE INTO pending_media
           (id, trip_id, type, taken_at, day, lat, lng, accuracy_m, caption, duration_s, width, height,
-           size_bytes, original_uri, thumb_uri, thumbhash)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           size_bytes, original_uri, thumb_uri, thumbhash, moment_day, paired_with)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         m.id, m.tripId, m.type, m.takenAt, m.day, m.lat, m.lng, m.accuracyM, m.caption, m.durationS,
         m.width, m.height, m.sizeBytes, m.originalUri, m.thumbUri, m.thumbhash,
+        m.momentDay ?? null, m.pairedWith ?? null,
       );
     },
 
@@ -172,12 +183,18 @@ export async function createQueue(db: QueueDb) {
     /** The server rejected it for good (quota, developed roll…): neither retried nor deleted. */
     async markFailed(id: string, reason: string) {
       await db.runAsync("UPDATE pending_media SET failed_reason = ? WHERE id = ?", reason, id);
+      // A moment selfie can't be registered without its main: it fails with the same reason.
+      await db.runAsync(
+        "UPDATE pending_media SET failed_reason = ? WHERE paired_with = ? AND failed_reason IS NULL",
+        reason,
+        id,
+      );
     },
 
-    /** Pending items of a trip that have a location (for the map), excluding failed ones. */
+    /** Pending items of a trip (for the map and the counts), excluding failed ones and a moment's selfie (the moment counts once). */
     async pendingForTrip(tripId: string): Promise<PendingMedia[]> {
       const rows = await db.getAllAsync<Row>(
-        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL ORDER BY taken_at",
+        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL AND paired_with IS NULL ORDER BY taken_at",
         tripId,
       );
       return rows.map(fromRow);
@@ -186,18 +203,21 @@ export async function createQueue(db: QueueDb) {
     /** Everything captured and not uploaded for a trip, any day, excluding failed ones. */
     async countPendingForTrip(tripId: string) {
       const rows = await db.getAllAsync<{ n: number }>(
-        "SELECT COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL",
+        "SELECT COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL AND paired_with IS NULL",
         tripId,
       );
       return rows[0]?.n ?? 0;
     },
 
-    /** Captured and not uploaded for a trip on a day: subtracted from the quota the server reported. */
-    async countPending(tripId: string, day: string) {
+    /**
+     * Moment rows (photo and selfie) never count: they are outside the quota.
+     * Captured and not uploaded for a trip on a day (any day if none is given, for rollos with a total limit):
+     * subtracted from the quota the server reported.
+     */
+    async countPending(tripId: string, day?: string) {
       const rows = await db.getAllAsync<{ type: MediaType; n: number }>(
-        "SELECT type, COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND day = ? AND failed_reason IS NULL GROUP BY type",
-        tripId,
-        day,
+        `SELECT type, COUNT(*) AS n FROM pending_media WHERE trip_id = ?${day === undefined ? "" : " AND day = ?"} AND failed_reason IS NULL AND moment_day IS NULL GROUP BY type`,
+        ...(day === undefined ? [tripId] : [tripId, day]),
       );
       const count = (type: MediaType) => rows.find((r) => r.type === type)?.n ?? 0;
       return { photos: count("photo"), videos: count("video") };

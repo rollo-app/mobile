@@ -24,15 +24,34 @@ export type RevealedPhoto = {
   featuredByMe: boolean;
   /** Its author doesn't let others feature it (they still can). */
   featureBlocked: boolean;
+  /** You can feature it on your profile now (false if its rollo is private or its author, their rollo setting or their account says no). */
+  canFeature: boolean;
   /** How many people like it (one counter, also likes from profiles that feature it). */
   likeCount: number;
   /** You like it. */
   likedByMe: boolean;
+  /** How many comments you see on it (0 for videos). */
+  commentCount: number;
+  /** Trip-local date of the daily moment this photo answers; null for ordinary photos. */
+  momentDay: string | null;
+  /** You (its author) archived it: nobody else sees it. Only ever true on your own photos. */
+  archived: boolean;
+  /** The selfie taken with a moment photo (null if none). Never likeable, commentable or featurable: those act on the main photo. */
+  selfie: RevealedSelfie | null;
   thumbPath: string;
   originalPath: string;
 };
 
-/** Feed items that already have files (only after the reveal), oldest first. */
+export type RevealedSelfie = {
+  id: string;
+  thumbPath: string;
+  originalPath: string;
+  thumbhash: string | null;
+  width: number | null;
+  height: number | null;
+};
+
+/** Feed items that already have files (after the reveal; before it, only daily moments), oldest first. */
 export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] {
   return items
     .flatMap((item) =>
@@ -54,8 +73,22 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
               authorUserId: item.author.userId,
               featuredByMe: item.featuredByMe ?? false,
               featureBlocked: item.featureBlocked ?? false,
+              canFeature: item.canFeature ?? true,
               likeCount: item.likeCount ?? 0,
               likedByMe: item.likedByMe ?? false,
+              commentCount: item.commentCount ?? 0,
+              momentDay: item.momentDay ?? null,
+              archived: item.archived ?? false,
+              selfie: item.selfie?.files
+                ? {
+                    id: item.selfie.id,
+                    thumbPath: item.selfie.files.thumb,
+                    originalPath: item.selfie.files.original,
+                    thumbhash: item.selfie.thumbhash,
+                    width: item.selfie.width,
+                    height: item.selfie.height,
+                  }
+                : null,
               thumbPath: item.files.thumb,
               originalPath: item.files.original,
             },
@@ -90,7 +123,7 @@ export function useMediaToken(key: string | undefined) {
 
 /**
  * Revealed photos of a roll plus the token needed to load them (`mediaSource`).
- * Before the reveal `photos` is empty: the feed has no files.
+ * Before the reveal `photos` holds only the daily moments (the one kind of photo the feed gives files for).
  */
 export function useRevealedPhotos(tripId: string | undefined) {
   const { feed, error, loading, refetch, isRefetching } = useFeed(tripId);

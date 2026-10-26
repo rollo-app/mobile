@@ -127,6 +127,15 @@ function RootStack() {
             }}
           />
           <Stack.Screen
+            name="info/[topic]"
+            options={{
+              headerShown: false,
+              presentation: "formSheet",
+              sheetAllowedDetents: "fitToContents",
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="offline-maps"
             options={{
               title: "Mapa sin señal",
@@ -135,7 +144,10 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
-          <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          {/* No swipe to dismiss: once shot, the only way out of the caption screen is sending it. */}
+          <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
+          {/* The daily moment: camera with countdown; like capture, no swipe to dismiss. */}
+          <Stack.Screen name="moment" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
           {/* The lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen
@@ -154,6 +166,16 @@ function RootStack() {
           <Stack.Screen
             name="photo/[id]"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
+          />
+          {/* Comments of a photo: a sheet over the viewer. */}
+          <Stack.Screen
+            name="comments/[mediaId]"
+            options={{
+              title: "Comentarios",
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.6, 1],
+              sheetGrabberVisible: true,
+            }}
           />
           <Stack.Screen
             name="featured/[userId]/[mediaId]"

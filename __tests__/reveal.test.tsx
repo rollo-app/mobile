@@ -35,6 +35,12 @@ const detail = (): actions.TripDetail => ({
     revealed: true,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
@@ -157,6 +163,24 @@ describe("Reveal", () => {
 
     await screen.findByText("Se reveló");
     expect(screen).toHavePathname("/reveal");
+  });
+
+  it("with only moments cached from before the reveal, waits for the refetch instead of playing with just them", async () => {
+    queryClient.setQueryData(
+      feedKey(SUR),
+      { revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), momentDay: "2027-01-12" }] },
+      { updatedAt: Date.now() },
+    );
+    const full = await mocked.fetchFeed(SUR);
+    let resolve!: (f: actions.Feed) => void;
+    mocked.fetchFeed.mockReturnValue(new Promise((r) => (resolve = r)));
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/reveal"));
+
+    expect(await screen.findByTestId("reveal-loading")).toBeVisible();
+    expect(screen.queryByText("Se reveló")).toBeNull();
+    await act(async () => resolve(full));
+    await screen.findByText("Se reveló");
   });
 
   it("plays even when it was already seen", async () => {

@@ -22,7 +22,12 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   featuredByMe: false,
   featureBlocked: false,
   likeCount: 0,
+  canFeature: true,
   likedByMe: false,
+  commentCount: 0,
+  momentDay: null,
+  archived: false,
+  selfie: null,
 });
 
 // 0 day, 1 a, 2 b, 3 day, 4 c, 5 outro

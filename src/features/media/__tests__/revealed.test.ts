@@ -49,16 +49,57 @@ describe("revealed photos", () => {
     expect(photo).toMatchObject({ featuredByMe: false, featureBlocked: false });
   });
 
+  it("carries whether you can feature it, and assumes you can when the server leaves it out", () => {
+    const [no, unknown] = toRevealedPhotos([item({ canFeature: false }), item({ id: "b" })]);
+
+    expect(no).toMatchObject({ canFeature: false });
+    expect(unknown).toMatchObject({ canFeature: true });
+  });
+
   it("carries how many people like it and whether you do", () => {
     const [photo] = toRevealedPhotos([item({ likeCount: 4, likedByMe: true })]);
 
     expect(photo).toMatchObject({ likeCount: 4, likedByMe: true });
   });
 
+  it("carries how many comments it has, none if the server leaves it out", () => {
+    expect(toRevealedPhotos([item({ commentCount: 3 })])[0]).toMatchObject({ commentCount: 3 });
+    expect(toRevealedPhotos([item()])[0]).toMatchObject({ commentCount: 0 });
+  });
+
   it("defaults the likes to none when the server leaves them out", () => {
     const [photo] = toRevealedPhotos([item()]);
 
     expect(photo).toMatchObject({ likeCount: 0, likedByMe: false });
+  });
+});
+
+describe("daily moment", () => {
+  const selfie = {
+    id: "s1",
+    width: 1080,
+    height: 1440,
+    thumbhash: "abc",
+    files: { thumb: "/m/s1/thumb", original: "/m/s1/original" },
+  };
+
+  it("carries the moment day and the selfie paths", () => {
+    const [photo] = toRevealedPhotos([item({ momentDay: "2027-01-12", selfie })]);
+
+    expect(photo).toMatchObject({
+      momentDay: "2027-01-12",
+      selfie: { id: "s1", thumbPath: "/m/s1/thumb", originalPath: "/m/s1/original", thumbhash: "abc", width: 1080, height: 1440 },
+    });
+  });
+
+  it("has no moment and no selfie on an ordinary photo, or a selfie without files", () => {
+    const [plain, noFiles] = toRevealedPhotos([
+      item(),
+      item({ id: "b", momentDay: "2027-01-12", selfie: { ...selfie, files: null } }),
+    ]);
+
+    expect(plain).toMatchObject({ momentDay: null, selfie: null });
+    expect(noFiles).toMatchObject({ momentDay: "2027-01-12", selfie: null });
   });
 });
 

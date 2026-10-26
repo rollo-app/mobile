@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { MomentBanner } from "@/features/moments/moment-banner";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { usePendingItems } from "@/features/capture/use-pending-items";
@@ -34,6 +35,7 @@ export function RollBoard() {
         <Loading />
       ) : (
         <>
+          {phase === "active" && <MomentBanner tripId={detail.trip.id} />}
           <View style={styles.block}>
             <View style={styles.header}>
               <Text style={[type.headline, { color: colors.label }]}>En el rollo</Text>
@@ -44,10 +46,15 @@ export function RollBoard() {
           </View>
 
           {phase === "active" && (
-            <Section title="Hoy">
-              <Row label="Fotos" value={`${detail.today.photosLeft} de ${detail.trip.dailyPhotoLimit}`} />
-              <Row label="Videos" value={`${detail.today.videosLeft} de ${detail.trip.dailyVideoLimit}`} />
-            </Section>
+            detail.trip.photoLimitMode === "total" ? (
+              <Section title="Tu cupo">
+                <Row label="Te quedan" value={`${detail.today.photosLeft} de ${detail.trip.totalPhotoLimit ?? 0}`} />
+              </Section>
+            ) : (
+              <Section title="Hoy">
+                <Row label="Fotos" value={`${detail.today.photosLeft} de ${detail.trip.dailyPhotoLimit}`} />
+              </Section>
+            )
           )}
 
           <RollDates detail={detail} phase={phase} />

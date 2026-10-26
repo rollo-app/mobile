@@ -10,6 +10,7 @@ const trip = (id: string): TripSummary => ({
   revealed: false,
   role: "member",
   totalUploaded: 0,
+  momentMode: "off",
   coverThumbhash: null,
 });
 

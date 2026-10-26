@@ -1,4 +1,5 @@
-import { MenuView } from "@expo/ui/community/menu";
+import { featureActionAvailable } from "@/features/featured/feature-action";
+import { MenuView, type MenuAction } from "@expo/ui/community/menu";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { Stack, useRouter } from "expo-router";
@@ -15,21 +16,27 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useMe } from "@/features/auth/use-me";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
+import { MomentBadge, momentBadgeCorner } from "@/features/media/moment-badge";
 import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { authorsOf, chunkRows, filterByAuthor, groupByDay } from "./group";
+import { ownPhotoActions } from "./own-photo-actions";
 import { PermissionNotice } from "./permission-notice";
 import {
   albumTitle,
   downloadAll,
+  withLinkedImages,
   estimateBytes,
   formatMegabytes,
   PermissionDeniedError,
   requestAlbumAccess,
 } from "./save";
+import { useArchivePhoto } from "./use-archive-photo";
+import { useDeletePhoto } from "./use-delete-photo";
 import { useSaver } from "./use-saver";
 
 const COLUMNS = 3;
@@ -56,8 +63,11 @@ type CellProps = {
   size: number;
   selecting: boolean;
   selected: boolean;
+  /** Your own photo of the revealed roll: it can be archived or deleted. */
+  own: boolean;
   onPress: (photo: RevealedPhoto) => void;
   onToggleFeatured: (photo: RevealedPhoto) => void;
+  onOwnAction: (photo: RevealedPhoto, action: "archive" | "unarchive" | "delete") => void;
 };
 
 /**
@@ -73,6 +83,11 @@ function sameCell(a: CellProps, b: CellProps) {
     a.photo.durationS === b.photo.durationS &&
     a.photo.author.name === b.photo.author.name &&
     a.photo.featuredByMe === b.photo.featuredByMe &&
+    a.photo.momentDay === b.photo.momentDay &&
+    a.photo.archived === b.photo.archived &&
+    a.photo.canFeature === b.photo.canFeature &&
+    a.own === b.own &&
+    a.onOwnAction === b.onOwnAction &&
     a.token === b.token &&
     a.size === b.size &&
     a.selecting === b.selecting &&
@@ -82,7 +97,7 @@ function sameCell(a: CellProps, b: CellProps) {
   );
 }
 
-const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPress, onToggleFeatured }: CellProps) {
+const Cell = memo(function Cell({ photo, token, size, selecting, selected, own, onPress, onToggleFeatured, onOwnAction }: CellProps) {
   const cell = (
     <Pressable
       accessibilityRole="button"
@@ -98,8 +113,15 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPre
           transition={120}
           contentFit="cover"
           recyclingKey={photo.id}
-          style={StyleSheet.absoluteFill}
+          // Archived: only you see it, so it shows dimmed.
+          style={[StyleSheet.absoluteFill, photo.archived && styles.archived]}
         />
+      )}
+      {photo.momentDay && <MomentBadge style={momentBadgeCorner} />}
+      {photo.archived && (
+        <View style={styles.archivedBadge}>
+          <Text style={[type.caption, styles.archivedText]}>Archivada</Text>
+        </View>
       )}
       {photo.type === "video" && (
         <View style={styles.video}>
@@ -124,18 +146,29 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, onPre
       )}
     </Pressable>
   );
-  // Long press opens the native context menu; videos can't be featured, and selecting has its own taps.
-  if (selecting || photo.type !== "photo") return cell;
+  // Long press opens the native context menu: featuring (videos and photos you can't feature have nothing to offer)
+  // and, on your own photos, archive and delete. Selecting has its own taps.
+  const actions: MenuAction[] = [
+    ...(photo.type === "photo" && featureActionAvailable(photo)
+      ? [
+          photo.featuredByMe
+            ? ({ id: "unfeature", title: "Sacar de tu perfil", image: "person.crop.circle.badge.minus" } as MenuAction)
+            : ({ id: "feature", title: "Agregar a tu perfil", image: "person.crop.circle.badge.plus" } as MenuAction),
+        ]
+      : []),
+    ...(own ? ownPhotoActions(photo) : []),
+  ];
+  if (selecting || actions.length === 0) return cell;
   return (
     <MenuView
       shouldOpenOnLongPress
       style={{ width: size, height: size }}
-      actions={[
-        photo.featuredByMe
-          ? { id: "unfeature", title: "Sacar de tu perfil", image: "person.crop.circle.badge.minus" }
-          : { id: "feature", title: "Agregar a tu perfil", image: "person.crop.circle.badge.plus" },
-      ]}
-      onPressAction={() => onToggleFeatured(photo)}
+      actions={actions}
+      onPressAction={({ nativeEvent }) => {
+        const event = nativeEvent.event;
+        if (event === "archive" || event === "unarchive" || event === "delete") onOwnAction(photo, event);
+        else onToggleFeatured(photo);
+      }}
     >
       {cell}
     </MenuView>
@@ -154,6 +187,10 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
   const { toggle: toggleFeatured, error: featureError } = useToggleFeatured();
+  const { me } = useMe();
+  const revealed = detail?.trip.revealed === true;
+  const setArchived = useArchivePhoto();
+  const { confirmDelete } = useDeletePhoto();
   const [featureErrorDismissed, setFeatureErrorDismissed] = useState(false);
   useEffect(() => setFeatureErrorDismissed(false), [featureError]);
 
@@ -199,6 +236,14 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
     [toggleFeatured, tripId],
   );
 
+  const onOwnAction = useCallback(
+    (photo: RevealedPhoto, action: "archive" | "unarchive" | "delete") => {
+      if (action === "delete") void confirmDelete(photo, tripId);
+      else setArchived(photo, tripId, action === "archive");
+    },
+    [confirmDelete, setArchived, tripId],
+  );
+
   const allSelected = shown.length > 0 && shown.every((p) => selected.has(p.id));
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(shown.map((p) => p.id)));
 
@@ -208,8 +253,10 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
   }
 
   /** `album`: put them in the roll's album; `recents`: the album was wanted but iOS access was limited. */
-  async function run(list: RevealedPhoto[], { album = false, recents = false } = {}) {
-    if (!saver || list.length === 0) return;
+  async function run(chosen: RevealedPhoto[], { album = false, recents = false } = {}) {
+    if (!saver || chosen.length === 0) return;
+    // A moment's linked image has no feed item of its own: it goes right after its main photo.
+    const list = withLinkedImages(chosen);
     const controller = new AbortController();
     abort.current = controller;
     setBar({ kind: "progress", done: 0, total: list.length });
@@ -244,9 +291,10 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
   }
 
   function confirmSaveAll() {
+    const all = withLinkedImages(photos);
     Alert.alert(
-      `Guardar ${photos.length} ${photos.length === 1 ? "foto" : "fotos"} en Fotos`,
-      `Ocupa ~${formatMegabytes(estimateBytes(photos))}. Conviene Wi-Fi.\n\nPara crear el álbum «${albumTitle(detail?.trip.name ?? "")}» iOS pide acceso a tus fotos.`,
+      `Guardar ${all.length} ${all.length === 1 ? "foto" : "fotos"} en Fotos`,
+      `Ocupa ~${formatMegabytes(estimateBytes(all))}. Conviene Wi-Fi.\n\nPara crear el álbum «${albumTitle(detail?.trip.name ?? "")}» iOS pide acceso a tus fotos.`,
       [
         { text: "Cancelar", style: "cancel" },
         { text: "Guardar", onPress: () => void saveAll() },
@@ -319,7 +367,7 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
         stickySectionHeadersEnabled={false}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
-        extraData={[selecting, selected, token]}
+        extraData={[selecting, selected, token, revealed, me?.id]}
         ListHeaderComponent={
           author ? (
             <View style={styles.filter}>
@@ -350,8 +398,10 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
                 size={size}
                 selecting={selecting}
                 selected={selected.has(photo.id)}
+                own={revealed && !!me && photo.authorUserId === me.id}
                 onPress={onCellPress}
                 onToggleFeatured={onToggleFeatured}
+                onOwnAction={onOwnAction}
               />
             ))}
           </View>
@@ -485,6 +535,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 3,
   },
+  archived: { opacity: 0.35 },
+  archivedBadge: {
+    position: "absolute",
+    left: 4,
+    bottom: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  archivedText: { color: "#FFFFFF" },
   videoText: {
     color: "#FFFFFF",
     fontVariant: ["tabular-nums"],

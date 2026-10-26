@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MomentBadge, momentBadgeCorner } from "@/features/media/moment-badge";
 import { mediaSource } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
 import { colors, radius, spacing, type } from "@/ui/theme";
@@ -31,7 +32,7 @@ export function PinCard({
 
   const source = item.thumbPath && token ? mediaSource(item.thumbPath, token) : undefined;
 
-  const thumb =
+  const image =
     item.thumbhash || source ? (
       <Image
         testID="pin-thumb"
@@ -44,6 +45,14 @@ export function PinCard({
     ) : (
       <View testID="pin-thumb-empty" style={[styles.thumb, { backgroundColor: colors.latent }]} />
     );
+  const thumb = item.momentDay ? (
+    <View>
+      {image}
+      <MomentBadge style={momentBadgeCorner} />
+    </View>
+  ) : (
+    image
+  );
 
   const author = (
     <>

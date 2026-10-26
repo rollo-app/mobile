@@ -55,6 +55,12 @@ describe("toFeatures", () => {
     expect(features.map((f) => f.properties.id)).toEqual(["b"]);
   });
 
+  it("keeps only the daily moments when momentsOnly is on", () => {
+    const items = [item({ id: "a" }), item({ id: "b", momentDay: "2027-01-12" })];
+    const { features } = toFeatures(items, { day: null, authorId: null, momentsOnly: true });
+    expect(features.map((f) => f.properties.id)).toEqual(["b"]);
+  });
+
   it("combines the filters", () => {
     const items = [
       item({ id: "a", authorId: "a1", day: "2027-01-12" }),

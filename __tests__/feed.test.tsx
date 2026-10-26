@@ -39,6 +39,12 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, blockedByMe: false },
   members: [
@@ -161,6 +167,36 @@ describe("Feed", () => {
     await waitFor(() => expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33], zoom: 15 })));
     // The list is gone, so the caption on screen is the pin's card.
     expect(await screen.findByText("el viento no perdona")).toBeVisible();
+  });
+
+  describe("daily moments", () => {
+    const moment = (over: Partial<actions.Feed["items"][number]> = {}) =>
+      feedItem({ id: "mo1", momentDay: "2027-01-12", caption: "mi momento", files: { thumb: "/media/mo1/thumb", original: "/media/mo1/original" }, width: 1080, height: 1440, ...over });
+
+    it("shows the real photo with the moment badge instead of the thumbhash, and keeps ordinary rows blurry", async () => {
+      mocked.fetchFeed.mockResolvedValue(feed([moment(), feedItem({ id: "n1", caption: "normal", takenAt: Date.parse("2027-01-12T15:00:00Z") })]));
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+
+      const rows = await screen.findAllByTestId("feed-row");
+      await waitFor(() => expect(within(rows[0]!).getByTestId("feed-thumb").props.source).toEqual([expect.objectContaining({ uri: expect.stringContaining("/media/mo1/thumb") })]));
+      expect(within(rows[0]!).getByTestId("moment-badge")).toBeVisible();
+      expect(within(rows[1]!).getByTestId("feed-thumb").props.source).toEqual([]);
+      expect(within(rows[1]!).queryByTestId("moment-badge")).toBeNull();
+    });
+
+    it("tapping a moment opens the viewer for that photo in this roll, not the map", async () => {
+      mocked.fetchFeed.mockResolvedValue(feed([moment()]));
+      await renderRouter({ ...routes, "photo/[id]": () => <Text>Foto</Text> }, { initialUrl: "/map?view=feed" });
+
+      const row = await screen.findByRole("button", { name: /^Fede, / });
+      camera.flyTo.mockClear();
+      await fireEvent.press(row);
+
+      expect(await screen.findByText("Foto")).toBeVisible();
+      expect(screen).toHavePathname("/photo/mo1");
+      expect(screen).toHaveSearchParams({ id: "mo1", tripId: SUR });
+      expect(camera.flyTo).not.toHaveBeenCalled();
+    });
   });
 
   it("tapping the author's photo or name opens their profile instead of the map", async () => {

@@ -25,6 +25,7 @@ const profile = (blockedByMe: boolean): profileActions.UserProfile => ({
   canSee: false,
   friendCount: 0,
   mutualCount: 0,
+  friendRequest: "none",
 });
 
 beforeEach(async () => {
@@ -103,6 +104,12 @@ describe("Members", () => {
         revealed: false,
         dailyPhotoLimit: 10,
         dailyVideoLimit: 3,
+        featuringDisabled: false,
+        photoLimitMode: "daily",
+        totalPhotoLimit: null,
+        momentMode: "off",
+        momentWindowStart: 540,
+        momentWindowEnd: 1380,
       },
       me,
       members: [me, member("m2", "u2", "Cami", "member", true)],

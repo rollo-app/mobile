@@ -16,6 +16,11 @@ const trip = {
   revealed: false,
   dailyPhotoLimit: 10,
   dailyVideoLimit: 3,
+  photoLimitMode: "daily",
+  totalPhotoLimit: null,
+  momentMode: "off",
+  momentWindowStart: 540,
+  momentWindowEnd: 1380,
 };
 const member = { id: "m1", userId: "u1", name: "Juani", avatarUrl: null, role: "admin" };
 
@@ -55,8 +60,7 @@ describe("createTrip", () => {
     startsAt: NOW,
     endsAt: NOW + 10 * DAY,
     revealAt: NOW + 11 * DAY,
-    dailyPhotoLimit: 20,
-    dailyVideoLimit: 0,
+    photoLimit: { mode: "daily", perDay: 20 } as const,
     timezone: "America/Argentina/Buenos_Aires",
   };
 
@@ -72,8 +76,18 @@ describe("createTrip", () => {
       endsAt: NOW + 10 * DAY,
       revealAt: NOW + 11 * DAY,
       dailyPhotoLimit: 20,
-      dailyVideoLimit: 0,
+      photoLimitMode: "daily",
     });
+  });
+
+  it("sends the total limit for the whole rollo, and no video limit", async () => {
+    const fetchMock = mockFetch(201, { trip, member });
+
+    await createTrip({ ...input, photoLimit: { mode: "total", total: 20 } });
+
+    const body = await sentBody(fetchMock);
+    expect(body).toMatchObject({ photoLimitMode: "total", totalPhotoLimit: 20 });
+    expect(body).not.toHaveProperty("dailyVideoLimit");
   });
 
   it("makes the new trip the active one", async () => {

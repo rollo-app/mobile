@@ -3,6 +3,8 @@ import * as Haptics from "expo-haptics";
 import { memo } from "react";
 import { ActionSheetIOS, Pressable, StyleSheet, Text, View } from "react-native";
 import type { MapItem } from "@/features/map/features";
+import { MomentBadge, momentBadgeCorner } from "@/features/media/moment-badge";
+import { mediaSource } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { colors, radius, spacing, type } from "@/ui/theme";
@@ -25,14 +27,21 @@ type Props = {
   onDelete?: (item: MapItem) => void;
   /** Enables "Denunciar" (action sheet) on long-press of the row; not offered on your own rows. */
   onReport?: (item: MapItem) => void;
+  /** Session token to load a daily moment's real photo (the only photo with files before the reveal). */
+  token?: string | null;
+  /** Tap on a daily moment that shows its real photo: opens it in the viewer instead of the map. */
+  onOpenPhoto?: (item: MapItem) => void;
 };
 
 /** A native Feed row: who, when, the caption (or what they took) and the blurred photo. */
-export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete, onReport }: Props) {
+export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete, onReport, token, onOpenPhoto }: Props) {
   const who = item.authorUsername ? formatHandle(item.authorUsername) : item.authorName;
   const when = clockTime(item.takenAt, timeZone);
   const generic = item.type === "video" ? `sacó un video · ${Math.round(item.durationS ?? 0)} s` : "sacó una foto";
   const located = item.lat !== null && item.lng !== null;
+  // A moment is visible right away: its real photo replaces the ThumbHash and tapping it opens the viewer.
+  const momentSource = item.momentDay && item.thumbPath && token ? mediaSource(item.thumbPath, token) : undefined;
+  const open = momentSource && onOpenPhoto ? () => onOpenPhoto(item) : located && onPress ? () => onPress(item) : undefined;
   const canDelete = !!onDelete && !item.pending;
   const canReport = !!onReport && !item.pending;
   const openAuthor = onAuthorPress && (() => onAuthorPress(item));
@@ -71,7 +80,19 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
         )}
         {item.pending ? <Text style={[type.footnote, { color: colors.secondaryLabel }]}>Esperando señal</Text> : null}
       </View>
-      {item.thumbhash ? (
+      {item.momentDay && momentSource ? (
+        <View>
+          <Image
+            testID="feed-thumb"
+            source={momentSource}
+            placeholder={item.thumbhash ? { thumbhash: item.thumbhash } : undefined}
+            transition={150}
+            style={styles.thumb}
+            accessibilityIgnoresInvertColors
+          />
+          <MomentBadge style={momentBadgeCorner} />
+        </View>
+      ) : item.thumbhash ? (
         <Image testID="feed-thumb" placeholder={{ thumbhash: item.thumbhash }} style={styles.thumb} accessibilityIgnoresInvertColors />
       ) : (
         <View testID="feed-thumb-empty" style={[styles.thumb, { backgroundColor: colors.latent }]} />
@@ -79,17 +100,17 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
     </View>
   );
 
-  if (!(located && onPress) && !openSheet) return content;
+  if (!open && !openSheet) return content;
 
   return (
     <Pressable
-      accessibilityRole={located && onPress ? "button" : undefined}
+      accessibilityRole={open ? "button" : undefined}
       accessibilityLabel={`${who}, ${when}`}
-      accessibilityHint={located && onPress ? "Abre la foto en el mapa" : undefined}
+      accessibilityHint={open ? (momentSource && onOpenPhoto ? "Abre el momento" : "Abre la foto en el mapa") : undefined}
       // The row is one VoiceOver element, so the author's profile is a custom action.
       accessibilityActions={openAuthor ? [{ name: "profile", label: `Ver perfil de ${item.authorName}` }] : undefined}
       onAccessibilityAction={openAuthor ? (e) => e.nativeEvent.actionName === "profile" && openAuthor() : undefined}
-      onPress={located && onPress ? () => onPress(item) : undefined}
+      onPress={open}
       onLongPress={openSheet}
       style={({ pressed }) => [styles.fill, pressed && { backgroundColor: colors.fill }]}
     >

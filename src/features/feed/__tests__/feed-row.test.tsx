@@ -82,6 +82,43 @@ describe("FeedRow", () => {
     expect(onAuthorPress).toHaveBeenCalledTimes(1);
   });
 
+  it("a moment with files shows the real photo with the moment badge instead of the thumbhash", async () => {
+    const moment = item({ momentDay: "2027-01-12", thumbPath: "/media/f1/thumb" });
+    await render(<FeedRow item={moment} timeZone={TZ} token="tok" />);
+
+    const thumb = screen.getByTestId("feed-thumb");
+    expect(thumb.props.source).toEqual([{ uri: expect.stringContaining("/media/f1/thumb"), headers: { Authorization: "Bearer tok" } }]);
+    expect(screen.getByTestId("moment-badge")).toBeTruthy();
+  });
+
+  it("an ordinary row has no badge and keeps the thumbhash", async () => {
+    await render(<FeedRow item={item({ thumbPath: "/media/f1/thumb" })} timeZone={TZ} token="tok" />);
+
+    expect(screen.queryByTestId("moment-badge")).toBeNull();
+    expect(screen.getByTestId("feed-thumb").props.source).toEqual([]);
+  });
+
+  it("tapping a visible moment opens the photo, not the map", async () => {
+    const onPress = jest.fn();
+    const onOpenPhoto = jest.fn();
+    const moment = item({ momentDay: "2027-01-12", thumbPath: "/media/f1/thumb" });
+    await render(<FeedRow item={moment} timeZone={TZ} token="tok" onPress={onPress} onOpenPhoto={onOpenPhoto} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: /^Cami, / }));
+
+    expect(onOpenPhoto).toHaveBeenCalledWith(expect.objectContaining({ id: "f1" }));
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it("a visible moment without a location is still tappable", async () => {
+    const onOpenPhoto = jest.fn();
+    const moment = item({ momentDay: "2027-01-12", thumbPath: "/media/f1/thumb", lat: null, lng: null });
+    await render(<FeedRow item={moment} timeZone={TZ} token="tok" onOpenPhoto={onOpenPhoto} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: /^Cami, / }));
+    expect(onOpenPhoto).toHaveBeenCalledTimes(1);
+  });
+
   it("a pending photo says 'Esperando señal'", async () => {
     await render(<FeedRow item={item({ pending: true })} timeZone={TZ} />);
     expect(screen.getByText("Esperando señal")).toBeTruthy();

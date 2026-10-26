@@ -21,15 +21,15 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
 ### Reglas de producto
 
 - **Aparte del cupo:** no descuenta del cupo del rollo (diario o total, ver 2). Una por día por persona.
-- **Ventana de 5 minutos** desde la hora del aviso. Pasado ese tiempo el momento de ese día se pierde: no se puede sacar.
+- **Ventana de 15 minutos** (era de 5; el dueño la amplió el 25/10/2026 después de probarla) desde la hora del aviso. Pasado ese tiempo el momento de ese día se pierde: no se puede sacar.
 - **Hora distinta para cada uno.**
 - **Franja horaria** configurable al crear el rollo, por defecto **9:00 a 23:00** en la zona del rollo (`trip.timezone`).
   Nunca avisa fuera de la franja.
-- **Selfie sí o no**, configurable al crear el rollo.
+- **Una foto o dos** (la segunda con la otra cámara), configurable al crear el rollo.
 - **Se puede apagar** en Ajustes → Notificaciones (switch "Momento del día").
 - **En el revelado** va mezclada con las demás fotos, distinguida (ver "Selfie y badge").
 - *(Decisión de Claude)* **El momento se puede apagar para todo el rollo** al crearlo (una noche de fiesta no lo necesita).
-  Prendido por defecto. Al crear: "Momento del día" → Apagado / Solo foto / Foto + selfie (default Foto + selfie).
+  Prendido por defecto. Al crear: "Momento del día" → Apagado / Solo foto / Dos cámaras (default Dos cámaras).
 - *(Decisión de Claude)* **La config no se edita después de crear el rollo** en esta versión (evita re-sortear momentos ya
   bajados a los celulares).
 
@@ -60,7 +60,7 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
 ### Cómo se sortea la hora
 
 - **La ventana del día** es la intersección de la franja con `[startsAt, endsAt]` del rollo, en la zona del rollo, quitando
-  los últimos 5 minutos (el aviso tiene que dejar los 5 minutos dentro del rollo).
+  los últimos 15 minutos (el aviso tiene que dejar los 15 minutos dentro del rollo).
 - *(Decisión de Claude)* Si esa ventana dura **menos de 30 minutos**, ese día no hay momento (por ejemplo, un rollo que
   arranca a las 22:45).
 - La hora es uniforme dentro de la ventana, al minuto. Cambios de horario (DST) se calculan con la zona del rollo.
@@ -73,25 +73,49 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
   que el usuario no puede ver en iOS.
 - El endpoint devuelve solo los propios. La única filtración posible es que alguien intercepte el tráfico de su propio celular
   y vea **su** hora: solo se arruina la sorpresa a sí mismo. Aceptado.
-- *(Decisión de Claude)* Antes del revelado, el Feed muestra la foto del momento como cualquier otra ("Cami sacó una foto ·
-  14:32"); eso es posterior a que sonó, no filtra nada.
+- Antes del revelado, que el grupo vea el momento ya subido es posterior a que sonó: no filtra nada (ver "El momento se ve
+  apenas se sube").
 
-### Los 5 minutos en la app
+### El momento se ve apenas se sube (decisión del dueño, 25/10/2026)
 
-- **El aviso:** "Es tu momento del día en {rollo}. Tenés 5 minutos." *(texto: decisión de Claude)*. Tocarlo abre la cámara del
+Es la excepción a "nadie ve nada hasta el revelado": cada uno tiene su momento a otra hora, así que el del día es la ventana al
+viaje mientras pasa. Las fotos normales siguen ocultas hasta el revelado.
+
+- **Lo ve todo el grupo** (miembros activos del rollo) apenas se sube, **nítido**, con sus dos imágenes. No hace falta haber
+  sacado el propio para ver el de los demás.
+- **Feed** (dentro de Mapa): la fila del momento muestra la foto de verdad con su recuadro en vez del ThumbHash.
+- **Mapa:** filtro "Momentos" (junto a "Solo hoy", en el menú de filtros) y los pins de momentos muestran la foto.
+- *(Decisión de Claude)* Tocarlo (fila o pin) abre el visor con las dos imágenes e intercambio, como después del revelado.
+- **Comentarios desde que se sube** (decisión del dueño): la foto principal del momento se comenta apenas se sube, entre
+  miembros activos y con todas las reglas de siempre (límites, borrar, denunciar, bloqueos, push `photoCommented`); el visor
+  muestra la burbuja con el contador (`commentCount` en el feed). Una foto normal sigue sin comentarios hasta el revelado.
+- *(Decisión de Claude)* **Antes del revelado, además de comentar, solo se mira:** me gusta, guardar y destacar recién después
+  del revelado (el backend también lo exige). Después del revelado aparece mezclado con las demás, con su badge, como hasta ahora.
+- **Push al resto del grupo** cuando alguien sube su momento: "{Nombre} subió su momento" (título) / "{rollo}" (cuerpo), al
+  completarse la subida de la foto principal (no al registrarla), una vez por momento. Nunca al autor ni entre usuarios
+  bloqueados. Switch en Ajustes → Notificaciones: "Momentos del grupo" (`momentPosted`, prendido por defecto). Tocar el aviso
+  abre el visor de ese momento en su rollo (y lo deja como activo).
+- **Privacidad:** el feed antes del revelado devuelve archivos **solo** para fotos del momento (principal y vinculada) y solo a
+  miembros activos; una foto normal sigue sin archivos. Bloqueos y denuncias se respetan igual que después del revelado.
+
+### Los 15 minutos en la app
+
+- **El aviso:** "Es tu momento del día en {rollo}. Tenés 15 minutos." *(texto: decisión de Claude)*. Tocarlo abre la cámara del
   momento (`/moment`, fullScreenModal) y deja ese rollo como activo, como las push que ya existen.
 - *(Decisión de Claude)* Si abre la app dentro de la ventana sin tocar el aviso, la tab Rollo muestra arriba un aviso con la
   cuenta regresiva ("Tu momento · quedan 3:12") que abre la cámara. Solo aparece **dentro** de la ventana, nunca antes. La app sabe la hora del momento de hoy leyendo sus
   propias notificaciones programadas y entregadas (`getPresentedNotificationsAsync` / `getAllScheduledNotificationsAsync`),
   sin guardarla aparte.
 - **La cámara del momento** es propia (`expo-camera`, ya es un paquete de Expo; *decisión de Claude* sobre
-  `react-native-vision-camera`), solo foto, con la **cuenta regresiva** visible. Con selfie: después de la foto principal, la
-  cámara pasa sola a la frontal y saca la selfie (~1080 px). Si se cierra la cámara antes de sacar, se puede volver a abrir
+  `react-native-vision-camera`), solo foto, con la **cuenta regresiva** visible. Arranca en la trasera y antes de la primera
+  foto se puede dar vuelta ("Dar vuelta la cámara"). **La primera foto que se saca es la principal**, sea de la trasera o de la
+  frontal. Con dos fotos, después de la primera la cámara pasa sola a la otra y saca la segunda (vinculada; ahí no se puede dar
+  vuelta). La imagen de la frontal se achica a 1080 px, sea la primera o la segunda. Si se cierra la cámara antes de sacar, se puede volver a abrir
   mientras dure la ventana.
 - Después, **la misma pantalla de caption que el resto** (foto difuminada, sin "Repetir", caption opcional, "Mandar al
   rollo"; ver el párrafo "Próximo build" de `CLAUDE.md`). Si la ventana vence mientras escribe el caption, la foto vale igual:
   cuenta la hora de captura.
-- Pasados los 5 minutos, tocar el aviso abre una pantalla "Se pasó tu momento de hoy" *(decisión de Claude)*.
+- Pasados los 15 minutos, tocar el aviso abre una pantalla "Se pasó tu momento de hoy" *(decisión de Claude)*.
 - Sin permiso de notificaciones no hay aviso, y el momento se pierde en silencio. El banner de Ajustes que ya existe lo explica.
 
 ### Subida
@@ -109,16 +133,18 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
   `in_window`. No descuenta cupo. Rechaza una segunda foto de momento para el mismo día (409). Un build viejo nunca manda
   `momentDay`, así que todo lo suyo sigue contando como foto normal.
 
-### Selfie y badge en el revelado
+### Segunda foto y badge en el revelado
 
-- **La selfie es una foto aparte, vinculada a la principal**, nunca pegada en la imagen: la principal se imprime limpia y el
+- **La segunda foto (`selfie` en el contrato: "la imagen vinculada") es una foto aparte, vinculada a la principal**, nunca pegada en la imagen: la principal se imprime limpia y el
   fotolibro elige qué usar.
 - En el **visor y las historias** se muestra como recuadro arriba a la izquierda; tocarlo intercambia las dos. Ese recuadro
   hace de badge.
 - En la **galería y el mapa** cuenta como una sola foto (la principal) con un badge chico. *(Decisión de Claude)* El badge es el
   SF Symbol `bolt.fill` blanco sobre un círculo oscuro, en la esquina, del tamaño de la insignia de autor de las destacadas.
   Sin selfie, el visor y las historias muestran ese mismo badge.
-- La selfie no se puede destacar sola ni tiene "me gusta" ni comentarios propios: todo va a la principal.
+- La vinculada no tiene "me gusta" ni comentarios propios: todo va a la principal. **El momento no se destaca en el perfil**: ninguna de
+  las dos imágenes (el server rechaza con 400 y el feed manda `canFeature: false`; la app no muestra la opción). "Descargar todo" y
+  "Guardar" incluyen la otra imagen; el recuadro dice "Ver la otra foto".
 
 ### Backend (resumen)
 
@@ -138,7 +164,7 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
 ### Para probarlo
 
 *(Decisión de Claude)* En Ajustes → Desarrollo (solo dev), "Probar momento ahora": programa un aviso de momento en 10 s
-para el rollo activo, con la ventana de 5 minutos, para probar la cámara y la subida sin esperar la hora random. El seed del
+para el rollo activo, con la ventana de 15 minutos, para probar la cámara y la subida sin esperar la hora random. El seed del
 backend suma un rollo en curso con el momento prendido (foto + selfie). Las notificaciones locales sí andan en el dev build
 (lo que no anda ahí son las push).
 
