@@ -258,15 +258,24 @@ describe("Capture", () => {
     expect(takePhoto).toHaveBeenCalledWith(expect.objectContaining({ flashMode: "on" }), {});
   });
 
+  // VisionCamera sets `isAutoContentAwareDistortionCorrectionEnabled` per shot without enabling it on the output:
+  // AVFoundation throws inside capturePhoto and the app crashes. Never ask for it.
+  it("never asks for distortion correction on a shot (it crashes the native capture)", async () => {
+    await openCapture();
+    await shoot();
+    await screen.findByLabelText("Caption");
+    expect(takePhoto.mock.calls.at(-1)![0]).not.toHaveProperty("enableDistortionCorrection");
+  });
+
   it("warms up the capture once the session is running, and again when the flash changes", async () => {
     await openCapture();
     const output = vision.usePhotoOutput.mock.results.at(-1)!.value;
     await screen.findByTestId("camera-back");
     expect(output.prepareSettings).not.toHaveBeenCalled();
     await startSession();
-    expect(output.prepareSettings).toHaveBeenLastCalledWith([{ flashMode: "auto", enableDistortionCorrection: true }]);
+    expect(output.prepareSettings).toHaveBeenLastCalledWith([{ flashMode: "auto" }]);
     await fireEvent.press(screen.getByRole("button", { name: "Flash automático" }));
-    expect(output.prepareSettings).toHaveBeenLastCalledWith([{ flashMode: "on", enableDistortionCorrection: true }]);
+    expect(output.prepareSettings).toHaveBeenLastCalledWith([{ flashMode: "on" }]);
   });
 
   it("camera errors are logged once as a warning, never as an error screen", async () => {

@@ -38,8 +38,11 @@ export function CloseButton(props: { onPress: () => void }) {
   );
 }
 
-/** Every shot: the chosen flash, and the lens correction the iPhone's camera applies (ultra-wide and front). */
-const captureSettings = (flash: FlashMode): CapturePhotoSettings => ({ flashMode: flash, enableDistortionCorrection: true });
+/**
+ * Every shot: the chosen flash. No `enableDistortionCorrection`: VisionCamera 5.2.3 sets it per shot without enabling
+ * it on the photo output, and AVFoundation throws inside capturePhoto (a native crash).
+ */
+const captureSettings = (flash: FlashMode): CapturePhotoSettings => ({ flashMode: flash });
 
 /** How fast a chip tap ramps the zoom (AVFoundation's rate: doublings per second), about 0.2 s from 1× to 3×. */
 const ZOOM_RAMP_RATE = 8;
