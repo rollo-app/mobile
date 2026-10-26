@@ -2,8 +2,17 @@ import * as Notifications from "expo-notifications";
 import { useCallback, useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { currentMoment, type CurrentMoment } from "./current-moment";
+import { momentNotificationId } from "./plan";
 
 type Delivered = { identifier: string; data: Record<string, unknown> }[];
+
+const reloaders = new Set<() => void>();
+
+/** Clears a moment once it was sent: removes its delivered notification so the banner goes away right then. */
+export async function momentTaken(tripId: string, day: string) {
+  await Notifications.dismissNotificationAsync(momentNotificationId(tripId, day)).catch(() => undefined);
+  for (const reload of reloaders) reload();
+}
 
 /**
  * The moment that fired and is still open, or null. Reads what iOS has delivered on mount and when the app
@@ -33,7 +42,9 @@ export function useCurrentMoment(): CurrentMoment | null {
     });
     // A moment that fires while the app is open on Rollo.
     const received = Notifications.addNotificationReceivedListener(load);
+    reloaders.add(load);
     return () => {
+      reloaders.delete(load);
       subscription.remove();
       received.remove();
     };

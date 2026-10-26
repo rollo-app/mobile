@@ -1,3 +1,4 @@
+import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
@@ -228,6 +229,27 @@ describe("Moment", () => {
     const items = await queue.pending();
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ momentDay: MOMENT_DAY, pairedWith: null });
+  });
+
+  it("once the moment is sent the banner in Rollo goes away", async () => {
+    trips.fetchTrip.mockResolvedValue(tripDetail("photo"));
+    trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [] } as never);
+    const at = Date.now() - 10_000;
+    let delivered = [
+      { date: at, request: { identifier: `moment.${SUR}.${MOMENT_DAY}`, content: { data: { url: `/moment?trip=${SUR}&day=${MOMENT_DAY}&at=${at}` } } } },
+    ];
+    (Notifications.getPresentedNotificationsAsync as jest.Mock).mockImplementation(async () => delivered);
+    (Notifications.dismissNotificationAsync as jest.Mock).mockImplementation(async (id: string) => {
+      delivered = delivered.filter((n) => n.request.identifier !== id);
+    });
+    await openMoment(at);
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(`moment.${SUR}.${MOMENT_DAY}`);
+    await waitFor(() => expect(screen.queryByText(/Tu momento/)).toBeNull());
+    (Notifications.getPresentedNotificationsAsync as jest.Mock).mockResolvedValue([]);
   });
 
   it("without a trip param it uses the active trip", async () => {

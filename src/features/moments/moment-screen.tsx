@@ -15,6 +15,7 @@ import { useSendShot } from "@/features/capture/use-send-shot";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { formatLeft, momentState } from "./moment-time";
+import { momentTaken } from "./use-current-moment";
 
 type Facing = "back" | "front";
 type FacingShot = Shot & { facing: Facing };
@@ -80,6 +81,7 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
       {
         onSuccess: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          void momentTaken(tripId, day);
           router.back();
         },
       },
