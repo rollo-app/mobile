@@ -104,9 +104,14 @@ Decisiones de producto:
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
-- **Modo viaje:** una notificación por día a un horario random distinto para cada uno, con un
-  disparador opcional. Ese "momento" es foto principal + selfie, con cámara propia
-  (`react-native-vision-camera` o `expo-camera`); la selfie chica (~1080 px).
+- **Momento del día (modo viaje, estilo BeReal):** un aviso por día a una hora random distinta para cada uno, dentro de una
+  franja (9:00–23:00 por defecto, configurable al crear el rollo). Hay **5 minutos** para sacar una foto extra, **aparte del
+  cupo**; pasado ese tiempo se pierde (no hay "tardía"). Selfie sí o no lo elige el admin al crear el rollo (con cámara propia,
+  `react-native-vision-camera` o `expo-camera`; la selfie chica, ~1080 px, es una foto aparte vinculada a la principal y en la
+  app se muestra como recuadro encima). En el revelado va mezclada con las demás, con un
+  badge a definir. Diseño y preguntas abiertas en `docs/superpowers/specs/2026-10-25-momento-diario-design.md`.
+- **Cupo diario o total** (a futuro, mismo diseño): al crear el rollo se elige si el límite es por día (como hoy, 10 por
+  persona por día) o total del viaje (por ejemplo 20 por persona en todo el rollo).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
   **El revelado** es una pantalla propia (`/reveal`, `src/features/reveal/`, fullScreenModal): se abre sola **una vez por
   rollo** la primera vez que entrás a un rollo revelado (`useFirstPresentation`, esperando `loaded` para no disparar en un rollo que no es el
@@ -384,8 +389,11 @@ testing externo en TestFlight (revisión de Apple) y la prueba real. El backend 
 (diseño en `docs/superpowers/specs/2026-10-23-comentarios-design.md`) y "Tu actividad" en tu Perfil, empezando por las fotos que te
 gustaron (`docs/superpowers/specs/2026-10-23-tu-actividad-design.md`) y decidir adónde van tus fotos: no dejar que las destaquen
 en otros perfiles para todas tus fotos, por rollo o con un rollo privado del admin (`docs/superpowers/specs/2026-10-23-fotos-en-perfiles-design.md`), solicitudes de amistad desde el perfil
-de otra persona (`docs/superpowers/specs/2026-10-23-solicitudes-de-amistad-design.md`) y un cambio de texto: la pastilla pasa a decir
-"Destacada en tu perfil". Los builds de EAS se agrupan: el plan gratis da 15 de iOS por mes.
+de otra persona (`docs/superpowers/specs/2026-10-23-solicitudes-de-amistad-design.md`), un cambio de texto: la pastilla pasa a decir
+"Destacada en tu perfil", y **sin "Repetir" en la captura**: la foto que sacaste es la que va, como en un rollo. Después de la cámara ya
+no hay preview nítido ni "Repetir": la pantalla del caption muestra la foto en grande pero ya difuminada. Y **sin videos en Rollo**
+(no van con un rollo de fotos y pesan mucho): la cámara saca solo fotos, crear rollo ya no pide cupo de videos y el cupo
+es solo de fotos; los videos que ya se subieron se siguen viendo en los rollos viejos. Los builds de EAS se agrupan: el plan gratis da 15 de iOS por mes.
 
 Pendiente (después de enero, no antes del viaje): **migrar el backend a Supabase**. La idea es que Postgres de
 Supabase reemplace a D1 y que las fotos sigan en R2 (gratis y sin costo de egress), con el Worker conectado
@@ -402,6 +410,6 @@ Plan para llegar a enero (regla: **nada nuevo después de mediados de diciembre*
    `react-native-compressor`.
 2. **Antes del revelado:** mapa con pins (`react-native-maps`) + feed de captions + contador.
 3. **Revelado:** galería, mapa con fotos, timeline por día, descarga.
-4. **Modo viaje:** push con Expo, momento doble (principal + selfie). Es lo primero que se recorta si no llegamos.
+4. **Momento del día** (ver arriba) y **cupo diario o total**. Es lo primero que se recorta si no llegamos.
 5. **Prueba real** en una escapada corta con amigos, antes del viaje.
 6. TestFlight con la cuenta del amigo.
