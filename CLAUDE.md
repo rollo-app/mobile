@@ -142,6 +142,7 @@ Decisiones de producto:
   (`PATCH /me`, error inline): apagado, solo tus amigos ven tus destacadas y tu lista de amigos
   (la descripción y la cantidad de amigos son siempre públicas).
 - **Insignias** (`src/features/profile/badge.ts`): `badge` (`"founder"` | `"first_edition"` | null) viene del server en el usuario (`GET /me`, `GET /users/{id}`) y se asigna a mano en el backend. Se muestra solo en el encabezado del perfil (`ProfileHeader`, el tuyo y el de otros) bajo el nombre, con `Badge` neutral y las etiquetas en inglés **FOUNDER** / **FIRST EDITION**; valores desconocidos no muestran nada. No va en listas, Feed ni mapa.
+- **Límites para crear rollos** (los aplica el server en `POST /trips`, **409** con el mensaje): máximo 2 rollos sin revelar creados por vos a la vez y 4 creados en los últimos 30 días; los rollos a los que te sumaste no cuentan y hay usuarios exentos (flag a mano en la DB). La app no chequea nada antes: `create-screen.tsx` muestra el mensaje del server debajo del botón (`ErrorText`, como cualquier error del form) sin perder lo cargado.
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").

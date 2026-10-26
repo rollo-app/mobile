@@ -2,6 +2,7 @@ import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { ApiError } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as friendActions from "@/features/friends/actions";
@@ -792,6 +793,21 @@ describe("Create roll", () => {
 
     expect(await screen.findByText("Nombre demasiado largo")).toBeVisible();
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
+  });
+
+  it("shows the server's limit message (409) inline under the button and keeps the typed values", async () => {
+    const message = "Ya tenés 2 rollos sin revelar. Esperá a que se revele uno para crear otro.";
+    mocked.createTrip.mockRejectedValue(new ApiError(409, message));
+    await renderRouter(routes, { initialUrl: "/create" });
+    await fillNames();
+    await fireEvent(screen.getByLabelText("10 fotos"), "valueChange", 25);
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    expect(await screen.findByText(message)).toBeVisible();
+    expect(screen).toHavePathname("/create");
+    // "Crear" is only enabled with a name, so the name is still there.
+    expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
+    expect(screen.getByLabelText("25 fotos")).toBeVisible();
   });
 
   describe("offering to add friends", () => {
