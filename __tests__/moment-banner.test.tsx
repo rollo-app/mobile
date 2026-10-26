@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
+import { MOMENT_WINDOW_MS } from "@/features/moments/plan";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
@@ -64,7 +65,7 @@ describe("Moment banner in Rollo", () => {
   });
 
   it("shows nothing for a delivered moment whose window is over", async () => {
-    presented.mockResolvedValue(deliveredAt(Date.now() - 400_000));
+    presented.mockResolvedValue(deliveredAt(Date.now() - MOMENT_WINDOW_MS - 100_000));
     await renderRouter(routes, { initialUrl: "/roll" });
     expect(await screen.findByText("En el rollo")).toBeVisible();
     expect(screen.queryByText(/Tu momento/)).toBeNull();
@@ -73,7 +74,7 @@ describe("Moment banner in Rollo", () => {
   it("shows the countdown for an open moment and opens /moment when tapped", async () => {
     presented.mockResolvedValue(deliveredAt(Date.now() - 120_000));
     await renderRouter(routes, { initialUrl: "/roll" });
-    expect(await screen.findByText(/^Tu momento · quedan 2:5\d$/)).toBeVisible();
+    expect(await screen.findByText(/^Tu momento · quedan 12:5\d$/)).toBeVisible();
 
     await fireEvent.press(screen.getByRole("button", { name: /^Tu momento · quedan/ }));
     expect(screen).toHavePathname("/moment");
@@ -92,7 +93,7 @@ describe("Moment banner in Rollo", () => {
   });
 
   it("goes away when the window closes", async () => {
-    presented.mockResolvedValue(deliveredAt(Date.now() - 298_500));
+    presented.mockResolvedValue(deliveredAt(Date.now() - (MOMENT_WINDOW_MS - 1_500)));
     await renderRouter(routes, { initialUrl: "/roll" });
     expect(await screen.findByText(/^Tu momento · quedan/)).toBeVisible();
     await waitFor(() => expect(screen.queryByText(/Tu momento/)).toBeNull(), { timeout: 4000 });

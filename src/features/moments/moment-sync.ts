@@ -75,7 +75,7 @@ export async function scheduleMomentNotification(p: PlannedMoment): Promise<void
     identifier: p.id,
     content: {
       title: "Es tu momento",
-      body: `Tenés 5 minutos para sacar tu foto de ${p.tripName}.`,
+      body: `Tenés 15 minutos para sacar tu foto de ${p.tripName}.`,
       // The camera must not wait for the trip detail (no signal), so the mode travels in the url.
       data: { url: `/moment?trip=${p.tripId}&day=${p.day}&at=${p.notifyAt}${p.momentMode ? `&selfie=${p.momentMode === "photo_selfie" ? 1 : 0}` : ""}` },
     },

@@ -4183,7 +4183,7 @@ export interface components {
              * @example 2027-01-12
              */
             day: string;
-            /** @description Epoch ms when the moment starts; the user has 5 minutes from then */
+            /** @description Epoch ms when the moment starts; the user has 15 minutes from then */
             notifyAt: number;
         };
         TripCreated: {

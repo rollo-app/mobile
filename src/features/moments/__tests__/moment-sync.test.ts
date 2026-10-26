@@ -61,7 +61,7 @@ describe("syncMoments", () => {
       identifier: "moment.t1.2027-01-10",
       content: {
         title: "Es tu momento",
-        body: "Tenés 5 minutos para sacar tu foto de Tandil.",
+        body: "Tenés 15 minutos para sacar tu foto de Tandil.",
         data: { url: `/moment?trip=t1&day=2027-01-10&at=${NOW + HOUR}&selfie=0` },
       },
       trigger: { type: "date", date: NOW + HOUR },

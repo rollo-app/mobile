@@ -1,4 +1,5 @@
 import { currentMoment } from "../current-moment";
+import { MOMENT_WINDOW_MS } from "../plan";
 
 const NOW = Date.UTC(2027, 0, 12, 15, 0, 0);
 const delivered = (tripId: string, day: string, at: number, identifier = `moment.${tripId}.${day}`) => ({
@@ -12,12 +13,12 @@ describe("currentMoment", () => {
       tripId: "t1",
       day: "2027-01-12",
       at: NOW - 120_000,
-      leftMs: 180_000,
+      leftMs: MOMENT_WINDOW_MS - 120_000,
     });
   });
 
-  it("returns null for one delivered 6 minutes ago", () => {
-    expect(currentMoment([delivered("t1", "2027-01-12", NOW - 360_000)], NOW)).toBeNull();
+  it("returns null for one delivered 16 minutes ago", () => {
+    expect(currentMoment([delivered("t1", "2027-01-12", NOW - MOMENT_WINDOW_MS - 60_000)], NOW)).toBeNull();
   });
 
   it("ignores notifications that are not moments", () => {

@@ -633,9 +633,9 @@ describe("Create roll", () => {
     it("shows a footer for each mode", async () => {
       await renderRouter(routes, { initialUrl: "/create" });
       await fillNames();
-      expect(screen.getByText("Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto con cada cámara; la primera es la grande.")).toBeTruthy();
+      expect(screen.getByText("Un aviso por día a una hora al azar para cada uno. Tienen 15 minutos para sacar una foto con cada cámara; la primera es la grande.")).toBeTruthy();
       await fireEvent.press(screen.getByRole("button", { name: "Solo foto" }));
-      expect(screen.getByText("Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto.")).toBeTruthy();
+      expect(screen.getByText("Un aviso por día a una hora al azar para cada uno. Tienen 15 minutos para sacar una foto.")).toBeTruthy();
       await fireEvent.press(screen.getByRole("button", { name: "Apagado" }));
       expect(screen.getByText("Sin aviso diario.")).toBeTruthy();
     });

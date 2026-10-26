@@ -1,6 +1,6 @@
 /** Pure planning of the daily-moment local notifications (no I/O). */
 
-export const MOMENT_WINDOW_MS = 300_000;
+export const MOMENT_WINDOW_MS = 900_000;
 export const MAX_SCHEDULED = 40;
 export const PREFETCH_DAYS = 3;
 

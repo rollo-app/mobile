@@ -211,8 +211,8 @@ export function CreateScreen() {
                 {momentMode === "off"
                   ? "Sin aviso diario."
                   : momentMode === "photo"
-                    ? "Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto."
-                    : "Un aviso por día a una hora al azar para cada uno. Tienen 5 minutos para sacar una foto con cada cámara; la primera es la grande."}
+                    ? "Un aviso por día a una hora al azar para cada uno. Tienen 15 minutos para sacar una foto."
+                    : "Un aviso por día a una hora al azar para cada uno. Tienen 15 minutos para sacar una foto con cada cámara; la primera es la grande."}
               </Text>
             }
           >

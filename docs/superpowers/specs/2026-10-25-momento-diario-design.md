@@ -21,7 +21,7 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
 ### Reglas de producto
 
 - **Aparte del cupo:** no descuenta del cupo del rollo (diario o total, ver 2). Una por día por persona.
-- **Ventana de 5 minutos** desde la hora del aviso. Pasado ese tiempo el momento de ese día se pierde: no se puede sacar.
+- **Ventana de 15 minutos** (era de 5; el dueño la amplió el 25/10/2026 después de probarla) desde la hora del aviso. Pasado ese tiempo el momento de ese día se pierde: no se puede sacar.
 - **Hora distinta para cada uno.**
 - **Franja horaria** configurable al crear el rollo, por defecto **9:00 a 23:00** en la zona del rollo (`trip.timezone`).
   Nunca avisa fuera de la franja.
@@ -60,7 +60,7 @@ fotolibro. El viaje de enero pasa por muchos tramos sin señal, así que **tiene
 ### Cómo se sortea la hora
 
 - **La ventana del día** es la intersección de la franja con `[startsAt, endsAt]` del rollo, en la zona del rollo, quitando
-  los últimos 5 minutos (el aviso tiene que dejar los 5 minutos dentro del rollo).
+  los últimos 15 minutos (el aviso tiene que dejar los 15 minutos dentro del rollo).
 - *(Decisión de Claude)* Si esa ventana dura **menos de 30 minutos**, ese día no hay momento (por ejemplo, un rollo que
   arranca a las 22:45).
 - La hora es uniforme dentro de la ventana, al minuto. Cambios de horario (DST) se calculan con la zona del rollo.
@@ -98,9 +98,9 @@ viaje mientras pasa. Las fotos normales siguen ocultas hasta el revelado.
 - **Privacidad:** el feed antes del revelado devuelve archivos **solo** para fotos del momento (principal y vinculada) y solo a
   miembros activos; una foto normal sigue sin archivos. Bloqueos y denuncias se respetan igual que después del revelado.
 
-### Los 5 minutos en la app
+### Los 15 minutos en la app
 
-- **El aviso:** "Es tu momento del día en {rollo}. Tenés 5 minutos." *(texto: decisión de Claude)*. Tocarlo abre la cámara del
+- **El aviso:** "Es tu momento del día en {rollo}. Tenés 15 minutos." *(texto: decisión de Claude)*. Tocarlo abre la cámara del
   momento (`/moment`, fullScreenModal) y deja ese rollo como activo, como las push que ya existen.
 - *(Decisión de Claude)* Si abre la app dentro de la ventana sin tocar el aviso, la tab Rollo muestra arriba un aviso con la
   cuenta regresiva ("Tu momento · quedan 3:12") que abre la cámara. Solo aparece **dentro** de la ventana, nunca antes. La app sabe la hora del momento de hoy leyendo sus
@@ -115,7 +115,7 @@ viaje mientras pasa. Las fotos normales siguen ocultas hasta el revelado.
 - Después, **la misma pantalla de caption que el resto** (foto difuminada, sin "Repetir", caption opcional, "Mandar al
   rollo"; ver el párrafo "Próximo build" de `CLAUDE.md`). Si la ventana vence mientras escribe el caption, la foto vale igual:
   cuenta la hora de captura.
-- Pasados los 5 minutos, tocar el aviso abre una pantalla "Se pasó tu momento de hoy" *(decisión de Claude)*.
+- Pasados los 15 minutos, tocar el aviso abre una pantalla "Se pasó tu momento de hoy" *(decisión de Claude)*.
 - Sin permiso de notificaciones no hay aviso, y el momento se pierde en silencio. El banner de Ajustes que ya existe lo explica.
 
 ### Subida
@@ -164,7 +164,7 @@ viaje mientras pasa. Las fotos normales siguen ocultas hasta el revelado.
 ### Para probarlo
 
 *(Decisión de Claude)* En Ajustes → Desarrollo (solo dev), "Probar momento ahora": programa un aviso de momento en 10 s
-para el rollo activo, con la ventana de 5 minutos, para probar la cámara y la subida sin esperar la hora random. El seed del
+para el rollo activo, con la ventana de 15 minutos, para probar la cámara y la subida sin esperar la hora random. El seed del
 backend suma un rollo en curso con el momento prendido (foto + selfie). Las notificaciones locales sí andan en el dev build
 (lo que no anda ahí son las push).
 

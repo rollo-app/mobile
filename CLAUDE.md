@@ -146,7 +146,7 @@ Decisiones de producto:
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
 - **Momento del día (modo viaje, estilo BeReal)** (`src/features/moments/`): un aviso por día a una hora random distinta para cada uno, dentro de una
-  franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Dos cámaras"). Hay **5 minutos** para sacar una foto extra, **aparte del
+  franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Dos cámaras"). Hay **15 minutos** para sacar una foto extra, **aparte del
   cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la imagen vinculada pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
   inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
   `cancelMomentNotifications()` las borra, y descarta también las ya entregadas (al cerrar sesión, borrar la cuenta y apagar el switch). Tocar el aviso conserva `trip` en la ruta. La hora de un momento futuro nunca se muestra ni se guarda en Query ni en

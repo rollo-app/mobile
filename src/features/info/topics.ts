@@ -27,7 +27,7 @@ const topics = {
     id: "moment",
     title: "Momento del día",
     body:
-      "Una vez por día la app le avisa a cada uno, a una hora al azar y distinta para cada persona, dentro de la franja que elijas. Desde el aviso hay 5 minutos para sacar una foto extra (con \"Dos cámaras\", una con cada cámara). Pasado ese tiempo se pierde.\n\n" +
+      "Una vez por día la app le avisa a cada uno, a una hora al azar y distinta para cada persona, dentro de la franja que elijas. Desde el aviso hay 15 minutos para sacar una foto extra (con \"Dos cámaras\", una con cada cámara). Pasado ese tiempo se pierde.\n\n" +
       "La franja va de \"Desde\" a \"Hasta\", en la hora del rollo. Por defecto, de 9:00 a 23:00.\n\n" +
       "Se ve en el Feed apenas se sube, antes del revelado. El aviso suena aunque no tengas señal.",
   },

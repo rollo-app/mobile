@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
+import { MOMENT_WINDOW_MS } from "@/features/moments/plan";
 import * as media from "@/features/capture/media";
 import { queryClient } from "@/api/query-client";
 import { localDay } from "@/features/capture/quota";
@@ -99,14 +100,14 @@ async function openMoment(at: number, extra = `&trip=${SUR}`) {
 
 describe("Moment", () => {
   it("with the window open it shows the countdown and the back camera", async () => {
-    await openMoment(Date.now() - 108_000); // 3:12 left
+    await openMoment(Date.now() - (MOMENT_WINDOW_MS - 192_000)); // 3:12 left
     expect(await screen.findByText("Tu momento · quedan 3:12")).toBeVisible();
     expect(screen.getByTestId("camera-back")).toBeVisible();
     expect(screen.getByRole("button", { name: "Sacar foto" })).toBeVisible();
   });
 
   it("with the window gone it says so and does not open the camera", async () => {
-    await openMoment(Date.now() - 400_000);
+    await openMoment(Date.now() - MOMENT_WINDOW_MS - 100_000);
     expect(await screen.findByText("Se pasó tu momento de hoy")).toBeVisible();
     expect(screen.getByText("Mañana te toca otro.")).toBeVisible();
     expect(screen.queryByTestId("camera-back")).toBeNull();
@@ -318,7 +319,7 @@ describe("Moment", () => {
 
   it("on the last day of the rollo the late screen says it was the last one", async () => {
     trips.fetchTrip.mockResolvedValue({ ...tripDetail("photo"), trip: { ...tripDetail("photo").trip, endsAt: Date.parse("2027-01-05T20:00:00Z") } });
-    await openMoment(Date.now() - 400_000);
+    await openMoment(Date.now() - MOMENT_WINDOW_MS - 100_000);
 
     expect(await screen.findByText("Era el último del rollo.")).toBeVisible();
     expect(screen.queryByText("Mañana te toca otro.")).toBeNull();
@@ -327,7 +328,7 @@ describe("Moment", () => {
   it("the last day also comes from the rollo list when the detail is not loaded", async () => {
     trips.fetchTrip.mockReturnValue(new Promise(() => {}));
     await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin", endsAt: Date.parse("2027-01-05T20:00:00Z") })] });
-    await openMoment(Date.now() - 400_000);
+    await openMoment(Date.now() - MOMENT_WINDOW_MS - 100_000);
 
     expect(await screen.findByText("Era el último del rollo.")).toBeVisible();
   });
