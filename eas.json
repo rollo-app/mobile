@@ -10,7 +10,8 @@
       "env": {
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_API_URL": "https://rollo-api.juanifraga.com"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
