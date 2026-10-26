@@ -327,12 +327,12 @@ describe("Capture", () => {
     expect(chips.map((c) => c.props.accessibilityLabel)).toEqual(["Zoom 1×", "Zoom 2×", "Zoom 3×"]);
   });
 
-  it("the front camera starts at 1x with no chips, and flipping back starts over at 1x", async () => {
+  it("the front camera starts at its 1x crop (1,25) with no chips, and flipping back starts over at 1x", async () => {
     await openCapture();
     await startSession();
     await fireEvent.press(screen.getByRole("button", { name: "Zoom 3×" }));
     await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
-    expect((await screen.findByTestId("camera-front")).props.zoom).toBe(1);
+    expect((await screen.findByTestId("camera-front")).props.zoom).toBe(1.25);
     expect(screen.queryByTestId("zoom-chips")).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
     expect((await screen.findByTestId("camera-back")).props.zoom).toBe(2);
@@ -675,13 +675,13 @@ describe("Camera extras (like the iPhone's camera)", () => {
       expect(screen.getByRole("button", { name: "Ampliar encuadre" })).toBeVisible();
     });
 
-    it("is hidden when the front camera cannot frame wider, and never on the back camera", async () => {
+    it("shows on the front even when the device reports no multiplier (iPhone 15 Pro Max), never on the back", async () => {
       await openCapture();
       await startSession();
       expect(screen.queryByRole("button", { name: "Ampliar encuadre" })).toBeNull();
       await fireEvent.press(screen.getByRole("button", { name: "Dar vuelta la cámara" }));
       await startSession("camera-front");
-      expect(screen.queryByRole("button", { name: "Ampliar encuadre" })).toBeNull();
+      expect(await screen.findByRole("button", { name: "Ampliar encuadre" })).toBeTruthy();
     });
   });
 

@@ -50,7 +50,7 @@ describe("zoomLevels", () => {
   });
 
   it("the front camera has no chips, only the pinch", () => {
-    expect(zoomLevels(front)).toEqual({ neutral: 1, min: 1, max: 10, presets: [] });
+    expect(zoomLevels(front).presets).toEqual([]);
   });
 
   it("drops a 2 chip the device cannot reach", () => {
@@ -118,10 +118,18 @@ describe("front camera framing (Ampliar encuadre)", () => {
     expect(zoomLevels({ ...front, displayMultiplier: 0.8 })).toEqual({ neutral: 1.25, min: 1, max: 12.5, presets: [] });
   });
 
-  it("ignores a missing, invalid or >= 1 multiplier (and the back camera never uses it)", () => {
-    expect(zoomLevels({ ...front, displayMultiplier: 1 }).neutral).toBe(1);
-    expect(zoomLevels({ ...front, displayMultiplier: Number.NaN }).neutral).toBe(1);
-    expect(zoomLevels({ ...front, displayMultiplier: 0 }).neutral).toBe(1);
+  // Measured on an iPhone 15 Pro Max (iOS 27): the front reports multiplier 1 and minimum 1, but raw zoom 1 is still the
+  // wide sensor. Without a usable multiplier, 1x is the Camera app's crop (1,25) and the minimum stays for "Ampliar".
+  it("without a usable multiplier the front 1x is the Camera app's 1,25 crop", () => {
+    const real = { ...front, maxZoom: 189 };
+    expect(zoomLevels({ ...real, displayMultiplier: 1 })).toMatchObject({ neutral: 1.25, min: 1 });
+    expect(zoomLevels({ ...real, displayMultiplier: Number.NaN }).neutral).toBe(1.25);
+    expect(zoomLevels({ ...real, displayMultiplier: 0 }).neutral).toBe(1.25);
+    expect(zoomLevels(real).neutral).toBe(1.25);
+    expect(frontExpand(zoomLevels({ ...real, displayMultiplier: 1 }), "front")).toEqual({ neutral: 1.25, wide: 1 });
+  });
+
+  it("the back camera never uses the multiplier", () => {
     expect(zoomLevels({ ...triple3x, displayMultiplier: 0.5 }).neutral).toBe(2);
   });
 
@@ -131,7 +139,7 @@ describe("front camera framing (Ampliar encuadre)", () => {
 
   it("offers expanding only on a front camera whose minimum is wider than its 1x", () => {
     expect(frontExpand(zoomLevels({ ...front, displayMultiplier: 0.8 }), "front")).toEqual({ neutral: 1.25, wide: 1 });
-    expect(frontExpand(zoomLevels(front), "front")).toBeNull();
+    expect(frontExpand(zoomLevels({ ...front, maxZoom: 1 }), "front")).toBeNull();
     expect(frontExpand(zoomLevels(triple3x), "back")).toBeNull();
   });
 

@@ -25,17 +25,23 @@ export type ZoomDevice = Pick<CameraDevice, "position" | "minZoom" | "maxZoom" |
 
 export type ZoomLevels = { neutral: number; min: number; max: number; presets: number[] };
 
+/** The front camera's default crop (raw zoom) when the device doesn't report its display multiplier. */
+const FRONT_CROP = 1.25;
+
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 export function zoomLevels(device: ZoomDevice): ZoomLevels {
   const lenses = device.physicalDevices.map((d) => d.type);
   const ultraWide = lenses.includes("ultra-wide-angle") && device.zoomLensSwitchFactors.length > 0;
   const m = device.displayMultiplier;
-  const frontCrop = device.position === "front" && m !== undefined && Number.isFinite(m) && m > 0 && m < 1;
+  const reported = m !== undefined && Number.isFinite(m) && m > 0 && m < 1;
+  // Front: 1x is the Camera app's crop of the wider sensor. iOS 18+ may report it (1 / multiplier); some iPhones report
+  // 1 (an iPhone 15 Pro Max on iOS 27), and then 1x is the Camera app's usual 1,25 crop.
+  const frontNeutral = reported ? 1 / m : FRONT_CROP;
   const neutral = ultraWide
     ? device.zoomLensSwitchFactors[0]!
-    : frontCrop
-      ? Math.min(device.maxZoom, Math.max(device.minZoom, 1 / m))
+    : device.position === "front"
+      ? Math.min(device.maxZoom, Math.max(device.minZoom, frontNeutral))
       : device.minZoom;
   const teles = lenses.includes("telephoto")
     ? device.zoomLensSwitchFactors.filter((f) => f > neutral + 0.01).map((f) => round1(f / neutral))
