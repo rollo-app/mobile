@@ -65,7 +65,7 @@ const item = (id: string, iso: string, author: { id: string; name: string; usern
 });
 
 const press = async (x = 600) => fireEvent.press(await screen.findByTestId("story-surface"), { nativeEvent: { locationX: x } });
-/** A single tap: on a photo it waits out the double-tap window before it moves. */
+/** A single tap (taps move right away; the extra wait is harmless). */
 const tap = async (x = 600) => {
   await press(x);
   await act(async () => jest.advanceTimersByTime(300));
@@ -185,20 +185,14 @@ describe("Presentation: likes", () => {
     expect(screen.queryByTestId("heart-burst")).toBeNull();
   });
 
-  it("double tap on a photo likes it, fills the heart and stays on it", async () => {
+  it("a tap on a photo moves right away, without waiting for a double tap", async () => {
     await renderRouter(routes, { initialUrl: "/presentation" });
     await tap();
     await screen.findByText("el viento no perdona");
 
     await press();
-    await press();
 
-    await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledWith("a"));
-    const heart = await screen.findByRole("button", { name: "Ya no me gusta" });
-    expect(within(heart).getByTestId("story-heart").props.name).toBe("heart.fill");
-    expect(screen.queryByTestId("heart-burst")).toBeNull();
-    await act(async () => jest.advanceTimersByTime(300));
-    expect(screen.getByText("el viento no perdona")).toBeVisible();
+    expect(screen.queryByText("el viento no perdona")).toBeNull();
   });
 
   it("tapping the heart likes the photo and tapping it again takes the like away, without moving", async () => {
@@ -214,9 +208,7 @@ describe("Presentation: likes", () => {
     expect(screen.getByText("el viento no perdona")).toBeVisible();
   });
 
-  it("double tap on a photo you already like doesn't take it away", async () => {
-    const liked = await mocked.fetchFeed("x");
-    mocked.fetchFeed.mockResolvedValue({ ...liked, items: liked.items.map((i) => ({ ...i, likedByMe: true, likeCount: 1 })) });
+  it("double tap on a photo moves twice and never likes: in stories the like is only the heart", async () => {
     await renderRouter(routes, { initialUrl: "/presentation" });
     await tap();
     await screen.findByText("el viento no perdona");
@@ -225,26 +217,8 @@ describe("Presentation: likes", () => {
     await press();
     await act(async () => jest.advanceTimersByTime(300));
 
-    expect(likes.unlikeMedia).not.toHaveBeenCalled();
     expect(likes.likeMedia).not.toHaveBeenCalled();
-    expect(screen.getByText("el viento no perdona")).toBeVisible();
-  });
-
-  it("a second double tap after liking doesn't send it again", async () => {
-    await renderRouter(routes, { initialUrl: "/presentation" });
-    await tap();
-    await screen.findByText("el viento no perdona");
-
-    await press();
-    await press();
-    await waitFor(() => expect(likes.likeMedia).toHaveBeenCalledTimes(1));
-    await act(async () => jest.advanceTimersByTime(300));
-    await press();
-    await press();
-    await act(async () => jest.advanceTimersByTime(300));
-
-    expect(likes.likeMedia).toHaveBeenCalledTimes(1);
-    expect(likes.unlikeMedia).not.toHaveBeenCalled();
+    expect(screen.queryByText("el viento no perdona")).toBeNull();
   });
 
   it("on a video, taps move right away and never like", async () => {

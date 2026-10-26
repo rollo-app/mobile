@@ -20,7 +20,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDoubleTap } from "@/features/likes/use-double-tap";
 import { useToggleLike } from "@/features/likes/use-toggle-like";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
@@ -149,25 +148,11 @@ export function StoryPlayer({
   );
   const segments = daySegments(state.steps, state.index);
 
-  // On a photo a tap waits out the double-tap window before it moves; a double tap likes it and stays.
-  // Day cards, videos and the outro move right away.
+  // Taps always move right away (a quick double tap skips two): in stories the like is only the heart.
   const likes = useToggleLike();
-  const stepRef = useRef(step);
-  stepRef.current = step;
   // The story's steps keep the photos they were built with: the like state comes from the latest feed.
   const latestOf = (photo: RevealedPhoto) => photosRef.current.find((p) => p.id === photo.id) ?? photo;
-  const taps = useDoubleTap<number>(onPress, () => {
-    const current = stepRef.current;
-    if (current.kind !== "photo" || current.photo.type !== "photo") return;
-    void likes.like(latestOf(current.photo));
-  });
-  // A tap still waiting out the window belongs to the step it was made on: if the story moves first
-  // (auto-advance, a feed reload), drop it, or it would skip the next step unseen.
-  useEffect(() => taps.cancel(), [state.index, state.steps, taps]);
-  const onSurfacePress = (x: number) => {
-    if (step.kind === "photo" && step.photo.type === "photo") taps.tap(x);
-    else onPress(x);
-  };
+  const onSurfacePress = onPress;
 
   // Swipe down to close, like Instagram stories: the story follows the finger and shrinks while the black fades out.
   const { height } = useWindowDimensions();
