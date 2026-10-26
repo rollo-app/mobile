@@ -455,6 +455,14 @@ Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Jua
   que se agregan **solo en local, sin commitear**, antes de `npx eas-cli@latest submit -p ios --profile production`.
   `ascAppId` (6825843502) es el Apple ID de la app en App Store Connect. El export compliance ya va en el build
   (`usesNonExemptEncryption: false`).
+- **Actualizaciones sin pasar por Apple (EAS Update, `expo-updates`):** los builds de producción escuchan el canal `production`
+  (`eas.json`). Un cambio **solo de JS, estilos o imágenes** se manda con `npm run update:production -- --message "…"` (fija
+  `APP_VARIANT=production` y la URL del backend de producción, así nunca sale apuntando al local). El celular lo baja en segundo
+  plano al abrir la app y lo usa **la próxima vez que se abre en frío** (hasta dos aperturas). `runtimeVersion` sigue
+  `version` de `app.json` (`policy: appVersion`): un update solo llega a builds con la misma versión. **Regla:** cualquier cambio
+  nativo (paquete nativo nuevo, permisos, plugins, ícono, SDK) pide **subir `version`** y build nuevo; si no, un update con JS que
+  usa código nativo que el build no tiene rompe la app. Los builds 1.0.0 viejos no tienen `expo-updates`: el primero que recibe
+  updates es el próximo build. En el dev build no aplica (se usa Metro).
 - **Push solo en producción/TestFlight:** `./plugins/without-push-entitlement` se aplica únicamente a la variante dev de `app.config.ts`
   (la cuenta gratis no tiene push); la de producción lleva el entitlement. En el dev build registrar el token falla en silencio y no llegan
   avisos. Para probarlas: `npx expo prebuild --clean` + build nuevo de EAS.

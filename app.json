@@ -23,6 +23,9 @@
         "light": "./assets/icon.png",
         "dark": "./assets/icon-dark.png",
         "tinted": "./assets/icon-tinted.png"
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
@@ -99,6 +102,9 @@
         "projectId": "124fc671-d309-4a16-9606-e4e900286752"
       }
     },
-    "owner": "rollo-app"
+    "owner": "rollo-app",
+    "updates": {
+      "url": "https://u.expo.dev/124fc671-d309-4a16-9606-e4e900286752"
+    }
   }
 }
