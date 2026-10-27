@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
 import { FullWindowOverlay } from "react-native-screens";
-import { EASE_OUT_BEZIER } from "./motion";
+import { EASE_OUT_BEZIER } from "./curves";
 import { subscribePill } from "./pill";
 import { useReduceMotion } from "./use-reduce-motion";
 
