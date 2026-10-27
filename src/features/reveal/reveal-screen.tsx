@@ -2,14 +2,18 @@ import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
-import { useRevealedPhotos } from "@/features/media/revealed";
-import { useReduceMotion } from "@/features/presentation/use-accessibility";
+import { useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { formatDate } from "@/features/trips/phase";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { markRevealIntroSeen } from "@/storage/reveal-intro";
+import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { DarkroomIntro } from "./darkroom-intro";
+import { REVEAL_MAX_CELLS, sampleEvenly } from "./sample-evenly";
 import { REVEAL_TIMELINE } from "./timeline";
+import { useThumbBytes } from "./use-thumb-bytes";
+
+const NO_CELLS: RevealedPhoto[] = [];
 
 /** The screen's own background, painted from the first frame: the darkroom's red-black. */
 export const REVEAL_BACKGROUND = "#1a0000";
@@ -49,6 +53,15 @@ export function RevealScreen() {
 
   // Before `checked` the cache may hold only the daily moments from before the reveal: wait for the full feed.
   const ready = checked && !!detail && !!token && photos.length > 0;
+
+  // The cells are fixed once the reveal can start (a refetch mid-play must not swap them), and their
+  // thumbs are downloaded before the intro mounts so none pops in while developing.
+  const frozen = useRef<RevealedPhoto[] | null>(null);
+  if (ready && !frozen.current) frozen.current = sampleEvenly(photos, REVEAL_MAX_CELLS);
+  const cells = frozen.current ?? NO_CELLS;
+  const thumbs = useThumbBytes(cells, token ?? "", ready, REVEAL_TIMELINE.thumbsCapMs);
+  // Reduce Motion is read once by the intro, so it waits until it's known.
+  const playing = ready && thumbs.settled && reduceMotion !== null;
   const nothing = checked && !ready && !loading && (!!error || (!!detail && !!token && photos.length === 0));
 
   useEffect(() => {
@@ -58,19 +71,24 @@ export function RevealScreen() {
   useEffect(() => {
     if (!ready || !tripId) return;
     void markRevealIntroSeen(tripId);
-    const timer = setTimeout(toStories, REVEAL_TIMELINE.totalMs);
+  }, [ready, tripId]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const total = reduceMotion ? REVEAL_TIMELINE.reduced.totalMs : REVEAL_TIMELINE.totalMs;
+    const timer = setTimeout(toStories, total);
     return () => clearTimeout(timer);
-  }, [ready, tripId, toStories]);
+  }, [playing, reduceMotion, toStories]);
 
   // A safety net while it loads: with weak signal a request can hang, and the stories have their own
   // loading and error states.
   useEffect(() => {
-    if (ready) return;
+    if (playing) return;
     const timer = setTimeout(toStories, REVEAL_TIMELINE.loadingTimeoutMs);
     return () => clearTimeout(timer);
-  }, [ready, toStories]);
+  }, [playing, toStories]);
 
-  if (!ready) {
+  if (!playing || !detail) {
     return (
       <Pressable
         testID="reveal-loading"
@@ -88,14 +106,21 @@ export function RevealScreen() {
   }
 
   return (
-    <Pressable testID="reveal-surface" style={styles.root} accessibilityHint="Tocá para ver las fotos" onPress={toStories}>
+    <Pressable
+      testID="reveal-surface"
+      style={styles.root}
+      accessibilityRole="button"
+      accessibilityLabel="Saltar el revelado"
+      accessibilityHint="Tocá para ver las fotos"
+      onPress={toStories}
+    >
       <StatusBar style="light" />
       <DarkroomIntro
-        photos={photos}
-        token={token}
+        photos={cells}
+        thumbBytes={thumbs.bytes}
         title={detail.trip.name}
         date={formatDate(detail.trip.revealAt, detail.trip.timezone)}
-        reduceMotion={reduceMotion}
+        reduceMotion={reduceMotion === true}
       />
     </Pressable>
   );

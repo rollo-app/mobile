@@ -1,4 +1,5 @@
 import { act } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import { router } from "expo-router";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
@@ -181,6 +182,60 @@ describe("Reveal", () => {
     expect(screen.queryByText("Se reveló")).toBeNull();
     await act(async () => resolve(full));
     await screen.findByText("Se reveló");
+  });
+
+  it("gives the skip surface a button role and label", async () => {
+    await renderRouter(routes, { initialUrl: "/reveal" });
+    await screen.findByText("Se reveló");
+    expect(screen.getByRole("button", { name: "Saltar el revelado" })).toBe(screen.getByTestId("reveal-surface"));
+  });
+
+  describe("thumbs", () => {
+    const realFetch = globalThis.fetch;
+    afterEach(() => {
+      globalThis.fetch = realFetch;
+    });
+
+    it("waits for the thumbs before it starts, up to the cap", async () => {
+      globalThis.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+      await screen.findByTestId("reveal-loading");
+
+      await act(async () => jest.advanceTimersByTime(REVEAL_TIMELINE.thumbsCapMs - 100));
+      expect(screen.queryByText("Se reveló")).toBeNull();
+
+      await act(async () => jest.advanceTimersByTime(200));
+      expect(screen.getByText("Se reveló")).toBeTruthy();
+    });
+  });
+
+  describe("with Reduce Motion", () => {
+    // Not restoreAllMocks: it wipes React Native's own jest.fn, and later tests would wait forever for the flag.
+    afterEach(() => jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false));
+
+    it("hands over to the stories after the short reduced sequence, not the full one", async () => {
+      jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+      await screen.findByText("Se reveló");
+      const { totalMs } = REVEAL_TIMELINE.reduced;
+
+      await act(async () => jest.advanceTimersByTime(totalMs - 100));
+      expect(screen).toHavePathname("/reveal");
+      await act(async () => jest.advanceTimersByTime(100));
+      expect(screen).toHavePathname("/presentation");
+    });
+
+    it("does not start until Reduce Motion is known", async () => {
+      jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockReturnValue(new Promise(() => {}));
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+      await act(async () => jest.advanceTimersByTime(REVEAL_TIMELINE.thumbsCapMs + 100));
+
+      expect(screen.queryByText("Se reveló")).toBeNull();
+      expect(screen.getByTestId("reveal-loading")).toBeTruthy();
+    });
   });
 
   it("plays even when it was already seen", async () => {
