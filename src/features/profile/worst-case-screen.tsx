@@ -43,5 +43,5 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.groupedBackground },
   controls: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   case: { gap: spacing.xs, paddingBottom: spacing.md },
-  caption: { color: colors.secondaryLabel, paddingHorizontal: spacing.xs },
+  caption: { color: colors.secondaryLabel },
 });

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Badge } from "@/ui/badge";
-import { colors, radius, spacing, type } from "@/ui/theme";
+import { colors, spacing, type } from "@/ui/theme";
 import { Avatar } from "./avatar";
 import { badgeLabel, badgeSpoken } from "./badge";
 import { formatFriendCount } from "./friend-count";
@@ -18,19 +18,19 @@ type Props = {
   friends?: { count: number; mutual?: number; canSee?: boolean; own?: boolean; onPress: () => void };
 };
 
-/** Top of a profile (yours or someone's): a borderless card: photo on the left, name, @ and badge on the right, the description and the friend count below. */
+/** Top of a profile (yours or someone's): no card, straight on the screen background (the screen's 16 pt padding is the only margin): photo on the left, name, @ and badge on the right, the description and the friend count below. */
 export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, friends }: Props) {
   const friendCount = friends ? formatFriendCount(friends.count, friends.mutual, friends.canSee, friends.own) : null;
   const badgeText = badgeLabel(badge);
   return (
-    <View style={styles.card}>
+    <View testID="profile-header" style={styles.header}>
       <View testID="profile-row" style={styles.row}>
         <View style={styles.avatar}>
-          <Avatar id={id} name={name} avatarUrl={avatarUrl} size={64} />
+          <Avatar id={id} name={name} avatarUrl={avatarUrl} size={80} />
         </View>
         <View style={styles.identity}>
           {name.trim() !== "" && (
-            <Text testID="profile-name" numberOfLines={3} style={[type.title3, { color: colors.label }]}>
+            <Text testID="profile-name" numberOfLines={3} style={[type.title, { color: colors.label }]}>
               {name}
             </Text>
           )}
@@ -62,13 +62,13 @@ export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, frien
 }
 
 const styles = StyleSheet.create({
-  // Borderless card: the grouped-list cell color against the grouped screen background (both screens are `grouped`).
-  card: { backgroundColor: colors.cell, borderRadius: radius.lg, borderCurve: "continuous", padding: spacing.md, gap: spacing.sm },
+  // No fill or radius: the header sits on the screen background; horizontal margin comes from `Screen` (spacing.md), same as the segmented control.
+  header: { gap: spacing.sm },
   // Top-aligned: with a name that wraps to 3 lines the column grows down and the photo stays at the top.
   row: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
   avatar: { flexShrink: 0 },
-  // Short column (name + @): centered against the 64 pt photo via minHeight, grows naturally when the name wraps.
-  identity: { flex: 1, minWidth: 0, minHeight: 64, justifyContent: "center", gap: 2 },
+  // Short column (name + @): centered against the 80 pt photo via minHeight, grows naturally when the name wraps.
+  identity: { flex: 1, minWidth: 0, minHeight: 80, justifyContent: "center", gap: 2 },
   badge: { alignSelf: "flex-start", marginTop: spacing.xs },
   count: { alignSelf: "flex-start" },
   pressed: { opacity: 0.5 },

@@ -48,4 +48,19 @@ describe("ProfileHeader", () => {
     expect(within(row).queryByText("3 amigos")).toBeNull();
     expect(screen.getByTestId("profile-bio")).toBeTruthy();
   });
+
+  it("has no card: no background and no radius on the header", async () => {
+    await show({ bio: "Hola" });
+    const style = StyleSheet.flatten(screen.getByTestId("profile-header").props.style as never) as Record<string, unknown>;
+    expect(style.backgroundColor).toBeUndefined();
+    expect(style.borderRadius).toBeUndefined();
+    expect(style.padding).toBeUndefined();
+  });
+
+  it("shows an 80 pt photo and the name in the title size", async () => {
+    await show({});
+    const avatar = screen.getByTestId("avatar", { includeHiddenElements: true });
+    expect(StyleSheet.flatten(avatar.props.style as never)).toMatchObject({ width: 80, height: 80 });
+    expect(StyleSheet.flatten(screen.getByTestId("profile-name").props.style as never)).toMatchObject({ fontSize: 22 });
+  });
 });
