@@ -3,6 +3,7 @@
 // - moment-intro*.json: plus a cobalt ring drawing around it (the daily moment's 15-minute window). The app's is dark
 //   (it always plays over black, like the camera); the light one is for the site.
 // - logo-intro-{light,dark}.json: the mark alone, bigger and shorter (the app's first welcome).
+// - app-intro-{light,dark}.json: the mark alone at half speed (the full-screen intro for a new account).
 import { writeFileSync } from "node:fs";
 
 const FR = 60;
@@ -61,7 +62,7 @@ function layer(OP, ind, nm, shapes, ks = {}) {
 }
 
 /** One circle of the mark: logo-space center/radius, fading in to `opacity` while it scales up. */
-function circle({ OP, S, color }, ind, nm, [lx, ly, lr], opacity, scaleKeys, opacityKeys) {
+function circle({ OP, S, color, pace }, ind, nm, [lx, ly, lr], opacity, scaleKeys, opacityKeys) {
   const center = [C + (lx - 60) * S, C + (ly - 60) * S];
   const d = lr * 2 * S;
   return layer(OP, ind, nm, [
@@ -75,18 +76,21 @@ function circle({ OP, S, color }, ind, nm, [lx, ly, lr], opacity, scaleKeys, opa
           ty: "tr",
           p: stat(center),
           a: stat([0, 0]),
-          s: anim(scaleKeys.map(([t, v, e]) => [t, [v, v], e]), 2),
+          s: anim(scaleKeys.map(([t, v, e]) => [Math.round(t * pace), [v, v], e]), 2),
           r: stat(0),
-          o: anim(opacityKeys, 1),
+          o: anim(opacityKeys.map(([t, v, e]) => [Math.round(t * pace), v, e]), 1),
         },
       ],
     },
   ]);
 }
 
-/** The mark, with the moment's ring or alone. `S` scales logo units (its 120 box) to px. */
-function build({ name, color, ring, S, OP }) {
-  const m = { OP, S, color };
+/**
+ * The mark, with the moment's ring or alone. `S` scales logo units (its 120 box) to px; `pace` stretches the mark's
+ * timing (1 = as designed; the ring keeps its own).
+ */
+function build({ name, color, ring, S, OP, pace = 1 }) {
+  const m = { OP, S, color, pace };
   const big = circle(m, 3, "large", [60, 60, 34], 18, [[0, 72], [26, 100]], [[0, 0], [14, 100]]);
   const mid = circle(m, 2, "medium", [66, 54, 24], 38, [[6, 72], [32, 100]], [[6, 0], [20, 100]]);
   // The core is the focal element: the only one with a pop (overshoot, then settle back).
@@ -161,3 +165,7 @@ write("../scripts/site/moment-intro-light.json", build({ ...moment, color: COBAL
 write("../scripts/site/moment-intro-dark.json", build({ ...moment, color: COBALT.dark }));
 write("../assets/lottie/logo-intro-light.json", build({ ...logo, color: COBALT.light }));
 write("../assets/lottie/logo-intro-dark.json", build({ ...logo, color: COBALT.dark }));
+// The app's full-screen intro for a new account: the same mark, bigger and slower (~1.6 s).
+const appIntro = { name: "Rollo - Intro", ring: false, S: 3.6, OP: 96, pace: 2 };
+write("../assets/lottie/app-intro-light.json", build({ ...appIntro, color: COBALT.light }));
+write("../assets/lottie/app-intro-dark.json", build({ ...appIntro, color: COBALT.dark }));

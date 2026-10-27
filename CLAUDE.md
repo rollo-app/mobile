@@ -247,7 +247,7 @@ Decisiones de producto:
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
 - Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
-  ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado" y "Ver candado", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
+  ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado", "Ver candado" y "Ver intro", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
   "Cerrar sesión" / "Borrar cuenta".
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
@@ -375,6 +375,10 @@ Si una skill contradice este archivo, **gana este archivo**.
   nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio a `scripts/site/`) y salen de
   `scripts/build-lottie.mjs`; en la app se reproducen con `lottie-react-native` (nativo: cambiarlo pide rebuild). El revelado (shader de Skia)
   se mantiene; Lottie es para piezas chicas e ilustrativas, nunca para estados de la UI.
+  **Intro de una cuenta nueva** (`/intro`, `src/features/intro/`, fullScreenModal): al terminar "Completá tu perfil" se marca pendiente
+  (`rollo.appIntroPending`) y, al montar las tabs, se abre una sola vez por celular (`rollo.appIntroSeen`, `use-app-intro.ts`): el logo se arma lento
+  (`assets/lottie/app-intro-*.json`), "Sacá la foto." / "Mirala después." y el botón "Empezar" (no se toca ni lo lee VoiceOver hasta que aparece);
+  con "Reducir movimiento", logo quieto y fundidos. Marca también `rollo.welcomeIntroSeen`.
   La bienvenida de Rollo (sin rollos todavía, `src/features/roll/welcome.tsx`) lleva el logo arriba del título: la primera vez en el celular se anima (`assets/lottie/logo-intro-*.json`, una vez, sin háptico ni sonido; `rollo.welcomeIntroSeen`) y después queda el último cuadro.
 
 ## Cómo trabajamos
@@ -401,11 +405,11 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1593 tests
+npm test                      # 1642 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
-npm run lottie                # regenera la intro del momento (assets/lottie/)
+npm run lottie                # regenera los Lottie (momento, bienvenida, intro; assets/lottie/ y scripts/site/)
 npx expo run:ios --device     # compila e instala el dev build en el iPhone
 npm start                     # día a día, con el dev build ya instalado
 ```

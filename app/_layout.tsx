@@ -148,6 +148,8 @@ function RootStack() {
           <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
           {/* The daily moment: camera with countdown; like capture, no swipe to dismiss. */}
           <Stack.Screen name="moment" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
+          {/* The app's first presentation, once per phone after a new account completes its profile. */}
+          <Stack.Screen name="intro" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
           {/* The lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen

@@ -19,6 +19,7 @@ export function ProfileForm({
   user,
   submitLabel,
   onSaved,
+  beforeApply,
   showEmail = false,
   askFriendCode = false,
   showBio = false,
@@ -26,6 +27,8 @@ export function ProfileForm({
   user: User;
   submitLabel: string;
   onSaved: () => void;
+  /** Runs once the server saved the changes and before the cache (and so the auth gate) sees them. */
+  beforeApply?: () => Promise<void>;
   /** Read-only email row at the top (editing, not completing). */
   showEmail?: boolean;
   /** Optional "¿Te invitó un amigo?" code, only when signing up. */
@@ -67,6 +70,7 @@ export function ProfileForm({
       const bioChanged = showBio && bio !== (user.bio ?? "");
       if (trimmed !== user.name || normalized !== user.username || bioChanged) {
         const updated = await updateProfile({ name: trimmed, username: normalized, ...(bioChanged ? { bio } : {}) });
+        await beforeApply?.();
         queryClient.setQueryData(meKey, (current: User | undefined) => ({
           ...(current ?? updated),
           name: updated.name,

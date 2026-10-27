@@ -12,7 +12,7 @@ import { Row } from "@/ui/components";
 
 /**
  * Dev only: replay the animated moments. "Ver revelado" plays the reveal of the active
- * roll if it's revealed (always, seen or not), or switches to the first revealed one; "Ver candado" opens the lock → camera; "Probar momento ahora" schedules a moment notification in 10 s (and replays its intro).
+ * roll if it's revealed (always, seen or not), or switches to the first revealed one; "Ver candado" opens the lock → camera; "Ver intro" opens the new account's full-screen intro; "Probar momento ahora" schedules a moment notification in 10 s (and replays its intro).
  */
 export function DevMomentRows() {
   const { trip, trips } = useActiveTrip();
@@ -46,8 +46,9 @@ export function DevMomentRows() {
   return (
     <>
       <Row label={revealed ? "Ver revelado" : "Ver revelado (no hay rollos revelados)"} onPress={revealed ? () => void openReveal() : undefined} />
-      <Row label="Probar momento ahora" onPress={trip && detail ? () => void testMoment() : undefined} />
+      <Row label="Probar momento ahora" chevron={false} onPress={trip && detail ? () => void testMoment() : undefined} />
       <Row label="Ver candado" onPress={() => router.push("/roll-started")} />
+      <Row label="Ver intro" onPress={() => router.push("/intro")} />
     </>
   );
 }
