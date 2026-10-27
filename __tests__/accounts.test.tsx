@@ -396,7 +396,7 @@ describe("Profile and settings", () => {
     const queue = await createQueue(memoryDb());
     getQueue.mockImplementation(() => Promise.resolve(queue));
     await queue.enqueue({
-      id: "q1", tripId: SUR, type: "photo", takenAt: 1, day: "2027-01-12", lat: null, lng: null, accuracyM: null,
+      id: "q1", ownerUserId: "u1", tripId: SUR, type: "photo", takenAt: 1, day: "2027-01-12", lat: null, lng: null, accuracyM: null,
       caption: null, durationS: null, width: 1, height: 1, sizeBytes: 1,
       originalUri: "file:///docs/pending/q1/original.jpg", thumbUri: "file:///docs/pending/q1/thumb.jpg", thumbhash: null,
     });
@@ -408,7 +408,7 @@ describe("Profile and settings", () => {
     expect(await screen.findByLabelText("Tu email")).toBeVisible();
     expect(calls).toContain("POST /auth/logout");
     expect(await getSessionToken()).toBeNull();
-    expect(await queue.pending()).toHaveLength(1);
+    expect(await queue.pending("u1")).toHaveLength(1);
   });
 
   it("dev settings can replay the app intro without a new account", async () => {

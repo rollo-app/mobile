@@ -7,7 +7,8 @@ import { forgetPushToken } from "@/features/notifications/push-token";
 import { addPendingLogout } from "@/storage/pending-logout";
 import { getSessionToken } from "@/storage/session";
 import { logoutOnServer } from "./pending-logout";
-import { authedClient, signIn, signOut } from "./session";
+import { discardAccountQueue } from "@/features/capture/account-queue";
+import { authedClient, getSessionUserId, signIn, signOut } from "./session";
 
 export type User = Schemas["User"];
 
@@ -71,7 +72,7 @@ export async function verifyMagicLink(email: string, token: string): Promise<{ u
 async function startSession({ token, user, isNew }: { token: string; user: User; isNew: boolean }) {
   // Seeded before the session flips, so the gate doesn't wait for a second request.
   queryClient.setQueryData(meKey, user);
-  await signIn(token);
+  await signIn(token, user.id);
   return { user, isNew };
 }
 
@@ -98,8 +99,11 @@ export async function logout(): Promise<void> {
   await signOut();
 }
 
-/** Deletes the account and everything in it; only on success the session is cleared. */
+/** Deletes the account and everything in it (also its pending photos on this phone); only on success the session is cleared. */
 export async function deleteAccount(): Promise<void> {
+  const userId = await getSessionUserId();
   await unwrap((await authedClient()).DELETE("/me"));
+  // Its pending photos go with it (logging out never deletes them, deleting the account does).
+  if (userId) await discardAccountQueue(userId).catch(() => {});
   await signOut();
 }

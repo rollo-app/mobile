@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import type { FailedMedia, PendingMedia } from "./queue";
+import { getSessionUserId } from "@/features/auth/session";
 import { getQueue } from "./store";
 import { summarize, type UploadSummary } from "./upload-status";
 import { pendingKey } from "./use-pending-count";
@@ -21,8 +22,10 @@ export function useUploadStatus(tripId: string | undefined): UploadStatus {
   const query = useQuery({
     queryKey: uploadStatusKey(tripId ?? ""),
     queryFn: async (): Promise<UploadStatus> => {
+      const owner = await getSessionUserId();
+      if (!owner) return EMPTY;
       const queue = await getQueue();
-      const [pending, failed] = await Promise.all([queue.pendingForTrip(tripId!), queue.failedForTrip(tripId!)]);
+      const [pending, failed] = await Promise.all([queue.pendingForTrip(owner, tripId!), queue.failedForTrip(owner, tripId!)]);
       return { ...summarize(pending, failed), pending, failed };
     },
     enabled: !!tripId,

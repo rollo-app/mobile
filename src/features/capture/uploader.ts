@@ -8,10 +8,12 @@ import type { PendingMedia, Queue } from "./queue";
  */
 
 export type UploaderDeps = {
-  queue: Pick<Queue, "pending" | "remove" | "markAttempt" | "markFailed">;
+  queue: Pick<Queue, "pending" | "claimUnowned" | "remove" | "markAttempt" | "markFailed">;
   apiUrl: string;
   /** The session token (null if signed out). */
   getToken: () => Promise<string | null>;
+  /** The id of the account with the session, or null if unknown (signed out, or never learned and offline): then nothing uploads. */
+  getUserId: () => Promise<string | null>;
   /** PUT of the file to the signed URL; returns the status. Rejects if there is no network. */
   putFile: (uri: string, url: string, contentType: string) => Promise<number>;
   /** Byte size of the local file, or null if it no longer exists. */
@@ -157,7 +159,16 @@ export function createUploader(deps: UploaderDeps) {
   async function pass() {
     const skipBackoff = ignoreBackoff;
     ignoreBackoff = false;
-    const all = await deps.queue.pending();
+    // Only the signed-in account's photos go up; another account's wait untouched (not failed, not deleted).
+    let userId: string | null;
+    try {
+      userId = await deps.getUserId();
+    } catch {
+      return;
+    }
+    if (!userId) return;
+    await deps.queue.claimUnowned(userId);
+    const all = await deps.queue.pending(userId);
     // A selfie goes after its main (the server validates the pairing at register time).
     const unresolved = new Set(all.map((m) => m.id));
     const due = all
@@ -170,6 +181,8 @@ export function createUploader(deps: UploaderDeps) {
         const token = await deps.getToken();
         // Signed out: the queue stays as it is until someone signs in again.
         if (!token) return;
+        // The account changed during the pass: stop, the next one starts with the new account's photos.
+        if ((await deps.getUserId()) !== userId) return;
         const original = await deps.fileSize(m.originalUri);
         const thumb = await deps.fileSize(m.thumbUri);
         if (original === null || thumb === null) {

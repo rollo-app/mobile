@@ -1,10 +1,11 @@
-import { ApiError, createApiClient, setUnauthorizedHandler } from "@/api/client";
+import { ApiError, createApiClient, setUnauthorizedHandler, unwrap } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
 import { cancelMomentNotifications } from "@/features/moments/cancel";
 import { forgetPushToken } from "@/features/notifications/push-token";
 import { clearActiveTripId } from "@/storage/active-trip";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@/storage/session";
+import { clearSessionUserId, getSessionUserIdStored, setSessionUserId } from "@/storage/session-user";
 
 /**
  * The account's session: the token lives in the keychain and this module tells whoever is
@@ -37,7 +38,9 @@ export async function getSession(): Promise<string | null> {
   return known;
 }
 
-export async function signIn(token: string): Promise<void> {
+export async function signIn(token: string, userId: string): Promise<void> {
+  // The user id first: the moment the token exists, the queue must know whose it is.
+  await setSessionUserId(userId);
   await setSessionToken(token);
   known = token;
   notify(token);
@@ -46,12 +49,33 @@ export async function signIn(token: string): Promise<void> {
 /** Closes the session on the phone only (the server call, if any, is made by whoever asks). */
 export async function signOut(): Promise<void> {
   await clearSessionToken();
+  await clearSessionUserId();
   await clearActiveTripId();
   // The next account must not get this one's moments (covers logout, delete account and a 401).
   await cancelMomentNotifications();
   queryClient.clear();
   known = null;
   notify(null);
+}
+
+/**
+ * The id of the account with the session. Sessions opened before the id was stored ask `GET /me` once
+ * and keep the answer; with no session, no network or a rejected one it is null.
+ */
+export async function getSessionUserId(): Promise<string | null> {
+  const stored = await getSessionUserIdStored();
+  if (stored) return stored;
+  const token = await getSessionToken();
+  if (!token) return null;
+  try {
+    const me = await unwrap(createApiClient({ baseUrl: API_URL, token }).GET("/me"));
+    // The session may have been closed (or replaced) while we asked.
+    if ((await getSessionToken()) !== token) return null;
+    await setSessionUserId(me.id);
+    return me.id;
+  } catch {
+    return null;
+  }
 }
 
 /** A client with the session token; if there's no session it fails like the server would. */

@@ -142,7 +142,7 @@ describe("Moment", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    const items = await queue.pending();
+    const items = await queue.pending("u1");
     expect(items).toHaveLength(2);
     const main = items.find((i) => i.pairedWith == null)!;
     const selfie = items.find((i) => i.pairedWith != null)!;
@@ -164,7 +164,7 @@ describe("Moment", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    const items = await queue.pending();
+    const items = await queue.pending("u1");
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ momentDay: MOMENT_DAY, pairedWith: null });
     expect(mediaMock.prepareMedia).toHaveBeenCalledWith(expect.objectContaining({ uri: "file:///cache/Camera/front.jpg" }), items[0]!.id, expect.anything(), {
@@ -188,7 +188,7 @@ describe("Moment", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    const items = await queue.pending();
+    const items = await queue.pending("u1");
     const main = items.find((i) => i.pairedWith == null)!;
     const linked = items.find((i) => i.pairedWith != null)!;
     expect(linked.pairedWith).toBe(main.id);
@@ -232,7 +232,7 @@ describe("Moment", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    const items = await queue.pending();
+    const items = await queue.pending("u1");
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ momentDay: MOMENT_DAY, pairedWith: null });
   });
@@ -265,7 +265,7 @@ describe("Moment", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect((await queue.pending())[0]).toMatchObject({ tripId: SUR });
+    expect((await queue.pending("u1"))[0]).toMatchObject({ tripId: SUR });
   });
 
   it("on the first-shot step Cerrar closes the screen and nothing is queued", async () => {
@@ -273,7 +273,7 @@ describe("Moment", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(await queue.pending()).toHaveLength(0);
+    expect(await queue.pending("u1")).toHaveLength(0);
   });
 
   it("on the selfie step there is no Cerrar", async () => {
@@ -295,7 +295,7 @@ describe("Moment", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(await queue.pending()).toHaveLength(2);
+    expect(await queue.pending("u1")).toHaveLength(2);
   });
 
   it("with selfie=0 in the url there is no selfie step even if the detail says photo_selfie", async () => {

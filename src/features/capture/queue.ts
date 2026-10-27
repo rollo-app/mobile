@@ -28,6 +28,8 @@ export type QueuedMedia = {
   momentDay?: string | null;
   /** For a moment selfie: the id of the moment's main photo (it must be registered first). */
   pairedWith?: string | null;
+  /** The account that took it (user id); null only if it was taken before the phone knew its account: the first account claims it. */
+  ownerUserId?: string | null;
 };
 
 export type PendingMedia = QueuedMedia & {
@@ -76,6 +78,7 @@ const ADDED_COLUMNS = [
   ["failed_reason", "TEXT"],
   ["moment_day", "TEXT"],
   ["paired_with", "TEXT"],
+  ["owner_user_id", "TEXT"],
 ] as const;
 
 type Row = {
@@ -100,6 +103,7 @@ type Row = {
   failed_reason: string | null;
   moment_day: string | null;
   paired_with: string | null;
+  owner_user_id: string | null;
 };
 
 const fromRow = (r: Row): PendingMedia => ({
@@ -121,6 +125,7 @@ const fromRow = (r: Row): PendingMedia => ({
   thumbhash: r.thumbhash,
   momentDay: r.moment_day ?? null,
   pairedWith: r.paired_with ?? null,
+  ownerUserId: r.owner_user_id ?? null,
   attempts: r.attempts,
   retryAt: r.retry_at,
 });
@@ -137,30 +142,36 @@ export async function createQueue(db: QueueDb) {
       await db.runAsync(
         `INSERT OR IGNORE INTO pending_media
           (id, trip_id, type, taken_at, day, lat, lng, accuracy_m, caption, duration_s, width, height,
-           size_bytes, original_uri, thumb_uri, thumbhash, moment_day, paired_with)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           size_bytes, original_uri, thumb_uri, thumbhash, moment_day, paired_with, owner_user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         m.id, m.tripId, m.type, m.takenAt, m.day, m.lat, m.lng, m.accuracyM, m.caption, m.durationS,
         m.width, m.height, m.sizeBytes, m.originalUri, m.thumbUri, m.thumbhash,
-        m.momentDay ?? null, m.pairedWith ?? null,
+        m.momentDay ?? null, m.pairedWith ?? null, m.ownerUserId ?? null,
       );
     },
 
-    async pending(): Promise<PendingMedia[]> {
-      const rows = await db.getAllAsync<Row>("SELECT * FROM pending_media WHERE failed_reason IS NULL ORDER BY taken_at");
+    /** Every read is of one account's items: another account's photos wait, unseen and uncounted. */
+    async pending(owner: string): Promise<PendingMedia[]> {
+      const rows = await db.getAllAsync<Row>(
+        "SELECT * FROM pending_media WHERE owner_user_id = ? AND failed_reason IS NULL ORDER BY taken_at",
+        owner,
+      );
       return rows.map(fromRow);
     },
 
-    async failed(): Promise<FailedMedia[]> {
+    async failed(owner: string): Promise<FailedMedia[]> {
       const rows = await db.getAllAsync<Row>(
-        "SELECT * FROM pending_media WHERE failed_reason IS NOT NULL ORDER BY taken_at",
+        "SELECT * FROM pending_media WHERE owner_user_id = ? AND failed_reason IS NOT NULL ORDER BY taken_at",
+        owner,
       );
       return rows.map((r) => ({ ...fromRow(r), failedReason: r.failed_reason as string }));
     },
 
     /** A trip's failed items, in shooting order (for the upload status). */
-    async failedForTrip(tripId: string): Promise<FailedMedia[]> {
+    async failedForTrip(owner: string, tripId: string): Promise<FailedMedia[]> {
       const rows = await db.getAllAsync<Row>(
-        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NOT NULL ORDER BY taken_at",
+        "SELECT * FROM pending_media WHERE owner_user_id = ? AND trip_id = ? AND failed_reason IS NOT NULL ORDER BY taken_at",
+        owner,
         tripId,
       );
       return rows.map((r) => ({ ...fromRow(r), failedReason: r.failed_reason as string }));
@@ -191,19 +202,33 @@ export async function createQueue(db: QueueDb) {
       );
     },
 
+    /** Rows from before accounts were tracked: the first account the phone knows takes them. */
+    async claimUnowned(owner: string) {
+      await db.runAsync("UPDATE pending_media SET owner_user_id = ? WHERE owner_user_id IS NULL", owner);
+    },
+
+    /** Deletes every row of an account (it deleted its account) and returns their ids, so the caller can delete the files. */
+    async removeAllForOwner(owner: string): Promise<string[]> {
+      const rows = await db.getAllAsync<{ id: string }>("SELECT id FROM pending_media WHERE owner_user_id = ?", owner);
+      await db.runAsync("DELETE FROM pending_media WHERE owner_user_id = ?", owner);
+      return rows.map((r) => r.id);
+    },
+
     /** Pending items of a trip (for the map and the counts), excluding failed ones and a moment's selfie (the moment counts once). */
-    async pendingForTrip(tripId: string): Promise<PendingMedia[]> {
+    async pendingForTrip(owner: string, tripId: string): Promise<PendingMedia[]> {
       const rows = await db.getAllAsync<Row>(
-        "SELECT * FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL AND paired_with IS NULL ORDER BY taken_at",
+        "SELECT * FROM pending_media WHERE owner_user_id = ? AND trip_id = ? AND failed_reason IS NULL AND paired_with IS NULL ORDER BY taken_at",
+        owner,
         tripId,
       );
       return rows.map(fromRow);
     },
 
     /** Everything captured and not uploaded for a trip, any day, excluding failed ones. */
-    async countPendingForTrip(tripId: string) {
+    async countPendingForTrip(owner: string, tripId: string) {
       const rows = await db.getAllAsync<{ n: number }>(
-        "SELECT COUNT(*) AS n FROM pending_media WHERE trip_id = ? AND failed_reason IS NULL AND paired_with IS NULL",
+        "SELECT COUNT(*) AS n FROM pending_media WHERE owner_user_id = ? AND trip_id = ? AND failed_reason IS NULL AND paired_with IS NULL",
+        owner,
         tripId,
       );
       return rows[0]?.n ?? 0;
@@ -214,10 +239,10 @@ export async function createQueue(db: QueueDb) {
      * Captured and not uploaded for a trip on a day (any day if none is given, for rollos with a total limit):
      * subtracted from the quota the server reported.
      */
-    async countPending(tripId: string, day?: string) {
+    async countPending(owner: string, tripId: string, day?: string) {
       const rows = await db.getAllAsync<{ type: MediaType; n: number }>(
-        `SELECT type, COUNT(*) AS n FROM pending_media WHERE trip_id = ?${day === undefined ? "" : " AND day = ?"} AND failed_reason IS NULL AND moment_day IS NULL GROUP BY type`,
-        ...(day === undefined ? [tripId] : [tripId, day]),
+        `SELECT type, COUNT(*) AS n FROM pending_media WHERE owner_user_id = ? AND trip_id = ?${day === undefined ? "" : " AND day = ?"} AND failed_reason IS NULL AND moment_day IS NULL GROUP BY type`,
+        ...(day === undefined ? [owner, tripId] : [owner, tripId, day]),
       );
       const count = (type: MediaType) => rows.find((r) => r.type === type)?.n ?? 0;
       return { photos: count("photo"), videos: count("video") };

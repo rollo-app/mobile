@@ -4,6 +4,7 @@ import type { TripSummary } from "@/features/trips/active";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { setActiveTripId } from "@/storage/active-trip";
 import { setSessionToken } from "@/storage/session";
+import { setSessionUserId } from "@/storage/session-user";
 
 export const USER: User = { id: "u1", email: "juani@rollo.test", name: "Juani", username: "juani", avatarUrl: null, bio: null, badge: null, profileVisibility: "friends" };
 
@@ -33,6 +34,7 @@ export async function signInAs({
   active,
 }: { user?: User; trips?: TripSummary[]; active?: string } = {}) {
   await setSessionToken("session-token");
+  await setSessionUserId(user.id);
   queryClient.setQueryData(meKey, user);
   queryClient.setQueryData(myTripsKey, { trips });
   if (active) await setActiveTripId(active);

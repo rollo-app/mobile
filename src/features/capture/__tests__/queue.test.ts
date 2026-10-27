@@ -22,6 +22,7 @@ const item = (overrides: Partial<QueuedMedia> = {}): QueuedMedia => ({
   thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
   momentDay: null,
   pairedWith: null,
+  ownerUserId: "u1",
   ...overrides,
 });
 
@@ -31,7 +32,7 @@ describe("upload queue", () => {
 
     await queue.enqueue(item());
 
-    expect(await queue.pending()).toEqual([{ ...item(), attempts: 0, retryAt: null }]);
+    expect(await queue.pending("u1")).toEqual([{ ...item(), attempts: 0, retryAt: null }]);
   });
 
   it("returns pending items in the order they were shot", async () => {
@@ -40,7 +41,7 @@ describe("upload queue", () => {
     await queue.enqueue(item({ id: "b", takenAt: 2000 }));
     await queue.enqueue(item({ id: "a", takenAt: 1000 }));
 
-    expect((await queue.pending()).map((m) => m.id)).toEqual(["a", "b"]);
+    expect((await queue.pending("u1")).map((m) => m.id)).toEqual(["a", "b"]);
   });
 
   it("saving the same id twice does not duplicate it", async () => {
@@ -49,7 +50,7 @@ describe("upload queue", () => {
     await queue.enqueue(item());
     await queue.enqueue(item());
 
-    expect(await queue.pending()).toHaveLength(1);
+    expect(await queue.pending("u1")).toHaveLength(1);
   });
 
   it("accepts empty optional data (no GPS, no caption)", async () => {
@@ -57,7 +58,7 @@ describe("upload queue", () => {
 
     await queue.enqueue(item({ lat: null, lng: null, accuracyM: null, caption: null, thumbhash: null }));
 
-    expect((await queue.pending())[0]).toMatchObject({ lat: null, caption: null, thumbhash: null });
+    expect((await queue.pending("u1"))[0]).toMatchObject({ lat: null, caption: null, thumbhash: null });
   });
 
   it("counts what is not yet uploaded for a trip, by type and day", async () => {
@@ -69,7 +70,7 @@ describe("upload queue", () => {
     await queue.enqueue(item({ id: "4", day: "2027-01-11" }));
     await queue.enqueue(item({ id: "5", tripId: "otro" }));
 
-    expect(await queue.countPending(TRIP, "2027-01-12")).toEqual({ photos: 2, videos: 1 });
+    expect(await queue.countPending("u1", TRIP, "2027-01-12")).toEqual({ photos: 2, videos: 1 });
   });
 
   it("without a day it counts the whole rollo's pending items, any day", async () => {
@@ -79,14 +80,14 @@ describe("upload queue", () => {
     await queue.enqueue(item({ id: "3", day: "2027-01-13", type: "video" }));
     await queue.enqueue(item({ id: "4", tripId: "otro" }));
 
-    expect(await queue.countPending(TRIP)).toEqual({ photos: 2, videos: 1 });
+    expect(await queue.countPending("u1", TRIP)).toEqual({ photos: 2, videos: 1 });
   });
 
   it("reopening the queue on the same database loses nothing", async () => {
     const db = memoryDb();
     await (await createQueue(db)).enqueue(item());
 
-    expect(await (await createQueue(db)).pending()).toHaveLength(1);
+    expect(await (await createQueue(db)).pending("u1")).toHaveLength(1);
   });
 
   it("remove takes the item out of the queue", async () => {
@@ -96,7 +97,7 @@ describe("upload queue", () => {
 
     await queue.remove("a");
 
-    expect((await queue.pending()).map((m) => m.id)).toEqual(["b"]);
+    expect((await queue.pending("u1")).map((m) => m.id)).toEqual(["b"]);
   });
 
   it("markAttempt adds an attempt and stores when to retry", async () => {
@@ -106,7 +107,7 @@ describe("upload queue", () => {
     await queue.markAttempt(item().id, 5000);
     await queue.markAttempt(item().id, 9000);
 
-    expect((await queue.pending())[0]).toMatchObject({ attempts: 2, retryAt: 9000 });
+    expect((await queue.pending("u1"))[0]).toMatchObject({ attempts: 2, retryAt: 9000 });
   });
 
   it("markFailed removes it from pending and from the quota count, but does not delete it", async () => {
@@ -117,9 +118,9 @@ describe("upload queue", () => {
 
     await queue.markFailed("a", "quota");
 
-    expect((await queue.pending()).map((m) => m.id)).toEqual(["b"]);
-    expect(await queue.countPending(TRIP, "2027-01-12")).toEqual({ photos: 1, videos: 0 });
-    expect(await queue.failed()).toEqual([expect.objectContaining({ id: "a", failedReason: "quota" })]);
+    expect((await queue.pending("u1")).map((m) => m.id)).toEqual(["b"]);
+    expect(await queue.countPending("u1", TRIP, "2027-01-12")).toEqual({ photos: 1, videos: 0 });
+    expect(await queue.failed("u1")).toEqual([expect.objectContaining({ id: "a", failedReason: "quota" })]);
   });
 
   it("a markFailed survives reopening the queue", async () => {
@@ -128,7 +129,7 @@ describe("upload queue", () => {
     await queue.enqueue(item());
     await queue.markFailed(item().id, "revealed");
 
-    expect(await (await createQueue(db)).pending()).toEqual([]);
+    expect(await (await createQueue(db)).pending("u1")).toEqual([]);
   });
 
   it("migrates an old database without the new columns", async () => {
@@ -143,8 +144,9 @@ describe("upload queue", () => {
     );
 
     const queue = await createQueue(db);
+    await queue.claimUnowned("u1");
 
-    expect((await queue.pending())[0]).toMatchObject({ id: "old", attempts: 0, retryAt: null });
+    expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", attempts: 0, retryAt: null });
   });
 });
 
@@ -157,8 +159,8 @@ describe("countPendingForTrip", () => {
     await queue.enqueue(item({ id: "d", tripId: "otro" }));
     await queue.markFailed("c", "quota");
 
-    expect(await queue.countPendingForTrip(TRIP)).toBe(2);
-    expect(await queue.countPendingForTrip("vacio")).toBe(0);
+    expect(await queue.countPendingForTrip("u1", TRIP)).toBe(2);
+    expect(await queue.countPendingForTrip("u1", "vacio")).toBe(0);
   });
 
   it("a moment's pending selfie is not counted nor listed: the moment counts once", async () => {
@@ -166,9 +168,9 @@ describe("countPendingForTrip", () => {
     await queue.enqueue(item({ id: "main", momentDay: "2027-01-12" }));
     await queue.enqueue(item({ id: "selfie", momentDay: "2027-01-12", pairedWith: "main" }));
 
-    expect(await queue.countPendingForTrip(TRIP)).toBe(1);
-    expect((await queue.pendingForTrip(TRIP)).map((m) => m.id)).toEqual(["main"]);
-    expect((await queue.pending()).map((m) => m.id).sort()).toEqual(["main", "selfie"]);
+    expect(await queue.countPendingForTrip("u1", TRIP)).toBe(1);
+    expect((await queue.pendingForTrip("u1", TRIP)).map((m) => m.id)).toEqual(["main"]);
+    expect((await queue.pending("u1")).map((m) => m.id).sort()).toEqual(["main", "selfie"]);
   });
 
   it("pendingForTrip returns that trip's pending items (with or without a location), excluding failed ones", async () => {
@@ -179,7 +181,7 @@ describe("countPendingForTrip", () => {
     await queue.enqueue(item({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4" }));
     await queue.markFailed("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4", "cupo");
 
-    const found = await queue.pendingForTrip(TRIP);
+    const found = await queue.pendingForTrip("u1", TRIP);
 
     expect(found.map((m) => m.id)).toEqual([
       "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
@@ -199,7 +201,7 @@ describe("failedForTrip and discard", () => {
     await queue.markFailed("b", "missing_file");
     await queue.markFailed("d", "deleted");
 
-    const failed = await queue.failedForTrip(TRIP);
+    const failed = await queue.failedForTrip("u1", TRIP);
 
     expect(failed.map((m) => [m.id, m.failedReason])).toEqual([
       ["b", "missing_file"],
@@ -215,8 +217,8 @@ describe("failedForTrip and discard", () => {
 
     await queue.discard("a");
 
-    expect(await queue.failed()).toEqual([]);
-    expect((await queue.pending()).map((m) => m.id)).toEqual(["b"]);
+    expect(await queue.failed("u1")).toEqual([]);
+    expect((await queue.pending("u1")).map((m) => m.id)).toEqual(["b"]);
   });
 
   it("discard never deletes a pending item", async () => {
@@ -225,7 +227,7 @@ describe("failedForTrip and discard", () => {
 
     await queue.discard("a");
 
-    expect((await queue.pending()).map((m) => m.id)).toEqual(["a"]);
+    expect((await queue.pending("u1")).map((m) => m.id)).toEqual(["a"]);
   });
 });
 
@@ -239,15 +241,16 @@ describe("moment rows", () => {
       "INSERT INTO pending_media (id, trip_id, type, taken_at, day, size_bytes, original_uri, thumb_uri) VALUES ('old', 't', 'photo', 1, '2027-01-12', 1, 'o', 't')",
     );
     const queue = await createQueue(db);
+    await queue.claimUnowned("u1");
 
-    expect((await queue.pending())[0]).toMatchObject({ id: "old", momentDay: null, pairedWith: null });
+    expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", momentDay: null, pairedWith: null });
   });
 
   it("stores momentDay and pairedWith", async () => {
     const queue = await createQueue(memoryDb());
     await queue.enqueue(item({ id: "s", momentDay: "2027-01-12", pairedWith: "m" }));
 
-    expect((await queue.pending())[0]).toMatchObject({ momentDay: "2027-01-12", pairedWith: "m" });
+    expect((await queue.pending("u1"))[0]).toMatchObject({ momentDay: "2027-01-12", pairedWith: "m" });
   });
 
   it("countPending does not count moment rows, per day or total", async () => {
@@ -256,8 +259,8 @@ describe("moment rows", () => {
     await queue.enqueue(item({ id: "2", momentDay: "2027-01-12" }));
     await queue.enqueue(item({ id: "3", momentDay: "2027-01-12", pairedWith: "2" }));
 
-    expect(await queue.countPending(TRIP, "2027-01-12")).toEqual({ photos: 1, videos: 0 });
-    expect(await queue.countPending(TRIP)).toEqual({ photos: 1, videos: 0 });
+    expect(await queue.countPending("u1", TRIP, "2027-01-12")).toEqual({ photos: 1, videos: 0 });
+    expect(await queue.countPending("u1", TRIP)).toEqual({ photos: 1, videos: 0 });
   });
 
   it("markFailed on a main also fails the rows paired with it, with the same reason", async () => {
@@ -266,10 +269,78 @@ describe("moment rows", () => {
     await queue.enqueue(item({ id: "s", momentDay: "2027-01-12", pairedWith: "m" }));
     await queue.markFailed("m", "El rollo ya se reveló");
 
-    expect(await queue.pending()).toEqual([]);
-    expect((await queue.failed()).map((f) => [f.id, f.failedReason])).toEqual([
+    expect(await queue.pending("u1")).toEqual([]);
+    expect((await queue.failed("u1")).map((f) => [f.id, f.failedReason])).toEqual([
       ["m", "El rollo ya se reveló"],
       ["s", "El rollo ya se reveló"],
     ]);
+  });
+});
+
+describe("queue per account", () => {
+  const OTHER = "u2";
+
+  it("every read only sees the given account's items", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "mine" }));
+    await queue.enqueue(item({ id: "theirs", ownerUserId: OTHER }));
+    await queue.enqueue(item({ id: "mine-failed" }));
+    await queue.enqueue(item({ id: "theirs-failed", ownerUserId: OTHER }));
+    await queue.markFailed("mine-failed", "quota");
+    await queue.markFailed("theirs-failed", "quota");
+
+    expect((await queue.pending("u1")).map((m) => m.id)).toEqual(["mine"]);
+    expect((await queue.failed("u1")).map((m) => m.id)).toEqual(["mine-failed"]);
+    expect((await queue.pendingForTrip("u1", TRIP)).map((m) => m.id)).toEqual(["mine"]);
+    expect((await queue.failedForTrip("u1", TRIP)).map((m) => m.id)).toEqual(["mine-failed"]);
+    expect(await queue.countPendingForTrip("u1", TRIP)).toBe(1);
+    expect(await queue.countPending("u1", TRIP, "2027-01-12")).toEqual({ photos: 1, videos: 0 });
+    expect(await queue.countPending("u1", TRIP)).toEqual({ photos: 1, videos: 0 });
+    expect((await queue.pending(OTHER)).map((m) => m.id)).toEqual(["theirs"]);
+  });
+
+  it("claimUnowned gives the rows without an owner to the account and leaves other accounts' alone", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "old", ownerUserId: null }));
+    await queue.enqueue(item({ id: "theirs", ownerUserId: OTHER }));
+
+    expect(await queue.pending("u1")).toEqual([]);
+    await queue.claimUnowned("u1");
+
+    expect((await queue.pending("u1")).map((m) => m.id)).toEqual(["old"]);
+    expect((await queue.pending(OTHER)).map((m) => m.id)).toEqual(["theirs"]);
+  });
+
+  it("removeAllForOwner deletes that account's rows (failed ones too), returns their ids and keeps the others", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ id: "a" }));
+    await queue.enqueue(item({ id: "b" }));
+    await queue.enqueue(item({ id: "c", ownerUserId: OTHER }));
+    await queue.markFailed("b", "quota");
+
+    expect((await queue.removeAllForOwner("u1")).sort()).toEqual(["a", "b"]);
+
+    expect(await queue.pending("u1")).toEqual([]);
+    expect(await queue.failed("u1")).toEqual([]);
+    expect((await queue.pending(OTHER)).map((m) => m.id)).toEqual(["c"]);
+  });
+
+  it("migrates a database that has the moment columns but no owner column", async () => {
+    const db = memoryDb();
+    await db.execAsync(`CREATE TABLE pending_media (
+      id TEXT PRIMARY KEY NOT NULL, trip_id TEXT NOT NULL, type TEXT NOT NULL, taken_at INTEGER NOT NULL,
+      day TEXT NOT NULL, lat REAL, lng REAL, accuracy_m REAL, caption TEXT, duration_s REAL, width INTEGER,
+      height INTEGER, size_bytes INTEGER NOT NULL, original_uri TEXT NOT NULL, thumb_uri TEXT NOT NULL,
+      thumbhash TEXT, attempts INTEGER NOT NULL DEFAULT 0, retry_at INTEGER, failed_reason TEXT,
+      moment_day TEXT, paired_with TEXT);`);
+    await db.runAsync(
+      "INSERT INTO pending_media (id, trip_id, type, taken_at, day, size_bytes, original_uri, thumb_uri) VALUES ('old', 't', 'photo', 1, '2027-01-12', 1, 'o', 't')",
+    );
+
+    const queue = await createQueue(db);
+
+    expect(await queue.pending("u1")).toEqual([]);
+    await queue.claimUnowned("u1");
+    expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", ownerUserId: "u1" });
   });
 });

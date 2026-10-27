@@ -183,6 +183,7 @@ describe("Roll with unuploaded photos", () => {
   const queued = (): QueuedMedia => ({
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     tripId: SUR,
+    ownerUserId: "u1",
     type: "photo",
     takenAt: Date.now(),
     day: "2027-01-05",

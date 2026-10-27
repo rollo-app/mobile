@@ -300,7 +300,7 @@ describe("tapping a push", () => {
     expect(screen).not.toHavePathname("/user/u2");
 
     queryClient.setQueryData(["me"], USER);
-    await act(async () => signIn("session-token"));
+    await act(async () => signIn("session-token", "u1"));
 
     await waitFor(() => expect(screen).toHavePathname("/user/u2"));
   });
