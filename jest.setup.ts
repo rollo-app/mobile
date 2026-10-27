@@ -508,8 +508,19 @@ jest.mock("lottie-react-native", () => {
   const { View } = require("react-native");
   return {
     __esModule: true,
-    default: ({ autoPlay, loop, progress, style }: { autoPlay?: boolean; loop?: boolean; progress?: number; style?: unknown }) =>
-      React.createElement(View, { testID: "lottie", autoPlay, loop, progress, style }),
+    default: ({
+      autoPlay,
+      loop,
+      progress,
+      style,
+      source,
+    }: {
+      autoPlay?: boolean;
+      loop?: boolean;
+      progress?: number;
+      style?: unknown;
+      source?: unknown;
+    }) => React.createElement(View, { testID: "lottie", autoPlay, loop, progress, style, source }),
   };
 });
 

@@ -376,6 +376,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   nunca dentro de `mobile/`. El JSON final iría a `assets/lottie/` y se reproduce con `lottie-react-native` (no está instalado; es nativo:
   `npx expo install lottie-react-native` + `prebuild --clean` + rebuild). El revelado actual (shader de Skia) se mantiene; Lottie es candidato
   para piezas chicas (íconos animados, el sello del revelado), no para reemplazarlo.
+  La bienvenida de Rollo (sin rollos todavía, `src/features/roll/welcome.tsx`) lleva el logo arriba del título: la primera vez en el celular se anima (`assets/lottie/logo-intro-*.json`, una vez, sin háptico ni sonido; `rollo.welcomeIntroSeen`) y después queda el último cuadro.
 
 ## Cómo trabajamos
 
@@ -401,7 +402,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1581 tests
+npm test                      # 1593 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -431,7 +432,7 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 ## Sitio público
 
-`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** (7 secciones
+`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** (8 secciones
 con maquetas de la app en HTML/CSS y el botón "Probar la beta en iPhone" a TestFlight), `/soporte` (preguntas frecuentes y contacto;
 `/#soporte` cae en el link a esa página), `/privacidad`, `/terminos` y `/entrar` (el link mágico del mail; script inline, sin pedidos a
 ningún lado, con su CSP). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
@@ -444,6 +445,7 @@ Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y m
   El deploy no setea `SITE_STORE_MODE`, así que lo que sale es el default del código. **Para cambiar cuando Apple apruebe:** cambiar
   el default `"beta"` → `"appstore"` en `build-site.mjs`, completar `APP_STORE_URL` y agregar el badge oficial (la ruta del badge se
   puede pisar con `SITE_APP_STORE_BADGE`, lo usa el test).
+- **Momento del día:** la sección `#momento` reproduce el Lottie una vez al entrar en pantalla (`lottie-web` light, `/lottie.js`, mismo JSON que la intro de la app en sus variantes `scripts/site/moment-intro-{light,dark}.json`); el SVG estático del HTML es el fallback.
 - **Animaciones:** Motion (`animate`, `scroll`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
   `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
   Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.
