@@ -357,7 +357,7 @@ Reglas:
 ## Skills de diseño y motion (en evaluación)
 
 En `.claude/skills/` (copiadas tal cual de sus repos; se decide después cuáles quedan):
-`appllama-app-design-skill` (Appllama), `emil-design-eng`, `animate`, `animate-expo`, `review-animations`,
+`appllama-app-design-skill` (Appllama), `emil-design-eng`, `animate-expo`, `review-animations`,
 `find-animation-opportunities` (Emil Kowalski), `design-motion-principles` (Kyle Zantos) y `text-to-lottie` (Diffusion Studio).
 Si una skill contradice este archivo, **gana este archivo**.
 
@@ -369,7 +369,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   `useReducedMotion()` / `ReduceMotion.System`; `will-change`/GPU → solo `transform` y `opacity` en el UI thread; `layout` de Framer
   → `LinearTransition` / `entering` / `exiting`. Gestos con `Gesture.Pan()` etc. y nada de `runOnJS`/`scheduleOnRN` por frame.
   Gesture Handler no es dependencia directa todavía: si hace falta, `npx expo install react-native-gesture-handler` + rebuild.
-- Para **implementar** usar `animate-expo` (la versión nativa de `animate`); `animate` y `review-animations` sirven por el criterio.
+- Para **implementar** usar `animate-expo` (la versión web, `animate`, se sacó por duplicada); `review-animations` sirve por el criterio.
 - **Appllama:** sin el MCP de Appllama (pago) se saltea el paso de "estudiar 20–30 pantallas". No aplican: FlashList, Zustand ni MMKV
   obligatorios, ni generar ilustraciones con modelos de imagen. La serif de los captions es a propósito (identidad, no énfasis).
 - **Lottie:** `text-to-lottie` arma un player web de preview (`npx degit diffusionstudio/lottie`): va **fuera del repo** (scratchpad),
