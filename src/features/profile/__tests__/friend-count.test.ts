@@ -36,4 +36,9 @@ describe("formatFriendCount", () => {
   it("shows the count when the list is visible", () => {
     expect(formatFriendCount(12, 0, true)).toBe("12 amigos");
   });
+
+  it("on your own profile, 0 friends is an invitation instead of nothing", () => {
+    expect(formatFriendCount(0, 0, true, true)).toBe("Todavía no tenés amigos");
+    expect(formatFriendCount(3, 0, true, true)).toBe("3 amigos");
+  });
 });

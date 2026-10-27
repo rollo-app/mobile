@@ -3,7 +3,7 @@ import type { ProfileHeader } from "./profile-header";
 
 type HeaderProps = ComponentProps<typeof ProfileHeader>;
 /** Same props the real screens pass; `friends.onPress` is filled in by the dev screen. */
-export type FixtureProps = Omit<HeaderProps, "friends"> & { friends?: { count: number; mutual?: number; canSee?: boolean } };
+export type FixtureProps = Omit<HeaderProps, "friends"> & { friends?: { count: number; mutual?: number; canSee?: boolean; own?: boolean } };
 export type Fixture = { title: string; props: FixtureProps };
 
 /** Limits from the backend contract (`src/api/schema.d.ts`, backend `schemas.ts`). */
@@ -47,7 +47,8 @@ export const WORST_CASE_FIXTURES: Record<WorstCaseState, Fixture[]> = {
   ],
   minimal: [
     { title: "Only name (no @, bio, photo, badge, friends)", props: base(16, { username: null, name: "Sam" }) },
-    { title: "0 friends", props: base(17, { name: "Sam", username: "sam", friends: { count: 0, mutual: 0, canSee: true } }) },
+    { title: "0 friends on someone else's profile (line hidden)", props: base(17, { name: "Sam", username: "sam", friends: { count: 0, mutual: 0, canSee: true } }) },
+    { title: "0 friends on your own profile (\"Todavía no tenés amigos\")", props: base(20, { name: "Sam", username: "sam", friends: { count: 0, own: true } }) },
     { title: "Empty name (profile not completed)", props: base(18, { name: "", username: null }) },
     { title: "Whitespace name", props: base(19, { name: "   ", username: "sam" }) },
   ],

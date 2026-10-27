@@ -120,7 +120,7 @@ Decisiones de producto:
   `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
   encabezado); nombre, @, foto, **descripción** y cantidad de amigos se ven siempre ("12 amigos · 3 en común", texto
   secundario tocable: abre `/user/<id>/friends`, `GET /users/{userId}/friends` → "Amigos" con la lista completa si `canSee`,
-  si no "Amigos en común" con solo los comunes; en tu Perfil la cantidad sale de `useFriends()` y lleva a la tab Amigos);
+  si no "Amigos en común" con solo los comunes; en tu Perfil la cantidad sale de `useFriends()` y lleva a la tab Amigos; con 0 amigos, en tu Perfil dice "Todavía no tenés amigos" y lleva igual, y en el de otro no se muestra; el nombre se parte hasta 3 renglones, el @ va en uno con puntos al medio y un nombre vacío no deja hueco);
   destacadas solo si `canSee` (sos vos, es tu amigo o su perfil es público), si no "Este perfil es privado"; y si es amigo, además lo de amigo
   (`useFriend` solo con `isFriend`). Se llega desde la tab Amigos (`/friends/user/<id>`) y desde afuera con `/user/<id>`
   (push en el stack raíz): tocar un miembro en "En el rollo" (vos no sos tocable), el avatar o el nombre del autor en la
@@ -412,7 +412,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1678 tests
+npm test                      # 1685 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

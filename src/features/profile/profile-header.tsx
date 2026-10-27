@@ -15,23 +15,31 @@ type Props = {
   /** Badge the server assigned by hand (`founder`, `first_edition`); unknown values show nothing. */
   badge?: string | null;
   /** How many friends (and, on someone else's profile, how many in common); tapping it opens the list. */
-  friends?: { count: number; mutual?: number; canSee?: boolean; onPress: () => void };
+  friends?: { count: number; mutual?: number; canSee?: boolean; own?: boolean; onPress: () => void };
 };
 
 /** Top of a profile (yours or someone's): photo, name, @, the description when there is one and the friend count. */
 export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, friends }: Props) {
-  const friendCount = friends ? formatFriendCount(friends.count, friends.mutual, friends.canSee) : null;
+  const friendCount = friends ? formatFriendCount(friends.count, friends.mutual, friends.canSee, friends.own) : null;
   const badgeText = badgeLabel(badge);
   return (
     <View style={styles.header}>
       <Avatar id={id} name={name} avatarUrl={avatarUrl} size={72} />
-      <Text style={[type.title, styles.center, { color: colors.label }]}>{name}</Text>
+      {name.trim() !== "" && (
+        <Text testID="profile-name" numberOfLines={3} style={[type.title, styles.center, { color: colors.label }]}>
+          {name}
+        </Text>
+      )}
       {badgeText && (
         <View accessible accessibilityLabel={`Insignia: ${badgeSpoken(badgeText)}`}>
           <Badge variant="neutral" label={badgeText} />
         </View>
       )}
-      {username && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{formatHandle(username)}</Text>}
+      {username && (
+        <Text testID="profile-username" numberOfLines={1} ellipsizeMode="middle" style={[type.subhead, styles.center, { color: colors.secondaryLabel }]}>
+          {formatHandle(username)}
+        </Text>
+      )}
       {bio ? (
         <Text testID="profile-bio" style={[type.body, styles.center, styles.bio, { color: colors.label }]}>
           {bio}
