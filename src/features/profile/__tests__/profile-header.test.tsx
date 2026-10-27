@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
-import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import { StyleSheet } from "react-native";
+import { fireEvent, renderRouter, screen, within } from "expo-router/testing-library";
 import { ProfileHeader } from "../profile-header";
 
 const base = { id: "u1", name: "Juani", username: "juani", avatarUrl: null, bio: null };
@@ -33,5 +34,18 @@ describe("ProfileHeader", () => {
   it("hides the 0-friends line on someone else's profile", async () => {
     await show({ friends: { count: 0, canSee: true, onPress: () => {} } });
     expect(screen.queryByText(/amigos/)).toBeNull();
+  });
+
+  it("puts the photo and the name column in one row, with the bio and friend count below it", async () => {
+    await show({ bio: "Hola", friends: { count: 3, own: true, onPress: () => {} } });
+    const flat = (node: { props: { style?: unknown } }) => StyleSheet.flatten(node.props.style as never) as { flexDirection?: string };
+    const row = screen.getByTestId("profile-row");
+    expect(flat(row).flexDirection).toBe("row");
+    expect(within(row).getByTestId("avatar", { includeHiddenElements: true })).toBeTruthy();
+    expect(within(row).getByTestId("profile-name")).toBeTruthy();
+    expect(within(row).getByTestId("profile-username")).toBeTruthy();
+    expect(within(row).queryByTestId("profile-bio")).toBeNull();
+    expect(within(row).queryByText("3 amigos")).toBeNull();
+    expect(screen.getByTestId("profile-bio")).toBeTruthy();
   });
 });

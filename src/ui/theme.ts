@@ -45,6 +45,7 @@ export const radius = { sm: 10, md: 14, lg: 22, full: 9999 } as const;
 export const type = {
   largeTitle: { fontSize: 34, fontWeight: "700" },
   title: { fontSize: 22, fontWeight: "700" },
+  title3: { fontSize: 20, fontWeight: "600" },
   headline: { fontSize: 17, fontWeight: "600" },
   body: { fontSize: 17 },
   callout: { fontSize: 16 },

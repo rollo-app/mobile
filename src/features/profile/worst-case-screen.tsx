@@ -42,6 +42,6 @@ export function WorstCaseScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.groupedBackground },
   controls: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-  case: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator },
-  caption: { color: colors.secondaryLabel, textAlign: "center", paddingHorizontal: spacing.md },
+  case: { gap: spacing.xs, paddingBottom: spacing.md },
+  caption: { color: colors.secondaryLabel, paddingHorizontal: spacing.xs },
 });

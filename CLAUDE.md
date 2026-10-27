@@ -245,7 +245,7 @@ Decisiones de producto:
   `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,
   `roll-overview.tsx`). La actividad
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
-- Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
+- Perfil = lo que ven los demás: encabezado (card sin bordes: foto a la izquierda; nombre, @usuario e insignia a la derecha; descripción y cantidad de amigos debajo) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
   ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado", "Ver candado" y "Ver intro", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
   "Cerrar sesión" / "Borrar cuenta".
@@ -412,7 +412,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1685 tests
+npm test                      # 1686 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
