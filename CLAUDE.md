@@ -217,8 +217,8 @@ Decisiones de producto:
 - **Comentarios** (`src/features/comments/`): solo en fotos reveladas (no videos, no en las destacadas de un perfil: mostrarían nombres y charla del
   rollo a gente de afuera) y solo entre miembros activos del rollo. En el visor de la galería, la burbuja `bubble.left` (con la cantidad,
   `commentCount` del feed) abre la sheet `/comments/<mediaId>` (`comments-screen.tsx`): lista (avatar, nombre, texto, "hace 5 min") y campo abajo
-  (texto plano, hasta 500, `draft.ts`). El "…" de cada fila ofrece "Borrar" (tuyo, o cualquiera si la foto es tuya: `canDelete` lo decide el server)
-  y "Denunciar" (ajeno; `useReport().reportComment`, mail a soporte como el resto de la moderación). Error al enviar: inline y no pierde lo escrito.
+  (texto plano, hasta 500, `draft.ts`). **Borrar es deslizando la fila de derecha a izquierda** (`ReanimatedSwipeable`, botón rojo con tacho de 80 pt que borra al tocarlo; abrir una cierra la otra; acción de VoiceOver "Borrar") y solo en filas con `canDelete`, que decide el server: borrás lo tuyo; el dueño de la foto y el admin del rollo, cualquiera. El "…" de cada fila ofrece solo
+  "Denunciar" (ajeno; `useReport().reportComment`, mail a soporte como el resto de la moderación; en una fila tuya no hay "…"). Error al enviar: inline y no pierde lo escrito.
   El aviso `photoCommented` ("Cami comentó tu foto", "Cami también comentó una foto") abre `/photo/<id>?tripId=…&comments=1`: el visor abre la sheet
   una vez (`openComments`). Ajustes → Notificaciones: switch "Comentan tu foto".
 - **A futuro (no para enero):** feeds públicos de rollos y buscar perfiles públicos.
@@ -295,6 +295,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
   **`react-native-pulsar`** (hápticos continuos), **`expo-audio`** (plugin con `enableBackgroundPlayback: false`: no toca la sesión de audio de
   la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados). Agregarlos o cambiarlos
   pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
+- **Gesture Handler** (`react-native-gesture-handler`, `ReanimatedSwipeable` para borrar comentarios deslizando) es nativo: agregarlo pide `npx expo prebuild --clean` + `npx expo run:ios --device`.
 - **VisionCamera** (`react-native-vision-camera` v5 + sus dependencias `react-native-nitro-modules` y `react-native-nitro-image`; cámara de la captura y del
   momento del día, reemplazó a `expo-camera`) es nativo: agregarlo o cambiarlo pide `npx expo prebuild --clean` + `npx expo run:ios --device`.
 - `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
@@ -369,7 +370,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   `:active`/hover → `Pressable` con `onPressIn` + shared value (en iOS no hay hover); `prefers-reduced-motion` →
   `useReducedMotion()` / `ReduceMotion.System`; `will-change`/GPU → solo `transform` y `opacity` en el UI thread; `layout` de Framer
   → `LinearTransition` / `entering` / `exiting`. Gestos con `Gesture.Pan()` etc. y nada de `runOnJS`/`scheduleOnRN` por frame.
-  Gesture Handler no es dependencia directa todavía: si hace falta, `npx expo install react-native-gesture-handler` + rebuild.
+  Gesture Handler ya es dependencia (la app va envuelta en `GestureHandlerRootView`; en Jest, `jestSetup` y un mock de `ReanimatedSwipeable` en `src/test/reanimated.ts`).
 - Para **implementar** usar `animate-expo` (la versión web, `animate`, se sacó por duplicada); `review-animations` sirve por el criterio.
 - **`improve-animations`** (auditoría de todo el motion + planes para que los ejecuten modelos más baratos, encaja con "Opus planea, Sonnet
   ejecuta"): los planes van a **`docs/animation-plans/`** (no a un `plans/` en la raíz). Su modo `execute` revisa con `review-animations`, que solo

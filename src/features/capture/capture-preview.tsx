@@ -5,7 +5,6 @@ import { SymbolView } from "expo-symbols";
 import Animated, {
   cubicBezier,
   ReduceMotion,
-  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -14,11 +13,11 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import { ErrorText } from "@/ui/components";
+import { useKeyboardLift } from "@/ui/keyboard-lift";
 import { insetFrame } from "@/ui/inset-frame";
 import { EASE_OUT_BEZIER, easeOut } from "@/ui/motion";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { colors, radius, spacing, type } from "@/ui/theme";
-import { bottomPadding } from "./bottom-padding";
 import { sendExit } from "./send-exit";
 
 export type Shot = { photo: CapturedPhoto; takenAt: number };
@@ -56,7 +55,7 @@ export function CapturePreview(props: {
   inset?: CapturedPhoto | null;
 }) {
   const insets = useSafeAreaInsets();
-  const keyboardStyle = useKeyboardLift(insets.bottom);
+  const keyboardStyle = useKeyboardLift(insets.bottom, spacing.md, spacing.sm);
   const reduceMotion = useReduceMotion();
   const exitStyle = useSendExit(props.sent ?? false, reduceMotion, props.onGone);
   const [pressed, setPressed] = useState(false);
@@ -169,20 +168,6 @@ function useSendExit(sent: boolean, reduceMotion: boolean | null, onGone?: () =>
       transform: [{ translateY: p * translateY }, { scale: 1 - p * (1 - scale) }],
     };
   });
-}
-
-/**
- * Lifts the screen with the keyboard, frame by frame on the UI thread (`useAnimatedKeyboard` reads the real keyboard
- * frame; no JS listener, so nothing lags behind it). The whole lift is the root's bottom padding, a single node: the
- * photo shrinks into the remaining space, and the resting margin turns into the keyboard gap without a jump (see
- * `bottomPadding`). Animating padding re-runs layout, acceptable here because it is the system's own keyboard motion.
- * Reduce Motion doesn't apply: following the keyboard is the system's motion, not ours.
- */
-function useKeyboardLift(insetBottom: number) {
-  const keyboard = useAnimatedKeyboard();
-  return useAnimatedStyle(() => ({
-    paddingBottom: bottomPadding(keyboard.height.get(), insetBottom, spacing.md, spacing.sm),
-  }));
 }
 
 // The preview is always dark, like the camera: the photo takes the lead.

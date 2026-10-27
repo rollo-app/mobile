@@ -19,7 +19,7 @@ jest.mock("expo-image-picker", () => ({
 // this screen) are loaded.
 Object.assign(require("react-native-reanimated"), {
   __esModule: true,
-  default: { View: jest.requireActual("react-native").View },
+  default: { View: jest.requireActual("react-native").View, createAnimatedComponent: (component: unknown) => component },
   // Stable across renders, like the real one (the screen's effect depends on it).
   useSharedValue: (value: number) => {
     const ref = jest.requireActual("react").useRef(null);

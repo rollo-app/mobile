@@ -18,6 +18,7 @@ import { signOut } from "@/features/auth/session";
 import { useRetryPendingLogouts } from "@/features/auth/use-retry-pending-logouts";
 import { useMe } from "@/features/auth/use-me";
 import { Button } from "@/ui/components";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PillHost } from "@/ui/pill-host";
 import { colors, spacing, type } from "@/ui/theme";
 
@@ -29,13 +30,15 @@ export default function RootLayout() {
   useEffect(() => connectAppState(), []);
   useEffect(() => void cancelLegacyRevealNotifications(), []);
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE }}>
-      <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
-        <StatusBar style="auto" />
-        <RootStack />
-        <PillHost />
-      </ThemeProvider>
-    </PersistQueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE }}>
+        <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
+          <StatusBar style="auto" />
+          <RootStack />
+          <PillHost />
+        </ThemeProvider>
+      </PersistQueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 
