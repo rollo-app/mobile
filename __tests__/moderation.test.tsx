@@ -1,4 +1,5 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import * as friendActions from "@/features/friends/actions";
 import * as moderation from "@/features/moderation/actions";
 import * as profileActions from "@/features/profile/actions";

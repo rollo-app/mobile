@@ -1,5 +1,6 @@
 import { Alert } from "react-native";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
@@ -138,6 +139,22 @@ describe("Roll · Subidas", () => {
 
     await waitFor(() => expect(screen.queryByText("Ya no estás en este rollo")).toBeNull());
     expect(await queue.failed()).toEqual([]);
+    alert.mockRestore();
+  });
+
+  it("the failed section disappears once the last failed photo is discarded", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await queue.enqueue(queued("a"));
+    await queue.markFailed("a", "no_token");
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Descartar" }));
+    await act(async () => {
+      (alert.mock.calls[0]?.[2] ?? [])[1]?.onPress?.();
+    });
+
+    await waitFor(() => expect(screen.queryByText("No se pudieron subir")).toBeNull());
+    expect(screen.getByText("HUB5FT")).toBeVisible();
     alert.mockRestore();
   });
 });

@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { AccessibilityInfo } from "react-native";
 import { act, fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import "@/test/reanimated";
 import * as actions from "@/features/trips/actions";
 import { localDay } from "@/features/capture/quota";
 import { signInAs, tripSummary } from "@/test/account";
@@ -20,7 +21,19 @@ Object.assign(require("react-native-reanimated"), {
   __esModule: true,
   default: { View: jest.requireActual("react-native").View },
   // Stable across renders, like the real one (the screen's effect depends on it).
-  useSharedValue: (value: number) => jest.requireActual("react").useRef({ value }).current,
+  useSharedValue: (value: number) => {
+    const ref = jest.requireActual("react").useRef(null);
+    ref.current ??= {
+      value,
+      get() {
+        return this.value;
+      },
+      set(next: number) {
+        this.value = next;
+      },
+    };
+    return ref.current;
+  },
   useAnimatedStyle: (style: () => object) => style(),
   withDelay: (_ms: number, value: number) => value,
   withTiming: (value: number) => value,

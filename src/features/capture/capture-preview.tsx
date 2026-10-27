@@ -1,11 +1,12 @@
 import { Image } from "expo-image";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SymbolView } from "expo-symbols";
 import Animated, {
   cubicBezier,
   Easing,
   ReduceMotion,
+  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -17,6 +18,7 @@ import { ErrorText } from "@/ui/components";
 import { insetFrame } from "@/ui/inset-frame";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { colors, radius, spacing, type } from "@/ui/theme";
+import { bottomPadding } from "./bottom-padding";
 import { sendExit } from "./send-exit";
 
 export type Shot = { photo: CapturedPhoto; takenAt: number };
@@ -54,7 +56,7 @@ export function CapturePreview(props: {
   inset?: CapturedPhoto | null;
 }) {
   const insets = useSafeAreaInsets();
-  const keyboardOpen = useKeyboardOpen();
+  const keyboardStyle = useKeyboardLift(insets.bottom);
   const reduceMotion = useReduceMotion();
   const exitStyle = useSendExit(props.sent ?? false, reduceMotion, props.onGone);
   const [pressed, setPressed] = useState(false);
@@ -62,7 +64,7 @@ export function CapturePreview(props: {
   // Normal column (no absolute positioning): when the keyboard opens, the controls rise with it
   // and the photo shrinks into the remaining space, instead of being covered.
   return (
-    <KeyboardAvoidingView behavior="padding" style={[styles.dark, { paddingTop: insets.top }]}>
+    <Animated.View style={[styles.dark, { paddingTop: insets.top }, keyboardStyle]}>
       <Pressable accessible={false} onPress={Keyboard.dismiss} style={styles.photo}>
         <Animated.View testID="sent-photo" style={[styles.photo, exitStyle]}>
           <Pressable
@@ -96,7 +98,7 @@ export function CapturePreview(props: {
         </Animated.View>
       </Pressable>
 
-      <View style={[styles.bottom, { paddingBottom: keyboardOpen ? spacing.sm : insets.bottom + spacing.md }]}>
+      <View style={styles.bottom}>
         <TextInput
           accessibilityLabel="Caption"
           placeholder="Agregá un caption"
@@ -137,7 +139,7 @@ export function CapturePreview(props: {
           </Pressable>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 
@@ -169,18 +171,18 @@ function useSendExit(sent: boolean, reduceMotion: boolean | null, onGone?: () =>
   });
 }
 
-/** Whether the keyboard is open (to avoid adding the screen's bottom margin on top of the keyboard). */
-function useKeyboardOpen() {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardWillShow", () => setOpen(true));
-    const hide = Keyboard.addListener("keyboardWillHide", () => setOpen(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-  return open;
+/**
+ * Lifts the screen with the keyboard, frame by frame on the UI thread (`useAnimatedKeyboard` reads the real keyboard
+ * frame; no JS listener, so nothing lags behind it). The whole lift is the root's bottom padding, a single node: the
+ * photo shrinks into the remaining space, and the resting margin turns into the keyboard gap without a jump (see
+ * `bottomPadding`). Animating padding re-runs layout, acceptable here because it is the system's own keyboard motion.
+ * Reduce Motion doesn't apply: following the keyboard is the system's motion, not ours.
+ */
+function useKeyboardLift(insetBottom: number) {
+  const keyboard = useAnimatedKeyboard();
+  return useAnimatedStyle(() => ({
+    paddingBottom: bottomPadding(keyboard.height.get(), insetBottom, spacing.md, spacing.sm),
+  }));
 }
 
 // The preview is always dark, like the camera: the photo takes the lead.

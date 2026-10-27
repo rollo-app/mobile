@@ -1,5 +1,6 @@
 import { StyleSheet, Text } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";

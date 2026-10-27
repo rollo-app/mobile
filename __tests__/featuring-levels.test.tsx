@@ -1,5 +1,6 @@
 import { Alert } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import * as featuredActions from "@/features/featured/actions";
 import * as friendActions from "@/features/friends/actions";
 import * as actions from "@/features/trips/actions";

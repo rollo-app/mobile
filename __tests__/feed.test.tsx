@@ -2,6 +2,7 @@ import { act } from "@testing-library/react-native";
 import { ActionSheetIOS, Alert, Text } from "react-native";
 import * as sections from "@/features/feed/sections";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary, USER } from "@/test/account";
