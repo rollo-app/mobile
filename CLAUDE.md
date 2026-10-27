@@ -88,7 +88,7 @@ Decisiones de producto:
 - **Mapa sin señal automático** (`src/features/map/offline-*.ts`): al abrir la app y al volver a primer plano baja solo
   una zona amplia (300 km, z5–10) y otra detallada (40 km, z10–14) alrededor de la ubicación y de los lugares donde
   sacó fotos el grupo (grilla de 30 km), desde 3 días antes del inicio hasta el fin del rollo (antes del inicio, solo
-  con Wi‑Fi; tope ~400 MB). Los packs usan el mismo `file://` de estilo que el MapView, se nombran
+  con Wi‑Fi; tope ~400 MB). La ventana y el vencimiento salen del resumen de `/me/trips`: el feed se pide solo de los rollos en ventana y el detalle nunca. Los packs usan el mismo `file://` de estilo que el MapView, se nombran
   `rollo:{tripId}:{wide|detail}:{lat},{lng}` y se borran 7 días después del fin. Estado en Ajustes → "Mapa sin señal" (ajuste del celular, no del rollo).
 - **Captura:** cámara propia (`CaptureScreen`) solo de fotos, a resolución completa de la trasera (`quality: 1`; la frontal va con el procesamiento normal, el 1080 px es solo del momento). **No hay "Repetir"** ("la sacada es la que es"): al disparar va directo a la pantalla del caption, la pantalla del caption
   muestra la foto **muy difuminada** (`blurRadius`), con caption opcional y "Mandar al rollo". No hay "Repetir": la "X" de arriba a
@@ -148,8 +148,8 @@ Decisiones de producto:
   **inicio y fin** (no "cantidad de días").
 - **Momento del día (modo viaje, estilo BeReal)** (`src/features/moments/`): un aviso por día a una hora random distinta para cada uno, dentro de una
   franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Dos cámaras"). Hay **15 minutos** para sacar una foto extra, **aparte del
-  cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la imagen vinculada pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
-  inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
+  cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la imagen vinculada pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja en una sola llamada `GET /me/moments` (el server decide qué rollos: miembro activo, momento prendido, desde 3 días antes del
+  inicio hasta el fin, nunca uno revelado; si un rollo deja de venir, se cancelan sus avisos; si la llamada falla, no se toca nada) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
   `cancelMomentNotifications()` las borra, y descarta también las ya entregadas (al cerrar sesión, borrar la cuenta y apagar el switch). Tocar el aviso conserva `trip` en la ruta. La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
   SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (VisionCamera, propia, fullScreenModal) no espera el detalle del rollo (abre ya; que haya segunda foto sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y arranca en la trasera; **la primera vez que abrís cada momento** (con la ventana abierta) va antes una intro de ~1,7 s sobre negro (`moment-intro.tsx`): el logo "Revelado" se arma y un anillo cobalto da la vuelta (la ventana), en Lottie (`lottie-react-native`, `assets/lottie/moment-intro.json`, lo genera `npm run lottie` con `scripts/build-lottie.mjs`), con "Tu momento" / "Te quedan 14:52" en texto nativo, un háptico en el pop; tocar la saltea; con "Reducir movimiento" muestra el último cuadro con un fundido; clave `rollo.momentIntroSeen.<tripId>.<day>`. La cámara tiene un botón nativo "Dar vuelta la cámara" antes de sacar
   (también en "Solo foto"). **La primera foto que se saca es la principal**, sea de la trasera o de la frontal; si el rollo es "Dos cámaras" (aviso "Sacás con las dos cámaras. La
@@ -183,7 +183,7 @@ Decisiones de producto:
   Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En "Tus rollos" el badge del rollo en curso dice LIVE.
   "Tus rollos" se agrupa con `groupTrips` (`src/features/trips/group-trips.ts`): en curso, próximos y sin revelar arriba; "Revelados" (últimos 3 meses por fecha de revelado); y "Anteriores · N" colapsado (se abre solo si el rollo activo está ahí, sin recordar nada).
 - **Notificaciones push** (`src/features/notifications/`): las manda el backend con Expo Push Service. El token se registra con
-  `PUT /me/push-tokens/{token}` atado a la sesión y se borra al cerrar sesión y cuando un `401` la cierra (así un celular que cambia de
+  `PUT /me/push-tokens/{token}` atado a la sesión **solo si cambió el token o la sesión** desde el último registro exitoso (`rollo.pushTokenRegistered` en SecureStore: token + hash SHA-256 de la sesión, `src/storage/push-registered.ts`; no se renombra) y se borra al cerrar sesión y cuando un `401` la cierra (así un celular que cambia de
   cuenta no recibe avisos de la anterior). **Permiso con explicación propia** (`/push-primer`, `push-primer.tsx`): se ofrece una sola vez,
   después de crear o unirse a un rollo (`offerPushAfterJoining`; clave nueva `rollo.pushPrimerSeen`, no se renombra); si ya había permiso
   el token se registra en silencio, y si lo negó no pasa nada (queda el aviso en Ajustes). **Tocar una push** abre `data.url` (ruta de la

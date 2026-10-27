@@ -3,10 +3,9 @@ import * as Location from "expo-location";
 import * as Network from "expo-network";
 import { Appearance } from "react-native";
 import { queryClient } from "@/api/query-client";
-import { fetchFeed, fetchMyTrips, fetchTrip } from "@/features/trips/actions";
+import { fetchFeed, fetchMyTrips } from "@/features/trips/actions";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { feedKey } from "@/features/trips/use-feed";
-import { tripKey } from "@/features/trips/use-trip-detail";
 import { getSessionToken } from "@/storage/session";
 import { downloadRegion, resumeRegion, type LngLat } from "./offline";
 import {
@@ -81,17 +80,19 @@ async function cachedOrFetched<T>(key: readonly unknown[], fetcher: () => Promis
 
 type KnownTrip = { trip: PlanTrip; photos: Place[] };
 
-async function loadTrips(tripIds: string[], online: boolean): Promise<KnownTrip[]> {
+/**
+ * The window and expiry decisions come from the `/me/trips` summary, which already has the dates and
+ * the revealed flag: the detail is never needed. The feed (where the group took photos) is only
+ * asked for the rolls we are going to download for.
+ */
+async function loadOpenTrips(trips: PlanTrip[], now: number, online: boolean): Promise<KnownTrip[]> {
   const known: KnownTrip[] = [];
-  for (const tripId of tripIds) {
-    const detail = await cachedOrFetched(tripKey(tripId), () => fetchTrip(tripId), online);
-    if (!detail) continue;
-    const { startsAt, endsAt, revealed } = detail.trip;
-    const feed = await cachedOrFetched(feedKey(tripId), () => fetchFeed(tripId), online);
+  for (const trip of trips.filter((t) => inDownloadWindow(t, now))) {
+    const feed = await cachedOrFetched(feedKey(trip.tripId), () => fetchFeed(trip.tripId), online);
     const photos = (feed?.items ?? []).flatMap((i) =>
       i.lat === null || i.lng === null ? [] : [{ lat: i.lat, lng: i.lng, takenAt: i.takenAt }],
     );
-    known.push({ trip: { tripId, startsAt, endsAt, revealed }, photos });
+    known.push({ trip, photos });
   }
   return known;
 }
@@ -126,8 +127,8 @@ async function run(): Promise<void> {
   const mine = await cachedOrFetched(myTripsKey, fetchMyTrips, net.connected);
   if (!mine) return;
   const saved = mine.trips.map((t) => ({ tripId: t.id }));
-  const known = await loadTrips(saved.map((t) => t.tripId), net.connected);
-  const endsAtByTrip = new Map(known.map((k) => [k.trip.tripId, k.trip.endsAt]));
+  const planTrips: PlanTrip[] = mine.trips.map((t) => ({ tripId: t.id, startsAt: t.startsAt, endsAt: t.endsAt, revealed: t.revealed }));
+  const endsAtByTrip = new Map(planTrips.map((t) => [t.tripId, t.endsAt]));
 
   // Housekeeping first: it needs no connection.
   let stored = await readPacks();
@@ -135,11 +136,7 @@ async function run(): Promise<void> {
   for (const { id } of expired) await OfflineManager.deletePack(id);
   stored = stored.filter((s) => !expired.some((e) => e.id === s.info.id));
   if (expired.length > 0) {
-    // A roll whose dates we don't know counts as current: better to keep the cache than to lose it.
-    const anyCurrent = saved.some((t) => {
-      const endsAt = endsAtByTrip.get(t.tripId);
-      return endsAt === undefined || now < packExpiresAt(endsAt);
-    });
+    const anyCurrent = planTrips.some((t) => now < packExpiresAt(t.endsAt));
     if (!anyCurrent) await OfflineManager.clearAmbientCache();
   }
 
@@ -148,7 +145,7 @@ async function run(): Promise<void> {
     return;
   }
 
-  const open = known.filter((k) => inDownloadWindow(k.trip, now));
+  const open = await loadOpenTrips(planTrips, now, net.connected);
   const allowed = open.filter((k) => networkAllows(k.trip, net, now));
   setState({ waitingForWifi: allowed.length < open.length });
   if (allowed.length === 0) return;

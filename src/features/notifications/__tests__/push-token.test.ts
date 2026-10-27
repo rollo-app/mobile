@@ -1,4 +1,5 @@
 import * as Notifications from "expo-notifications";
+import * as SecureStore from "expo-secure-store";
 import { setSessionToken } from "@/storage/session";
 import { forgetPushToken, syncPushToken } from "../push-token";
 
@@ -35,6 +36,70 @@ describe("syncPushToken", () => {
     expect(request!.headers.get("authorization")).toBe("Bearer tok");
   });
 
+  it("does not send the same token again for the same session", async () => {
+    permission(true, true, "granted");
+    const fetchMock = mockFetch();
+
+    await syncPushToken();
+    await syncPushToken();
+
+    expect(requests(fetchMock).filter((r) => r.method === "PUT")).toHaveLength(1);
+  });
+
+  it("sends again when the token changes", async () => {
+    permission(true, true, "granted");
+    const fetchMock = mockFetch();
+    await syncPushToken();
+    notifications.getExpoPushTokenAsync.mockResolvedValue({ type: "expo", data: "ExponentPushToken[other]" });
+
+    await syncPushToken();
+
+    expect(requests(fetchMock).map((r) => r.url.split("/").pop())).toEqual(["ExponentPushToken%5Babc%2B%2F%3D%5D", "ExponentPushToken%5Bother%5D"]);
+  });
+
+  it("sends again when the session changes (another account on the same phone)", async () => {
+    permission(true, true, "granted");
+    const fetchMock = mockFetch();
+    await syncPushToken();
+    await setSessionToken("tok-2");
+
+    await syncPushToken();
+
+    expect(requests(fetchMock)).toHaveLength(2);
+    expect(requests(fetchMock)[1]!.headers.get("authorization")).toBe("Bearer tok-2");
+  });
+
+  it("keeps trying while the server fails: nothing is remembered as registered", async () => {
+    permission(true, true, "granted");
+    mockFetch(500);
+    await syncPushToken();
+    const fetchMock = mockFetch();
+
+    await syncPushToken();
+
+    expect(requests(fetchMock)).toHaveLength(1);
+  });
+
+  it("registers after the permission is granted from iOS Settings", async () => {
+    const fetchMock = mockFetch();
+    await syncPushToken();
+    permission(true, true, "granted");
+
+    await syncPushToken();
+
+    expect(requests(fetchMock)).toHaveLength(1);
+  });
+
+  it("never keeps the session token in the clear", async () => {
+    permission(true, true, "granted");
+    mockFetch();
+    await syncPushToken();
+
+    const stored = (SecureStore as unknown as { __store: Map<string, string> }).__store.get("rollo.pushTokenRegistered");
+    expect(stored).toBeDefined();
+    expect(stored).not.toContain("tok");
+  });
+
   it("without permission it asks nothing and sends nothing", async () => {
     const fetchMock = mockFetch();
 
@@ -68,6 +133,18 @@ describe("forgetPushToken", () => {
     const [request] = requests(fetchMock);
     expect(request!.method).toBe("DELETE");
     expect(request!.url).toMatch(/\/me\/push-tokens\/ExponentPushToken%5Babc%2B%2F%3D%5D$/);
+  });
+
+  it("after forgetting, the next sync registers again", async () => {
+    permission(true, true, "granted");
+    mockFetch();
+    await syncPushToken();
+    await forgetPushToken();
+    const fetchMock = mockFetch();
+
+    await syncPushToken();
+
+    expect(requests(fetchMock).map((r) => r.method)).toEqual(["PUT"]);
   });
 
   it("with nothing registered and no permission, does nothing", async () => {

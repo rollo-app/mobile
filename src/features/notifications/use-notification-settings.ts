@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { OWN_DATA_STALE_TIME } from "@/api/query-client";
 import { useRef, useState } from "react";
 import { cancelMomentNotifications, syncMoments } from "@/features/moments/moment-sync";
 import { fetchNotificationSettings, updateNotificationSettings, type NotificationSettings } from "./actions";
@@ -13,7 +14,7 @@ export type NotificationKind = keyof NotificationSettings;
  */
 export function useNotificationSettings() {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: notificationSettingsKey, queryFn: fetchNotificationSettings });
+  const query = useQuery({ queryKey: notificationSettingsKey, queryFn: fetchNotificationSettings, staleTime: OWN_DATA_STALE_TIME });
   const [saveError, setSaveError] = useState<{ kind: NotificationKind; message: string } | null>(null);
   // While several switches are saving, the server's answer to one would undo the others' optimistic value.
   const saving = useRef(0);

@@ -1,10 +1,9 @@
 import * as Notifications from "expo-notifications";
 import { getSession } from "@/features/auth/session";
-import { fetchMyTrips } from "@/features/trips/actions";
-import { fetchMyMoments } from "./actions";
+import { fetchAllMyMoments, type MyTripMoments } from "./actions";
 import { cancelMomentNotifications, MOMENT_PREFIX } from "./cancel";
 import { globalCancelledSince, isSuperseded, serialized, startSync, tripCancelledSince } from "./lock";
-import { planMoments, tripsToSync, type MomentMode, type PlannedMoment, type TripMoments } from "./plan";
+import { planMoments, type PlannedMoment, type TripMoments } from "./plan";
 
 export { cancelMomentNotifications };
 
@@ -18,49 +17,32 @@ export async function syncMoments(): Promise<void> {
     const stamp = startSync();
     const session = await getSession();
     if (!session) return;
-    const { trips } = await fetchMyTrips();
+    // One call for every rollo (window, membership and mode are decided by the server). If it fails (e.g. no signal),
+    // it throws and nothing is touched.
+    const trips = await fetchAllMyMoments();
     const now = Date.now();
-    const ids = new Set(tripsToSync(trips, now));
-    const wanted = trips.filter((t) => ids.has(t.id));
-
-    const results = await Promise.allSettled(wanted.map((t) => fetchMyMoments(t.id)));
-    // No trip answered at all (e.g. no signal): touch nothing.
-    if (wanted.length > 0 && results.every((r) => r.status === "rejected")) return;
-
-    await serialized(() => apply(stamp, session, wanted, results, now));
+    await serialized(() => apply(stamp, session, trips, now));
   } catch {
     // The next sync tries again; whatever is scheduled keeps working.
   }
 }
 
-async function apply(
-  stamp: ReturnType<typeof startSync>,
-  session: string,
-  wanted: { id: string; name: string; momentMode?: MomentMode }[],
-  results: PromiseSettledResult<{ day: string; notifyAt: number }[]>[],
-  now: number,
-): Promise<void> {
+async function apply(stamp: ReturnType<typeof startSync>, session: string, trips: MyTripMoments[], now: number): Promise<void> {
   try {
     // A newer sync is on its way, or the session/rollo was closed while we were fetching: don't revive anything.
     if (isSuperseded(stamp) || globalCancelledSince(stamp)) return;
     if ((await getSession()) !== session) return;
 
-    const fetched: TripMoments[] = [];
-    const failed = new Set<string>();
-    wanted.forEach((t, i) => {
-      const r = results[i]!;
-      if (tripCancelledSince(stamp, t.id)) return;
-      if (r.status === "fulfilled") fetched.push({ tripId: t.id, tripName: t.name, momentMode: t.momentMode, moments: r.value });
-      else failed.add(t.id);
-    });
+    const fetched: TripMoments[] = trips.filter((t) => !tripCancelledSince(stamp, t.tripId));
     const planned = planMoments(fetched, now);
     const keep = new Set(planned.map((p) => p.id));
 
+    // A rollo the server no longer returns (revealed, left, out of the window) loses its moments too.
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    const stale = (id: string) =>
-      id.startsWith(MOMENT_PREFIX) && !keep.has(id) && ![...failed].some((t) => id.startsWith(`${MOMENT_PREFIX}${t}.`));
     await Promise.all(
-      scheduled.filter((n) => stale(n.identifier)).map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+      scheduled
+        .filter((n) => n.identifier.startsWith(MOMENT_PREFIX) && !keep.has(n.identifier))
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
     );
     // Same identifier replaces the previous one, so running this twice never duplicates.
     for (const p of planned) await scheduleMomentNotification(p);
