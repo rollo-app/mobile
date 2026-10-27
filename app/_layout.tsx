@@ -112,6 +112,8 @@ function RootStack() {
             }}
           />
           <Stack.Screen name="blocked" options={{ title: "Bloqueados" }} />
+          {/* Dev only: the profile header against worst-case data (rendered empty outside __DEV__). */}
+          <Stack.Screen name="dev/worst-case" options={{ title: "Peor caso (perfil)" }} />
           {/* Someone's profile from a roll or a photo: a push over the tabs (a sheet or viewer closes first). */}
           {/* No title: the name is already in the profile's header. */}
           <Stack.Screen name="user/[id]" options={{ title: "" }} />

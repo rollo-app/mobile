@@ -24,6 +24,7 @@ import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
 import CommentsRoute from "../../app/comments/[mediaId]";
 import CreateScreen from "../../app/create";
+import WorstCaseRoute from "../../app/dev/worst-case";
 import CropAvatarScreen from "../../app/crop-avatar";
 import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
@@ -60,6 +61,7 @@ export const routes = {
   settings: SettingsScreen,
   notifications: NotificationsRoute,
   blocked: BlockedScreen,
+  "dev/worst-case": WorstCaseRoute,
   "add-friends": AddFriendsScreen,
   "friends/[code]": FriendLinkRoute,
   login: LoginLinkRoute,
