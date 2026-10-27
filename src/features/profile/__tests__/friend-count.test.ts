@@ -6,6 +6,13 @@ describe("formatFriendCount", () => {
     expect(formatFriendCount(12)).toBe("12 amigos");
   });
 
+  it("separates thousands with a dot", () => {
+    expect(formatFriendCount(1284)).toBe("1.284 amigos");
+    expect(formatFriendCount(1284, 1000)).toBe("1.284 amigos · 1.000 en común");
+    expect(formatFriendCount(1234567)).toBe("1.234.567 amigos");
+    expect(formatFriendCount(999)).toBe("999 amigos");
+  });
+
   it("adds the friends in common when there are any", () => {
     expect(formatFriendCount(12, 3)).toBe("12 amigos · 3 en común");
     expect(formatFriendCount(1, 1)).toBe("1 amigo · 1 en común");

@@ -1,5 +1,6 @@
 import type { Schemas } from "@/api/client";
 import type { PendingMedia } from "@/features/capture/queue";
+import { initialOf } from "@/features/profile/avatar-style";
 import { memberColor } from "./member-color";
 import { pinAvatarKey } from "./pin-avatars";
 
@@ -111,7 +112,8 @@ export function toFeatures(items: MapItem[], filters: MapFilters, readyAvatars: 
       geometry: { type: "Point", coordinates: [i.lng, i.lat] },
       properties: {
         id: i.id,
-        initial: i.authorName.trim().charAt(0).toUpperCase(),
+        // Same initial as the avatars; the pin is drawn by MapLibre, which can't show the person symbol, so "?" instead.
+        initial: initialOf(i.authorName) ?? "?",
         color: memberColor(i.authorId),
         pending: i.pending,
         avatar: readyAvatars.has(avatarKey) ? avatarKey : "",

@@ -21,6 +21,17 @@ describe("Avatar", () => {
     expect(screen.getByTestId("avatar-image", hidden)).toBeTruthy();
   });
 
+  it("doesn't scale the initial with Dynamic Type", async () => {
+    await render(<Avatar id="u1" name="juani" />);
+    expect(screen.getByText("J", hidden).props.allowFontScaling).toBe(false);
+  });
+
+  it("shows a person symbol instead of a letter when the name has none", async () => {
+    await render(<Avatar id="u1" name="🎉🎉" />);
+    expect(screen.getByTestId("avatar-person", hidden)).toBeTruthy();
+    expect(screen.queryByText("?", hidden)).toBeNull();
+  });
+
   it("uses the size it's given", async () => {
     await render(<Avatar id="u1" name="Juani" size={72} />);
     expect(screen.getByTestId("avatar", hidden)).toHaveStyle({ width: 72, height: 72, borderRadius: 36 });
