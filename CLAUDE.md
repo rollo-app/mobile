@@ -151,7 +151,7 @@ Decisiones de producto:
   cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la imagen vinculada pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
   inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
   `cancelMomentNotifications()` las borra, y descarta también las ya entregadas (al cerrar sesión, borrar la cuenta y apagar el switch). Tocar el aviso conserva `trip` en la ruta. La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
-  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (VisionCamera, propia, fullScreenModal) no espera el detalle del rollo (abre ya; que haya segunda foto sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y arranca en la trasera, con un botón nativo "Dar vuelta la cámara" antes de sacar
+  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (VisionCamera, propia, fullScreenModal) no espera el detalle del rollo (abre ya; que haya segunda foto sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y arranca en la trasera; **la primera vez que abrís cada momento** (con la ventana abierta) va antes una intro de ~1,7 s sobre negro (`moment-intro.tsx`): el logo "Revelado" se arma y un anillo cobalto da la vuelta (la ventana), en Lottie (`lottie-react-native`, `assets/lottie/moment-intro.json`, lo genera `npm run lottie`), con "Tu momento" / "Te quedan 14:52" en texto nativo, un háptico en el pop; tocar la saltea; con "Reducir movimiento" muestra el último cuadro con un fundido; clave `rollo.momentIntroSeen.<tripId>.<day>`. La cámara tiene un botón nativo "Dar vuelta la cámara" antes de sacar
   (también en "Solo foto"). **La primera foto que se saca es la principal**, sea de la trasera o de la frontal; si el rollo es "Dos cámaras" (aviso "Sacás con las dos cámaras. La
   primera va a ser la grande."), la cámara pasa sola a **la otra** ("Ahora con la otra cámara.", sin dar vuelta) y esa segunda va como foto aparte vinculada (`pairedWith`). La imagen
   de la frontal se achica a 1080 px (`prepareMedia`), sea la primera o la segunda; la de la trasera va normal. El nombre `selfie` del contrato y del código significa "la imagen vinculada";
@@ -401,10 +401,11 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1569 tests
+npm test                      # 1581 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
+npm run lottie                # regenera la intro del momento (assets/lottie/)
 npx expo run:ios --device     # compila e instala el dev build en el iPhone
 npm start                     # día a día, con el dev build ya instalado
 ```

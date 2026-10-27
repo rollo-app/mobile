@@ -1,4 +1,6 @@
+import * as SecureStore from "expo-secure-store";
 import * as Notifications from "expo-notifications";
+import { AccessibilityInfo } from "react-native";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -9,6 +11,7 @@ import { queryClient } from "@/api/query-client";
 import { localDay } from "@/features/capture/quota";
 import { createQueue, type Queue } from "@/features/capture/queue";
 import { signInAs, tripSummary } from "@/test/account";
+import { markMomentIntroSeen } from "@/storage/moment-intro";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -82,6 +85,8 @@ beforeEach(async () => {
   queue = await createQueue(memoryDb());
   getQueue.mockResolvedValue(queue);
   takePhoto.mockClear();
+  // The intro is its own describe below; everything else expects the camera right away.
+  await markMomentIntroSeen(SUR, MOMENT_DAY);
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
   trips.fetchTrip.mockResolvedValue(tripDetail("photo_selfie"));
   mediaMock.prepareMedia.mockResolvedValue({
@@ -367,5 +372,74 @@ describe("Moment", () => {
     for (let s = 0; s < 3; s++) await act(async () => jest.advanceTimersByTime(1000));
     expect(takePhoto).toHaveBeenCalledTimes(1);
     expect(await screen.findByLabelText("Caption")).toBeVisible();
+  });
+});
+
+describe("Moment intro", () => {
+  beforeEach(async () => {
+    await SecureStore.deleteItemAsync(`rollo.momentIntroSeen.${SUR}.${MOMENT_DAY}`);
+    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+  });
+  afterAll(() => {
+    // Not mockRestore: it would wipe React Native's own jest.fn for later suites.
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(false);
+  });
+
+  it("an open moment shows the intro before the camera", async () => {
+    await openMoment(Date.now() - (MOMENT_WINDOW_MS - 192_000)); // 3:12 left
+    await screen.findByText("Tu momento");
+    // The text fades in (the Reanimated mock jumps to the end value on the next render).
+    await waitFor(() => expect(screen.getByText("Tu momento")).toBeVisible());
+    expect(screen.getByText(/^Te quedan 3:1\d$/)).toBeVisible();
+    expect(screen.getByTestId("lottie")).toBeVisible();
+    expect(screen.queryByTestId("camera-back")).toBeNull();
+  });
+
+  it("plays the animation once", async () => {
+    await openMoment(Date.now() - 10_000);
+    await screen.findByText("Tu momento");
+    expect(screen.getByTestId("lottie").props).toMatchObject({ autoPlay: true, loop: false });
+  });
+
+  it("tapping it opens the camera", async () => {
+    await openMoment(Date.now() - 10_000);
+    await fireEvent.press(await screen.findByRole("button", { name: /Tocá para abrir la cámara/ }));
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
+    expect(screen.queryByText("Tu momento")).toBeNull();
+  });
+
+  it("goes to the camera by itself when it ends", async () => {
+    await openMoment(Date.now() - 10_000);
+    await screen.findByText("Tu momento");
+    await act(async () => jest.advanceTimersByTime(1600));
+    expect(screen.getByText("Tu momento")).toBeOnTheScreen();
+    await act(async () => jest.advanceTimersByTime(200));
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
+  });
+
+  it("opening the same moment again goes straight to the camera", async () => {
+    await openMoment(Date.now() - 10_000);
+    await fireEvent.press(await screen.findByRole("button", { name: /Tocá para abrir la cámara/ }));
+    await screen.findByTestId("camera-back");
+    await act(async () => router.back());
+    await act(async () => router.push(`/moment?day=${MOMENT_DAY}&at=${Date.now() - 10_000}&trip=${SUR}` as never));
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
+    expect(screen.queryByText("Tu momento")).toBeNull();
+  });
+
+  it("a late moment shows the late message and no intro", async () => {
+    await openMoment(Date.now() - MOMENT_WINDOW_MS - 100_000);
+    expect(await screen.findByText("Se pasó tu momento de hoy")).toBeVisible();
+    expect(screen.queryByText("Tu momento")).toBeNull();
+    expect(screen.queryByTestId("lottie")).toBeNull();
+  });
+
+  it("with Reduce Motion it shows the last frame of the animation and finishes sooner", async () => {
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(true);
+    await openMoment(Date.now() - 10_000);
+    await screen.findByText("Tu momento");
+    expect(screen.getByTestId("lottie").props).toMatchObject({ autoPlay: false, progress: 1 });
+    await act(async () => jest.advanceTimersByTime(1300));
+    expect(await screen.findByTestId("camera-back")).toBeVisible();
   });
 });

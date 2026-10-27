@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { Linking, Text } from "react-native";
 import { router } from "expo-router";
 import { signIn } from "@/features/auth/session";

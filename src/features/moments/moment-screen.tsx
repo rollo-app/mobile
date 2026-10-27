@@ -14,18 +14,22 @@ import { localDay } from "@/features/capture/quota";
 import { useSendShot } from "@/features/capture/use-send-shot";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
+import { hasSeenMomentIntro, markMomentIntroSeen } from "@/storage/moment-intro";
+import { MomentIntro } from "./moment-intro";
 import { formatLeft, momentState } from "./moment-time";
 import { momentTaken } from "./use-current-moment";
 
 type Facing = "back" | "front";
 type FacingShot = Shot & { facing: Facing };
+type IntroPhase = "checking" | "show" | "done";
 type Step = { kind: "main" } | { kind: "second"; main: FacingShot } | { kind: "preview"; main: FacingShot; selfie: FacingShot | null };
 
 /**
  * The daily moment: the camera under a countdown (the back one first; it can be flipped before shooting). The first
  * photo is the main one, whichever camera took it; if the roll asks for it the other camera takes a second one, linked
  * to it (`selfie` in the contract means "the linked image"). Then the regular caption screen. The window only gates
- * taking the first photo: once you have it you can finish.
+ * taking the first photo: once you have it you can finish. While the window is open, the first time it is opened
+ * a short intro plays before the camera (the countdown keeps running).
  */
 export function MomentScreen(props: { tripId?: string; day?: string; at?: number; selfie?: string }) {
   const { trip, trips } = useActiveTrip();
@@ -38,6 +42,7 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   const [caption, setCaption] = useState("");
   const [sent, setSent] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [intro, setIntro] = useState<IntroPhase>("checking");
   const fix = useRef<Promise<Fix | null> | null>(null);
 
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -48,6 +53,24 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   const endsAt = detail?.trip.endsAt ?? trips.find((t) => t.id === tripId)?.endsAt;
   const state = props.at != null && Number.isFinite(props.at) ? momentState(props.at, now) : ({ kind: "late" } as const);
   const day = props.day ?? (props.at != null ? localDay(props.at, timeZone) : undefined);
+
+  // The intro plays once per moment: it is marked seen as soon as it is shown.
+  const introOpen = state.kind === "open";
+  useEffect(() => {
+    if (!tripId || !day || !introOpen) return;
+    let active = true;
+    void hasSeenMomentIntro(tripId, day)
+      .catch(() => true)
+      .then((seen) => {
+        if (!active) return;
+        if (seen) return setIntro("done");
+        setIntro("show");
+        void markMomentIntroSeen(tripId, day).catch(() => {});
+      });
+    return () => {
+      active = false;
+    };
+  }, [tripId, day, introOpen]);
 
   useEffect(() => {
     if (canRequestPermission) void requestPermission();
@@ -119,6 +142,11 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
         body={lastDay ? "Era el último del rollo." : "Mañana te toca otro."}
       />
     );
+  }
+  if (step.kind === "main" && state.kind === "open" && tripId && day && intro !== "done") {
+    // Never the camera before the check is done; the same plain black as the permission wait.
+    if (intro === "checking") return <View style={styles.dark} />;
+    return <MomentIntro leftMs={state.leftMs} onDone={() => setIntro("done")} />;
   }
   if (!hasPermission && !canRequestPermission) {
     return (

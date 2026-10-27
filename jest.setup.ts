@@ -502,6 +502,17 @@ jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null })
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
 jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));
 
+// lottie-react-native is native: a View that exposes the playback props tests assert on.
+jest.mock("lottie-react-native", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    default: ({ autoPlay, loop, progress, style }: { autoPlay?: boolean; loop?: boolean; progress?: number; style?: unknown }) =>
+      React.createElement(View, { testID: "lottie", autoPlay, loop, progress, style }),
+  };
+});
+
 // Native HUD (burnt): tests get mocks they can inspect.
 jest.mock("burnt", () => ({ alert: jest.fn(), toast: jest.fn() }));
 
