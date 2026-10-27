@@ -25,6 +25,8 @@ beforeEach(() => {
 jest.mock("@/features/friends/actions");
 // Ajustes asks who you blocked: keep it out of the recorded fetch calls.
 jest.mock("@/features/moderation/actions");
+// The tabs sync the daily moments on mount: also out of the recorded fetch calls.
+jest.mock("@/features/moments/actions", () => ({ fetchAllMyMoments: jest.fn(async () => []) }));
 jest.mock("expo-image-picker");
 jest.mock("expo-image-manipulator", () => {
   const saved = { uri: "file:///cache/cropped.jpg", width: 512, height: 512 };

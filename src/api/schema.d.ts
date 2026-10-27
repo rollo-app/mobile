@@ -374,6 +374,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/moments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My daily moments in all my rollos
+         * @description The moments of the caller for every rollo where they are an active member, the moment is on, the rollo is not revealed and it is within the scheduling window (from 3 days before the start until the end). One call instead of one `GET /trips/{tripId}/moments` per rollo. Each rollo carries exactly what that endpoint would return for it, possibly empty (so the app can cancel old notifications). Like the per-rollo endpoint, the first time it draws and stores the missing moments and never re-draws. Ordered by rollo id.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description My moments in all my rollos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AllMyMoments"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me": {
         parameters: {
             query?: never;
@@ -3892,6 +3940,25 @@ export interface components {
         FriendResponse: {
             friend: components["schemas"]["Friend"];
         };
+        AllMyMoments: {
+            trips: {
+                /** Format: uuid */
+                tripId: string;
+                tripName: string;
+                /** @enum {string} */
+                momentMode: "photo" | "photo_selfie";
+                moments: components["schemas"]["Moment"][];
+            }[];
+        };
+        Moment: {
+            /**
+             * @description Local date of the trip (YYYY-MM-DD)
+             * @example 2027-01-12
+             */
+            day: string;
+            /** @description Epoch ms when the moment starts; the user has 15 minutes from then */
+            notifyAt: number;
+        };
         UpdateProfileRequest: {
             /** @example Juani */
             name?: string;
@@ -4176,15 +4243,6 @@ export interface components {
         };
         MyMoments: {
             moments: components["schemas"]["Moment"][];
-        };
-        Moment: {
-            /**
-             * @description Local date of the trip (YYYY-MM-DD)
-             * @example 2027-01-12
-             */
-            day: string;
-            /** @description Epoch ms when the moment starts; the user has 15 minutes from then */
-            notifyAt: number;
         };
         TripCreated: {
             trip: components["schemas"]["Trip"];

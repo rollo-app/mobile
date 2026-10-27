@@ -1,21 +1,6 @@
-import { MAX_SCHEDULED, momentNotificationId, planMoments, tripsToSync, type TripMoments } from "../plan";
+import { MAX_SCHEDULED, momentNotificationId, planMoments, type TripMoments } from "../plan";
 
-const DAY = 86_400_000;
 const now = Date.UTC(2027, 0, 10, 12);
-const trip = (id: string, startsAt: number, endsAt: number, revealed = false) => ({ id, startsAt, endsAt, revealed });
-
-describe("tripsToSync", () => {
-  it("includes a rollo starting in 2 days and excludes one starting in 4, a finished one and a revealed one", () => {
-    const trips = [
-      trip("soon", now + 2 * DAY, now + 6 * DAY),
-      trip("far", now + 4 * DAY, now + 8 * DAY),
-      trip("done", now - 5 * DAY, now - DAY),
-      trip("revealed", now - DAY, now + DAY, true),
-      trip("running", now - DAY, now + DAY),
-    ];
-    expect(tripsToSync(trips, now)).toEqual(["soon", "running"]);
-  });
-});
 
 describe("planMoments", () => {
   const t = (tripId: string, times: number[]): TripMoments => ({
