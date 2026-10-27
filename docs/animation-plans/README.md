@@ -6,7 +6,7 @@ worklets, RN `Animated` donde ya se usa), nunca web.
 
 | # | Plan | Severidad | Estado |
 | --- | --- | --- | --- |
-| 001 | [Fundidos de "Reducir movimiento" que se vean + token ease-out](001-reduce-motion-fades-and-ease-out-token.md) | HIGH | TODO |
+| 001 | [Fundidos de "Reducir movimiento" que se vean + token ease-out](001-reduce-motion-fades-and-ease-out-token.md) | HIGH | done |
 | 002 | [Barra de las historias en el hilo nativo + snap-back](002-story-progress-on-native-thread.md) | HIGH | TODO |
 | 003 | [Cámara: disparo y enfoque como iOS](003-camera-shutter-and-focus-feedback.md) | MEDIUM | TODO |
 | 004 | [Pastilla: ease-out y sin parpadeo al repetirse](004-pill-ease-out-and-retarget.md) | LOW | TODO |

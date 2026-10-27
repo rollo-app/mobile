@@ -29,6 +29,7 @@ import Animated, {
 } from "react-native-reanimated";
 import type { RevealedPhoto } from "@/features/media/revealed";
 import { thumbHashAverageColor } from "@/features/trips/thumbhash-color";
+import { easeOut } from "@/ui/motion";
 import { spacing, type } from "@/ui/theme";
 import { cellFill } from "./cell-fill";
 import { DEVELOP_SKSL, GRAIN_SKSL } from "./darkroom-shaders";
@@ -132,7 +133,7 @@ export function DarkroomIntro({
     const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
 
     // Entrances ease out hard (fast start, long settle); `Easing` is built here, not at module level.
-    const enter = Easing.bezier(0.23, 1, 0.32, 1);
+    const enter = easeOut();
 
     if (reduceMotion) {
       // Plain fades, but they must still play: Reanimated's default (ReduceMotion.System) would skip

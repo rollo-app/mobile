@@ -4,7 +4,6 @@ import { Alert, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "r
 import { SymbolView } from "expo-symbols";
 import Animated, {
   cubicBezier,
-  Easing,
   ReduceMotion,
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -16,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import { ErrorText } from "@/ui/components";
 import { insetFrame } from "@/ui/inset-frame";
+import { EASE_OUT_BEZIER, easeOut } from "@/ui/motion";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import { bottomPadding } from "./bottom-padding";
@@ -33,7 +33,7 @@ const getPressTransition = () =>
   (pressTransition ??= {
     transitionProperty: ["transform", "opacity"],
     transitionDuration: 120,
-    transitionTimingFunction: cubicBezier(0.23, 1, 0.32, 1),
+    transitionTimingFunction: cubicBezier(...EASE_OUT_BEZIER),
   });
 
 /**
@@ -156,7 +156,7 @@ function useSendExit(sent: boolean, reduceMotion: boolean | null, onGone?: () =>
   useEffect(() => {
     if (!sent) return;
     // ReduceMotion.Never: the reduced version is already chosen by sendExit; System would skip even the fade.
-    progress.set(withTiming(1, { duration, easing: Easing.bezier(0.23, 1, 0.32, 1), reduceMotion: ReduceMotion.Never }));
+    progress.set(withTiming(1, { duration, easing: easeOut(), reduceMotion: ReduceMotion.Never }));
     const timer = setTimeout(() => gone.current?.(), duration);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, when the shot is sent

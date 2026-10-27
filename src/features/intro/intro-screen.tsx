@@ -2,10 +2,11 @@ import { router } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, useColorScheme, View } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { markWelcomeIntroSeen } from "@/storage/welcome-intro";
 import { Button } from "@/ui/components";
+import { ownedTiming } from "@/ui/motion";
 import { colors, spacing, type } from "@/ui/theme";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { introTiming } from "./intro-timing";
@@ -36,10 +37,10 @@ export function IntroScreen() {
   useEffect(() => {
     // Wait for Reduce Motion to be known so the sequence never starts and then switches.
     if (reduceMotion === null) return;
-    const fade = { duration: FADE_MS, easing: Easing.bezier(0.23, 1, 0.32, 1) };
-    first.set(withDelay(firstLineAt, withTiming(1, fade)));
-    second.set(withDelay(secondLineAt, withTiming(1, fade)));
-    button.set(withDelay(buttonAt, withTiming(1, fade)));
+    const fade = ownedTiming(FADE_MS);
+    first.set(withDelay(firstLineAt, withTiming(1, fade), ReduceMotion.Never));
+    second.set(withDelay(secondLineAt, withTiming(1, fade), ReduceMotion.Never));
+    button.set(withDelay(buttonAt, withTiming(1, fade), ReduceMotion.Never));
     const timer = setTimeout(() => setButtonShown(true), buttonAt);
     return () => clearTimeout(timer);
     // The shared values are stable; the timer must not restart when they re-render.

@@ -1,7 +1,8 @@
 import { Image } from "expo-image";
 import { useEffect, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { ownedTiming } from "@/ui/motion";
 import { colors, radius, type } from "@/ui/theme";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { buildContactSheet, newestEntered } from "./contact-sheet";
@@ -70,9 +71,7 @@ function EnteringFrame({ enter, children }: { enter: boolean; children: React.Re
   const progress = useSharedValue(enter ? 0 : 1);
   useEffect(() => {
     if (!enter) return;
-    progress.set(
-      withTiming(1, { duration: reduced ? 200 : 300, easing: Easing.bezier(0.23, 1, 0.32, 1) }),
-    );
+    progress.set(withTiming(1, ownedTiming(reduced ? 200 : 300)));
     // Mount only: this frame enters once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

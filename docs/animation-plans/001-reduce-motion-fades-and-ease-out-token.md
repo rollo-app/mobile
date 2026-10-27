@@ -1,6 +1,6 @@
 # 001 — Que los fundidos de "Reducir movimiento" se vean de verdad (y una sola curva ease-out)
 
-- **Status**: TODO
+- **Status**: done
 - **Commit**: d6da421
 - **Severity**: HIGH
 - **Category**: Accessibility (+ Cohesion & tokens)

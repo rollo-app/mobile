@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { Alert, StyleSheet } from "react-native";
-import Animated, { Easing, FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, LinearTransition, ReduceMotion } from "react-native-reanimated";
 import { formatDateTime } from "@/features/trips/phase";
 import { Row, Section } from "@/ui/components";
+import { easeOut } from "@/ui/motion";
 import { spacing } from "@/ui/theme";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { discardFailed } from "./discard";
@@ -12,9 +13,9 @@ import { useUploadStatus } from "./use-upload-status";
 const FOOTER = "Se suben solas apenas hay conexión.";
 
 // Built at render, never at module scope (Reanimated is mocked as an empty object in some Jest suites).
-const makeLayout = () => LinearTransition.duration(250).easing(Easing.bezier(0.23, 1, 0.32, 1));
+const makeLayout = () => LinearTransition.duration(250).easing(easeOut());
 
-/** Position transition for a block next to the upload sections; with Reduce Motion (or still unknown) it just jumps. */
+/** Position transition for a block next to the upload sections; with Reduce Motion (or still unknown) it just jumps. The fades always play. */
 function useBlockLayout() {
   const reduceMotion = useReduceMotion();
   return reduceMotion === false ? makeLayout() : undefined;
@@ -44,7 +45,11 @@ export function UploadStatusSection({ tripId, timeZone }: { tripId: string; time
 
   const retry = nextAttemptText(status.nextRetryAt, Date.now());
   const hasPending = status.pending.length > 0;
-  const fade = { entering: FadeIn.duration(200), exiting: FadeOut.duration(150), layout };
+  const fade = {
+    entering: FadeIn.duration(200).reduceMotion(ReduceMotion.Never),
+    exiting: FadeOut.duration(150).reduceMotion(ReduceMotion.Never),
+    layout,
+  };
 
   return (
     <>
