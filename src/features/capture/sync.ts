@@ -1,7 +1,7 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
-import { getSession } from "@/features/auth/session";
+import { getSession, getSessionUserId } from "@/features/auth/session";
 import { getQueue } from "./store";
 import { pendingItemsKey } from "./use-pending-items";
 import { pendingKey } from "./use-pending-count";
@@ -16,6 +16,7 @@ function getUploader() {
       queue,
       apiUrl: API_URL,
       getToken: getSession,
+      getUserId: getSessionUserId,
       putFile: async (uri, url, contentType) => {
         const result = await new File(uri).upload(url, {
           httpMethod: "PUT",

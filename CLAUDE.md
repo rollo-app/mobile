@@ -22,7 +22,7 @@ Decisiones de producto:
   sesión local y vuelve al login (`setUnauthorizedHandler` en `src/api/client.ts`). Los rollos salen de
   `GET /me/trips` (cache de TanStack Query); el rollo activo es el último que abriste y solo se guarda su id
   (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
-  cola de fotos pendientes. Si `POST /auth/logout` no llega al server, esa sesión queda en `rollo.pendingLogout`
+  cola de fotos pendientes. **La cola es por cuenta:** cada foto guarda su dueño (`owner_user_id`, el id de la cuenta al encolarla; el id vive en SecureStore `rollo.sessionUserId`, se guarda en `signIn(token, userId)` y se borra en `signOut`; `getSessionUserId()` lo pide a `GET /me` si falta en una sesión vieja). Solo se suben y se ven (tablero de subidas, contadores, cupo, pins pendientes, nube) las de la cuenta con sesión; las de otra esperan sin marcarse fallidas ni borrarse y se suben solas cuando vuelve su dueña. Las filas sin dueño (de antes de este cambio, o encoladas por una sesión vieja que todavía no sabía su id) las reclama **solo esa misma sesión** cuando aprende su id por `GET /me` (`claimLegacyQueue`); una cuenta que entra después nunca se las queda. "Borrar cuenta" borra sus fotos pendientes (filas y archivos; `discardAccountQueue`). Si `POST /auth/logout` no llega al server, esa sesión queda en `rollo.pendingLogout`
   (SecureStore) y se reintenta en silencio al abrir la app, al volver a primer plano y al volver la red (`src/features/auth/pending-logout.ts`).
   **Link mágico:** el mail del código trae además un botón a `rollo.juanifraga.com/entrar#t=<token>&e=<email>` (fragmento:
   no llega a ningún server). Esa página estática solo abre `rollo://login?token=…&email=…` y borra el fragmento de la barra.
@@ -301,6 +301,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 - `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
+- Clave de SecureStore de la cuenta (no se renombra): `rollo.sessionUserId` (id del usuario con sesión; la cola offline la usa para saber de quién es cada foto).
 - Clave de SecureStore de la cámara (no se renombra): `rollo.cameraGrid` (`"1"`/`"0"`, cuadrícula prendida; ajuste del celular).
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`; `app.config.ts` solo cambia nombre y
   bundle id según `APP_VARIANT` (ver Apple).
@@ -413,7 +414,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1688 tests
+npm test                      # 1709 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -516,7 +517,7 @@ perfil (grilla, mapa por zonas, perfil público o solo amigos, perfil de cualqui
 con dev build contra el backend local.
 
 Pendiente antes de enero (ver reports/Estudio de mercado cámaras compartidas.md): estado de subidas en Rollo,
-la cola de fotos de otra cuenta (hoy sigue en el celular al cambiar de cuenta), export ordenado por día,
+export ordenado por día,
 testing externo en TestFlight (revisión de Apple) y la prueba real. El backend ya está en producción
 (`rollo-api.juanifraga.com`) y el build 2 (1.0.0) ya se instala por TestFlight (testing interno).
 

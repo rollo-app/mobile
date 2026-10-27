@@ -118,7 +118,7 @@ describe("retryPendingLogouts", () => {
     await setSessionToken("old");
     offline();
     await logout();
-    await signIn("new");
+    await signIn("new", "u1");
     const fetchMock = respond(401);
 
     await retryPendingLogouts();

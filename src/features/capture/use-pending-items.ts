@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect } from "expo-router";
 import { useCallback } from "react";
+import { getSessionUserId } from "@/features/auth/session";
 import { getQueue } from "./store";
 
 export const pendingItemsKey = (tripId: string) => ["pending-items", tripId] as const;
@@ -9,7 +10,10 @@ export const pendingItemsKey = (tripId: string) => ["pending-items", tripId] as 
 export function usePendingItems(tripId: string | undefined) {
   const query = useQuery({
     queryKey: pendingItemsKey(tripId ?? ""),
-    queryFn: async () => (await getQueue()).pendingForTrip(tripId!),
+    queryFn: async () => {
+      const owner = await getSessionUserId();
+      return owner ? (await getQueue()).pendingForTrip(owner, tripId!) : [];
+    },
     enabled: !!tripId,
     networkMode: "always",
     staleTime: 0,

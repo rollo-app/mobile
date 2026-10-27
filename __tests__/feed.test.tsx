@@ -75,6 +75,7 @@ const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false,
 const queued = (over: Partial<QueuedMedia> = {}): QueuedMedia => ({
   id: "q1",
   tripId: SUR,
+  ownerUserId: "u1",
   type: "photo",
   takenAt: Date.parse("2027-01-12T17:00:00Z"),
   day: "2027-01-12",
@@ -215,7 +216,7 @@ describe("Feed", () => {
 
   it("tapping your own name (also on an unuploaded photo) goes to Perfil", async () => {
     await signInAs({ user: { ...USER, id: "u-m1" }, trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
-    await queue.enqueue(queued());
+    await queue.enqueue(queued({ ownerUserId: "u-m1" }));
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Juani" }));

@@ -92,6 +92,7 @@ const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false,
 const queued = (over: Partial<QueuedMedia> = {}): QueuedMedia => ({
   id: "q1",
   tripId: SUR,
+  ownerUserId: "u1",
   type: "photo",
   takenAt: Date.parse("2027-01-12T17:00:00Z"),
   day: "2027-01-12",

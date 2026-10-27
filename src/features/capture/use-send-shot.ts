@@ -5,6 +5,7 @@ import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import type { Fix } from "./location";
 import { prepareMedia } from "./media";
 import { localDay } from "./quota";
+import { getSessionUserId } from "@/features/auth/session";
 import { getQueue } from "./store";
 import { syncQueue } from "./sync";
 import { pendingKey } from "./use-pending-count";
@@ -70,7 +71,10 @@ async function sendShot(input: SendShotInput) {
     }
   }
   const queue = await getQueue();
+  // Null if the phone can't learn its account yet (old session, no network): the first account it learns claims it.
+  const ownerUserId = await getSessionUserId();
   await queue.enqueue({
+    ownerUserId,
     id,
     tripId,
     type: "photo",
@@ -87,6 +91,7 @@ async function sendShot(input: SendShotInput) {
   if (withSelfie && selfiePrepared) {
     await queue.enqueue({
       id: selfieId,
+      ownerUserId,
       tripId,
       type: "photo",
       takenAt: withSelfie.selfie.takenAt,

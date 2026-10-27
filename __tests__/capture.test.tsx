@@ -150,7 +150,7 @@ describe("Capture", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Cerrar" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(await queue.pending()).toHaveLength(0);
+    expect(await queue.pending("u1")).toHaveLength(0);
     expect(takePhoto).not.toHaveBeenCalled();
   });
 
@@ -478,6 +478,7 @@ describe("Capture", () => {
     await queue.enqueue({
       id: "de-ayer",
       tripId: SUR,
+      ownerUserId: "u1",
       type: "photo",
       takenAt: Date.now() - DAY,
       day: localDay(Date.now() - DAY, TZ),
@@ -494,6 +495,7 @@ describe("Capture", () => {
     await queue.enqueue({
       id: "de-ayer",
       tripId: SUR,
+      ownerUserId: "u1",
       type: "photo",
       takenAt: Date.now() - DAY,
       day: localDay(Date.now() - DAY, TZ),
@@ -570,6 +572,7 @@ describe("Capture", () => {
     await queue.enqueue({
       id: "ya-sacada",
       tripId: SUR,
+      ownerUserId: "u1",
       type: "photo",
       takenAt: Date.now(),
       day: localDay(Date.now(), TZ),
@@ -606,7 +609,7 @@ describe("Capture", () => {
 
       expect(mediaMock.discard).toHaveBeenCalled();
       await waitFor(() => expect(screen).toHavePathname("/roll"));
-      expect(await queue.pending()).toEqual([]);
+      expect(await queue.pending("u1")).toEqual([]);
     } finally {
       alert.mockRestore();
     }
@@ -670,10 +673,11 @@ describe("Capture", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    const [saved] = await queue.pending();
+    const [saved] = await queue.pending("u1");
     expect(saved).toMatchObject({
       id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
       tripId: SUR,
+      ownerUserId: "u1",
       type: "photo",
       day: localDay(Date.now(), TZ),
       lat: -49.33,
@@ -718,7 +722,7 @@ describe("Capture", () => {
     syncQueue.mockClear(); // the upload at app startup does not count
     let queuedWhenSyncing = 0;
     syncQueue.mockImplementation(async () => {
-      queuedWhenSyncing = (await queue.pending()).length;
+      queuedWhenSyncing = (await queue.pending("u1")).length;
     });
 
     await fireEvent.press(send);

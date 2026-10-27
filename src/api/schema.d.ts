@@ -4619,7 +4619,7 @@ export interface components {
                 username: string | null;
                 avatarUrl: string | null;
             };
-            /** @description You wrote it, or the photo is yours */
+            /** @description You wrote it, the photo is yours, or you are the rollo admin */
             canDelete: boolean;
         };
         CreateCommentRequest: {

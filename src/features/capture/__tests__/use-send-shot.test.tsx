@@ -1,3 +1,4 @@
+import { setSessionUserId } from "@/storage/session-user";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import * as Crypto from "expo-crypto";
@@ -31,6 +32,7 @@ let queue: Queue;
 
 beforeEach(async () => {
   queue = await createQueue(memoryDb());
+  await setSessionUserId("u1");
   jest.mocked(getQueue).mockResolvedValue(queue);
   jest.mocked(media.prepareMedia).mockResolvedValue(prepared);
   jest.mocked(syncQueue).mockClear();
@@ -61,7 +63,7 @@ describe("useSendShot", () => {
     await act(async () => {
       await result.current.mutateAsync(input);
     });
-    const [item] = await queue.pendingForTrip("t1");
+    const [item] = await queue.pendingForTrip("u1", "t1");
     expect(item).toMatchObject({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", type: "photo", caption: "hola", lat: 1, lng: 2, day: "2027-01-05" });
     expect(queryClient.getQueryState(pendingKey("t1"))?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(pendingItemsKey("t1"))?.isInvalidated).toBe(true);
@@ -74,7 +76,7 @@ describe("useSendShot", () => {
     await act(async () => {
       await result.current.mutateAsync({ ...input, caption: "   ", fix: null });
     });
-    const [item] = await queue.pendingForTrip("t1");
+    const [item] = await queue.pendingForTrip("u1", "t1");
     expect(item).toMatchObject({ caption: null, lat: null });
   });
 
@@ -93,7 +95,7 @@ describe("useSendShot", () => {
         selfie: { photo: selfieAsset, takenAt: input.takenAt + 4000, facing: "front" },
       });
     });
-    const items = await queue.pending();
+    const items = await queue.pending("u1");
     expect(items).toHaveLength(2);
     expect(items[0]).toMatchObject({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", momentDay: "2027-01-05", pairedWith: null });
     expect(items[1]).toMatchObject({
@@ -135,7 +137,7 @@ describe("useSendShot", () => {
         result.current.mutateAsync({ ...input, momentDay: "2027-01-05", selfie: { photo: selfieAsset, takenAt: input.takenAt + 4000 } }),
       ).rejects.toThrow("selfie boom");
     });
-    expect(await queue.pendingForTrip("t1")).toEqual([]);
+    expect(await queue.pendingForTrip("u1", "t1")).toEqual([]);
     expect(syncQueue).not.toHaveBeenCalled();
   });
 
