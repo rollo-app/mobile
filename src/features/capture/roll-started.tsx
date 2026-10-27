@@ -2,11 +2,12 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Presets } from "react-native-pulsar";
-import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button } from "@/ui/components";
+import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { colors, spacing, type } from "@/ui/theme";
 import { RolloLockView, type LockPhase } from "../../../modules/rollo-symbol";
 import { photosLeftText } from "./capture-copy";
@@ -15,6 +16,8 @@ import { useTodayLeft } from "./use-today-left";
 const UNLOCK_AT = 400;
 const CAMERA_AT = 900;
 const TEXT_AT = 1500;
+const ACTIONS_STAGGER = 60;
+const BODY_LINE_HEIGHT = 22;
 
 /**
  * The roll started. The lock wiggles, opens (rigid "clac") and turns into the camera
@@ -26,9 +29,14 @@ export function RollStarted() {
   const { detail } = useTripDetail(trip?.id);
   const left = useTodayLeft(trip?.id, detail);
   const [phase, setPhase] = useState<LockPhase>("locked");
-  const text = useSharedValue(0);
+  const reduceMotion = useReduceMotion();
+  const [shown, setShown] = useState(false);
+  const copy = useSharedValue(0);
+  const actions = useSharedValue(0);
 
   useEffect(() => {
+    // Unknown yet: wait, so the sequence never starts and then switches.
+    if (reduceMotion === null) return;
     const timers = [
       setTimeout(() => {
         setPhase("unlocking");
@@ -38,15 +46,26 @@ export function RollStarted() {
         setPhase("camera");
         Presets.System.notificationSuccess();
       }, CAMERA_AT),
+      setTimeout(() => setShown(true), TEXT_AT),
     ];
-    text.value = withDelay(TEXT_AT, withTiming(1, { duration: 450 }));
+    const timing = { duration: 300, easing: Easing.bezier(0.23, 1, 0.32, 1) };
+    copy.value = withDelay(TEXT_AT, withTiming(1, timing));
+    actions.value = withDelay(TEXT_AT + ACTIONS_STAGGER, withTiming(1, timing));
     return () => timers.forEach(clearTimeout);
-  }, [text]);
+  }, [reduceMotion, copy, actions]);
 
-  const textStyle = useAnimatedStyle(() => ({
-    opacity: text.value,
-    transform: [{ translateY: (1 - text.value) * 8 }],
+  const copyStyle = useAnimatedStyle(() => ({
+    opacity: copy.value,
+    transform: [{ translateY: reduceMotion ? 0 : (1 - copy.value) * 8 }],
   }));
+  const actionsStyle = useAnimatedStyle(() => ({
+    opacity: actions.value,
+    transform: [{ translateY: reduceMotion ? 0 : (1 - actions.value) * 8 }],
+  }));
+  const hidden = {
+    accessibilityElementsHidden: !shown,
+    importantForAccessibility: shown ? ("auto" as const) : ("no-hide-descendants" as const),
+  };
 
   const photos = left?.photos;
   const quota = photos === undefined ? null : photosLeftText(photos, detail?.trip.photoLimitMode);
@@ -62,12 +81,12 @@ export function RollStarted() {
           accessible
           accessibilityLabel={phase === "camera" ? "Cámara" : "Candado"}
         />
-        <Animated.View style={[styles.copy, textStyle]}>
+        <Animated.View style={[styles.copy, copyStyle]} {...hidden}>
           <Text style={styles.title}>Arrancó el rollo.</Text>
-          {quota ? <Text style={styles.body}>{quota}</Text> : null}
+          <View style={styles.bodySlot}>{quota ? <Text style={styles.body}>{quota}</Text> : null}</View>
         </Animated.View>
       </View>
-      <Animated.View style={[styles.actions, textStyle]}>
+      <Animated.View style={[styles.actions, actionsStyle]} pointerEvents={shown ? "auto" : "none"} {...hidden}>
         <Button label="Sacar la primera" onPress={() => router.replace("/capture")} />
         <Button label="Ahora no" variant="secondary" onPress={() => router.back()} />
       </Animated.View>
@@ -81,6 +100,7 @@ const styles = StyleSheet.create({
   lock: { width: 180, height: 180 },
   copy: { alignItems: "center", gap: spacing.xs },
   title: { ...type.title, color: colors.label, textAlign: "center" },
-  body: { ...type.body, color: colors.secondaryLabel, textAlign: "center" },
+  bodySlot: { minHeight: BODY_LINE_HEIGHT },
+  body: { ...type.body, lineHeight: BODY_LINE_HEIGHT, color: colors.secondaryLabel, textAlign: "center" },
   actions: { gap: spacing.sm },
 });
