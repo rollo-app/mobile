@@ -1,6 +1,6 @@
 # 004 — Pastilla "Destacada en tu perfil": entrada ease-out y sin parpadeo al repetirse
 
-- **Status**: TODO
+- **Status**: done
 - **Commit**: d6da421
 - **Severity**: LOW
 - **Category**: Easing & duration (+ Interruptibility)

@@ -1,5 +1,5 @@
 import { act, render, screen } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, Animated } from "react-native";
 import { PillHost } from "../pill-host";
 import { showPill } from "../pill";
 
@@ -34,5 +34,19 @@ describe("PillHost", () => {
       jest.advanceTimersByTime(3000);
     });
     expect(screen.queryByText("Destacada en tu perfil", { includeHiddenElements: true })).toBeNull();
+  });
+
+  it("never resets the pill to invisible when another one arrives (it continues from where it is)", async () => {
+    const setValue = jest.spyOn(Animated.Value.prototype, "setValue");
+    await render(<PillHost />);
+    await act(async () => {
+      showPill("Destacada en tu perfil");
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+      showPill("Destacada en tu perfil");
+    });
+    expect(setValue).not.toHaveBeenCalledWith(0);
+    expect(screen.getByText("Destacada en tu perfil", { includeHiddenElements: true })).toBeTruthy();
   });
 });
