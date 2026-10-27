@@ -4,16 +4,16 @@ import type { CapturedPhoto } from "./captured-photo";
 import { centerCropTo43 } from "./frame";
 
 /**
- * The shot as it is kept: 4:3 (untouched when it is, centered crop — never a stretch — when it isn't) and, when the camera
- * mirrored it (the front one mirrors like its preview), flipped back so it is saved unmirrored like the iPhone's camera.
- * When that makes a new file, the camera's one is deleted.
+ * The shot as it is kept: 4:3 (untouched when it is, centered crop — never a stretch — when it isn't) and, with `mirror`,
+ * flipped horizontally: a front photo comes out as its mirrored preview showed it, unlike iOS's camera. When that makes
+ * a new file, the camera's one is deleted.
  */
-export async function ensureFourThree(photo: CapturedPhoto, options: { mirrored?: boolean } = {}): Promise<CapturedPhoto> {
+export async function ensureFourThree(photo: CapturedPhoto, options: { mirror?: boolean } = {}): Promise<CapturedPhoto> {
   const rect = centerCropTo43(photo.width, photo.height);
-  if (!rect && !options.mirrored) return photo;
+  if (!rect && !options.mirror) return photo;
   try {
     const ctx = ImageManipulator.manipulate(photo.uri);
-    if (options.mirrored) ctx.flip("horizontal");
+    if (options.mirror) ctx.flip("horizontal");
     if (rect) ctx.crop(rect);
     const image = await ctx.renderAsync();
     const saved = await image.saveAsync({ compress: 1, format: SaveFormat.JPEG });

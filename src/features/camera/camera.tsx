@@ -222,14 +222,15 @@ export function Camera(props: {
     try {
       const photo = await photoOutput.capturePhoto(captureSettings(flash), {});
       let shot: CapturedPhoto;
-      const mirrored = photo.isMirrored;
+      // The front preview is mirrored: the photo comes out the same. When the camera already mirrored it (EXIF), as is.
+      const mirror = device?.position === "front" && !photo.isMirrored;
       try {
         const path = await photo.saveToTemporaryFileAsync();
         shot = { uri: path.startsWith("file://") ? path : `file://${path}`, ...uprightSize(photo.width, photo.height, photo.orientation) };
       } finally {
         photo.dispose();
       }
-      props.onCapture(await ensureFourThree(shot, { mirrored }));
+      props.onCapture(await ensureFourThree(shot, { mirror }));
     } catch {
       setFailed(true);
     } finally {
