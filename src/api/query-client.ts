@@ -2,6 +2,7 @@ import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persi
 import { focusManager, onlineManager, QueryClient } from "@tanstack/react-query";
 import Storage from "expo-sqlite/kv-store";
 import { AppState } from "react-native";
+import { ApiError } from "./client";
 
 const SECOND = 1000;
 const DAY = 24 * 60 * 60 * SECOND;
@@ -17,6 +18,12 @@ export const OWN_DATA_STALE_TIME = 5 * 60 * SECOND;
 /** How long the cache is kept on the phone (also the persister's `maxAge`). */
 export const CACHE_MAX_AGE = 7 * DAY;
 
+/** One retry, only for what can change by itself: no signal or a server error. A 4xx would fail again. */
+function retryOnce(failureCount: number, error: Error): boolean {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
+  return failureCount < 1;
+}
+
 /**
  * The app's data client. `offlineFirst`: it always tries to fetch, but with no
  * signal it shows what's cached. Data is "fresh" for 30 s: within that
@@ -29,7 +36,7 @@ export function createQueryClient() {
         networkMode: "offlineFirst",
         staleTime: 30 * SECOND,
         gcTime: CACHE_MAX_AGE,
-        retry: 1,
+        retry: retryOnce,
       },
       // A mutation runs right away and fails once: with no signal the user sees OFFLINE_MESSAGE under
       // the form instead of a request paused in silence. Local writes (the capture queue) need this too.
