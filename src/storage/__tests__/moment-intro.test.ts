@@ -1,5 +1,5 @@
 import * as SecureStore from "expo-secure-store";
-import { hasSeenMomentIntro, markMomentIntroSeen } from "../moment-intro";
+import { forgetMomentIntro, hasSeenMomentIntro, markMomentIntroSeen } from "../moment-intro";
 
 describe("moment intro seen", () => {
   it("is not seen until marked", async () => {
@@ -12,5 +12,13 @@ describe("moment intro seen", () => {
     expect(await hasSeenMomentIntro("trip-1", "2027-01-06")).toBe(false);
     expect(await hasSeenMomentIntro("trip-2", "2027-01-05")).toBe(false);
     expect(await SecureStore.getItemAsync("rollo.momentIntroSeen.trip-1.2027-01-05")).toBe("1");
+  });
+
+  it("can be forgotten for one roll and day (dev: replay the intro)", async () => {
+    await markMomentIntroSeen("trip-1", "2027-01-05");
+    await markMomentIntroSeen("trip-1", "2027-01-06");
+    await forgetMomentIntro("trip-1", "2027-01-05");
+    expect(await hasSeenMomentIntro("trip-1", "2027-01-05")).toBe(false);
+    expect(await hasSeenMomentIntro("trip-1", "2027-01-06")).toBe(true);
   });
 });

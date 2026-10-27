@@ -10,3 +10,8 @@ export async function hasSeenMomentIntro(tripId: string, day: string): Promise<b
 export async function markMomentIntroSeen(tripId: string, day: string): Promise<void> {
   await SecureStore.setItemAsync(seenKey(tripId, day), "1");
 }
+
+/** Dev only ("Probar momento ahora"): forget it so the intro plays again for that moment. */
+export async function forgetMomentIntro(tripId: string, day: string): Promise<void> {
+  await SecureStore.deleteItemAsync(seenKey(tripId, day));
+}
