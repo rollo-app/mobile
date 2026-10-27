@@ -76,7 +76,7 @@
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/build-icons.mjs",
     "og": "node scripts/build-og.mjs",
-    "lottie": "node scripts/build-moment-lottie.mjs",
+    "lottie": "node scripts/build-lottie.mjs",
     "update:production": "APP_VARIANT=production EXPO_PUBLIC_API_URL=https://rollo-api.juanifraga.com npx eas-cli@latest update --channel production --environment production --platform ios",
     "api:generate": "openapi-typescript ${API_SPEC:-https://raw.githubusercontent.com/rollo-app/backend/develop/openapi.json} --default-non-nullable false -o src/api/schema.d.ts"
   },
