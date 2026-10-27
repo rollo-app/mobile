@@ -42,3 +42,7 @@ yarn-error.*
 
 # static site build
 /site/dist/
+
+# local research notes and reports (not versioned)
+/reports/
+/research_notes/
