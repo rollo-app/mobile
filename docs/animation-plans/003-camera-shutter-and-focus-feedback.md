@@ -1,6 +1,6 @@
 # 003 — Cámara: que el disparo y el enfoque se sientan como en iOS
 
-- **Status**: TODO
+- **Status**: done
 - **Commit**: d6da421
 - **Severity**: MEDIUM
 - **Category**: Missed opportunities (+ Physicality)

@@ -26,6 +26,8 @@ Object.assign(require("react-native-reanimated"), {
   useAnimatedStyle: (style: () => object) => style(),
   withDelay: <T>(_ms: number, value: T) => value,
   withTiming: <T>(value: T) => value,
+  // A sequence ends at its last step.
+  withSequence: (...steps: unknown[]) => steps[steps.length - 1],
   Easing: { bezier: () => (t: number) => t },
   cubicBezier: () => "ease-out",
   ReduceMotion: { System: "system", Always: "always", Never: "never" },
