@@ -357,7 +357,7 @@ Reglas:
 ## Skills de diseño y motion
 
 En `.claude/skills/` (copiadas tal cual de sus repos): `emil-design-eng`, `animate-expo`, `review-animations`,
-`find-animation-opportunities` (Emil Kowalski) y `text-to-lottie` (Diffusion Studio). Se sacaron por duplicadas: `animate`
+`find-animation-opportunities`, `improve-animations`, `break-ui` (Emil Kowalski) y `text-to-lottie` (Diffusion Studio). Se sacaron por duplicadas: `animate`
 (versión web de `animate-expo`), `design-motion-principles` (se pisa con `emil-design-eng`) y `appllama-app-design-skill`
 (sin su MCP lo cubren `expo-design-system` / `expo-native-ui`). `review-animations` solo la invoca el usuario (`/review-animations`).
 Si una skill contradice este archivo, **gana este archivo**.
@@ -371,6 +371,13 @@ Si una skill contradice este archivo, **gana este archivo**.
   → `LinearTransition` / `entering` / `exiting`. Gestos con `Gesture.Pan()` etc. y nada de `runOnJS`/`scheduleOnRN` por frame.
   Gesture Handler no es dependencia directa todavía: si hace falta, `npx expo install react-native-gesture-handler` + rebuild.
 - Para **implementar** usar `animate-expo` (la versión web, `animate`, se sacó por duplicada); `review-animations` sirve por el criterio.
+- **`improve-animations`** (auditoría de todo el motion + planes para que los ejecuten modelos más baratos, encaja con "Opus planea, Sonnet
+  ejecuta"): los planes van a **`docs/animation-plans/`** (no a un `plans/` en la raíz). Su modo `execute` revisa con `review-animations`, que solo
+  invoca el usuario: la revisión la hace Opus (o `emil-design-eng`).
+- **`break-ui`** (datos del peor caso realista contra un componente): el selector "Demo / Peor caso" de la skill es web; acá es una **pantalla de
+  Desarrollo** (solo `__DEV__`, entrada en Ajustes → Desarrollo) que monta el componente con cada fixture. Los arreglos de CSS se traducen a RN
+  (`flexShrink: 0`, `minWidth: 0`, `numberOfLines` + `ellipsizeMode`, `fontVariant: ["tabular-nums"]`, plurales sin "1 amigos"); en vez de zoom al 200 %
+  y RTL se mira con **texto grande de iOS** (Dynamic Type) y en **modo oscuro**. Los límites salen de `src/api/schema.d.ts` y del backend.
 - **Lottie:** `text-to-lottie` arma un player web de preview (`npx degit diffusionstudio/lottie`): va **fuera del repo** (scratchpad),
   nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio a `scripts/site/`) y salen de
   `scripts/build-lottie.mjs`; en la app se reproducen con `lottie-react-native` (nativo: cambiarlo pide rebuild). El revelado (shader de Skia)
