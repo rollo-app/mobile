@@ -1,7 +1,8 @@
-import { Alert } from "react-native";
+import { AccessibilityInfo, Alert } from "react-native";
 import { router } from "expo-router";
 import { StyleSheet } from "react-native";
 import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import "@/test/reanimated";
 import * as actions from "@/features/trips/actions";
 import * as media from "@/features/capture/media";
 import { startFix } from "@/features/capture/location";
@@ -605,6 +606,37 @@ describe("Capture", () => {
       expect(screen.getByLabelText("Caption").props.value).toBe("hola");
     } finally {
       alert.mockRestore();
+    }
+  });
+
+  it("after sending, the photo leaves into the roll first (haptic at once), and only then the capture closes", async () => {
+    const Haptics = jest.requireMock("expo-haptics") as { notificationAsync: jest.Mock };
+    Haptics.notificationAsync.mockClear();
+    await openCapture();
+    await shoot();
+    await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
+
+    await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledWith("success"));
+    expect(screen).toHavePathname("/capture");
+    expect(screen.getByRole("button", { name: "Mandar al rollo" })).toBeDisabled();
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it.each([
+    [false, { opacity: 0, transform: [{ translateY: 24 }, { scale: 0.92 }] }],
+    [true, { opacity: 0, transform: [{ translateY: 0 }, { scale: 1 }] }],
+  ])("the sent photo drops and shrinks as it fades, or only fades with Reduce Motion (on: %s)", async (reduced, end) => {
+    const spy = jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(reduced);
+    try {
+      await openCapture();
+      await shoot();
+      await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
+
+      await waitFor(() => expect(StyleSheet.flatten(screen.getByTestId("sent-photo").props.style)).toMatchObject(end));
+      await waitFor(() => expect(screen).toHavePathname("/roll"));
+    } finally {
+      // Not mockRestore: it's React Native's own jest.fn, and restoring would leave it returning undefined.
+      spy.mockResolvedValue(false);
     }
   });
 

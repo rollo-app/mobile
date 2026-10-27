@@ -36,6 +36,7 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
   const [step, setStep] = useState<Step>({ kind: "main" });
   const [firstFacing, setFirstFacing] = useState<Facing>("back");
   const [caption, setCaption] = useState("");
+  const [sent, setSent] = useState(false);
   const [now, setNow] = useState(Date.now());
   const fix = useRef<Promise<Fix | null> | null>(null);
 
@@ -80,9 +81,10 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
       },
       {
         onSuccess: () => {
+          // The haptic goes with the start of the photo's exit; the screen closes when it's over (onGone).
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           void momentTaken(tripId, day);
-          router.back();
+          setSent(true);
         },
       },
     );
@@ -96,6 +98,8 @@ export function MomentScreen(props: { tripId?: string; day?: string; at?: number
         caption={caption}
         onCaption={setCaption}
         sending={sendShot.isPending}
+        sent={sent}
+        onGone={() => router.back()}
         error={errorMessage(sendShot.error, "No se pudo guardar. Probá de nuevo.")}
         onSend={() => send(step.main, step.selfie)}
         onDiscard={() => {

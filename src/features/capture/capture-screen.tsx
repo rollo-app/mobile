@@ -35,6 +35,7 @@ export function CaptureScreen() {
   const [state, setState] = useState<State>({ kind: "waiting" });
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [caption, setCaption] = useState("");
+  const [sent, setSent] = useState(false);
   const started = useRef(false);
   const fix = useRef<Promise<Fix | null> | null>(null);
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -75,8 +76,9 @@ export function CaptureScreen() {
       },
       {
         onSuccess: () => {
+          // The haptic goes with the start of the photo's exit; the screen closes when it's over (onGone).
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          router.back();
+          setSent(true);
         },
       },
     );
@@ -118,6 +120,8 @@ export function CaptureScreen() {
       caption={caption}
       onCaption={setCaption}
       sending={sendShot.isPending}
+      sent={sent}
+      onGone={() => router.back()}
       error={errorMessage(sendShot.error, "No se pudo guardar. Probá de nuevo.")}
       onSend={() => send(state.shot)}
       onDiscard={() => {
