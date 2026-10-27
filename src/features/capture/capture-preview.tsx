@@ -2,7 +2,15 @@ import { Image } from "expo-image";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Keyboard, KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SymbolView } from "expo-symbols";
-import Animated, { Easing, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+  cubicBezier,
+  Easing,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  type CSSTransitionProperties,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CapturedPhoto } from "@/features/camera/captured-photo";
 import { ErrorText } from "@/ui/components";
@@ -15,12 +23,16 @@ export type Shot = { photo: CapturedPhoto; takenAt: number };
 
 // Strong enough that the photo can't be recognized: the shot is the shot, you only get to caption it.
 const BLUR_RADIUS = 100;
-// Outside StyleSheet.create: its types don't know Reanimated's CSS transition keys.
-const PRESS_TRANSITION = {
-  transitionProperty: ["transform", "opacity"],
-  transitionDuration: 120,
-  transitionTimingFunction: "cubic-bezier(0.23, 1, 0.32, 1)",
-};
+// Outside StyleSheet.create: its types don't know Reanimated's CSS transition keys. On native the curve must be
+// `cubicBezier()` (a "cubic-bezier(...)" string only works on web and throws on iOS), built lazily so importing this
+// file never touches Reanimated.
+let pressTransition: CSSTransitionProperties | undefined;
+const getPressTransition = () =>
+  (pressTransition ??= {
+    transitionProperty: ["transform", "opacity"],
+    transitionDuration: 120,
+    transitionTimingFunction: cubicBezier(0.23, 1, 0.32, 1),
+  });
 
 /**
  * The shot, blurred, with an optional caption. No retake: the X only discards it (after a native confirmation), so a
@@ -113,7 +125,7 @@ export function CapturePreview(props: {
             <Animated.View
               style={[
                 styles.send,
-                PRESS_TRANSITION,
+                getPressTransition(),
                 {
                   opacity: busy ? 0.6 : pressed && reduceMotion !== false ? 0.8 : 1,
                   transform: [{ scale: pressed && reduceMotion === false ? 0.97 : 1 }],

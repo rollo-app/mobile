@@ -15,6 +15,7 @@ Object.assign(require("react-native-reanimated"), {
   withDelay: <T>(_ms: number, value: T) => value,
   withTiming: <T>(value: T) => value,
   Easing: { bezier: () => (t: number) => t },
+  cubicBezier: () => "ease-out",
   ReduceMotion: { System: "system", Always: "always", Never: "never" },
 });
 
