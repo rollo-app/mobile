@@ -1,6 +1,8 @@
 import * as Notifications from "expo-notifications";
+import { queryClient } from "@/api/query-client";
 import { getSession } from "@/features/auth/session";
 import { fetchMyTrips } from "@/features/trips/actions";
+import { myTripsKey } from "@/features/trips/use-active-trip";
 import { fetchMyMoments } from "./actions";
 import { cancelMomentNotifications, MOMENT_PREFIX } from "./cancel";
 import { globalCancelledSince, isSuperseded, serialized, startSync, tripCancelledSince } from "./lock";
@@ -18,7 +20,8 @@ export async function syncMoments(): Promise<void> {
     const stamp = startSync();
     const session = await getSession();
     if (!session) return;
-    const { trips } = await fetchMyTrips();
+    // Through the cache: it joins the screens' request when it is fresh or in flight (also in the background task, with no UI).
+    const { trips } = await queryClient.fetchQuery({ queryKey: myTripsKey, queryFn: fetchMyTrips });
     const now = Date.now();
     const ids = new Set(tripsToSync(trips, now));
     const wanted = trips.filter((t) => ids.has(t.id));

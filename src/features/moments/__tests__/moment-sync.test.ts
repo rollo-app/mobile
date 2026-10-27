@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import { queryClient } from "@/api/query-client";
+import { myTripsKey } from "@/features/trips/use-active-trip";
 import { tripSummary } from "@/test/account";
 import { clearSessionToken, setSessionToken } from "@/storage/session";
 import { signOut } from "@/features/auth/session";
@@ -21,6 +22,7 @@ let modes: Record<string, "off" | "photo" | "photo_selfie">;
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  queryClient.clear();
   jest.spyOn(Date, "now").mockReturnValue(NOW);
   await setSessionToken("tok");
   store = new Map();
@@ -52,6 +54,14 @@ beforeEach(async () => {
 afterEach(() => jest.restoreAllMocks());
 
 describe("syncMoments", () => {
+  it("reuses the cached list of rollos instead of asking /me/trips again", async () => {
+    queryClient.setQueryData(myTripsKey, { trips: [tripSummary("t1", "Tandil", { startsAt: NOW - HOUR, endsAt: NOW + 48 * HOUR })] });
+    await syncMoments();
+    const urls = jest.mocked(globalThis.fetch).mock.calls.map(([req]) => (req as Request).url);
+    expect(urls.filter((u) => u.endsWith("/me/trips"))).toHaveLength(0);
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
+  });
+
   it("schedules one notification per future moment at the exact instant, with id, copy and url", async () => {
     await syncMoments();
 
