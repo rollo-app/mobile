@@ -5,7 +5,10 @@ import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
 import { getSessionToken, setSessionToken } from "@/storage/session";
 import { getSessionUserIdStored } from "@/storage/session-user";
 import { syncPushToken } from "@/features/notifications/push-token";
+import { claimLegacyQueue } from "@/features/capture/account-queue";
 import { authedClient, getSession, getSessionUserId, signIn, signOut, subscribeSession } from "../session";
+
+jest.mock("@/features/capture/account-queue", () => ({ claimLegacyQueue: jest.fn(async () => {}), discardAccountQueue: jest.fn(async () => {}) }));
 
 describe("session", () => {
   it("signIn saves the token and notifies subscribers", async () => {
@@ -106,6 +109,8 @@ describe("session user id", () => {
 });
 
 describe("getSessionUserId", () => {
+  beforeEach(() => jest.mocked(claimLegacyQueue).mockClear());
+
   const mockMe = (status: number, body: unknown = {}) => {
     const fetchMock = jest.fn(async () => new Response(JSON.stringify(body), { status }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
@@ -118,6 +123,8 @@ describe("getSessionUserId", () => {
 
     expect(await getSessionUserId()).toBe("u1");
     expect(fetchMock).not.toHaveBeenCalled();
+    // A session that always knew its id never left photos without an owner: nothing to claim.
+    expect(claimLegacyQueue).not.toHaveBeenCalled();
   });
 
   it("for a session opened before the id was stored, asks GET /me once and keeps the answer", async () => {
@@ -128,6 +135,16 @@ describe("getSessionUserId", () => {
     expect(await getSessionUserIdStored()).toBe("u9");
     expect(await getSessionUserId()).toBe("u9");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives the photos without an owner to that same old session once it learns its id, and to no one else", async () => {
+    await setSessionToken("tok");
+    mockMe(200, { id: "u9", email: "a@b.c", name: "A", avatarUrl: null });
+
+    await getSessionUserId();
+
+    expect(claimLegacyQueue).toHaveBeenCalledTimes(1);
+    expect(claimLegacyQueue).toHaveBeenCalledWith("u9");
   });
 
   it("is null when there is no session", async () => {

@@ -1,6 +1,7 @@
 import { ApiError, createApiClient, setUnauthorizedHandler, unwrap } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
+import { claimLegacyQueue } from "@/features/capture/account-queue";
 import { cancelMomentNotifications } from "@/features/moments/cancel";
 import { forgetPushToken } from "@/features/notifications/push-token";
 import { clearActiveTripId } from "@/storage/active-trip";
@@ -71,6 +72,9 @@ export async function getSessionUserId(): Promise<string | null> {
     const me = await unwrap(createApiClient({ baseUrl: API_URL, token }).GET("/me"));
     // The session may have been closed (or replaced) while we asked.
     if ((await getSessionToken()) !== token) return null;
+    // This old session is the only one that can own the photos queued without an owner: claim them before storing the
+    // id, so a failed claim is retried on the next call (claiming twice is harmless).
+    await claimLegacyQueue(me.id);
     await setSessionUserId(me.id);
     return me.id;
   } catch {

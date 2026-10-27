@@ -786,13 +786,14 @@ describe("uploader per account", () => {
     expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", attempts: 0 });
   });
 
-  it("claims the rows from before accounts were tracked for the current account and uploads them", async () => {
+  it("never gives photos without an owner to the account with the session (only their old session claims them)", async () => {
     happyServer();
     await queue.enqueue(item({ id: "old", ownerUserId: null }));
 
     await createUploader(deps).run();
 
-    expect(removed).toEqual(["old"]);
+    expect(calls).toEqual([]);
+    expect(await queue.pending("u1")).toEqual([]);
   });
 
   it("stops if the account changes in the middle of the pass", async () => {

@@ -8,7 +8,7 @@ import type { PendingMedia, Queue } from "./queue";
  */
 
 export type UploaderDeps = {
-  queue: Pick<Queue, "pending" | "claimUnowned" | "remove" | "markAttempt" | "markFailed">;
+  queue: Pick<Queue, "pending" | "remove" | "markAttempt" | "markFailed">;
   apiUrl: string;
   /** The session token (null if signed out). */
   getToken: () => Promise<string | null>;
@@ -167,7 +167,6 @@ export function createUploader(deps: UploaderDeps) {
       return;
     }
     if (!userId) return;
-    await deps.queue.claimUnowned(userId);
     const all = await deps.queue.pending(userId);
     // A selfie goes after its main (the server validates the pairing at register time).
     const unresolved = new Set(all.map((m) => m.id));

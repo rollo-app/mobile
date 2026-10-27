@@ -28,6 +28,7 @@ describe("syncQueue", () => {
       originalUri: "file:///docs/pending/a/original.jpg",
       thumbUri: "file:///docs/pending/a/thumb.jpg",
       thumbhash: null,
+      ownerUserId: "u1",
     });
     globalThis.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const req = input instanceof Request ? input : new Request(input as string, init);

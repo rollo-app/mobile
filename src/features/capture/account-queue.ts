@@ -13,3 +13,12 @@ export async function discardAccountQueue(userId: string): Promise<void> {
     }
   }
 }
+
+/**
+ * Gives the photos queued without an owner (before the app tracked accounts, or by a session that hadn't learned its id
+ * yet) to that same session, the moment it learns its id. Only that path calls it: an account that signs in later never
+ * claims them, so a photo never goes up with someone else's account.
+ */
+export async function claimLegacyQueue(userId: string): Promise<void> {
+  await (await getQueue()).claimUnowned(userId);
+}
