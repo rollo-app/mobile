@@ -43,9 +43,9 @@ Decisiones de producto:
   (`getSupportedResolutions("photo")`: 5712×4284 donde está, si no 4032×3024; 48 MP no, porque `prepareMedia` la baja a 4000 px y solo suma ruido,
   demora y archivos de ~25 MB) con `qualityPrioritization: "quality"` (iOS aplica Smart HDR / Deep Fusion solo; `photoHDR` no existe en iOS), JPEG
   calidad 1, corrección de lente y la sesión sesgada a esa resolución (`resolutionBias`); el disparo se precalienta (`prepareSettings`) cuando arranca
-  la sesión. La foto se guarda con la orientación en EXIF: `uprightSize` da vuelta ancho y alto si hace falta. La frontal se ve espejada pero
-  **se guarda sin espejar** como en iOS (`mirrorMode: "auto"` + `ensureFourThree` la da vuelta si `photo.isMirrored`; si eso o el recorte crean otro
-  archivo, se borra el de VisionCamera). Los errores de la cámara van una sola vez a `console.warn`.
+  la sesión. La foto se guarda con la orientación en EXIF: `uprightSize` da vuelta ancho y alto si hace falta. La frontal **se guarda
+  espejada, tal como se ve en la vista** (a pedido del dueño, distinto de iOS): `mirrorMode: "auto"` y, si la foto de la frontal no viene ya espejada
+  (`photo.isMirrored`), `ensureFourThree(…, { mirror })` la espeja. Si eso o el recorte a 4:3 crean otro archivo, se borra el de VisionCamera. Los errores de la cámara van una sola vez a `console.warn`.
   **Zoom como iOS** (`zoom.ts`, con los datos reales del dispositivo): 1× es la gran angular (en una cámara con ultra gran angular, el primer
   `zoomLensSwitchFactors`; si no, el mínimo) y se abre siempre ahí (también al dar vuelta). Chips abajo y al centro del recuadro: "0,5" solo con
   ultra gran angular, 1, 2 y cada teleobjetivo (los siguientes cambios de lente ÷ 1×: [2, 6] → 3×, [2, 10] → 5×); el activo va en cobalto con el valor en
@@ -405,7 +405,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1655 tests
+npm test                      # 1657 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

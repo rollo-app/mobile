@@ -206,12 +206,12 @@ describe("Capture", () => {
     expect(shot.dispose).toHaveBeenCalledTimes(1);
   });
 
-  it("a front photo comes out unmirrored like the iPhone's camera (the preview stays mirrored), and the mirrored file is deleted", async () => {
-    takePhoto.mockImplementation(async () => vision.__photo("/cache/Camera/selfie.jpg", 4032, 3024, "leftMirrored" as never, true));
+  it("a front photo the camera didn't mirror is mirrored, so it comes out as the preview showed it", async () => {
+    takePhoto.mockImplementation(async () => vision.__photo("/cache/Camera/selfie.jpg", 4032, 3024, "right", false));
     manipulator.__ctx.saveAsync.mockResolvedValue({ uri: "file:///cache/Manipulated/selfie.jpg", width: 3024, height: 4032 });
     await openCapture();
     await fireEvent.press(await screen.findByRole("button", { name: "Dar vuelta la cámara" }));
-    expect((await screen.findByTestId("camera-front")).props.mirrorMode).toBe("auto");
+    await screen.findByTestId("camera-front");
     await shoot();
     await screen.findByLabelText("Caption");
     expect(manipulator.manipulate).toHaveBeenCalledWith("file:///cache/Camera/selfie.jpg");
@@ -221,6 +221,28 @@ describe("Capture", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(mediaMock.prepareMedia.mock.lastCall![0]).toEqual({ uri: "file:///cache/Manipulated/selfie.jpg", width: 3024, height: 4032 });
+  });
+
+  it("a back photo is never mirrored", async () => {
+    await openCapture();
+    await shoot();
+    await screen.findByLabelText("Caption");
+    expect(manipulator.__ctx.flip).not.toHaveBeenCalled();
+  });
+
+  it("a front photo the camera already mirrored is kept as is, as the preview showed it", async () => {
+    takePhoto.mockImplementation(async () => vision.__photo("/cache/Camera/selfie.jpg", 4032, 3024, "left", true));
+    await openCapture();
+    await fireEvent.press(await screen.findByRole("button", { name: "Dar vuelta la cámara" }));
+    expect((await screen.findByTestId("camera-front")).props.mirrorMode).toBe("auto");
+    await shoot();
+    await screen.findByLabelText("Caption");
+    expect(manipulator.manipulate).not.toHaveBeenCalled();
+    expect(manipulator.__ctx.flip).not.toHaveBeenCalled();
+    expect(files.deleted).toBe(0);
+    await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(mediaMock.prepareMedia.mock.lastCall![0]).toEqual({ uri: "file:///cache/Camera/selfie.jpg", width: 3024, height: 4032 });
   });
 
   it("asks for the device's largest 4:3 photo up to 24 MP (not 48) and biases the session to it", async () => {
