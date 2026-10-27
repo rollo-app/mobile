@@ -130,6 +130,16 @@ await build({
   globalName: "Motion",
   outfile: join(dist, "motion.js"),
 });
+await build({
+  stdin: { contents: `import lottie from "lottie-web/build/player/lottie_light"; window.lottie = lottie;`, resolveDir: root },
+  bundle: true,
+  minify: true,
+  format: "iife",
+  outfile: join(dist, "lottie.js"),
+});
+for (const scheme of ["light", "dark"]) {
+  copyFileSync(join(root, "scripts", "site", `moment-intro-${scheme}.json`), join(dist, `moment-intro-${scheme}.json`));
+}
 copyFileSync(join(root, "scripts", "site", "landing.js"), join(dist, "landing.js"));
 if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
 copyFileSync(join(root, "scripts", "site", "og.png"), join(dist, "og.png"));

@@ -54,8 +54,8 @@ describe("the home", () => {
   });
   const section = (id: string) => html.match(new RegExp(`<section[^>]*id="${id}"[\\s\\S]*?</section>`))?.[0] ?? "";
 
-  it("has the 7 sections in the order a rollo is lived", () => {
-    const ids = ["inicio", "como-funciona", "mapa", "revelado", "perfil", "privado", "cierre"];
+  it("has the 8 sections in the order a rollo is lived", () => {
+    const ids = ["inicio", "como-funciona", "mapa", "momento", "revelado", "perfil", "privado", "cierre"];
     const positions = ids.map((id) => html.indexOf(`id="${id}"`));
     for (const p of positions) expect(p).toBeGreaterThan(-1);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
@@ -63,7 +63,7 @@ describe("the home", () => {
 
   it("marks every section but the first one for the entrance animation", () => {
     expect(html).not.toMatch(/<section[^>]*id="inicio"[^>]*data-enter/);
-    for (const id of ["como-funciona", "mapa", "revelado", "perfil", "privado", "cierre"]) {
+    for (const id of ["como-funciona", "mapa", "momento", "revelado", "perfil", "privado", "cierre"]) {
       expect(html).toMatch(new RegExp(`<section[^>]*id="${id}"[^>]*data-enter|<section[^>]*data-enter[^>]*id="${id}"`));
     }
   });
@@ -254,6 +254,12 @@ describe("the home motion", () => {
     const b = html().indexOf('<script src="/landing.js" defer></script>');
     expect(a).toBeGreaterThan(-1);
     expect(b).toBeGreaterThan(a);
+  });
+
+  it("ships the Lottie player and both moment animations, and the moment section keeps a static SVG fallback", () => {
+    for (const f of ["lottie.js", "moment-intro-light.json", "moment-intro-dark.json"]) expect(existsSync(join(dist, f))).toBe(true);
+    expect(html()).toContain('<script src="/lottie.js" defer></script>');
+    expect(html().match(/<section[^>]*id="momento"[\s\S]*?<\/section>/)?.[0]).toMatch(/<svg class="moment-static" viewBox="0 0 512 512" role="img"/);
   });
 
   describe("head script", () => {
