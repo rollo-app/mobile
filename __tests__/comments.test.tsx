@@ -1,5 +1,6 @@
 import { ActionSheetIOS } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import "@/test/reanimated";
 import * as actions from "@/features/comments/actions";
 import * as moderation from "@/features/moderation/actions";
 import * as tripActions from "@/features/trips/actions";

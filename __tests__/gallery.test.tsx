@@ -2,6 +2,7 @@ import { act } from "@testing-library/react-native";
 import { ActionSheetIOS, Alert, Linking, Text } from "react-native";
 import { router } from "expo-router";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { requestPermissionsAsync } from "expo-media-library";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
 import { PermissionDeniedError } from "@/features/gallery/save";

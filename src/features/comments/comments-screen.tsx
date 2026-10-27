@@ -1,13 +1,15 @@
 import { MenuView, type MenuAction } from "@expo/ui/community/menu";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { errorMessage } from "@/api/client";
 import { useMe } from "@/features/auth/use-me";
 import { useReport } from "@/features/moderation/use-report";
 import { Avatar } from "@/features/profile/avatar";
 import { Button, ErrorText } from "@/ui/components";
+import { useKeyboardLift } from "@/ui/keyboard-lift";
 import { colors, spacing, type } from "@/ui/theme";
 import type { Comment } from "./actions";
 import { canSend, cleanDraft, COMMENT_MAX_LENGTH } from "./draft";
@@ -25,6 +27,8 @@ export function CommentsScreen({ mediaId }: { mediaId: string }) {
   const remove = useDeleteComment(mediaId);
   const report = useReport();
   const [draft, setDraft] = useState("");
+  // The root's padding carries the safe area at rest and the keyboard while typing, so the field always sits above it.
+  const keyboardStyle = useKeyboardLift(Math.max(insets.bottom, spacing.sm), 0, spacing.sm);
 
   function send() {
     if (!canSend(draft) || add.isPending) return;
@@ -39,7 +43,7 @@ export function CommentsScreen({ mediaId }: { mediaId: string }) {
   }
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={styles.fill}>
+    <Animated.View style={[styles.fill, keyboardStyle]}>
       {comments ? (
         <FlatList
           data={comments}
@@ -86,7 +90,7 @@ export function CommentsScreen({ mediaId }: { mediaId: string }) {
         loading && <ActivityIndicator style={styles.center} />
       )}
 
-      <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+      <View style={styles.composer}>
         {add.error && <ErrorText>{errorMessage(add.error, "No se pudo comentar")}</ErrorText>}
         <View style={styles.inputRow}>
           <TextInput
@@ -111,7 +115,7 @@ export function CommentsScreen({ mediaId }: { mediaId: string }) {
           </Pressable>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 
