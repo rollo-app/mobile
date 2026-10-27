@@ -1,3 +1,5 @@
+import "react-native-gesture-handler/jestSetup";
+
 // In-memory SecureStore: tests don't touch the real keychain.
 jest.mock("expo-secure-store", () => {
   const store = new Map<string, string>();

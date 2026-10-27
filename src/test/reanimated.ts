@@ -11,7 +11,7 @@ const layoutBuilder = () => {
 
 Object.assign(require("react-native-reanimated"), {
   __esModule: true,
-  default: { View },
+  default: { View, createAnimatedComponent: <T>(component: T) => component },
   // Layout-animation builders: chainable, and inert (the animation props are ignored by the mock View).
   FadeIn: layoutBuilder(),
   FadeOut: layoutBuilder(),
@@ -31,6 +31,15 @@ Object.assign(require("react-native-reanimated"), {
   Easing: { bezier: () => (t: number) => t },
   cubicBezier: () => "ease-out",
   ReduceMotion: { System: "system", Always: "always", Never: "never" },
+});
+
+// ReanimatedSwipeable needs the native gesture/animation runtime: in tests it just renders the row and its right actions.
+jest.mock("react-native-gesture-handler/ReanimatedSwipeable", () => {
+  const { View } = jest.requireActual("react-native");
+  const React = jest.requireActual("react");
+  const Swipeable = ({ children, renderRightActions }: any) =>
+    React.createElement(View, null, children, renderRightActions?.({ value: 0 }, { value: 0 }, { close() {}, openRight() {} }));
+  return { __esModule: true, default: Swipeable };
 });
 
 export {};

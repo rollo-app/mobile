@@ -151,25 +151,50 @@ describe("Comments sheet", () => {
     expect((await screen.findByLabelText("Escribí un comentario")).props.maxLength).toBe(500);
   });
 
-  it("offers Borrar only on the comments you can delete, and deletes", async () => {
+  it("shows the swipe Borrar button only on the comments you can delete, and deletes", async () => {
     comments.fetchComments.mockResolvedValue([comment("c1", "de otro"), comment("c2", "mío", { author: mine, canDelete: true })]);
     await open();
     await screen.findByText("mío");
-    expect(screen.getAllByRole("menuitem", { name: "Borrar" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Borrar" })).toHaveLength(1);
+    expect(within(screen.getByTestId("comment-c1")).queryByRole("button", { name: "Borrar" })).toBeNull();
 
     comments.fetchComments.mockResolvedValue([comment("c1", "de otro")]);
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Borrar" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Borrar" }));
 
     await waitFor(() => expect(comments.deleteComment).toHaveBeenCalledWith("c2"));
     await waitFor(() => expect(screen.queryByText("mío")).toBeNull());
   });
 
-  it("the photo's author can delete someone else's comment, and still report it", async () => {
+  it("deletes through the VoiceOver action on the row", async () => {
+    comments.fetchComments.mockResolvedValue([comment("c1", "de otro"), comment("c2", "mío", { author: mine, canDelete: true })]);
+    await open();
+    await screen.findByText("mío");
+    expect(screen.getByTestId("comment-c1").props.accessibilityActions).toBeUndefined();
+
+    const row = screen.getByTestId("comment-c2");
+    expect(row.props.accessibilityActions).toEqual([{ name: "delete", label: "Borrar" }]);
+    comments.fetchComments.mockResolvedValue([comment("c1", "de otro")]);
+    await fireEvent(row, "accessibilityAction", { nativeEvent: { actionName: "delete" } });
+
+    await waitFor(() => expect(comments.deleteComment).toHaveBeenCalledWith("c2"));
+  });
+
+  it("the menu of someone else's comment only has Denunciar, even if you can delete it", async () => {
     comments.fetchComments.mockResolvedValue([comment("c1", "de otro", { canDelete: true })]);
     await open();
     const row = within(await screen.findByTestId("comment-c1"));
-    expect(row.getByRole("menuitem", { name: "Borrar" })).toBeTruthy();
     expect(row.getByRole("menuitem", { name: "Denunciar" })).toBeTruthy();
+    expect(row.queryByRole("menuitem", { name: "Borrar" })).toBeNull();
+    // The swipe button is there for the owner of the photo.
+    expect(screen.getByRole("button", { name: "Borrar" })).toBeTruthy();
+  });
+
+  it("a row of yours has no menu at all (nothing to report)", async () => {
+    comments.fetchComments.mockResolvedValue([comment("c2", "mío", { author: mine, canDelete: true })]);
+    await open();
+    const row = within(await screen.findByTestId("comment-c2"));
+    expect(row.queryByRole("button", { name: "Más opciones" })).toBeNull();
+    expect(row.queryByRole("menuitem")).toBeNull();
   });
 
   it("reports someone else's comment with the reason picked and hides it", async () => {
