@@ -154,6 +154,7 @@ export function Row({
   leading,
   detail,
   accessory,
+  chevron = true,
 }: {
   /** Outside the tappable area, at the end of the row (an "i" button). */
   accessory?: ReactNode;
@@ -165,6 +166,8 @@ export function Row({
   value?: string;
   note?: string;
   onPress?: () => void;
+  /** The chevron means "opens another screen or sheet": pass false on immediate actions (log out, share, delete, dev triggers). */
+  chevron?: boolean;
   /** Spinner in place of the chevron (an action running). */
   loading?: boolean;
   /** "danger" colors the label red, for destructive actions; "tint" makes it an action in the brand color. */
@@ -192,7 +195,7 @@ export function Row({
       {loading ? (
         <ActivityIndicator />
       ) : (
-        onPress && <SymbolView name="chevron.right" size={14} weight="semibold" tintColor={colors.tertiaryLabel as string} />
+        onPress && chevron && <SymbolView name="chevron.right" size={14} weight="semibold" tintColor={colors.tertiaryLabel as string} />
       )}
     </>
   );

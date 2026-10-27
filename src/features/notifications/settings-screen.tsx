@@ -5,20 +5,44 @@ import { spacing } from "@/ui/theme";
 import { useNotificationSettings, type NotificationKind } from "./use-notification-settings";
 import { usePushPermission } from "./use-push-permission";
 
-const KINDS: { kind: NotificationKind; label: string; footer: string }[] = [
-  { kind: "addedToTrip", label: "Te suman a un rollo", footer: "Cuando alguien te agrega a un rollo." },
-  { kind: "newFriend", label: "Nuevos amigos", footer: "Cuando alguien acepta tu link de amistad." },
-  { kind: "tripStarted", label: "Arranca un rollo", footer: "Cuando empieza un rollo en el que estás." },
-  { kind: "tripRevealed", label: "Se revela un rollo", footer: "Cuando se revelan las fotos de un rollo tuyo." },
-  { kind: "photoFeatured", label: "Destacan tu foto", footer: "Cuando alguien pone una foto tuya en su perfil." },
-  { kind: "photoLiked", label: "Les gusta tu foto", footer: "Cuando a alguien le gusta una foto tuya." },
-  { kind: "photoCommented", label: "Comentan tu foto", footer: "Cuando alguien comenta una foto tuya o una que comentaste." },
-  { kind: "friendRequest", label: "Solicitudes de amistad", footer: "Cuando alguien te manda una solicitud de amistad." },
-  { kind: "dailyMoment", label: "Momento del día", footer: "Un aviso al día, a una hora al azar, para sacar tu foto del momento." },
-  { kind: "momentPosted", label: "Momentos del grupo", footer: "Cuando alguien del rollo sube su momento del día." },
+const GROUPS: { title: string; footer: string; kinds: { kind: NotificationKind; label: string }[] }[] = [
+  {
+    title: "Rollos",
+    footer: "Se revela: cuando se pueden ver las fotos de un rollo tuyo.",
+    kinds: [
+      { kind: "addedToTrip", label: "Te suman a un rollo" },
+      { kind: "tripStarted", label: "Arranca un rollo" },
+      { kind: "tripRevealed", label: "Se revela un rollo" },
+    ],
+  },
+  {
+    title: "Amigos",
+    footer: "Cuando alguien acepta tu link de amistad o te manda una solicitud.",
+    kinds: [
+      { kind: "newFriend", label: "Nuevos amigos" },
+      { kind: "friendRequest", label: "Solicitudes de amistad" },
+    ],
+  },
+  {
+    title: "Tus fotos",
+    footer: "Cuando alguien destaca, le da me gusta o comenta una foto tuya (o una que comentaste).",
+    kinds: [
+      { kind: "photoFeatured", label: "Destacan tu foto" },
+      { kind: "photoLiked", label: "Les gusta tu foto" },
+      { kind: "photoCommented", label: "Comentan tu foto" },
+    ],
+  },
+  {
+    title: "Momento del día",
+    footer: "Un aviso al día, a una hora al azar, para sacar tu foto; y otro cuando alguien del rollo sube la suya.",
+    kinds: [
+      { kind: "dailyMoment", label: "Momento del día" },
+      { kind: "momentPosted", label: "Momentos del grupo" },
+    ],
+  },
 ];
 
-/** Ajustes → Notificaciones: a switch per kind of push, and what to do if iOS doesn't let them through. */
+/** Ajustes → Notificaciones: switches grouped by kind of push, and what to do if iOS doesn't let them through. */
 export function NotificationSettingsScreen() {
   const { settings, loadError, refetch, isRefetching, saveError, set } = useNotificationSettings();
 
@@ -26,12 +50,14 @@ export function NotificationSettingsScreen() {
     <Screen grouped>
       <PermissionBanner />
       {settings ? (
-        KINDS.map(({ kind, label, footer }) => (
-          <Fragment key={kind}>
-            <Section footer={footer}>
-              <SwitchRow label={label} value={settings[kind]} onValueChange={(v) => void set(kind, v)} />
+        GROUPS.map(({ title, footer, kinds }) => (
+          <Fragment key={title}>
+            <Section title={title} footer={footer}>
+              {kinds.map(({ kind, label }) => (
+                <SwitchRow key={kind} label={label} value={settings[kind]} onValueChange={(v) => void set(kind, v)} />
+              ))}
             </Section>
-            {saveError?.kind === kind && <ErrorText>{saveError.message}</ErrorText>}
+            {saveError && kinds.some((k) => k.kind === saveError.kind) && <ErrorText>{saveError.message}</ErrorText>}
           </Fragment>
         ))
       ) : loadError ? (
@@ -67,9 +93,9 @@ function PermissionBanner() {
       footer="Vas a ver estos ajustes, pero los avisos no van a llegar hasta que las actives."
     >
       {permission === "denied" ? (
-        <Row label="Abrir Ajustes de iOS" tone="tint" onPress={() => void Linking.openSettings()} />
+        <Row label="Abrir Ajustes de iOS" tone="tint" chevron={false} onPress={() => void Linking.openSettings()} />
       ) : (
-        <Row label="Activar notificaciones" tone="tint" loading={asking} onPress={asking ? undefined : () => void activate()} />
+        <Row label="Activar notificaciones" tone="tint" chevron={false} loading={asking} onPress={asking ? undefined : () => void activate()} />
       )}
     </Section>
   );

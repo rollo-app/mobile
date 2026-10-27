@@ -60,7 +60,7 @@ export function UserProfileScreen({ userId }: { userId: string }) {
       {reportedByMe && <Footnote>Denunciaste a esta persona</Footnote>}
       {blockedByMe ? (
         <Section>
-          <Row label="Desbloquear" loading={block.busy} onPress={block.busy ? undefined : () => void block.unblock()} />
+          <Row label="Desbloquear" chevron={false} loading={block.busy} onPress={block.busy ? undefined : () => void block.unblock()} />
         </Section>
       ) : (
         <>

@@ -327,7 +327,7 @@ describe("Ajustes: Notificaciones", () => {
     expect(await screen.findByRole("switch", { name: "Te suman a un rollo" })).toBeVisible();
   });
 
-  it("shows a switch per event with its explanation, from the server", async () => {
+  it("shows the switches in four titled groups, from the server", async () => {
     permission(true, true, "granted");
     push.fetchNotificationSettings.mockResolvedValue({ ...ALL_ON, photoLiked: false });
     await renderRouter(testRoutes, { initialUrl: "/notifications" });
@@ -335,14 +335,12 @@ describe("Ajustes: Notificaciones", () => {
     for (const label of LABELS) expect(await screen.findByRole("switch", { name: label })).toBeVisible();
     expect(screen.getByRole("switch", { name: "Les gusta tu foto" }).props.value).toBe(false);
     expect(screen.getByRole("switch", { name: "Te suman a un rollo" }).props.value).toBe(true);
-    expect(screen.getByText("Cuando alguien te agrega a un rollo.")).toBeVisible();
-    expect(screen.getByText("Cuando alguien acepta tu link de amistad.")).toBeVisible();
-    expect(screen.getByText("Cuando empieza un rollo en el que estás.")).toBeVisible();
-    expect(screen.getByText("Cuando se revelan las fotos de un rollo tuyo.")).toBeVisible();
-    expect(screen.getByText("Cuando alguien pone una foto tuya en su perfil.")).toBeVisible();
-    expect(screen.getByText("Cuando a alguien le gusta una foto tuya.")).toBeVisible();
-    expect(screen.getByText("Cuando alguien comenta una foto tuya o una que comentaste.")).toBeVisible();
-    expect(screen.getByText("Cuando alguien del rollo sube su momento del día.")).toBeVisible();
+    for (const title of ["Rollos", "Amigos", "Tus fotos"]) expect(screen.getByText(title)).toBeVisible();
+    expect(screen.getAllByText("Momento del día").length).toBeGreaterThan(1); // group title + switch label
+    expect(screen.getByText("Se revela: cuando se pueden ver las fotos de un rollo tuyo.")).toBeVisible();
+    expect(screen.getByText("Cuando alguien acepta tu link de amistad o te manda una solicitud.")).toBeVisible();
+    expect(screen.getByText("Cuando alguien destaca, le da me gusta o comenta una foto tuya (o una que comentaste).")).toBeVisible();
+    expect(screen.getByText("Un aviso al día, a una hora al azar, para sacar tu foto; y otro cuando alguien del rollo sube la suya.")).toBeVisible();
     // With permission there's no banner.
     expect(screen.queryByText("Las notificaciones están desactivadas")).toBeNull();
   });

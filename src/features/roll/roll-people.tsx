@@ -29,7 +29,7 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
 
       <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer="Con este código se suman al rollo.">
         <Row label="Código" value={detail.trip.joinCode} />
-        <Row label="Compartir invitación" onPress={() => void share()} />
+        <Row label="Compartir invitación" chevron={false} onPress={() => void share()} />
       </Section>
 
       <FeaturingSection detail={detail} />
@@ -48,7 +48,7 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
       </Section>
 
       <Section>
-        <Row label="Salirme del rollo" tone="danger" loading={leave.leaving} onPress={leave.leaving ? undefined : leave.confirm} />
+        <Row label="Salirme del rollo" tone="danger" chevron={false} loading={leave.leaving} onPress={leave.leaving ? undefined : leave.confirm} />
       </Section>
       {leave.error && <ErrorText>{leave.error}</ErrorText>}
     </>

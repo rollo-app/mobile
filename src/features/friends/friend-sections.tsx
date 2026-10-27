@@ -125,7 +125,7 @@ export function FriendSections({ userId, name }: { userId: string; name: string 
       {addError && <ErrorText>{addError}</ErrorText>}
 
       <Section>
-        <Row label="Borrar amigo" tone="danger" onPress={confirmRemove} />
+        <Row label="Borrar amigo" tone="danger" chevron={false} onPress={confirmRemove} />
       </Section>
       {removeError && <ErrorText>{removeError}</ErrorText>}
     </>

@@ -36,7 +36,7 @@ export function UploadStatusSection({ tripId, timeZone }: { tripId: string; time
               label={`${m.type === "video" ? "Video" : "Foto"} · ${formatDateTime(m.takenAt, Date.now(), timeZone)}`}
               value={failureText(m.failedReason)}
             />,
-            <Row key={`${m.id}-discard`} label="Descartar" tone="danger" onPress={() => confirmDiscard(m.id)} />,
+            <Row key={`${m.id}-discard`} label="Descartar" tone="danger" chevron={false} onPress={() => confirmDiscard(m.id)} />,
           ])}
         </Section>
       )}
