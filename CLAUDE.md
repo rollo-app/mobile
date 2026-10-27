@@ -354,14 +354,15 @@ Reglas:
   TanStack Query, carpetas `Documents/pending/` y `Documents/map/`): no se renombran, porque rompería los
   datos de quien ya tiene la app.
 
-## Skills de diseño y motion (en evaluación)
+## Skills de diseño y motion
 
-En `.claude/skills/` (copiadas tal cual de sus repos; se decide después cuáles quedan):
-`appllama-app-design-skill` (Appllama), `emil-design-eng`, `animate-expo`, `review-animations`,
-`find-animation-opportunities` (Emil Kowalski), `design-motion-principles` (Kyle Zantos) y `text-to-lottie` (Diffusion Studio).
+En `.claude/skills/` (copiadas tal cual de sus repos): `emil-design-eng`, `animate-expo`, `review-animations`,
+`find-animation-opportunities` (Emil Kowalski) y `text-to-lottie` (Diffusion Studio). Se sacaron por duplicadas: `animate`
+(versión web de `animate-expo`), `design-motion-principles` (se pisa con `emil-design-eng`) y `appllama-app-design-skill`
+(sin su MCP lo cubren `expo-design-system` / `expo-native-ui`). `review-animations` solo la invoca el usuario (`/review-animations`).
 Si una skill contradice este archivo, **gana este archivo**.
 
-- **El target es React Native, no la web.** Los ejemplos de las skills de Emil y de `design-motion-principles` son CSS,
+- **El target es React Native, no la web.** Los ejemplos de las skills de Emil son CSS,
   Framer Motion o WAAPI: se toman los principios (cuándo animar, curvas, duraciones, interrupción, salidas) y se implementan con
   **Reanimated 4 + `react-native-worklets` + Gesture Handler** (más `expo-haptics` / `react-native-pulsar` y Skia donde ya se usan).
   Traducción: `transition`/`@keyframes` → `withTiming`/`withSpring`/`withSequence`; `cubic-bezier(...)` → `Easing.bezier(...)`;
@@ -370,12 +371,10 @@ Si una skill contradice este archivo, **gana este archivo**.
   → `LinearTransition` / `entering` / `exiting`. Gestos con `Gesture.Pan()` etc. y nada de `runOnJS`/`scheduleOnRN` por frame.
   Gesture Handler no es dependencia directa todavía: si hace falta, `npx expo install react-native-gesture-handler` + rebuild.
 - Para **implementar** usar `animate-expo` (la versión web, `animate`, se sacó por duplicada); `review-animations` sirve por el criterio.
-- **Appllama:** sin el MCP de Appllama (pago) se saltea el paso de "estudiar 20–30 pantallas". No aplican: FlashList, Zustand ni MMKV
-  obligatorios, ni generar ilustraciones con modelos de imagen. La serif de los captions es a propósito (identidad, no énfasis).
 - **Lottie:** `text-to-lottie` arma un player web de preview (`npx degit diffusionstudio/lottie`): va **fuera del repo** (scratchpad),
-  nunca dentro de `mobile/`. El JSON final iría a `assets/lottie/` y se reproduce con `lottie-react-native` (no está instalado; es nativo:
-  `npx expo install lottie-react-native` + `prebuild --clean` + rebuild). El revelado actual (shader de Skia) se mantiene; Lottie es candidato
-  para piezas chicas (íconos animados, el sello del revelado), no para reemplazarlo.
+  nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio a `scripts/site/`) y salen de
+  `scripts/build-lottie.mjs`; en la app se reproducen con `lottie-react-native` (nativo: cambiarlo pide rebuild). El revelado (shader de Skia)
+  se mantiene; Lottie es para piezas chicas e ilustrativas, nunca para estados de la UI.
   La bienvenida de Rollo (sin rollos todavía, `src/features/roll/welcome.tsx`) lleva el logo arriba del título: la primera vez en el celular se anima (`assets/lottie/logo-intro-*.json`, una vez, sin háptico ni sonido; `rollo.welcomeIntroSeen`) y después queda el último cuadro.
 
 ## Cómo trabajamos
