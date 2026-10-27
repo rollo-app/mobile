@@ -1,5 +1,5 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
-import { buildStory, daySegments, stepDuration } from "../story";
+import { buildStory, daySegments, elapsedProgress, stepDuration } from "../story";
 
 const TZ = "America/Argentina/Buenos_Aires";
 
@@ -148,5 +148,20 @@ describe("daySegments", () => {
 
   it("has no segments in the outro", () => {
     expect(daySegments(steps, 5)).toBeNull();
+  });
+});
+
+describe("elapsedProgress", () => {
+  it("advances linearly from where the step was", () => {
+    expect(elapsedProgress(0, 1000, 4000)).toBe(0.25);
+    expect(elapsedProgress(0.5, 1000, 4000)).toBe(0.75);
+  });
+  it("never goes past the end or below the start", () => {
+    expect(elapsedProgress(0.9, 4000, 4000)).toBe(1);
+    expect(elapsedProgress(0.2, -50, 4000)).toBe(0.2 - 50 / 4000);
+    expect(elapsedProgress(0, -10_000, 4000)).toBe(0);
+  });
+  it("treats an empty step as done", () => {
+    expect(elapsedProgress(0, 0, 0)).toBe(1);
   });
 });

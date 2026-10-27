@@ -1,6 +1,6 @@
 # 002 — Barra de progreso de las historias en el hilo nativo (y un snap-back sin rebote de más)
 
-- **Status**: TODO
+- **Status**: done
 - **Commit**: d6da421
 - **Severity**: HIGH (rendimiento en un momento de firma; el tirón no se puede medir desde el código: confirmar en el feel check)
 - **Category**: Performance (+ Interruptibility)
