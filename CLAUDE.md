@@ -245,7 +245,7 @@ Decisiones de producto:
   `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,
   `roll-overview.tsx`). La actividad
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
-- Perfil = lo que ven los demás: encabezado (sin card, sobre el fondo: foto de 80 pt a la izquierda; nombre (`type.title`, hasta 3 renglones), @usuario e insignia a la derecha; descripción y cantidad de amigos debajo; un solo margen de 16 pt, el de `Screen`, igual que el control "Fotos | Mapa" y el título grande, con la grilla de punta a punta) y "Fotos | Mapa" (tus destacadas y sus
+- Perfil = lo que ven los demás, **sin título visible en la barra** (solo los botones de actividad y ajustes; `title: "Perfil"` queda para el botón de volver y VoiceOver): encabezado (sin card, sobre el fondo: foto de 80 pt a la izquierda; nombre (`type.title`, hasta 3 renglones), @usuario e insignia a la derecha; descripción y cantidad de amigos debajo; un solo margen de 16 pt, el de `Screen`, igual que el control "Fotos | Mapa" y el título grande, con la grilla de punta a punta) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
   ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado", "Ver candado" y "Ver intro", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
   "Cerrar sesión" / "Borrar cuenta".
