@@ -1,3 +1,4 @@
+import { OWN_DATA_STALE_TIME } from "@/api/query-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "@/api/client";
 import { fetchPrivacySettings, updatePrivacySettings, type PrivacySettings } from "./actions";
@@ -10,7 +11,7 @@ export const privacySettingsKey = ["privacy-settings"] as const;
  */
 export function usePrivacySettings() {
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: privacySettingsKey, queryFn: fetchPrivacySettings });
+  const query = useQuery({ queryKey: privacySettingsKey, queryFn: fetchPrivacySettings, staleTime: OWN_DATA_STALE_TIME });
 
   const mutation = useMutation({
     mutationFn: (allowFeaturing: boolean) => updatePrivacySettings({ allowFeaturing }),

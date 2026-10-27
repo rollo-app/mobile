@@ -6,6 +6,14 @@ import { AppState } from "react-native";
 const SECOND = 1000;
 const DAY = 24 * 60 * 60 * SECOND;
 
+/**
+ * For data only you change (your profile, your settings, who you blocked): every mutation that
+ * edits it already sets or invalidates the cache, so nobody else can leave it outdated and
+ * refetching it on every mount is wasted. Not for data that moves because of other people (rolls,
+ * feeds, friends, requests, other users' profiles): those keep the default.
+ */
+export const OWN_DATA_STALE_TIME = 5 * 60 * SECOND;
+
 /** How long the cache is kept on the phone (also the persister's `maxAge`). */
 export const CACHE_MAX_AGE = 7 * DAY;
 
