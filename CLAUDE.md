@@ -401,6 +401,10 @@ Si una skill contradice este archivo, **gana este archivo**.
   `accessibilityLabel`, títulos de pantalla), los commits y los PRs. Las etiquetas visibles de las tabs
   ("Rollo", "Mapa", "Cámara", "Feed", "Perfil") siguen en español aunque la ruta sea `roll`, `map`, etc.
 - **TDD siempre:** primero el test (descripciones en inglés), verlo fallar, código mínimo, refactor.
+  - **Correr tests sin ahogar la Mac** (varias sesiones a la vez se quedaban sin RAM): corré **solo los tests de lo que
+    tocaste**, nunca la suite completa, y siempre con `--maxWorkers=2` (`npx jest --findRelatedTests <archivos> --maxWorkers=2`
+    o `npx jest <ruta del test> --maxWorkers=2`). La suite completa la corre el CI, o se corre solo si el usuario la pide.
+    `package.json` ya fija `maxWorkers: 2`.
   - Lógica (`src/**/__tests__`): `fetch` simulado con `globalThis.fetch = jest.fn(...)`.
   - Pantallas: `renderRouter` de `expo-router/testing-library` con navegación real, mockeando
     `@/features/*/actions`. En Testing Library 14 **`fireEvent` es async**: siempre `await fireEvent...`.

@@ -85,6 +85,7 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
+    "maxWorkers": 2,
     "setupFilesAfterEnv": [
       "./jest.setup.ts"
     ],
