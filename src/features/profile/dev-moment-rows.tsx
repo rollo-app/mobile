@@ -1,5 +1,5 @@
 import * as Burnt from "burnt";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { localDay } from "@/features/capture/quota";
 import { requestPushPermission } from "@/features/notifications/push-permission";
 import { scheduleMomentNotification } from "@/features/moments/moment-sync";
@@ -49,6 +49,7 @@ export function DevMomentRows() {
       <Row label="Probar momento ahora" chevron={false} onPress={trip && detail ? () => void testMoment() : undefined} />
       <Row label="Ver candado" onPress={() => router.push("/roll-started")} />
       <Row label="Ver intro" onPress={() => router.push("/intro")} />
+      <Row label="Peor caso (perfil)" onPress={() => router.push("/dev/worst-case" as Href)} />
     </>
   );
 }

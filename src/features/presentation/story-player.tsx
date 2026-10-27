@@ -30,13 +30,14 @@ import { Outro } from "./outro";
 import { initialPlayer, playerReducer } from "./player";
 import { ProgressBar } from "./progress-bar";
 import { Slide } from "./slide";
-import { buildStory, daySegments, stepDuration } from "./story";
+import { buildStory, daySegments, elapsedProgress, stepDuration } from "./story";
 import { useScreenReader } from "./use-accessibility";
 import { upcomingPhotos } from "./upcoming";
 
 const TAP_BACK_FRACTION = 0.35;
 const HOLD_MS = 200;
 const MIN_SCALE = 0.9;
+const SNAP_BACK = { stiffness: 158, damping: 20, mass: 1 } as const;
 const BACKDROP_FADE_DISTANCE = 300;
 
 /**
@@ -72,7 +73,7 @@ export function StoryPlayer({
   const openProfile = useOpenProfile();
 
   // The story changes only if the feed refreshes underneath: start over rather than point at a stale index.
-  // Auto-advance: one linear animation per step, resumed from where it was after a pause.
+  // Auto-advance: a timer per step; the bar animates on the native thread and, after a pause, resumes from where the clock says it was.
   const progress = useRef(new Animated.Value(0)).current;
   const value = useRef(0);
   const lastIndex = useRef(-1);
@@ -87,12 +88,6 @@ export function StoryPlayer({
     }
   }, [steps]);
   useEffect(() => {
-    const id = progress.addListener(({ value: v }) => {
-      value.current = v;
-    });
-    return () => progress.removeListener(id);
-  }, [progress]);
-  useEffect(() => {
     if (lastIndex.current !== state.index) {
       lastIndex.current = state.index;
       value.current = 0;
@@ -100,14 +95,24 @@ export function StoryPlayer({
     }
     const duration = stepDuration(step);
     if (duration == null || state.paused || screenReader) return;
+    const from = value.current;
+    // Native-driven: JS never sees the frames, so start explicitly from the saved point.
+    progress.setValue(from);
+    const startedAt = Date.now();
     const anim = Animated.timing(progress, {
       toValue: 1,
-      duration: duration * (1 - value.current),
+      duration: duration * (1 - from),
       easing: Easing.linear,
-      useNativeDriver: false,
+      useNativeDriver: true,
     });
-    anim.start(({ finished }) => finished && dispatch({ type: "next" }));
-    return () => anim.stop();
+    anim.start();
+    // The clock lives here; the bar only shows it.
+    const next = setTimeout(() => dispatch({ type: "next" }), duration * (1 - from));
+    return () => {
+      clearTimeout(next);
+      anim.stop();
+      value.current = elapsedProgress(from, Date.now() - startedAt, duration);
+    };
   }, [state.index, state.paused, step, progress, screenReader]);
 
   // Soft haptic on each new day.
@@ -184,16 +189,13 @@ export function StoryPlayer({
           } else {
             dragging.current = false;
             dispatch({ type: "resume" });
-            Animated.spring(drag, {
-              toValue: 0,
-              useNativeDriver: true,
-            }).start();
+            Animated.spring(drag, { toValue: 0, ...SNAP_BACK, useNativeDriver: true }).start();
           }
         },
         onPanResponderTerminate: () => {
           dragging.current = false;
           dispatch({ type: "resume" });
-          Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start();
+          Animated.spring(drag, { toValue: 0, ...SNAP_BACK, useNativeDriver: true }).start();
         },
       }),
     [drag],

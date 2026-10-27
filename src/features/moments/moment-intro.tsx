@@ -2,7 +2,8 @@ import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { Presets } from "react-native-pulsar";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import { ownedTiming } from "@/ui/motion";
 import { spacing, type } from "@/ui/theme";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { formatLeft } from "./moment-time";
@@ -35,7 +36,7 @@ export function MomentIntro({ leftMs, onDone }: { leftMs: number; onDone: () => 
     // Wait for Reduce Motion to be known so the animation never starts and then switches.
     if (reduceMotion === null) return;
     const timers = [setTimeout(() => Presets.System.impactRigid(), hapticAt), setTimeout(finish, doneAt)];
-    text.set(withDelay(textAt, withTiming(1, { duration: FADE_MS, easing: Easing.bezier(0.23, 1, 0.32, 1) })));
+    text.set(withDelay(textAt, withTiming(1, ownedTiming(FADE_MS)), ReduceMotion.Never));
     return () => timers.forEach(clearTimeout);
     // `text` and `finish` are stable in practice; the timers must not restart when the fade re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps

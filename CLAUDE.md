@@ -120,7 +120,7 @@ Decisiones de producto:
   `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
   encabezado); nombre, @, foto, **descripción** y cantidad de amigos se ven siempre ("12 amigos · 3 en común", texto
   secundario tocable: abre `/user/<id>/friends`, `GET /users/{userId}/friends` → "Amigos" con la lista completa si `canSee`,
-  si no "Amigos en común" con solo los comunes; en tu Perfil la cantidad sale de `useFriends()` y lleva a la tab Amigos);
+  si no "Amigos en común" con solo los comunes; en tu Perfil la cantidad sale de `useFriends()` y lleva a la tab Amigos; con 0 amigos, en tu Perfil dice "Todavía no tenés amigos" y lleva igual, y en el de otro no se muestra; el nombre se parte hasta 3 renglones, el @ va en uno con puntos al medio y un nombre vacío no deja hueco);
   destacadas solo si `canSee` (sos vos, es tu amigo o su perfil es público), si no "Este perfil es privado"; y si es amigo, además lo de amigo
   (`useFriend` solo con `isFriend`). Se llega desde la tab Amigos (`/friends/user/<id>`) y desde afuera con `/user/<id>`
   (push en el stack raíz): tocar un miembro en "En el rollo" (vos no sos tocable), el avatar o el nombre del autor en la
@@ -245,7 +245,7 @@ Decisiones de producto:
   `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,
   `roll-overview.tsx`). La actividad
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
-- Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
+- Perfil = lo que ven los demás, **sin título visible en la barra** (solo los botones de actividad y ajustes; `title: "Perfil"` queda para el botón de volver y VoiceOver): encabezado (sin card, sobre el fondo: foto de 80 pt a la izquierda; nombre (`type.title`, hasta 3 renglones), @usuario e insignia a la derecha; descripción y cantidad de amigos debajo; un solo margen de 16 pt, el de `Screen`, igual que el control "Fotos | Mapa" y el título grande, con la grilla de punta a punta) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
   ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado", "Ver candado" y "Ver intro", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
   "Cerrar sesión" / "Borrar cuenta".
@@ -357,7 +357,7 @@ Reglas:
 ## Skills de diseño y motion
 
 En `.claude/skills/` (copiadas tal cual de sus repos): `emil-design-eng`, `animate-expo`, `review-animations`,
-`find-animation-opportunities` (Emil Kowalski) y `text-to-lottie` (Diffusion Studio). Se sacaron por duplicadas: `animate`
+`find-animation-opportunities`, `improve-animations`, `break-ui` (Emil Kowalski) y `text-to-lottie` (Diffusion Studio). Se sacaron por duplicadas: `animate`
 (versión web de `animate-expo`), `design-motion-principles` (se pisa con `emil-design-eng`) y `appllama-app-design-skill`
 (sin su MCP lo cubren `expo-design-system` / `expo-native-ui`). `review-animations` solo la invoca el usuario (`/review-animations`).
 Si una skill contradice este archivo, **gana este archivo**.
@@ -371,6 +371,13 @@ Si una skill contradice este archivo, **gana este archivo**.
   → `LinearTransition` / `entering` / `exiting`. Gestos con `Gesture.Pan()` etc. y nada de `runOnJS`/`scheduleOnRN` por frame.
   Gesture Handler no es dependencia directa todavía: si hace falta, `npx expo install react-native-gesture-handler` + rebuild.
 - Para **implementar** usar `animate-expo` (la versión web, `animate`, se sacó por duplicada); `review-animations` sirve por el criterio.
+- **`improve-animations`** (auditoría de todo el motion + planes para que los ejecuten modelos más baratos, encaja con "Opus planea, Sonnet
+  ejecuta"): los planes van a **`docs/animation-plans/`** (no a un `plans/` en la raíz). Su modo `execute` revisa con `review-animations`, que solo
+  invoca el usuario: la revisión la hace Opus (o `emil-design-eng`).
+- **`break-ui`** (datos del peor caso realista contra un componente): el selector "Demo / Peor caso" de la skill es web; acá es una **pantalla de
+  Desarrollo** (solo `__DEV__`, entrada en Ajustes → Desarrollo) que monta el componente con cada fixture. Los arreglos de CSS se traducen a RN
+  (`flexShrink: 0`, `minWidth: 0`, `numberOfLines` + `ellipsizeMode`, `fontVariant: ["tabular-nums"]`, plurales sin "1 amigos"); en vez de zoom al 200 %
+  y RTL se mira con **texto grande de iOS** (Dynamic Type) y en **modo oscuro**. Los límites salen de `src/api/schema.d.ts` y del backend.
 - **Lottie:** `text-to-lottie` arma un player web de preview (`npx degit diffusionstudio/lottie`): va **fuera del repo** (scratchpad),
   nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio a `scripts/site/`) y salen de
   `scripts/build-lottie.mjs`; en la app se reproducen con `lottie-react-native` (nativo: cambiarlo pide rebuild). El revelado (shader de Skia)
@@ -405,7 +412,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1657 tests
+npm test                      # 1688 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)

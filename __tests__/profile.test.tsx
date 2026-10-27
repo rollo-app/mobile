@@ -60,12 +60,14 @@ describe("Perfil", () => {
     await waitFor(() => expect(screen).toHavePathname("/friends"));
   });
 
-  it("without friends there is no friend count line", async () => {
+  it("without friends it shows 'Todavía no tenés amigos' and tapping it opens Amigos", async () => {
     await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
     await renderRouter(routes, { initialUrl: "/me" });
 
     await screen.findByText("@juani");
     expect(screen.queryByRole("button", { name: /^\d+ amigos?/ })).toBeNull();
+    await fireEvent.press(await screen.findByRole("button", { name: "Todavía no tenés amigos" }));
+    await waitFor(() => expect(screen).toHavePathname("/friends"));
   });
 
   it.each([

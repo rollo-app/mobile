@@ -106,3 +106,9 @@ export function daySegments(steps: StoryStep[], index: number): { count: number;
   while (steps[end + 1]?.kind === "photo") end++;
   return { count: end - start + 1, current: index - start };
 }
+
+/** Where a linear step's progress is after running `elapsedMs` from `from` (0–1), for a step of `durationMs`. */
+export function elapsedProgress(from: number, elapsedMs: number, durationMs: number): number {
+  if (durationMs <= 0) return 1;
+  return Math.min(1, Math.max(0, from + elapsedMs / durationMs));
+}

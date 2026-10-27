@@ -2,6 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View, type AccessibilityActionEvent } from "react-native";
+import Animated, {
+  cubicBezier,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+  type CSSTransitionProperties,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Camera as VisionCamera,
@@ -11,6 +19,8 @@ import {
   type CapturePhotoSettings,
 } from "react-native-vision-camera";
 import { ErrorText } from "@/ui/components";
+import { EASE_OUT_BEZIER, easeOut } from "@/ui/motion";
+import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { loadCameraGrid, saveCameraGrid } from "@/storage/camera-grid";
 import type { CapturedPhoto } from "./captured-photo";
 import { ensureFourThree } from "./crop-photo";
@@ -57,6 +67,14 @@ const SUN_TRAVEL = 44;
 /** The focus square dims this long after the last touch, like the iPhone's. */
 const FOCUS_DIM_MS = 2000;
 
+// Built on first use, never at import: route test suites mock Reanimated as an empty object.
+let shutterTransition: CSSTransitionProperties | undefined;
+const getShutterTransition = (pressed: boolean): CSSTransitionProperties => ({
+  ...(shutterTransition ??= { transitionProperty: ["transform"], transitionTimingFunction: cubicBezier(...EASE_OUT_BEZIER) }),
+  // Asymmetric: the press lands fast, the release settles.
+  transitionDuration: pressed ? 100 : 200,
+});
+
 /** The top band: one row of round controls (Cerrar left; flash, timer, grid right), the title and notice under it. */
 const CONTROL = 36;
 const TOP_ROW = spacing.sm + CONTROL + spacing.sm;
@@ -101,6 +119,12 @@ export function Camera(props: {
   const [timer, setTimer] = useState<TimerDelay>(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [grid, setGrid] = useState(false);
+  const reduceMotion = useReduceMotion();
+  const blink = useSharedValue(0);
+  const focusScale = useSharedValue(1);
+  const focusOpacity = useSharedValue(1);
+  const blinkStyle = useAnimatedStyle(() => ({ opacity: blink.get() }));
+  const focusStyle = useAnimatedStyle(() => ({ opacity: focusOpacity.get(), transform: [{ scale: focusScale.get() }] }));
 
   useEffect(() => {
     let live = true;
@@ -181,13 +205,12 @@ export function Camera(props: {
   const focus = focusState && device && focusState.deviceId === device.id ? focusState : null;
   const [biasState, setBiasState] = useState<{ deviceId: string; bias: number } | null>(null);
   const bias = biasState && device && biasState.deviceId === device.id ? biasState.bias : 0;
-  const [dim, setDim] = useState(false);
   useEffect(() => {
     if (!focus) return;
-    setDim(false);
-    const t = setTimeout(() => setDim(true), FOCUS_DIM_MS);
+    focusOpacity.set(1);
+    const t = setTimeout(() => focusOpacity.set(withTiming(0.5, { duration: 300, easing: easeOut() })), FOCUS_DIM_MS);
     return () => clearTimeout(t);
-  }, [focus, bias]);
+  }, [focus, bias]); // eslint-disable-line react-hooks/exhaustive-deps -- the shared value is stable
 
   function setBias(next: number) {
     if (device) setBiasState({ deviceId: device.id, bias: next });
@@ -197,6 +220,7 @@ export function Camera(props: {
     if (!device) return;
     setFocusState({ deviceId: device.id, x, y });
     setBias(0);
+    focusScale.set(reduceMotion === false ? withSequence(withTiming(1.25, { duration: 0 }), withTiming(1, { duration: 200, easing: easeOut() })) : 1);
     const modes = meteringModes(device);
     if (modes.length === 0) return;
     try {
@@ -219,6 +243,8 @@ export function Camera(props: {
     if (busy) return;
     setBusy(true);
     setFailed(false);
+    // The preview blinks at the instant of the shot, like the iPhone's camera (opacity only: also with Reduce Motion).
+    blink.set(withSequence(withTiming(1, { duration: 40 }), withTiming(0, { duration: 220, easing: easeOut() })));
     try {
       const photo = await photoOutput.capturePhoto(captureSettings(flash), {});
       let shot: CapturedPhoto;
@@ -304,6 +330,7 @@ export function Camera(props: {
             <View style={[styles.gridLine, styles.gridH, { top: "66.667%" }]} />
           </View>
         )}
+        <Animated.View testID="shutter-blink" pointerEvents="none" style={[StyleSheet.absoluteFill, styles.blink, blinkStyle]} />
         <View
           testID="camera-pinch"
           style={StyleSheet.absoluteFill}
@@ -355,10 +382,10 @@ export function Camera(props: {
           }}
         />
         {focus && (
-          <View
+          <Animated.View
             testID="focus-square"
             pointerEvents="none"
-            style={[styles.focus, { left: focus.x - FOCUS_SIZE / 2, top: focus.y - FOCUS_SIZE / 2, opacity: dim ? 0.5 : 1 }]}
+            style={[styles.focus, { left: focus.x - FOCUS_SIZE / 2, top: focus.y - FOCUS_SIZE / 2 }, focusStyle]}
           >
             {range && (
               <View
@@ -377,7 +404,7 @@ export function Camera(props: {
                 </View>
               </View>
             )}
-          </View>
+          </Animated.View>
         )}
         {countdown !== null && countdown > 0 && (
           <View style={styles.countdownWrap} pointerEvents="none">
@@ -472,7 +499,15 @@ export function Camera(props: {
             onPress={onShutter}
             style={({ pressed }) => [styles.shutter, { opacity: busy ? 0.5 : pressed ? 0.8 : 1 }]}
           >
-            <View style={countdown !== null ? styles.shutterStop : styles.shutterInner} />
+            {({ pressed }) => (
+            <Animated.View
+              style={[
+                countdown !== null ? styles.shutterStop : styles.shutterInner,
+                getShutterTransition(pressed),
+                { transform: [{ scale: pressed && reduceMotion === false ? 0.9 : 1 }] },
+              ]}
+            />
+          )}
           </Pressable>
           <View style={styles.side}>
             {props.onFlip && (
@@ -523,6 +558,7 @@ const styles = StyleSheet.create({
   gridLine: { position: "absolute", backgroundColor: "rgba(255,255,255,0.45)" },
   gridV: { top: 0, bottom: 0, width: StyleSheet.hairlineWidth },
   gridH: { left: 0, right: 0, height: StyleSheet.hairlineWidth },
+  blink: { backgroundColor: "#000" },
   focus: { position: "absolute", width: FOCUS_SIZE, height: FOCUS_SIZE, borderWidth: 1, borderColor: tintHex.dark },
   sunTrack: { position: "absolute", top: FOCUS_SIZE / 2 - SUN_TRAVEL - 12, width: 24, height: SUN_TRAVEL * 2 + 24, alignItems: "center", justifyContent: "center" },
   sunLine: { position: "absolute", top: 12, bottom: 12, width: 1, backgroundColor: tintHex.dark },

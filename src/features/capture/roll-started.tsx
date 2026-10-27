@@ -2,11 +2,12 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Presets } from "react-native-pulsar";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
+import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button } from "@/ui/components";
+import { ownedTiming } from "@/ui/motion";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { colors, spacing, type } from "@/ui/theme";
 import { RolloLockView, type LockPhase } from "../../../modules/rollo-symbol";
@@ -48,9 +49,9 @@ export function RollStarted() {
       }, CAMERA_AT),
       setTimeout(() => setShown(true), TEXT_AT),
     ];
-    const timing = { duration: 300, easing: Easing.bezier(0.23, 1, 0.32, 1) };
-    copy.value = withDelay(TEXT_AT, withTiming(1, timing));
-    actions.value = withDelay(TEXT_AT + ACTIONS_STAGGER, withTiming(1, timing));
+    const timing = ownedTiming(300);
+    copy.value = withDelay(TEXT_AT, withTiming(1, timing), ReduceMotion.Never);
+    actions.value = withDelay(TEXT_AT + ACTIONS_STAGGER, withTiming(1, timing), ReduceMotion.Never);
     return () => timers.forEach(clearTimeout);
   }, [reduceMotion, copy, actions]);
 

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Platform, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View } from "react-native";
 import { FullWindowOverlay } from "react-native-screens";
+import { EASE_OUT_BEZIER } from "./curves";
 import { subscribePill } from "./pill";
 import { useReduceMotion } from "./use-reduce-motion";
 
+// RN Animated's own Easing (not Reanimated's), fed with the app's ease-out curve.
+const EASE_OUT = Easing.bezier(...EASE_OUT_BEZIER);
 const IN_MS = 150;
 const VISIBLE_MS = 1500;
 const OUT_MS = 200;
@@ -31,10 +34,10 @@ export function PillHost() {
   const id = pill?.id;
   useEffect(() => {
     if (id === undefined) return;
-    progress.setValue(0);
-    Animated.timing(progress, { toValue: 1, duration: IN_MS, useNativeDriver: true }).start();
+    // No reset to 0: a pill that arrives while one is showing continues from where it is (no flash).
+    Animated.timing(progress, { toValue: 1, duration: IN_MS, easing: EASE_OUT, useNativeDriver: true }).start();
     const hide = setTimeout(() => {
-      Animated.timing(progress, { toValue: 0, duration: OUT_MS, useNativeDriver: true }).start();
+      Animated.timing(progress, { toValue: 0, duration: OUT_MS, easing: EASE_OUT, useNativeDriver: true }).start();
     }, IN_MS + VISIBLE_MS);
     const remove = setTimeout(() => setPill((p) => (p?.id === id ? null : p)), IN_MS + VISIBLE_MS + OUT_MS);
     return () => {

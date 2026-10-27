@@ -7,10 +7,28 @@ describe("initialOf", () => {
     expect(initialOf("  ñandú ")).toBe("Ñ");
   });
 
-  it("falls back to ? without a name", () => {
-    expect(initialOf("")).toBe("?");
-    expect(initialOf("   ")).toBe("?");
-    expect(initialOf(null)).toBe("?");
+  it("skips leading emoji, punctuation and spaces", () => {
+    expect(initialOf("👩🏽‍💻 Priya")).toBe("P");
+    expect(initialOf("(la rubia)")).toBe("L");
+    expect(initialOf("  ana")).toBe("A");
+  });
+
+  it("never turns the letter into several characters", () => {
+    expect(initialOf("ßeta")).toBe("ß");
+  });
+
+  it("handles non-Latin and composed letters", () => {
+    expect(initialOf("Đặng")).toBe("Đ");
+    expect(initialOf("李明")).toBe("李");
+    expect(initialOf("e\u0301lan")).toBe("E\u0301");
+  });
+
+  it("is null when there is no letter or digit", () => {
+    expect(initialOf("")).toBeNull();
+    expect(initialOf("   ")).toBeNull();
+    expect(initialOf(null)).toBeNull();
+    expect(initialOf("🎉🎉")).toBeNull();
+    expect(initialOf("...")).toBeNull();
   });
 });
 

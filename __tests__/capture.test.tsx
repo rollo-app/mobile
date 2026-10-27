@@ -777,6 +777,14 @@ describe("Camera extras (like the iPhone's camera)", () => {
   });
 
   describe("exposure", () => {
+    it("has a shutter blink over the preview that rests invisible", async () => {
+      await openCapture();
+      await startSession();
+      const blink = screen.getByTestId("shutter-blink");
+      expect(StyleSheet.flatten(blink.props.style).opacity).toBe(0);
+      expect(blink.props.pointerEvents).toBe("none");
+    });
+
     it("a tap meters focus and exposure there and shows the focus square with the exposure control", async () => {
       await openCapture();
       await startSession();
