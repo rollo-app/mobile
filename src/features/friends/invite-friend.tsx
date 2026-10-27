@@ -34,12 +34,12 @@ export function InviteFriend() {
       {link ? (
         <Section title="Tu link" footer="Vale 1 hora y lo puede abrir cualquiera que lo reciba. Si armás otro, este deja de servir.">
           <Row label="Código" value={link.code} />
-          <Row label="Compartir" onPress={share} />
-          <Row label="Armar otro link" loading={loading} onPress={loading ? undefined : () => void generate()} />
+          <Row label="Compartir" chevron={false} onPress={share} />
+          <Row label="Armar otro link" chevron={false} loading={loading} onPress={loading ? undefined : () => void generate()} />
         </Section>
       ) : (
         <Section footer="Mandales un link: cuando lo abren, quedan como amigos tuyos.">
-          <Row label="Invitar a un amigo" loading={loading} onPress={loading ? undefined : () => void generate()} />
+          <Row label="Invitar a un amigo" chevron={false} loading={loading} onPress={loading ? undefined : () => void generate()} />
         </Section>
       )}
       {error && <ErrorText>{error}</ErrorText>}

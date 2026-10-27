@@ -2,6 +2,7 @@ import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from "react-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
 import { ProfileForm } from "@/features/profile/profile-form";
+import { markAppIntroPending } from "@/storage/app-intro";
 import { colors, spacing, type } from "@/ui/theme";
 
 /** First step after the first login: photo (optional) and name (required). */
@@ -21,8 +22,8 @@ export default function CompleteProfileScreen() {
           <Text style={[type.largeTitle, { color: colors.label }]}>Completá tu perfil</Text>
           <Text style={[type.body, { color: colors.secondaryLabel }]}>Así te ve el resto del rollo.</Text>
         </View>
-        {/* Saving the name flips the gate: the app opens on its own. */}
-        <ProfileForm user={me} submitLabel="Listo" askFriendCode onSaved={() => {}} />
+        {/* Saving the name flips the gate: the app opens on its own; the intro is queued first so the tabs find it. */}
+        <ProfileForm user={me} submitLabel="Listo" askFriendCode beforeApply={() => markAppIntroPending().catch(() => {})} onSaved={() => {}} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

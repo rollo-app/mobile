@@ -1,4 +1,5 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { Dimensions, StyleSheet, Text } from "react-native";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";

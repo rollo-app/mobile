@@ -1,4 +1,4 @@
-// The home (landing): 7 sections in the order a rollo is lived, plus its own wide stylesheet.
+// The home (landing): 8 sections in the order a rollo is lived, plus its own wide stylesheet.
 import { tokensCss } from "./tokens.mjs";
 
 const IPHONE_ONLY = "Solo para iPhone · Gratis";
@@ -47,6 +47,7 @@ export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl, mocku
     `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0F14">`,
     `<script>${HEAD_SCRIPT}</script>`,
     `<script src="/motion.js" defer></script>`,
+    `<script src="/lottie.js" defer></script>`,
     `<script src="/landing.js" defer></script>`,
     "",
   ].join("\n");
@@ -91,7 +92,24 @@ ${shot("como-funciona", "El rollo revelado", steps[2])}
 ${shot("mapa", "El mapa del rollo con los pins de cada uno", mockups?.map() ?? emptyPhone())}
 </section>
 
-<section id="revelado" class="feature flip" data-enter>
+<section id="momento" class="feature flip" data-enter>
+<div class="text">
+<h2 class="serif">El momento del día</h2>
+<p>Una vez por día, a una hora sorpresa y distinta para cada uno, te llega el aviso: tenés 15 minutos para sacar una foto extra, aparte de tu cupo.</p>
+<p>Si se te pasa, se pierde. Como esas fotos que no vuelven.</p>
+</div>
+<div class="figure"><div class="moment-mark">
+<svg class="moment-static" viewBox="0 0 512 512" role="img" aria-label="El logo de Rollo con el anillo de los 15 minutos del momento">
+<circle cx="256" cy="256" r="88" fill="var(--tint)" fill-opacity="0.18"/>
+<circle cx="271.6" cy="240.4" r="62" fill="var(--tint)" fill-opacity="0.38"/>
+<circle cx="284.6" cy="227.4" r="36" fill="var(--tint)"/>
+<circle cx="256" cy="256" r="118" fill="none" stroke="var(--tint)" stroke-width="6" stroke-linecap="round"/>
+</svg>
+<div class="moment-anim" aria-hidden="true"></div>
+</div></div>
+</section>
+
+<section id="revelado" class="feature" data-enter>
 <div class="text">
 <h2 class="serif">El revelado</h2>
 <p>Cuando termina el rollo, las fotos aparecen todas juntas, como cuando ibas a buscar las copias. Ahí ves el viaje con los ojos de cada uno.</p>
@@ -100,7 +118,7 @@ ${shot("mapa", "El mapa del rollo con los pins de cada uno", mockups?.map() ?? e
 ${shot("revelado", "Las fotos del rollo revelándose", mockups?.reveal() ?? emptyPhone())}
 </section>
 
-<section id="perfil" class="feature" data-enter>
+<section id="perfil" class="feature flip" data-enter>
 <div class="text">
 <h2 class="serif">Tu perfil</h2>
 <p>Destacá tus fotos favoritas de rollos pasados, también las que sacaron tus amigos. En el mapa se ven por zonas, nunca el lugar exacto.</p>
@@ -154,6 +172,9 @@ section.hero{border-top:0;padding-top:36px}
 .figure{display:flex;justify-content:center;margin-top:40px}
 .phone{width:240px;aspect-ratio:9/19.5;border-radius:40px;background:var(--bezel);padding:9px;box-shadow:0 24px 48px rgba(0,0,0,.16)}
 .screen{width:100%;height:100%;border-radius:32px;background:var(--screen);overflow:hidden}
+.moment-mark{position:relative;width:min(100%,360px);aspect-ratio:1}
+.moment-mark svg,.moment-anim{position:absolute;inset:0;width:100%;height:100%;display:block}
+.moment-mark.playing .moment-static{visibility:hidden}
 .steps{list-style:none;padding:0;display:grid;gap:40px;counter-reset:step}
 .steps li{counter-increment:step}
 .steps h3{margin-top:0;font-size:19px}

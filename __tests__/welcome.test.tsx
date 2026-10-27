@@ -1,8 +1,11 @@
 import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import "@/test/reanimated";
+import { AccessibilityInfo } from "react-native";
 import { queryClient } from "@/api/query-client";
 import * as actions from "@/features/trips/actions";
 import { signInAs } from "@/test/account";
 import { routes } from "@/test/routes";
+import { hasSeenWelcomeIntro, markWelcomeIntroSeen } from "@/storage/welcome-intro";
 
 jest.mock("@/features/trips/actions");
 const mocked = jest.mocked(actions);
@@ -22,6 +25,43 @@ describe("A user without rollos", () => {
     expect(screen.getByText("Empezá uno con tus amigos o sumate con un código.")).toBeVisible();
     expect(screen.getAllByText("Juani").length).toBeGreaterThan(0);
     expect(screen.getAllByText("@juani").length).toBeGreaterThan(0);
+  });
+
+  describe("logo mark", () => {
+    beforeEach(() => {
+      jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+    });
+    afterEach(() => {
+      jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(false);
+    });
+
+    it("plays once the first time the welcome shows", async () => {
+      await renderRouter(routes, { initialUrl: "/roll" });
+
+      const mark = await screen.findByTestId("lottie", { includeHiddenElements: true });
+      expect(mark.props.autoPlay).toBe(true);
+      expect(mark.props.loop).toBe(false);
+      expect(await hasSeenWelcomeIntro()).toBe(true);
+    });
+
+    it("is the still last frame on later visits", async () => {
+      await markWelcomeIntroSeen();
+      await renderRouter(routes, { initialUrl: "/roll" });
+
+      const mark = await screen.findByTestId("lottie", { includeHiddenElements: true });
+      expect(mark.props.autoPlay).toBe(false);
+      expect(mark.props.progress).toBe(1);
+    });
+
+    it("is still from the start with Reduce Motion on, and counts as seen", async () => {
+      jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(true);
+      await renderRouter(routes, { initialUrl: "/roll" });
+
+      const mark = await screen.findByTestId("lottie", { includeHiddenElements: true });
+      expect(mark.props.autoPlay).toBe(false);
+      expect(mark.props.progress).toBe(1);
+      expect(await hasSeenWelcomeIntro()).toBe(true);
+    });
   });
 
   it("starts a new roll from the welcome", async () => {

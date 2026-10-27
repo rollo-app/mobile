@@ -32,18 +32,17 @@ import { thumbHashAverageColor } from "@/features/trips/thumbhash-color";
 import { spacing, type } from "@/ui/theme";
 import { cellFill } from "./cell-fill";
 import { DEVELOP_SKSL, GRAIN_SKSL } from "./darkroom-shaders";
-import { sampleEvenly } from "./sample-evenly";
+import { staggerDelay } from "./stagger";
 import { playShutter, prepareShutter, releaseShutter } from "./shutter-sound";
 import { REVEAL_TIMELINE } from "./timeline";
-import { useSkiaThumbs } from "./use-skia-thumbs";
+import type { ThumbBytes } from "./use-thumb-bytes";
 
-const { developAt: DEVELOP_AT, hitAt: HIT_AT, titleAt: TITLE_AT, cellMs: CELL_MS, reduced: REDUCED } = REVEAL_TIMELINE;
+const { developAt: DEVELOP_AT, hitAt: HIT_AT, titleAt: TITLE_AT, cellMs: CELL_MS, totalMs: TOTAL_MS, outroMs: OUTRO_MS, reduced: REDUCED } = REVEAL_TIMELINE;
 const DEVELOP_MS = HIT_AT - DEVELOP_AT;
 /** Each cell takes CELL_MS to develop; their starts spread over STAGGER_MS. */
 const STAGGER_MS = DEVELOP_MS - CELL_MS;
 
 const COLUMNS = 3;
-const MAX_CELLS = 12;
 const GAP = 6;
 const SIDE = 28;
 
@@ -80,21 +79,29 @@ const DEVELOP_HAPTICS: Pattern = {
  * by `REVEAL_TIMELINE`; `RevealScreen` moves on after `totalMs`.
  */
 export function DarkroomIntro({
-  photos,
-  token,
+  photos: cells,
+  thumbBytes,
   title,
   date,
   reduceMotion,
 }: {
+  /** The cells to show (already sampled), and their downloaded thumbs: see `useThumbBytes`. */
   photos: RevealedPhoto[];
-  token: string;
+  thumbBytes: ThumbBytes["bytes"];
   title: string;
   date: string;
   reduceMotion: boolean;
 }) {
   const { width, height } = useWindowDimensions();
-  const cells = useMemo(() => sampleEvenly(photos, MAX_CELLS), [photos]);
-  const images = useSkiaThumbs(cells, token);
+  // Decoded once, up front: the bytes are all in, so no image appears while the cells develop.
+  const images = useMemo(() => {
+    const decoded: Record<string, SkImage> = {};
+    for (const [id, buffer] of Object.entries(thumbBytes)) {
+      const image = Skia.Image.MakeImageFromEncoded(Skia.Data.fromBytes(new Uint8Array(buffer)));
+      if (image) decoded[id] = image;
+    }
+    return decoded;
+  }, [thumbBytes]);
   const effects = useMemo(
     () => ({ grain: Skia.RuntimeEffect.Make(GRAIN_SKSL), develop: Skia.RuntimeEffect.Make(DEVELOP_SKSL) }),
     [],
@@ -114,6 +121,9 @@ export function DarkroomIntro({
   const gridOpacity = useSharedValue(reduceMotion ? 0 : 1);
   const kicker = useSharedValue(0);
   const titleOpacity = useSharedValue(0);
+  // Fades the grid and the title out at the very end, so the cut to the black stories is soft.
+  const outro = useSharedValue(1);
+  const groupOpacity = useDerivedValue(() => gridOpacity.value * outro.value);
 
   const haptics = usePatternComposer(DEVELOP_HAPTICS);
 
@@ -121,35 +131,50 @@ export function DarkroomIntro({
     const timers: ReturnType<typeof setTimeout>[] = [];
     const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
 
+    // Entrances ease out hard (fast start, long settle); `Easing` is built here, not at module level.
+    const enter = Easing.bezier(0.23, 1, 0.32, 1);
+
     if (reduceMotion) {
       // Plain fades, but they must still play: Reanimated's default (ReduceMotion.System) would skip
       // the delays and jump to the end, showing the title at frame 0.
       const never = { reduceMotion: ReduceMotion.Never };
-      const { fadeInMs, hapticAt, dimAt, dimMs, dimOpacity } = REDUCED;
+      const { fadeInMs, hapticAt, dimAt, dimMs, dimOpacity, totalMs } = REDUCED;
       gridOpacity.value = withSequence(
         ReduceMotion.Never,
-        withTiming(1, { duration: fadeInMs, ...never }),
+        withTiming(1, { duration: fadeInMs, easing: enter, ...never }),
         withDelay(dimAt - fadeInMs, withTiming(dimOpacity, { duration: dimMs, ...never }), ReduceMotion.Never),
       );
       at(hapticAt, () => Presets.System.notificationSuccess());
-      titleOpacity.value = withDelay(dimAt, withTiming(1, { duration: dimMs, ...never }), ReduceMotion.Never);
+      titleOpacity.value = withDelay(dimAt, withTiming(1, { duration: dimMs, easing: enter, ...never }), ReduceMotion.Never);
+      outro.value = withDelay(
+        totalMs - OUTRO_MS,
+        withTiming(0, { duration: OUTRO_MS, easing: Easing.out(Easing.cubic), ...never }),
+        ReduceMotion.Never,
+      );
       return () => timers.forEach(clearTimeout);
     }
 
     void prepareShutter();
     haptics.play();
-    kicker.value = withSequence(withTiming(1, { duration: 500 }), withDelay(1000, withTiming(0, { duration: 600 })));
+    kicker.value = withSequence(withTiming(1, { duration: 500, easing: enter }), withDelay(1000, withTiming(0, { duration: 600 })));
     develop.value = withDelay(DEVELOP_AT, withTiming(1, { duration: DEVELOP_MS, easing: Easing.linear }));
     at(HIT_AT, () => {
       Presets.System.impactHeavy();
       playShutter();
-      setTimeout(() => Presets.System.notificationSuccess(), 120);
     });
-    flash.value = withDelay(HIT_AT, withSequence(withTiming(0.9, { duration: 60 }), withTiming(0, { duration: 400 })));
+    at(HIT_AT + 120, () => Presets.System.notificationSuccess());
+    flash.value = withDelay(
+      HIT_AT,
+      withSequence(
+        withTiming(0.9, { duration: 60, easing: Easing.out(Easing.quad) }),
+        withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) }),
+      ),
+    );
     safelight.value = withDelay(HIT_AT, withTiming(0, { duration: 400 }));
     darken.value = withDelay(HIT_AT, withTiming(1, { duration: 400 }));
     gridOpacity.value = withDelay(TITLE_AT, withTiming(0.25, { duration: 700 }));
-    titleOpacity.value = withDelay(TITLE_AT, withTiming(1, { duration: 700 }));
+    titleOpacity.value = withDelay(TITLE_AT, withTiming(1, { duration: 700, easing: enter }));
+    outro.value = withDelay(TOTAL_MS - OUTRO_MS, withTiming(0, { duration: OUTRO_MS, easing: Easing.out(Easing.cubic) }));
 
     return () => {
       timers.forEach(clearTimeout);
@@ -165,11 +190,11 @@ export function DarkroomIntro({
   }));
 
   const kickerStyle = useAnimatedStyle(() => ({ opacity: kicker.value }));
-  const titleStyle = useAnimatedStyle(() => ({ opacity: titleOpacity.value }));
+  const titleStyle = useAnimatedStyle(() => ({ opacity: titleOpacity.value * outro.value }));
   const screen = rect(0, 0, width, height);
 
   return (
-    <View style={styles.fill} accessible accessibilityLabel={`${title}. Se reveló el ${date}.`}>
+    <View style={styles.fill} accessible={false}>
       <Canvas style={StyleSheet.absoluteFill}>
         {effects.grain && !reduceMotion ? (
           <Rect rect={screen}>
@@ -177,7 +202,7 @@ export function DarkroomIntro({
           </Rect>
         ) : null}
         <Rect rect={screen} color="black" opacity={darken} />
-        <Group opacity={gridOpacity}>
+        <Group opacity={groupOpacity}>
           {cells.map((photo, i) => (
             <DevelopingCell
               key={photo.id}
@@ -187,7 +212,7 @@ export function DarkroomIntro({
               x={gridLeft + (i % COLUMNS) * (size + GAP)}
               y={gridTop + Math.floor(i / COLUMNS) * (size + GAP)}
               size={size}
-              delay={(((i * 7) % cells.length) / cells.length) * STAGGER_MS}
+              delay={staggerDelay(i, STAGGER_MS)}
               develop={develop}
               clock={clock}
             />

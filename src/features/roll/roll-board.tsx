@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { MomentBanner } from "@/features/moments/moment-banner";
-import { UploadStatusSection } from "@/features/capture/upload-status-section";
+import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -60,7 +60,9 @@ export function RollBoard() {
           <RollDates detail={detail} phase={phase} />
 
           <UploadStatusSection tripId={detail.trip.id} timeZone={detail.trip.timezone} />
-          <RollPeople detail={detail} />
+          <BelowUploads>
+            <RollPeople detail={detail} />
+          </BelowUploads>
         </>
       )}
     </Screen>

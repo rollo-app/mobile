@@ -1,5 +1,5 @@
 import { StyleSheet, Text } from "react-native";
-import { UploadStatusSection } from "@/features/capture/upload-status-section";
+import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
@@ -37,7 +37,9 @@ export function RollOverview({ tripId }: { tripId: string }) {
           </Text>
           <RollDates detail={detail} phase={phase} />
           <UploadStatusSection tripId={tripId} timeZone={detail.trip.timezone} />
-          <RollPeople detail={detail} />
+          <BelowUploads>
+            <RollPeople detail={detail} />
+          </BelowUploads>
         </>
       )}
     </Screen>

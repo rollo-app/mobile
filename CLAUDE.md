@@ -151,7 +151,7 @@ Decisiones de producto:
   cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la imagen vinculada pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja `GET /trips/{id}/moments` (desde 3 días antes del
   inicio hasta el fin, nunca de un rollo revelado) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
   `cancelMomentNotifications()` las borra, y descarta también las ya entregadas (al cerrar sesión, borrar la cuenta y apagar el switch). Tocar el aviso conserva `trip` en la ruta. La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
-  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (VisionCamera, propia, fullScreenModal) no espera el detalle del rollo (abre ya; que haya segunda foto sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y arranca en la trasera, con un botón nativo "Dar vuelta la cámara" antes de sacar
+  SecureStore: solo vive en el planificador del sistema. La cámara `/moment` (VisionCamera, propia, fullScreenModal) no espera el detalle del rollo (abre ya; que haya segunda foto sale del param `selfie`, después del detalle si cargó, y si no es solo foto; "Cerrar" siempre antes de la foto), tiene cuenta regresiva y arranca en la trasera; **la primera vez que abrís cada momento** (con la ventana abierta) va antes una intro de ~1,7 s sobre negro (`moment-intro.tsx`): el logo "Revelado" se arma y un anillo cobalto da la vuelta (la ventana), en Lottie (`lottie-react-native`, `assets/lottie/moment-intro.json`, lo genera `npm run lottie` con `scripts/build-lottie.mjs`), con "Tu momento" / "Te quedan 14:52" en texto nativo, un háptico en el pop; tocar la saltea; con "Reducir movimiento" muestra el último cuadro con un fundido; clave `rollo.momentIntroSeen.<tripId>.<day>`. La cámara tiene un botón nativo "Dar vuelta la cámara" antes de sacar
   (también en "Solo foto"). **La primera foto que se saca es la principal**, sea de la trasera o de la frontal; si el rollo es "Dos cámaras" (aviso "Sacás con las dos cámaras. La
   primera va a ser la grande."), la cámara pasa sola a **la otra** ("Ahora con la otra cámara.", sin dar vuelta) y esa segunda va como foto aparte vinculada (`pairedWith`). La imagen
   de la frontal se achica a 1080 px (`prepareMedia`), sea la primera o la segunda; la de la trasera va normal. El nombre `selfie` del contrato y del código significa "la imagen vinculada";
@@ -247,7 +247,7 @@ Decisiones de producto:
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
 - Perfil = lo que ven los demás: encabezado (foto, nombre, @usuario y descripción) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
-  ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado" y "Ver candado", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
+  ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado", "Ver candado" y "Ver intro", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
   "Cerrar sesión" / "Borrar cuenta".
 - **Estilo nativo de iOS a tamaños reales**: tipografía y colores del sistema (`Color` de expo-router,
   se adaptan a oscuro), listas agrupadas, sheets, títulos grandes del stack. Nada de "todo grande",
@@ -354,6 +354,33 @@ Reglas:
   TanStack Query, carpetas `Documents/pending/` y `Documents/map/`): no se renombran, porque rompería los
   datos de quien ya tiene la app.
 
+## Skills de diseño y motion
+
+En `.claude/skills/` (copiadas tal cual de sus repos): `emil-design-eng`, `animate-expo`, `review-animations`,
+`find-animation-opportunities` (Emil Kowalski) y `text-to-lottie` (Diffusion Studio). Se sacaron por duplicadas: `animate`
+(versión web de `animate-expo`), `design-motion-principles` (se pisa con `emil-design-eng`) y `appllama-app-design-skill`
+(sin su MCP lo cubren `expo-design-system` / `expo-native-ui`). `review-animations` solo la invoca el usuario (`/review-animations`).
+Si una skill contradice este archivo, **gana este archivo**.
+
+- **El target es React Native, no la web.** Los ejemplos de las skills de Emil son CSS,
+  Framer Motion o WAAPI: se toman los principios (cuándo animar, curvas, duraciones, interrupción, salidas) y se implementan con
+  **Reanimated 4 + `react-native-worklets` + Gesture Handler** (más `expo-haptics` / `react-native-pulsar` y Skia donde ya se usan).
+  Traducción: `transition`/`@keyframes` → `withTiming`/`withSpring`/`withSequence`; `cubic-bezier(...)` → `Easing.bezier(...)`;
+  `:active`/hover → `Pressable` con `onPressIn` + shared value (en iOS no hay hover); `prefers-reduced-motion` →
+  `useReducedMotion()` / `ReduceMotion.System`; `will-change`/GPU → solo `transform` y `opacity` en el UI thread; `layout` de Framer
+  → `LinearTransition` / `entering` / `exiting`. Gestos con `Gesture.Pan()` etc. y nada de `runOnJS`/`scheduleOnRN` por frame.
+  Gesture Handler no es dependencia directa todavía: si hace falta, `npx expo install react-native-gesture-handler` + rebuild.
+- Para **implementar** usar `animate-expo` (la versión web, `animate`, se sacó por duplicada); `review-animations` sirve por el criterio.
+- **Lottie:** `text-to-lottie` arma un player web de preview (`npx degit diffusionstudio/lottie`): va **fuera del repo** (scratchpad),
+  nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio a `scripts/site/`) y salen de
+  `scripts/build-lottie.mjs`; en la app se reproducen con `lottie-react-native` (nativo: cambiarlo pide rebuild). El revelado (shader de Skia)
+  se mantiene; Lottie es para piezas chicas e ilustrativas, nunca para estados de la UI.
+  **Intro de una cuenta nueva** (`/intro`, `src/features/intro/`, fullScreenModal): al terminar "Completá tu perfil" se marca pendiente
+  (`rollo.appIntroPending`) y, al montar las tabs, se abre una sola vez por celular (`rollo.appIntroSeen`, `use-app-intro.ts`): el logo se arma lento
+  (`assets/lottie/app-intro-*.json`), "Sacá la foto." / "Mirala después." y el botón "Empezar" (no se toca ni lo lee VoiceOver hasta que aparece);
+  con "Reducir movimiento", logo quieto y fundidos. Marca también `rollo.welcomeIntroSeen`.
+  La bienvenida de Rollo (sin rollos todavía, `src/features/roll/welcome.tsx`) lleva el logo arriba del título: la primera vez en el celular se anima (`assets/lottie/logo-intro-*.json`, una vez, sin háptico ni sonido; `rollo.welcomeIntroSeen`) y después queda el último cuadro.
+
 ## Cómo trabajamos
 
 - **Modelos (para cuidar el usage):** planear con **Opus** (diseño, decisiones, partir el trabajo) y
@@ -378,10 +405,11 @@ Reglas:
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1562 tests
+npm test                      # 1655 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
+npm run lottie                # regenera los Lottie (momento, bienvenida, intro; assets/lottie/ y scripts/site/)
 npx expo run:ios --device     # compila e instala el dev build en el iPhone
 npm start                     # día a día, con el dev build ya instalado
 ```
@@ -407,7 +435,7 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 ## Sitio público
 
-`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** (7 secciones
+`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** (8 secciones
 con maquetas de la app en HTML/CSS y el botón "Probar la beta en iPhone" a TestFlight), `/soporte` (preguntas frecuentes y contacto;
 `/#soporte` cae en el link a esa página), `/privacidad`, `/terminos` y `/entrar` (el link mágico del mail; script inline, sin pedidos a
 ningún lado, con su CSP). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
@@ -420,6 +448,7 @@ Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y m
   El deploy no setea `SITE_STORE_MODE`, así que lo que sale es el default del código. **Para cambiar cuando Apple apruebe:** cambiar
   el default `"beta"` → `"appstore"` en `build-site.mjs`, completar `APP_STORE_URL` y agregar el badge oficial (la ruta del badge se
   puede pisar con `SITE_APP_STORE_BADGE`, lo usa el test).
+- **Momento del día:** la sección `#momento` reproduce el Lottie una vez al entrar en pantalla (`lottie-web` light, `/lottie.js`, mismo JSON que la intro de la app en sus variantes `scripts/site/moment-intro-{light,dark}.json`); el SVG estático del HTML es el fallback.
 - **Animaciones:** Motion (`animate`, `scroll`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
   `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
   Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.

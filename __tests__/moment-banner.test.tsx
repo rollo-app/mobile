@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import * as actions from "@/features/trips/actions";
 import { MOMENT_WINDOW_MS } from "@/features/moments/plan";
 import { signInAs, tripSummary } from "@/test/account";

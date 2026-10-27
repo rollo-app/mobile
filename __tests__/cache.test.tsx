@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { queryClient } from "@/api/query-client";
 import * as friendActions from "@/features/friends/actions";
 import * as actions from "@/features/trips/actions";

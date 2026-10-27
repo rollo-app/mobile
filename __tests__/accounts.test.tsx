@@ -5,12 +5,14 @@ import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testi
 import { ActionSheetIOS, Alert, Linking } from "react-native";
 import { createQueue } from "@/features/capture/queue";
 import * as moderationActions from "@/features/moderation/actions";
+import * as authActions from "@/features/auth/actions";
 import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { getSessionToken } from "@/storage/session";
 import { signInAs, tripSummary, USER } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
+import "@/test/reanimated";
 import { routes } from "@/test/routes";
 import * as featuredActions from "@/features/featured/actions";
 
@@ -152,6 +154,10 @@ describe("Login", () => {
     expect(await screen.findByText("Disponible")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
 
+    // A new account sees the app's intro once before landing in the app.
+    expect(await screen.findByText("Sacá la foto.")).toBeVisible();
+    expect(screen).toHavePathname("/intro");
+    await fireEvent.press(await screen.findByRole("button", { name: "Empezar" }, { timeout: 4000 }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(calls).toEqual(["POST /auth/email/start", "POST /auth/email/verify", "GET /usernames/juani", "PATCH /me"]);
   });
@@ -403,6 +409,41 @@ describe("Profile and settings", () => {
     expect(calls).toContain("POST /auth/logout");
     expect(await getSessionToken()).toBeNull();
     expect(await queue.pending()).toHaveLength(1);
+  });
+
+  it("dev settings can replay the app intro without a new account", async () => {
+    mockApi({});
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver intro" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/intro"));
+  });
+
+  it("log out shows the row as busy and ignores taps until it finishes", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const calls = mockApi({ "POST /auth/logout": async () => (await gate, json(204)) });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Cerrar sesión" })).toBeNull());
+    expect(calls.filter((c) => c === "POST /auth/logout")).toHaveLength(1);
+    await act(async () => release());
+    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(calls.filter((c) => c === "POST /auth/logout")).toHaveLength(1);
+  });
+
+  it("if log out rejects it shows the error inline and the row is tappable again", async () => {
+    jest.spyOn(authActions, "logout").mockRejectedValueOnce(new Error("boom"));
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
+
+    expect(await screen.findByText("boom")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+    expect(await getSessionToken()).toBe("session-token");
   });
 
   it("log out leaves no scheduled moment notifications, and only those", async () => {

@@ -1,9 +1,11 @@
+import * as SecureStore from "expo-secure-store";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { ApiError } from "@/api/client";
 import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import { getPendingFriend, setPendingFriend } from "@/storage/pending-friend";
 import { signInAs, tripSummary, USER } from "@/test/account";
+import "@/test/reanimated";
 import { routes } from "@/test/routes";
 import * as featuredActions from "@/features/featured/actions";
 
@@ -116,6 +118,11 @@ describe("Opening a friend link", () => {
     // Finishing the profile mounts the tabs, and the hidden Amigos tab loads its list: let that update
     // land inside the test that caused it, not in the next one's act().
     const settle = () => screen.findByText("Cami", { includeHiddenElements: true });
+
+    // These tests are about the link, not the intro: pretend this phone already showed it.
+    beforeEach(async () => {
+      await SecureStore.setItemAsync("rollo.appIntroSeen", "1");
+    });
 
     async function completeProfile(friendCode?: string) {
       await fireEvent.changeText(await screen.findByLabelText("Tu nombre"), "Juani");

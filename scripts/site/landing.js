@@ -34,6 +34,8 @@
       );
     });
 
+    initMoment(inView);
+
     var section = document.getElementById("revelado");
     var photos = section ? section.querySelectorAll(".photo[data-reveal]") : [];
     if (section && photos.length) {
@@ -46,5 +48,36 @@
         { target: section, offset: ["start end", "center center"] },
       );
     }
+  }
+
+  // Plays the daily-moment Lottie once when its section comes into view, then holds. The static SVG in the markup is the
+  // fallback: it is only hidden once the animation's DOM exists, and any failure leaves it visible.
+  function initMoment(inView) {
+    var section = document.getElementById("momento");
+    if (!section || !window.lottie || !window.matchMedia) return;
+    inView(
+      section,
+      function () {
+        try {
+          var mark = section.querySelector(".moment-mark");
+          var container = section.querySelector(".moment-anim");
+          if (!mark || !container) return;
+          var scheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          var anim = window.lottie.loadAnimation({
+            container: container,
+            renderer: "svg",
+            loop: false,
+            autoplay: true,
+            path: "/moment-intro-" + scheme + ".json",
+          });
+          anim.addEventListener("DOMLoaded", function () {
+            mark.classList.add("playing");
+          });
+        } catch (error) {
+          // keep the static SVG
+        }
+      },
+      { amount: 0.5 },
+    );
   }
 })();
