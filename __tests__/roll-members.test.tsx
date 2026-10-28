@@ -132,6 +132,7 @@ describe("Members list: badges and actions", () => {
     await openBoard(detail(creator));
     const cami = screen.getByRole("button", { name: "Cami, Admin" });
     expect(names(cami)).toEqual(["removeAdmin", "remove"]);
+    expect(items()).toContain("Quitar admin");
     trips.removeAdmin.mockResolvedValue(adminCami);
     await act1(cami, "removeAdmin");
     await waitFor(() => expect(trips.removeAdmin).toHaveBeenCalledWith(SUR, "m2"));
@@ -222,6 +223,26 @@ describe("Renaming", () => {
     await act(async () => savePrompt().onPress!("   "));
     await act(async () => savePrompt().onPress!("Viaje al sur "));
     expect(trips.renameTrip).not.toHaveBeenCalled();
+  });
+
+  it("rejects a name over 60 characters with a message and sends nothing", async () => {
+    await openBoard(detail(adminCami));
+    await fireEvent.press(screen.getByRole("button", { name: "Nombre, Viaje al sur" }));
+    await act(async () => savePrompt().onPress!("x".repeat(61)));
+    expect(await screen.findByText("El nombre puede tener hasta 60 caracteres")).toBeVisible();
+    expect(trips.renameTrip).not.toHaveBeenCalled();
+  });
+
+  it("only shows the latest action's error", async () => {
+    trips.makeAdmin.mockRejectedValue(new Error("Falló hacer admin"));
+    trips.renameTrip.mockRejectedValue(new Error("Falló renombrar"));
+    await openBoard(detail(adminCami));
+    await act1(screen.getByRole("button", { name: "Fede" }), "makeAdmin");
+    expect(await screen.findByText("Falló hacer admin")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Nombre, Viaje al sur" }));
+    await act(async () => savePrompt().onPress!("Otro"));
+    expect(await screen.findByText("Falló renombrar")).toBeVisible();
+    expect(screen.queryByText("Falló hacer admin")).toBeNull();
   });
 
   it("shows the failure under the members section", async () => {

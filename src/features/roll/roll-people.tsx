@@ -1,6 +1,7 @@
 import { MenuView } from "@expo/ui/community/menu";
 import { router } from "expo-router";
 import type { SFSymbol } from "expo-symbols";
+import { useState } from "react";
 import { Alert, Share } from "react-native";
 import { errorMessage } from "@/api/client";
 import { InfoButton } from "@/features/info/info-button";
@@ -15,9 +16,9 @@ import { ErrorText, Row, Section } from "@/ui/components";
 import { useMakeAdmin } from "./use-make-admin";
 import { useRemoveAdmin } from "./use-remove-admin";
 import { useRemoveMember } from "./use-remove-member";
-import { nextTripName, useRenameTrip } from "./use-rename-trip";
+import { MAX_TRIP_NAME, nextTripName, useRenameTrip } from "./use-rename-trip";
 
-const ACTION_TITLES: Record<MemberAction, string> = { makeAdmin: "Hacer admin", removeAdmin: "Sacar como admin", remove: "Sacar del rollo" };
+const ACTION_TITLES: Record<MemberAction, string> = { makeAdmin: "Hacer admin", removeAdmin: "Quitar admin", remove: "Sacar del rollo" };
 const ACTION_ICONS: Record<MemberAction, SFSymbol> = { makeAdmin: "person.badge.plus", removeAdmin: "person.badge.minus", remove: "person.fill.xmark" };
 
 /**
@@ -33,16 +34,33 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
   const removeAdmin = useRemoveAdmin(detail.trip.id);
   const removeMember = useRemoveMember(detail.trip.id);
   const rename = useRenameTrip(detail.trip.id);
+  const [nameTooLong, setNameTooLong] = useState(false);
+  // Only the latest action's error shows: starting one clears the others.
+  const start = (keep: { reset: () => void }) => {
+    for (const m of [makeAdmin, removeAdmin, removeMember, rename]) if (m !== keep) m.reset();
+    setNameTooLong(false);
+  };
 
   const confirmRemove = (memberId: string, name: string) =>
     Alert.alert(`¿Sacar a ${name} del rollo?`, "Sus fotos se quedan. Solo un admin lo puede volver a sumar.", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Sacar", style: "destructive", onPress: () => removeMember.mutate(memberId) },
+      {
+        text: "Sacar",
+        style: "destructive",
+        onPress: () => {
+          start(removeMember);
+          removeMember.mutate(memberId);
+        },
+      },
     ]);
   const run = (action: MemberAction, m: TripDetail["me"]) => {
-    if (action === "makeAdmin") makeAdmin.mutate(m.id);
-    else if (action === "removeAdmin") removeAdmin.mutate(m.id);
-    else confirmRemove(m.id, m.name);
+    if (action === "makeAdmin") {
+      start(makeAdmin);
+      makeAdmin.mutate(m.id);
+    } else if (action === "removeAdmin") {
+      start(removeAdmin);
+      removeAdmin.mutate(m.id);
+    } else confirmRemove(m.id, m.name);
   };
   const editName = () =>
     Alert.prompt(
@@ -54,7 +72,13 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
           text: "Guardar",
           onPress: (text?: string) => {
             const name = nextTripName(text ?? "", detail.trip.name);
-            if (name) rename.mutate(name);
+            if (name) {
+              start(rename);
+              rename.mutate(name);
+            } else if ((text ?? "").trim().length > MAX_TRIP_NAME) {
+              start(rename);
+              setNameTooLong(true);
+            }
           },
         },
       ],
@@ -62,8 +86,9 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
       detail.trip.name,
     );
   const failure =
+    (nameTooLong ? `El nombre puede tener hasta ${MAX_TRIP_NAME} caracteres` : null) ??
     errorMessage(makeAdmin.error, "No se pudo hacer admin") ??
-    errorMessage(removeAdmin.error, "No se pudo sacar como admin") ??
+    errorMessage(removeAdmin.error, "No se pudo quitar como admin") ??
     errorMessage(removeMember.error, "No se pudo sacar del rollo") ??
     errorMessage(rename.error, "No se pudo cambiar el nombre");
 
