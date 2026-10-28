@@ -92,3 +92,45 @@ for (const [name, svg] of Object.entries(files)) {
   writeFileSync(join(assets, name), opaque.has(name) ? opaquePng(image) : image.asPng());
   console.log(`assets/${name}`);
 }
+
+// Icon Composer bundle (iOS 26 Liquid Glass): assets/app.icon = icon.json + Assets/*.svg.
+// Each circle is its own layer (large → small, back to front) so the glass gives depth.
+// Same geometry as icon.png: scale 9 on 1024 around the center. The background is the
+// icon's flat fill; the dark appearance swaps the fill, the SVG colors and the opacities.
+const ICON_BUNDLE = join(assets, "app.icon");
+const CIRCLES = [
+  { name: "circle-large", cx: 60, cy: 60, r: 34, opacity: [0.18, 0.22] },
+  { name: "circle-medium", cx: 66, cy: 54, r: 24, opacity: [0.38, 0.45] },
+  { name: "circle-small", cx: 71, cy: 49, r: 14, opacity: [1, 1] },
+];
+const srgb = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => +(v / 255).toFixed(5));
+  return `srgb:${c.join(",")},1`;
+};
+const layerSvg = ({ cx, cy, r }, fill) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">\n` +
+  `  <g transform="translate(512 512) scale(9) translate(-60 -60)"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/></g>\n</svg>\n`;
+
+mkdirSync(join(ICON_BUNDLE, "Assets"), { recursive: true });
+const layers = CIRCLES.map((c) => {
+  writeFileSync(join(ICON_BUNDLE, "Assets", `${c.name}.svg`), layerSvg(c, COBALT));
+  writeFileSync(join(ICON_BUNDLE, "Assets", `${c.name}-dark.svg`), layerSvg(c, COBALT_DARK));
+  return {
+    name: c.name,
+    "image-name": `${c.name}.svg`,
+    "image-name-specializations": [{ appearance: "dark", value: `${c.name}-dark.svg` }],
+    opacity: c.opacity[0],
+    "opacity-specializations": [{ appearance: "dark", value: c.opacity[1] }],
+    glass: true,
+  };
+});
+// Layer order in icon.json: first is the front-most.
+const iconJson = {
+  fill: { solid: srgb("#F2F0EB") },
+  "fill-specializations": [{ appearance: "dark", value: { solid: srgb("#0E0F14") } }],
+  groups: [{ layers: layers.reverse(), shadow: { kind: "neutral", opacity: 0.5 }, translucency: { enabled: true, value: 0.5 } }],
+  "supported-platforms": { squares: "shared" },
+};
+writeFileSync(join(ICON_BUNDLE, "icon.json"), JSON.stringify(iconJson, null, 2) + "\n");
+console.log("assets/app.icon");
