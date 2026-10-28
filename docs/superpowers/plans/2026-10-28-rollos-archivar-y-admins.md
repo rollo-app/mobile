@@ -37,7 +37,7 @@
 
 ## Backend (`../backend`)
 
-### Task B1: Migración 0029
+### Task 1 (B1): Migración 0029
 
 **Files:**
 - Create: `migrations/0029_rollo_roles_archive_delete.sql`
@@ -56,7 +56,7 @@
 - [ ] **Step 4:** Test → PASS.
 - [ ] **Step 5:** Commit `Migración: archivo por miembro, lápidas de rollos y creador completo`.
 
-### Task B2: Creador y admins
+### Task 2 (B2): Creador y admins
 
 **Files:**
 - Create: `src/lib/creator.ts` (`isCreator`, `requireCreator`, `BACKFILL_CREATOR_SQL`)
@@ -93,7 +93,7 @@
 - [ ] **Step 4:** Test → PASS; `npx vitest run test/members* test/account.test.ts test/openapi.test.ts` → PASS.
 - [ ] **Step 5:** Commit `Rollos con creador y varios admins`.
 
-### Task B3: Archivar (por miembro)
+### Task 3 (B3): Archivar (por miembro)
 
 **Files:**
 - Modify: `src/modules/trips/{trips.schemas.ts,members.service.ts,trips.repository.ts,trips.controller.ts}`, `src/modules/me/{me.schemas.ts,me.repository.ts}`
@@ -111,7 +111,7 @@
 - [ ] **Step 2:** FAIL. **Step 3:** implementar (`markLeft` también pone `archived_at = NULL`). **Step 4:** PASS (+ `test/featuring-levels.test.ts`).
 - [ ] **Step 5:** Commit `Archivar un rollo revelado, solo para vos`.
 
-### Task B4: Borrar el rollo para todos
+### Task 4 (B4): Borrar el rollo para todos
 
 **Files:**
 - Create: `src/lib/r2-purge.ts` (`purgeDeletedFiles(env: Env, now: number): Promise<void>`, hasta 1000 claves por pasada)
@@ -135,7 +135,7 @@
 - [ ] **Step 4:** PASS (+ `test/media.test.ts`, `test/account.test.ts`).
 - [ ] **Step 5:** Commit `El creador puede borrar el rollo para todos`.
 
-### Task B5: Seed, docs y contrato
+### Task 5 (B5): Seed, docs y contrato
 
 **Files:** `scripts/seed*` (el que use `npm run seed`), `CLAUDE.md` del backend, `openapi.json` regenerado.
 
@@ -147,7 +147,7 @@
 
 ## App (`mobile`, rama `feature/rollos-archivar-y-admins`)
 
-### Task A1: Contrato y lógica pura de roles
+### Task 6 (A1): Contrato y lógica pura de roles
 
 **Files:**
 - Modify: `src/api/schema.d.ts` (generado), `src/features/trips/row-state.ts`
@@ -167,7 +167,7 @@
 - [ ] **Step 2:** `API_SPEC=../backend/openapi.json npm run api:generate`; tests → FAIL. **Step 3:** implementar. **Step 4:** PASS + `npm run typecheck`.
 - [ ] **Step 5:** Commit `Roles del rollo: creador y admins (contrato y lógica)`.
 
-### Task A2: "Archivados" y acciones en "Tus rollos"
+### Task 7 (A2): "Archivados" y acciones en "Tus rollos"
 
 **Files:**
 - Modify: `src/features/trips/{group-trips.ts,trips-screen.tsx,trip-row.tsx,actions.ts}`, `src/features/friends/use-leave-trip.ts`
@@ -187,7 +187,7 @@
 - [ ] **Step 3:** Implementar. La fila usa `MenuView` de `@expo/ui/community/menu` con apertura por mantener apretado (patrón de `src/features/friends/friend-sections.tsx`) y las mismas acciones en `accessibilityActions`. `OlderRolls` se generaliza a una fila desplegable con `label` (`"Anteriores"`/`"Archivados"`). Archivar no cambia el rollo activo.
 - [ ] **Step 4:** PASS + typecheck. **Step 5:** Commit `Archivar y eliminar rollos desde Tus rollos`.
 
-### Task A3: Miembros, roles y "Creado por"
+### Task 8 (A3): Miembros, roles y "Creado por"
 
 **Files:**
 - Modify: `src/features/roll/{roll-people.tsx,roll-dates.tsx}`, `src/features/friends/actions.ts` (o `trips/actions.ts`: `makeAdmin`, `removeAdmin`, `removeMember`)
@@ -208,7 +208,7 @@
 - [ ] **Step 2:** FAIL. **Step 3:** implementar (menú con `MenuView` por mantener apretado + `accessibilityActions`; nombre: `trim`, 1–60, vacío no manda nada).
 - [ ] **Step 4:** PASS + typecheck. **Step 5:** Commit `Creador y admins en la lista de miembros`.
 
-### Task A4: Archivar desde el rollo y "Borrar rollo"
+### Task 9 (A4): Archivar desde el rollo y "Borrar rollo"
 
 **Files:**
 - Modify: `src/features/roll/roll-people.tsx`, `src/features/trips/actions.ts` (`deleteTrip(tripId)`)
@@ -223,14 +223,14 @@
   - Creador: fila roja "Borrar rollo" al final; `Alert` *¿Borrar "{rollo}" para todos?* / *Se borran todas las fotos de todos y no se puede deshacer.* / "Borrar" destructivo; confirma → `deleteTrip(id)`, cancela momentos, limpia el activo si era este, invalida `myTripsKey`, saca `tripKey`, `router.dismissTo("/roll")`. Un admin no creador no ve la fila.
 - [ ] **Step 2:** FAIL. **Step 3:** implementar. **Step 4:** PASS. **Step 5:** Commit `Borrar el rollo para todos (creador)`.
 
-### Task A5: La cola offline y el 410
+### Task 10 (A5): La cola offline y el 410
 
 **Files:** Modify `src/features/capture/uploader.ts`. Test: `src/features/capture/__tests__/uploader.test.ts`.
 
 - [ ] **Step 1:** Tests `"drops a photo whose rollo was deleted without marking it failed"`: `register` responde 410 → `queue.remove(id)` y `removeFiles(id)` llamados, `markFailed` no; lo mismo con 410 en `complete`. Un 403 sigue como hoy.
 - [ ] **Step 2:** FAIL. **Step 3:** nuevo `Verdict` `{ kind: "gone" }` para `status === 410` en las dos fases; en el loop: `remove` + `removeFiles` + `onDiscarded?.(tripId)`. **Step 4:** PASS. **Step 5:** Commit `La cola descarta fotos de un rollo borrado`.
 
-### Task A6: Docs
+### Task 11 (A6): Docs
 
 - [ ] CLAUDE.md: roles (creador/admin/miembro, `isCreator`, `createdBy`), archivar ("Archivados", solo revelados, por miembro), eliminar = salirse desde la lista, borrar para todos, 410 en la cola, y la línea `npm test  # N tests` con el número que dé el CI del PR (no correr la suite completa en local).
 - [ ] Commit `CLAUDE.md: archivar, eliminar y roles de los rollos`. PR a `develop` cuando el PR del backend esté mergeado (el job `contract` compara el schema).
