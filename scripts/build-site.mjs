@@ -211,6 +211,63 @@ write("entrar/index.html", page({
     "",
   ].join("\n"),
 }));
+// Friend link: https://rollo.juanifraga.com/friends#<CODE>. With the app installed (production build) iOS opens it
+// through Universal Links and this page is never shown; it is the fallback for people without the app, old builds
+// and computers. No auto-redirect (Safari errors if the app is missing) and the fragment stays: the code isn't secret.
+const friendsScript = `(function () {
+  var match = /^#([A-Za-z0-9]{8})$/.exec(location.hash);
+  if (!match) {
+    document.getElementById("bad").hidden = false;
+    return;
+  }
+  var code = match[1].toUpperCase();
+  document.getElementById("code").textContent = code;
+  document.getElementById("open").href = "rollo://friends/" + code;
+  document.getElementById("ok").hidden = false;
+})();`;
+
+const storeHref = STORE_MODE === "appstore" ? APP_STORE_URL : TESTFLIGHT_URL;
+const friendsInvalid = `<p>Este link no es v&aacute;lido. Pedile a tu amigo que te mande uno nuevo.</p>`;
+const friends = `<h1>Te invitaron a Rollo</h1>
+<div id="ok" hidden>
+<p>Abr&iacute; el link en el iPhone donde ten&eacute;s Rollo.</p>
+<a id="open" class="btn" href="#">Abrir Rollo</a>
+<p class="muted">&iquest;Todav&iacute;a no ten&eacute;s Rollo? <a href="${storeHref}">Bajala ac&aacute;</a>. Cuando armes tu perfil, escrib&iacute; este c&oacute;digo en &laquo;&iquest;Te invit&oacute; un amigo?&raquo;: <strong id="code"></strong>. Vale una hora.</p>
+</div>
+<div id="bad" hidden>
+${friendsInvalid}
+<p class="muted"><a href="${storeHref}">Bajar Rollo</a></p>
+</div>
+<noscript>${friendsInvalid}<p class="muted"><a href="${storeHref}">Bajar Rollo</a></p></noscript>
+<script>${friendsScript}</script>`;
+
+write("friends/index.html", page({
+  title: "Sumate a Rollo · Rollo",
+  description: "Te invitaron a ser amigos en Rollo.",
+  body: friends,
+  head: [
+    `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${createHash("sha256").update(friendsScript).digest("base64")}'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">`,
+    `<meta name="referrer" content="no-referrer">`,
+    `<meta name="robots" content="noindex">`,
+    "",
+  ].join("\n"),
+}));
+// Universal Links: only the production app (team + bundle id). Fragments are allowed by default.
+write(".well-known/apple-app-site-association", JSON.stringify({
+  applinks: {
+    details: [{
+      appIDs: ["UXHNAR4HYC.com.juanifraga.rollo.app"],
+      components: [
+        { "/": "/entrar", comment: "Magic link from the login email" },
+        { "/": "/entrar/" },
+        { "/": "/friends", comment: "Friend link" },
+        { "/": "/friends/" },
+      ],
+    }],
+  },
+}, null, 2) + "\n");
+// Cloudflare Workers Static Assets: the extensionless AASA file must be served as JSON.
+write("_headers", "/.well-known/apple-app-site-association\n  Content-Type: application/json\n");
 write("404.html", page({
   title: "No encontrada · Rollo",
   description: "Esta página no existe.",

@@ -19,6 +19,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: config.slug ?? "rollo",
     ios: {
       ...config.ios,
+      // Universal Links (the email's magic link and friend links). The free Personal Team can't sign
+      // Associated Domains, so only the production build asks for it.
+      ...(isProduction ? { associatedDomains: ["applinks:rollo.juanifraga.com"] } : {}),
       bundleIdentifier: isProduction ? "com.juanifraga.rollo.app" : "com.juanifraga.rollo",
     },
     plugins: isProduction ? config.plugins : [WITHOUT_PUSH, ...(config.plugins ?? [])],

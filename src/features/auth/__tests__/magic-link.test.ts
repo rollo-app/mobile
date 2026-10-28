@@ -1,5 +1,5 @@
 import { ApiError } from "@/api/client";
-import { forgetMagicLinks, verifyMagicLinkOnce } from "../magic-link";
+import { forgetMagicLinks, magicLinkPath, verifyMagicLinkOnce } from "../magic-link";
 
 beforeEach(() => forgetMagicLinks());
 
@@ -61,5 +61,33 @@ describe("verifyMagicLinkOnce", () => {
     await verifyMagicLinkOnce("a@b.c", "t2", verify);
 
     expect(verify).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("magicLinkPath", () => {
+  const base = "https://rollo.juanifraga.com/entrar";
+
+  it("maps the Universal Link to /login with encoded params", () => {
+    expect(magicLinkPath(`${base}#t=abc123&e=ana%40mail.com`)).toBe("/login?token=abc123&email=ana%40mail.com");
+  });
+
+  it("decodes the fragment like URLSearchParams: + is a space, %2B a plus", () => {
+    expect(magicLinkPath(`${base}#t=a%2Bb&e=ana+x%40mail.com`)).toBe("/login?token=a%2Bb&email=ana%20x%40mail.com");
+  });
+
+  it("accepts a trailing slash, any host case and ignores the query", () => {
+    expect(magicLinkPath("https://Rollo.JuaniFraga.com/entrar/?utm=1#t=a&e=b%40c.com")).toBe("/login?token=a&email=b%40c.com");
+  });
+
+  it("goes to plain /login when the token or the email is missing", () => {
+    expect(magicLinkPath(base)).toBe("/login");
+    expect(magicLinkPath(`${base}#t=abc`)).toBe("/login");
+    expect(magicLinkPath(`${base}#e=a%40b.com`)).toBe("/login");
+  });
+
+  it("returns null when it is not a magic link", () => {
+    expect(magicLinkPath("https://rollo.juanifraga.com/soporte")).toBeNull();
+    expect(magicLinkPath("https://evil.com/entrar#t=a&e=b")).toBeNull();
+    expect(magicLinkPath("rollo://login?token=a&email=b")).toBeNull();
   });
 });

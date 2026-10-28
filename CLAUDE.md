@@ -34,8 +34,10 @@ Decisiones de producto:
   así nadie te mete en su cuenta con su link ni otra app que registre `rollo://` puede usar el token. `/entrar` lleva CSP
   (`connect-src 'none'`, solo su script por hash) y `no-referrer`. Con sesión
   y el mismo email entra; con otra cuenta muestra "Ya tenés la sesión iniciada con…" y **nunca cambia de cuenta sola**.
-  Si el link venció, "Volver a pedir un código" abre `/email` con el email puesto. Próximo paso: Universal Links
-  (`https://…/entrar` abre la app directo, sin la página), que piden la cuenta paga.
+  Si el link venció, "Volver a pedir un código" abre `/email` con el email puesto. **Universal Links** (solo el build de producción,
+  `associatedDomains` en `app.config.ts`; la cuenta gratis no los firma): `https://…/entrar#…` y `https://…/friends#CODE` abren la app directo y
+  `app/+native-intent.tsx` los traduce a `/login?token=…&email=…` y `/friends/<CODE>` (`magicLinkPath`, `friendLinkPath`); sin la app, o con un build
+  viejo, quedan las páginas del sitio. El sitio publica `/.well-known/apple-app-site-association` (`application/json` vía `_headers`).
 - **Cámara propia** (**VisionCamera** `react-native-vision-camera` v5, módulo compartido `src/features/camera/`, la misma de la captura y del momento): la del sistema
   (`launchCameraAsync`) siempre muestra "Repetir / Usar foto" después de sacar y no se puede evitar, y sin videos ya no hace falta.
   **Calidad máxima en cada iPhone** (`device.ts`): atrás usa la cámara virtual con más lentes (quad > triple > dual-wide > dual > gran angular), así iOS
@@ -104,7 +106,7 @@ Decisiones de producto:
   (tampoco en el perfil de un amigo: "Rollos en común" son solo los rollos donde **los dos** son miembros activos). Si algún
   día hay rollos públicos, es una decisión del grupo, no de una persona.
 - **Amigos** (`src/features/friends/`): se hace amistad con un **link de amistad** (`POST /friends/link`, vale 1 hora, uno
-  vivo a la vez, multiuso): `rollo://friends/<CODE>` con CODE de 8 caracteres, que también se puede escribir a mano. Abrirlo
+  vivo a la vez, multiuso): `https://rollo.juanifraga.com/friends#<CODE>` (Universal Link; `rollo://friends/<CODE>` sigue andando) con CODE de 8 caracteres, que también se puede escribir a mano o pegar con el link entero. Abrirlo
   (`app/friends/[code].tsx`, fuera del grupo protegido) llama a `POST /friend-links/claim` **sin sesión** y: con cuenta lista
   canjea (`POST /friends/redeem`) y abre la tab Amigos; sin cuenta guarda el permiso de canje (24 h) en SecureStore
   (`rollo.pendingFriend`, nunca en el cache de Query) y lo canjea cuando el perfil queda completo (`use-pending-friend.ts`,
@@ -114,7 +116,7 @@ Decisiones de producto:
   "Sumar a un rollo" y "Borrar amigo" (silencioso). Cualquier miembro suma a **sus** amigos al rollo
   desde "Sumar amigos" (sheet `add-friends`, respuesta por amigo: "Ya está" / "No disponible"); al crear un rollo, si tenés
   amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el admin
-  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código). Los links `https` (Universal Links) llegan con TestFlight.
+  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código). Sin la app, `/friends` del sitio muestra el código, "Abrir Rollo" y el link para bajarla.
   **Solicitudes de amistad** (`friend-request-button.tsx`, `friend-requests-row.tsx`, `friend-requests-screen.tsx`, `use-friend-request.ts`): en el perfil de otra persona, si no son amigos y no la bloqueaste, un botón debajo del encabezado según `friendRequest` (`none` → "Agregar amigo"; `sent` → "Solicitud enviada", su menú ofrece "Cancelar solicitud"; `received` → "Aceptar solicitud" y "Rechazar"). Es optimista (el perfil y la lista cambian al toque y vuelven si el server dice que no) y el error va inline. Las recibidas entran por una fila "Solicitudes" con la cantidad arriba en la tab Amigos (solo si hay), que abre la pantalla "Solicitudes" (`(tabs)/friends/requests`) con Aceptar / Rechazar por fila y "No tenés solicitudes pendientes." si no queda ninguna (`GET /me/friend-requests`). Rechazar es silencioso. Séptimo aviso push `friendRequest` ("Cami te mandó una solicitud de amistad", abre la tab Amigos) con su switch "Solicitudes de amistad" en Ajustes → Notificaciones.
 - **Perfil de cualquier usuario** (`src/features/friends/user-profile-screen.tsx`, `GET /users/{userId}` →
   `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
@@ -418,7 +420,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1709 tests
+npm test                      # 1762 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -450,7 +452,7 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 `rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** (8 secciones
 con maquetas de la app en HTML/CSS y el botón "Probar la beta en iPhone" a TestFlight), `/soporte` (preguntas frecuentes y contacto;
-`/#soporte` cae en el link a esa página), `/privacidad`, `/terminos` y `/entrar` (el link mágico del mail; script inline, sin pedidos a
+`/#soporte` cae en el link a esa página), `/privacidad`, `/terminos`, `/friends` (respaldo del link de amistad: código, "Abrir Rollo" y bajar la app, sin redirigir) y `/entrar` (el link mágico del mail; script inline, sin pedidos a
 ningún lado, con su CSP). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
 se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/` (la home vive en `scripts/site/home.mjs` y `mockups.mjs`, los
 tokens de color compartidos en `scripts/site/tokens.mjs`). `npm run site:build` para verlo, `npm run site:deploy` para publicarlo.
