@@ -43,7 +43,7 @@ class PutFailed extends Error {
 }
 
 type Phase = "register" | "complete";
-type Verdict = { kind: "offline" } | { kind: "retry" } | { kind: "failed"; reason: string };
+type Verdict = { kind: "offline" } | { kind: "retry" } | { kind: "gone" } | { kind: "failed"; reason: string };
 
 /** What to do with an error: retry later, stop (no network) or give the item up as lost. */
 function classify(error: unknown, phase: Phase): Verdict | null {
@@ -54,6 +54,8 @@ function classify(error: unknown, phase: Phase): Verdict | null {
   // The session was rejected: the 401 handler is already signing out; keep the queue for the next login.
   if (status === 401) return { kind: "offline" };
   if (status >= 500) return { kind: "retry" };
+  // The rollo was deleted for everyone: its photos have nowhere to go.
+  if (status === 410) return { kind: "gone" };
   if (status === 429) return { kind: "failed", reason: "quota" };
   // The reason is the server's message ("El rollo ya se reveló", "Este rollo ya terminó"…).
   if (status === 409) return { kind: "failed", reason: error.message };
@@ -195,6 +197,14 @@ export function createUploader(deps: UploaderDeps) {
         const verdict = classify(e instanceof CompleteFailed ? e.cause : e, phase) ?? { kind: "retry" };
         if (verdict.kind === "failed") {
           await discard(m, verdict.reason);
+          continue;
+        }
+        if (verdict.kind === "gone") {
+          // Dropped silently: not failed, so it never shows up as an upload problem.
+          await deps.queue.remove(m.id);
+          unresolved.delete(m.id);
+          await deps.removeFiles(m.id);
+          await deps.onDiscarded?.(m.tripId);
           continue;
         }
         if (!(e instanceof PutFailed || e instanceof ApiError || e instanceof CompleteFailed)) {

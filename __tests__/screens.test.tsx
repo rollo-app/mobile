@@ -43,15 +43,16 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   momentMode: "off",
   momentWindowStart: 540,
   momentWindowEnd: 1380,
+  createdBy: null,
   ...overrides,
 });
 
 const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail => ({
   trip: trip(),
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
   members: [
-    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
-    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", blockedByMe: false },
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 12,

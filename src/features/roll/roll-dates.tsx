@@ -13,7 +13,7 @@ export function RollDates({ detail, phase }: { detail: TripDetail; phase: RollPh
   const revealNote = phase === "revealed" ? "Se reveló" : daysUntil(trip.revealAt, now, tz);
 
   return (
-    <Section title="Fechas">
+    <Section title="Fechas" footer={trip.createdBy ? `Creado por ${trip.createdBy.name}` : undefined}>
       <Row label="Empieza" value={at(trip.startsAt)} note={startNote} />
       <Row label="Termina" value={at(trip.endsAt)} note={endNote} />
       <Row label="Se revela" value={at(trip.revealAt)} note={revealNote} />

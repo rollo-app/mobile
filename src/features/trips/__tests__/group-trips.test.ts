@@ -13,6 +13,8 @@ const trip = (id: string, over: Partial<TripSummary> = {}): TripSummary => ({
   revealAt: NOW - 4 * DAY,
   revealed: true,
   role: "member",
+  isCreator: false,
+  archived: false,
   totalUploaded: 0,
   momentMode: "off",
   coverThumbhash: null,
@@ -64,5 +66,25 @@ describe("groupTrips", () => {
     expect(groupTrips([recent, old], NOW, "old").olderExpandedByDefault).toBe(true);
     expect(groupTrips([recent, old], NOW, "recent").olderExpandedByDefault).toBe(false);
     expect(groupTrips([recent, old], NOW, null).olderExpandedByDefault).toBe(false);
+  });
+
+  it("moves archived rolls out of every other section, newest reveal first", () => {
+    const a = trip("a", { archived: true, revealAt: NOW - 4 * DAY });
+    const b = trip("b", { archived: true, revealAt: NOW - 200 * DAY });
+    const c = trip("c", { archived: true, revealAt: NOW - 10 * DAY });
+    const keep = trip("keep");
+    const g = groupTrips([b, a, keep, c], NOW, null);
+    expect(ids(g.archived)).toEqual(["a", "c", "b"]);
+    expect(ids(g.revealed)).toEqual(["keep"]);
+    expect(g.older).toEqual([]);
+    expect(g.top).toEqual([]);
+  });
+
+  it("expands the archived group by default only when the active roll is in it", () => {
+    const archived = trip("archived", { archived: true });
+    const other = trip("other");
+    expect(groupTrips([other, archived], NOW, "archived").archivedExpandedByDefault).toBe(true);
+    expect(groupTrips([other, archived], NOW, "other").archivedExpandedByDefault).toBe(false);
+    expect(groupTrips([other, archived], NOW, "archived").olderExpandedByDefault).toBe(false);
   });
 });

@@ -38,12 +38,13 @@ const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" =
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    createdBy: null,
     ...over,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, blockedByMe: false },
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, isCreator: false, blockedByMe: false },
   members: [
-    { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, blockedByMe: false },
-    { id: "m5", userId: "u5", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", blockedByMe: false },
+    { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, isCreator: false, blockedByMe: false },
+    { id: "m5", userId: "u5", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -205,6 +206,23 @@ describe("Leaving a roll", () => {
     expect(friends.leaveTrip).toHaveBeenCalledWith(SUR);
     expect(screen).toHavePathname("/roll");
     expect(await getActiveTripId()).toBeNull();
+  });
+
+  it("a failing cleanup step doesn't hide the success: no error and the roll is gone", async () => {
+    const N = jest.requireMock("expo-notifications") as typeof import("expo-notifications");
+    jest.mocked(N.getAllScheduledNotificationsAsync).mockRejectedValueOnce(new Error("notifications down"));
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    friends.leaveTrip.mockResolvedValue();
+    await setActiveTripId(SUR);
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
+    trips.fetchMyTrips.mockResolvedValue({ trips: [] });
+    await confirmLeave();
+
+    expect(await screen.findByText("Todavía no tenés rollos")).toBeVisible();
+    expect(screen.queryByText("No te pudiste salir del rollo")).toBeNull();
+    expect(await getActiveTripId()).toBeNull();
+    warn.mockRestore();
   });
 
   it("the admin can't: the server's message shows inline and the roll stays", async () => {

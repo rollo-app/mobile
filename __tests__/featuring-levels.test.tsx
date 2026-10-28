@@ -24,12 +24,13 @@ const member = (id: string, name: string, role: "admin" | "member") => ({
   username: null,
   avatarUrl: null,
   role,
+  isCreator: false,
   blockedByMe: false,
 });
 
-const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; allowFeaturing?: boolean; revealed?: boolean } = {}): actions.TripDetail => {
-  const { role = "admin", featuringDisabled = false, allowFeaturing = true, revealed = false } = opts;
-  const me = { ...member("m1", "Juani", role), allowFeaturing };
+const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; allowFeaturing?: boolean; revealed?: boolean; isCreator?: boolean } = {}): actions.TripDetail => {
+  const { role = "admin", featuringDisabled = false, allowFeaturing = true, revealed = false, isCreator = role === "admin" } = opts;
+  const me = { ...member("m1", "Juani", role), isCreator, allowFeaturing };
   return {
     trip: {
       id: SUR,
@@ -48,6 +49,7 @@ const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; 
       momentMode: "off",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      createdBy: null,
     },
     me,
     members: [me, member("m2", "Fede", role === "admin" ? "member" : "admin")],
@@ -130,6 +132,21 @@ describe("Rollo privado", () => {
 
     await screen.findByRole("switch", { name: MINE });
     expect(screen.queryByRole("switch", { name: PRIVATE })).toBeNull();
+  });
+
+  it("an admin who is not the creator doesn't see the switch, only the footnote when private", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail({ role: "admin", isCreator: false, featuringDisabled: true }));
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findByText(/Ninguna foto de este rollo sale a perfiles/);
+    expect(screen.queryByRole("switch", { name: PRIVATE })).toBeNull();
+  });
+
+  it("the creator sees the switch", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail({ role: "admin", isCreator: true }));
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    expect(await screen.findByRole("switch", { name: PRIVATE })).toBeVisible();
   });
 
   it("turning it on asks first, then saves for the whole rollo", async () => {

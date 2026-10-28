@@ -17,6 +17,8 @@ export const tripSummary = (id: string, name: string, over: Partial<TripSummary>
   revealAt: 1,
   revealed: false,
   role: "admin",
+  isCreator: true,
+  archived: false,
   totalUploaded: 0,
   momentMode: "off",
   coverThumbhash: null,
