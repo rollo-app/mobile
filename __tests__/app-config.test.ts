@@ -35,6 +35,15 @@ describe("app config", () => {
     expect(config.ios?.bundleIdentifier).toBe("com.juanifraga.rollo");
   });
 
+  it("only the production build declares the Universal Links domain", () => {
+    expect(configFor("production").ios?.associatedDomains).toEqual(["applinks:rollo.juanifraga.com"]);
+    expect(configFor(undefined).ios?.associatedDomains).toBeUndefined();
+  });
+
+  it("is version 1.1.0 (runtimeVersion follows it)", () => {
+    expect(appJson.expo.version).toBe("1.1.0");
+  });
+
   it("keeps the EAS project id push tokens need", () => {
     expect(configFor("production").extra?.eas?.projectId).toBe("124fc671-d309-4a16-9606-e4e900286752");
   });
