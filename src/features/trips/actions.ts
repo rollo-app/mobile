@@ -69,3 +69,25 @@ export async function deleteMedia(mediaId: string): Promise<void> {
 export async function setTripArchived(tripId: string, archived: boolean): Promise<void> {
   await unwrap((await authedClient()).PATCH("/trips/{tripId}/members/me", { params: { path: { tripId } }, body: { archived } }));
 }
+
+export type TripMember = TripDetail["me"];
+
+/** Makes a member an admin (any admin can). */
+export async function makeAdmin(tripId: string, memberId: string): Promise<TripMember> {
+  return unwrap((await authedClient()).POST("/trips/{tripId}/members/{memberId}/admin", { params: { path: { tripId, memberId } } }));
+}
+
+/** Takes admin away from a member (only the creator can). */
+export async function removeAdmin(tripId: string, memberId: string): Promise<TripMember> {
+  return unwrap((await authedClient()).DELETE("/trips/{tripId}/members/{memberId}/admin", { params: { path: { tripId, memberId } } }));
+}
+
+/** Removes a member from the rollo (their photos stay; an admin can add them back). */
+export async function removeMember(tripId: string, memberId: string): Promise<void> {
+  await unwrap((await authedClient()).DELETE("/trips/{tripId}/members/{memberId}", { params: { path: { tripId, memberId } } }));
+}
+
+/** Renames the rollo (any admin can). */
+export async function renameTrip(tripId: string, name: string): Promise<Trip> {
+  return (await unwrap((await authedClient()).PATCH("/trips/{tripId}", { params: { path: { tripId } }, body: { name } }))).trip;
+}

@@ -155,7 +155,12 @@ export function Row({
   detail,
   accessory,
   chevron = true,
+  accessibilityActions,
+  onAccessibilityAction,
 }: {
+  /** VoiceOver custom actions (the long-press menu's twin). Only on tappable rows. */
+  accessibilityActions?: { name: string; label: string }[];
+  onAccessibilityAction?: (name: string) => void;
   /** Outside the tappable area, at the end of the row (an "i" button). */
   accessory?: ReactNode;
   /** Secondary text under the label (a handle). */
@@ -210,6 +215,8 @@ export function Row({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={value ? `${label}, ${value}` : label}
+      accessibilityActions={accessibilityActions?.length ? accessibilityActions : undefined}
+      onAccessibilityAction={onAccessibilityAction ? ({ nativeEvent }) => onAccessibilityAction(nativeEvent.actionName) : undefined}
       onPress={onPress}
       style={({ pressed }) => [styles.row, accessory ? styles.rowGrow : null, pressed && { backgroundColor: colors.fill }]}
     >
