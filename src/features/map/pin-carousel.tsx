@@ -20,6 +20,7 @@ export function PinCarousel({
   timeZone,
   token,
   onOpen,
+  canOpen,
   onOpenAuthor,
 }: {
   items: MapItem[];
@@ -28,10 +29,13 @@ export function PinCarousel({
   timeZone: string;
   token?: string | null;
   onOpen?: (item: MapItem) => void;
+  /** Which cards open on tap; all of them when omitted. */
+  canOpen?: (item: MapItem) => boolean;
   /** Tap on a card's author (their profile). */
   onOpenAuthor?: (item: MapItem) => void;
 }) {
   const { width } = useWindowDimensions();
+  const openFor = (item: MapItem) => (onOpen && (!canOpen || canOpen(item)) ? () => onOpen(item) : undefined);
 
   if (items.length === 1) {
     return (
@@ -40,7 +44,7 @@ export function PinCarousel({
           item={items[0]!}
           timeZone={timeZone}
           token={token}
-          onOpen={onOpen && (() => onOpen(items[0]!))}
+          onOpen={openFor(items[0]!)}
           onAuthorPress={onOpenAuthor && (() => onOpenAuthor(items[0]!))}
         />
       </View>
@@ -67,7 +71,7 @@ export function PinCarousel({
             item={item}
             timeZone={timeZone}
             token={token}
-            onOpen={onOpen && (() => onOpen(item))}
+            onOpen={openFor(item)}
             onAuthorPress={onOpenAuthor && (() => onOpenAuthor(item))}
           />
         </View>

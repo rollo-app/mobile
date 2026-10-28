@@ -18,6 +18,15 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * What to show under a form for a failed request: the server's message (ApiError), or the screen's
+ * own fallback. Null when there's no error, so it can feed `{message && <ErrorText>…}` straight.
+ */
+export function errorMessage(error: unknown, fallback: string): string | null {
+  if (error == null) return null;
+  return error instanceof Error ? error.message : fallback;
+}
+
 export const OFFLINE_MESSAGE = "Sin conexión. Probá de nuevo cuando tengas señal.";
 
 let onUnauthorized: ((token: string) => void) | null = null;

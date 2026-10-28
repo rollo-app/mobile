@@ -93,9 +93,10 @@ export function ProfileShowcase({ own, userId, canSee }: Props) {
 
 const styles = StyleSheet.create({
   showcase: { gap: spacing.lg },
-  segmented: { height: 32, marginHorizontal: spacing.md },
+  // No horizontal margin of its own: `Screen`'s 16 pt padding aligns it with the header and the large title (the grid bleeds out of it).
+  segmented: { height: 32 },
   empty: { color: colors.secondaryLabel, textAlign: "center", paddingHorizontal: spacing.xl, paddingVertical: spacing.xl },
   loading: { paddingVertical: spacing.xl },
-  error: { gap: spacing.md, paddingHorizontal: spacing.md },
+  error: { gap: spacing.md },
   private: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xl },
 });

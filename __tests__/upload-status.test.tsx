@@ -1,5 +1,6 @@
 import { Alert } from "react-native";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
@@ -30,6 +31,12 @@ const detail = (): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false }],
@@ -40,6 +47,7 @@ const detail = (): actions.TripDetail => ({
 const queued = (id: string, overrides: Partial<QueuedMedia> = {}): QueuedMedia => ({
   id,
   tripId: SUR,
+  ownerUserId: "u1",
   type: "photo",
   takenAt: Date.parse("2027-01-05T17:32:00Z"),
   day: "2027-01-05",
@@ -86,6 +94,18 @@ describe("Roll · Subidas", () => {
     expect(screen.getByText(/Próximo intento en 2 min/)).toBeVisible();
   });
 
+  it("another account's pending and failed photos are not shown or counted", async () => {
+    await queue.enqueue(queued("a", { ownerUserId: "someone-else" }));
+    await queue.enqueue(queued("b", { ownerUserId: "someone-else" }));
+    await queue.markFailed("b", "Este rollo ya terminó");
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await screen.findAllByText("Viaje al sur");
+    expect(screen.queryByText(/esperando señal/)).toBeNull();
+    expect(screen.queryByText("Este rollo ya terminó")).toBeNull();
+    expect(screen.queryByText(/no se pudo/i)).toBeNull();
+  });
+
   it("there is no manual upload button: uploads happen on their own", async () => {
     await queue.enqueue(queued("a"));
     await renderRouter(routes, { initialUrl: "/roll" });
@@ -123,7 +143,7 @@ describe("Roll · Subidas", () => {
       "Esta foto no se va a subir y se borra del celular. No se puede deshacer.",
       [expect.objectContaining({ text: "Cancelar" }), expect.objectContaining({ text: "Descartar", style: "destructive" })],
     );
-    expect(await queue.failed()).toHaveLength(1);
+    expect(await queue.failed("u1")).toHaveLength(1);
 
     const buttons = alert.mock.calls[0]?.[2] ?? [];
     await act(async () => {
@@ -131,7 +151,23 @@ describe("Roll · Subidas", () => {
     });
 
     await waitFor(() => expect(screen.queryByText("Ya no estás en este rollo")).toBeNull());
-    expect(await queue.failed()).toEqual([]);
+    expect(await queue.failed("u1")).toEqual([]);
+    alert.mockRestore();
+  });
+
+  it("the failed section disappears once the last failed photo is discarded", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await queue.enqueue(queued("a"));
+    await queue.markFailed("a", "no_token");
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Descartar" }));
+    await act(async () => {
+      (alert.mock.calls[0]?.[2] ?? [])[1]?.onPress?.();
+    });
+
+    await waitFor(() => expect(screen.queryByText("No se pudieron subir")).toBeNull());
+    expect(screen.getByText("HUB5FT")).toBeVisible();
     alert.mockRestore();
   });
 });

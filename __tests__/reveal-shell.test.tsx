@@ -1,4 +1,5 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { Dimensions, StyleSheet, Text } from "react-native";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
@@ -40,6 +41,12 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     revealed: true,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
     ...over,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
@@ -96,6 +103,42 @@ describe("revealed roll", () => {
     const button = screen.getAllByLabelText(/, cambiar de rollo$/)[0]!;
     const style = StyleSheet.flatten(typeof button.props.style === "function" ? button.props.style({ pressed: false }) : button.props.style);
     expect(style.maxWidth).toBe(Dimensions.get("window").width * 0.45);
+  });
+
+  it("while selecting in the gallery the header shows how many are selected instead of the trip", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    const photo = (id: string): actions.Feed["items"][number] => ({
+      id,
+      type: "photo",
+      takenAt: Date.parse("2027-01-12T16:10:00Z"),
+      day: "2027-01-12",
+      lat: null,
+      lng: null,
+      caption: null,
+      thumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+      durationS: null,
+      author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null },
+      width: 4000,
+      height: 3000,
+      files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
+    });
+    mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [photo("a"), photo("b")] });
+    await markPresentationSeen(SUR);
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await screen.findByRole("button", { name: "Seleccionar" });
+    const tripTitle = () => screen.queryAllByLabelText("Viaje al sur, cambiar de rollo");
+    expect(tripTitle().length).toBeGreaterThan(0);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    await waitFor(() => expect(screen.getByRole("header", { name: "Seleccioná fotos" })).toBeTruthy());
+    const before = tripTitle().length;
+
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar todo" }));
+    await waitFor(() => expect(screen.getByRole("header", { name: "2 seleccionadas" })).toBeTruthy());
+
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("header", { name: /seleccion/i })).toBeNull());
+    expect(tripTitle().length).toBe(before + 1);
   });
 
   it("opens the reveal automatically the first time, and only once", async () => {
@@ -278,7 +321,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("tapping a member in 'Rollo' opens their profile", async () => {
     const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
-      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null },
+      user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null, badge: null },
       isFriend: false,
       blockedByMe: false,
       reportedByMe: false,
@@ -286,6 +329,7 @@ describe("revealed roll: Galería | Rollo", () => {
       canSee: false,
       friendCount: 0,
       mutualCount: 0,
+      friendRequest: "none",
     });
     const base = detail();
     const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const, blockedByMe: false };

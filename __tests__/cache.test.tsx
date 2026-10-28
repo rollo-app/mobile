@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { queryClient } from "@/api/query-client";
 import * as friendActions from "@/features/friends/actions";
 import * as actions from "@/features/trips/actions";
@@ -32,6 +33,12 @@ const detail = (): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [

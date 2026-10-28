@@ -1,6 +1,7 @@
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { setSessionToken } from "@/storage/session";
+import * as moments from "@/features/moments/moment-sync";
 import * as sync from "../sync";
 import {
   BACKGROUND_BUDGET_MS,
@@ -28,6 +29,28 @@ describe("background upload task", () => {
     const { deadline } = pass.mock.calls[0]![0]!;
     expect(deadline).toBeGreaterThanOrEqual(before + BACKGROUND_BUDGET_MS);
     expect(deadline).toBeLessThanOrEqual(Date.now() + BACKGROUND_BUDGET_MS);
+  });
+
+  it("syncs the moment notifications after the upload pass, and a failure there doesn't change the result", async () => {
+    const order: string[] = [];
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+    jest.spyOn(moments, "syncMoments").mockImplementation(async () => {
+      order.push("moments");
+      throw new Error("boom");
+    });
+    jest.spyOn(sync, "runUploadPass").mockImplementation(async () => void order.push("upload"));
+
+    await expect(runBackgroundUpload()).resolves.toBe(BackgroundTask.BackgroundTaskResult.Success);
+    expect(order).toEqual(["upload", "moments"]);
+  });
+
+  it("still syncs the moments when the upload pass fails, and reports the failure", async () => {
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+    const syncMoments = jest.spyOn(moments, "syncMoments").mockResolvedValue();
+    jest.spyOn(sync, "runUploadPass").mockRejectedValue(new Error("sqlite"));
+
+    await expect(runBackgroundUpload()).resolves.toBe(BackgroundTask.BackgroundTaskResult.Failed);
+    expect(syncMoments).toHaveBeenCalled();
   });
 
   it("reports failure without throwing when the pass blows up", async () => {

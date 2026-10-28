@@ -12,7 +12,11 @@ export const REVEAL_TIMELINE = {
   /** How long each photo takes to develop; their starts spread over what's left until the hit. */
   cellMs: 2400,
   /** The whole sequence: then the screen moves on to the stories. */
-  totalMs: 7000,
+  totalMs: 8000,
+  /** The grid and the title fade out over this long, ending at `totalMs`, so the cut to the black stories is soft. */
+  outroMs: 250,
+  /** The screen waits this long for the thumbs (all loaded or failed, whichever comes first) before it starts. */
+  thumbsCapMs: 2500,
   /** Waiting this long for the photos, the detail or the token, the screen gives up and goes to the stories. */
   loadingTimeoutMs: 6000,
   /** With Reduce Motion: no development, the photos fade in, the haptic confirms, then they dim under the title. */
@@ -26,5 +30,7 @@ export const REVEAL_TIMELINE = {
     dimMs: 600,
     /** How much of the photos stays under the title. */
     dimOpacity: 0.25,
+    /** The whole reduced sequence: the title is fully in at 2000, plus a moment to read it. */
+    totalMs: 3200,
   },
 } as const;

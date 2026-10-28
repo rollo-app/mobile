@@ -33,6 +33,14 @@ describe("toFeatures", () => {
     expect(features[0]!.properties.initial).toBe("J");
   });
 
+  it("takes the first letter after an emoji, and falls back to ? with no letter at all", () => {
+    const { features } = toFeatures(
+      [item({ id: "m1", authorName: "👩🏽‍💻 Priya" }), item({ id: "m2", authorName: "🎉🎉" })],
+      none,
+    );
+    expect(features.map((f) => f.properties.initial)).toEqual(["P", "?"]);
+  });
+
   it("discards what has no location", () => {
     const { features } = toFeatures([item({ lat: null, lng: null }), item({ id: "m2", lat: null })], none);
     expect(features).toEqual([]);
@@ -52,6 +60,12 @@ describe("toFeatures", () => {
   it("filters by person", () => {
     const items = [item({ id: "a", authorId: "a1" }), item({ id: "b", authorId: "a2", authorName: "Mati" })];
     const { features } = toFeatures(items, { day: null, authorId: "a2" });
+    expect(features.map((f) => f.properties.id)).toEqual(["b"]);
+  });
+
+  it("keeps only the daily moments when momentsOnly is on", () => {
+    const items = [item({ id: "a" }), item({ id: "b", momentDay: "2027-01-12" })];
+    const { features } = toFeatures(items, { day: null, authorId: null, momentsOnly: true });
     expect(features.map((f) => f.properties.id)).toEqual(["b"]);
   });
 

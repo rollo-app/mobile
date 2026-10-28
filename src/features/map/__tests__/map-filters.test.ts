@@ -18,6 +18,20 @@ describe("filterLabel", () => {
   });
 });
 
+describe("filterLabel with moments", () => {
+  it("says Momentos with only moments on", () => {
+    expect(filterLabel({ today: false, moments: true, authorName: null })).toBe("Momentos");
+  });
+
+  it("joins today, moments and the person in that order", () => {
+    expect(filterLabel({ today: true, moments: true, authorName: "Cami" })).toBe("Hoy · Momentos · Cami");
+  });
+
+  it("makes the pill active", () => {
+    expect(filterActive({ today: false, moments: true, authorName: null })).toBe(true);
+  });
+});
+
 describe("filterActive", () => {
   it("is off only when nothing is filtered", () => {
     expect(filterActive({ today: false, authorName: null })).toBe(false);

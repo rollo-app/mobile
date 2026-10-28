@@ -1,6 +1,5 @@
 import { MenuView } from "@expo/ui/community/menu";
-import { Camera, Images, Map, UserLocation, type CameraRef, type GeoJSONSourceRef, type InitialViewState } from "@maplibre/maplibre-react-native";
-import * as Location from "expo-location";
+import { Camera, Images, Map, UserLocation, type CameraRef, type GeoJSONSourceRef } from "@maplibre/maplibre-react-native";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -8,12 +7,16 @@ import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePendingItems } from "@/features/capture/use-pending-items";
 import { boundsOf, feedToItems, itemsByTime, mergeItems, pendingToItems, toFeatures, type MapItem } from "@/features/map/features";
-import { fitTarget, isTripActive, MAX_ZOOM, photosNear, startView, startZoom, USER_ZOOM, WORLD_VIEW } from "@/features/map/framing";
+import { buildFilterActions } from "@/features/map/filter-menu";
+import { fitTarget, MAX_ZOOM, photosNear } from "@/features/map/framing";
 import { filterActive, filterLabel } from "@/features/map/map-filters";
 import { silenceTileNetworkErrors } from "@/features/map/log-filter";
 import { CAROUSEL_HEIGHT, PinCarousel } from "@/features/map/pin-carousel";
 import { UserLocationDot } from "@/features/map/user-location-dot";
+import { useMapFilters } from "@/features/map/use-map-filters";
+import { useMapStart } from "@/features/map/use-map-start";
 import { usePinAvatars } from "@/features/map/use-pin-avatars";
+import { useUserLocation } from "@/features/map/use-user-location";
 import { PinLayers } from "@/features/map/pin-layers";
 import { writeStyleFile } from "@/features/map/style-file";
 import { resolveTap } from "@/features/map/tap";
@@ -28,8 +31,6 @@ import { colors, layout, radius, spacing, tintHex, type } from "@/ui/theme";
 
 silenceTileNetworkErrors();
 
-/** How long the map may stay hidden waiting for the location before it starts with what it has. */
-const START_TIMEOUT_MS = 1500;
 const HEADER_HEIGHT = layout.headerHeight;
 /** Height of the row under the header (segmented control and filter pill). */
 export const CONTROLS_ROW_HEIGHT = layout.controlsRowHeight;
@@ -68,26 +69,19 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
-  const [pickedToday, setToday] = useState(false);
+  const { filters: picked, onAction: onFilterAction, clear: clearFilters } = useMapFilters();
   // Once the roll has ended there is no "today" anymore: "Solo hoy" goes away.
   const phase = detail ? rollPhase(detail.trip, Date.now()) : null;
   const hasToday = phase !== "ended" && phase !== "revealed";
-  const today = hasToday && pickedToday;
-  const [authorId, setAuthorId] = useState<string | null>(null);
+  const today = hasToday && picked.today;
+  const { authorId, moments: momentsOnly } = picked;
   // Photos at the tapped place or cluster and which of them is showing in the carousel.
   // `clusterId` keeps the tapped cluster highlighted while its photos are swiped.
   const [selection, setSelection] = useState<{ ids: string[]; index: number; clusterId: number | null } | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [hasLocation, setHasLocation] = useState<boolean | null>(null);
 
   const cameraRef = useRef<CameraRef>(null);
   const sourceRef = useRef<GeoJSONSourceRef>(null);
-  const framed = useRef(false);
-  const zoomRef = useRef(WORLD_VIEW.zoom);
-  // Where the camera starts. The map is not mounted until it is decided, so no other place flashes first.
-  const [start, setStart] = useState<InitialViewState | null>(null);
-  const startDecided = useRef(false);
-  const deciding = useRef(false);
   // Where the camera was centered with padding for the carousel; null when there is none.
   const padded = useRef<[number, number] | null>(null);
 
@@ -101,8 +95,8 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   const all = useMemo(() => toFeatures(items, { day: null, authorId: null }), [items]);
   const pinAvatars = usePinAvatars(items);
   const shown = useMemo(
-    () => toFeatures(items, { day: today ? (detail?.today.date ?? null) : null, authorId }, pinAvatars.ready),
-    [items, today, authorId, detail?.today.date, pinAvatars.ready],
+    () => toFeatures(items, { day: today ? (detail?.today.date ?? null) : null, authorId, momentsOnly }, pinAvatars.ready),
+    [items, today, authorId, momentsOnly, detail?.today.date, pinAvatars.ready],
   );
   const carousel = useMemo(
     () => (selection ? itemsByTime(items, selection.ids) : []),
@@ -116,9 +110,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
     if (selection && !selection.ids.some((id) => shown.features.some((f) => f.properties.id === id))) setSelection(null);
   }, [shown, selection]);
 
-  useEffect(() => {
-    Location.getForegroundPermissionsAsync().then((p) => setHasLocation(p.granted), () => setHasLocation(false));
-  }, []);
+  const { hasLocation, centerOnUser } = useUserLocation(cameraRef);
 
   const barInset = Math.max(insets.bottom, TAB_BAR_MIN_INSET) + TAB_BAR_GAP;
   const carouselInset = barInset + CAROUSEL_BOTTOM + CAROUSEL_HEIGHT;
@@ -137,56 +129,17 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
     else cameraRef.current?.fitBounds(target.bounds, { padding, duration });
   }
 
-  function begin(view: InitialViewState) {
-    zoomRef.current = startZoom(view);
-    setStart(view);
-  }
-
-  // Where the map starts (see `startView`), decided before mounting it. Waits to know the permission
-  // and to have data; the location is only read if permission was already granted (it never asks here).
-  const tripKnown = !!detail || !!error;
-  const dataReady = hasLocation !== null && tripKnown && !!(feed || error);
-  useEffect(() => {
-    if (startDecided.current || deciding.current || !dataReady) return;
-    deciding.current = true;
-    const active = detail ? isTripActive(detail.trip, Date.now()) : false;
-    const bounds = boundsOf(all.features);
-    void (async () => {
-      const position = hasLocation && (active || !bounds) ? await knownPosition(active) : null;
-      if (startDecided.current) return; // the timeout already started the map
-      startDecided.current = true;
-      framed.current = true;
-      begin(startView({ active, position, bounds, padding }));
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataReady, detail, hasLocation, all, padding]);
-
-  // A slow location lookup (or slow data) can't keep the map hidden: after a moment it starts with the
-  // pins it has, or the world. If the data wasn't there yet, the effect below frames it when it arrives.
-  const latest = useRef({ all, padding, dataReady });
-  latest.current = { all, padding, dataReady };
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (startDecided.current) return;
-      startDecided.current = true;
-      const { all: now, padding: pad, dataReady: ready } = latest.current;
-      framed.current = ready;
-      begin(startView({ active: false, position: null, bounds: boundsOf(now.features), padding: pad }));
-    }, START_TIMEOUT_MS);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Only when the map started before having data: frame it once it arrives, as the starting view would.
-  useEffect(() => {
-    if (!mapReady || framed.current || !dataReady) return;
-    framed.current = true;
-    const active = detail ? isTripActive(detail.trip, Date.now()) : false;
-    void (async () => {
-      if (active && hasLocation && (await centerOnUser(false))) return;
-      frameAll(all.features, 0);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, dataReady, all, detail, hasLocation]);
+  const { start, framed, zoomRef } = useMapStart({
+    detail,
+    error,
+    hasFeed: !!feed,
+    all,
+    padding,
+    hasLocation,
+    mapReady,
+    centerOnUser,
+    frameAll,
+  });
 
   // Arrived from the Feed with a photo: no filters, fly to it (zoom 15) and open its card. The
   // param is consumed so tapping the same photo again after moving the map works.
@@ -197,46 +150,11 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
     router.setParams({ focus: undefined });
     if (target.lat === null || target.lng === null) return;
     framed.current = true;
-    setToday(false);
-    setAuthorId(null);
+    clearFilters();
     cameraRef.current?.flyTo({ center: [target.lng, target.lat], zoom: FOCUS_ZOOM, duration: 600 });
     const ids = itemsByTime(items, photosNear(all.features, [target.lng, target.lat], FOCUS_ZOOM).map((f) => f.properties.id)).map((i) => i.id);
     setSelection({ ids, index: Math.max(0, ids.indexOf(focus)), clusterId: null });
   }, [focus, mapReady, items, all, router]);
-
-  /** [lng, lat] of the last known position (or the current one if `orCurrent`); null if there is none. */
-  async function knownPosition(orCurrent: boolean): Promise<[number, number] | null> {
-    try {
-      const position =
-        (await Location.getLastKnownPositionAsync()) ??
-        (orCurrent ? await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }) : null);
-      return position ? [position.coords.longitude, position.coords.latitude] : null;
-    } catch {
-      return null;
-    }
-  }
-
-  async function centerOnUser(ask: boolean): Promise<boolean> {
-    try {
-      const permission = ask
-        ? await Location.requestForegroundPermissionsAsync()
-        : await Location.getForegroundPermissionsAsync();
-      setHasLocation(permission.granted);
-      if (!permission.granted) return false;
-      const position =
-        (await Location.getLastKnownPositionAsync()) ??
-        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
-      if (!position) return false;
-      cameraRef.current?.flyTo({
-        center: [position.coords.longitude, position.coords.latitude],
-        zoom: USER_ZOOM,
-        duration: ask ? 600 : 0,
-      });
-      return true;
-    } catch {
-      return false; // With no location the map stays where it is.
-    }
-  }
 
   const onPinsPress = useCallback(
     (event: PressEvent) => {
@@ -271,25 +189,11 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
   }, [clusterId]);
 
   const members = detail?.members ?? [];
-  const filters = { today, authorName: members.find((m) => m.id === authorId)?.name ?? null };
+  // Offered once the roll has any moment: before that the filter would only show an empty map.
+  const hasMoments = momentsOnly || items.some((i) => !!i.momentDay);
+  const filters = { today, moments: momentsOnly, authorName: members.find((m) => m.id === authorId)?.name ?? null };
   const filterColor = filterActive(filters) ? colors.tint : colors.label;
-  const on = (yes: boolean) => (yes ? ("on" as const) : ("off" as const));
-  const actions = [
-    ...(hasToday ? [{ id: TODAY_ACTION, title: "Solo hoy", image: "calendar" as const, state: on(today) }] : []),
-    {
-      id: "people",
-      title: "Personas",
-      displayInline: true,
-      subactions: [
-        { id: ALL_ACTION, title: "Todos", state: on(authorId === null) },
-        ...members.map((m) => ({ id: m.id, title: m.name, state: on(authorId === m.id) })),
-      ],
-    },
-  ];
-  function onFilterAction(id: string) {
-    if (id === TODAY_ACTION) setToday((t) => !t);
-    else setAuthorId(id === ALL_ACTION ? null : id);
-  }
+  const actions = buildFilterActions({ hasToday, hasMoments, today, momentsOnly, authorId, members });
 
   return (
     <View style={styles.fill}>
@@ -402,7 +306,9 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
                 onIndexChange={(index) => setSelection({ ...selection, index })}
                 timeZone={detail.trip.timezone}
                 token={token}
-                onOpen={detail.trip.revealed ? (item) => router.push(`/photo/${item.id}`) : undefined}
+                // After the reveal every photo opens; before it only the daily moments (the only ones with files).
+                canOpen={(item) => detail.trip.revealed || (!!item.momentDay && !!item.thumbPath)}
+                onOpen={(item) => router.push({ pathname: "/photo/[id]", params: { id: item.id, tripId: detail.trip.id } })}
                 onOpenAuthor={(item) => item.authorUserId && openProfile(item.authorUserId)}
               />
             </View>
@@ -412,9 +318,6 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
     </View>
   );
 }
-
-const TODAY_ACTION = "today";
-const ALL_ACTION = "all";
 
 const chip = {
   backgroundColor: colors.background,

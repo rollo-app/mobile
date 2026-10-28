@@ -15,6 +15,10 @@ beforeAll(() => {
 });
 afterAll(() => rmSync(dist, { recursive: true, force: true }));
 
+it("the /entrar page loads no motion script nor motion class", () => {
+  for (const needle of ["motion.js", "landing.js", "js-motion"]) expect(html).not.toContain(needle);
+});
+
 const inlineScript = () => {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
   expect(scripts).toHaveLength(1);

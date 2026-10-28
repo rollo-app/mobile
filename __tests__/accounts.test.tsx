@@ -1,15 +1,18 @@
 import * as ImagePicker from "expo-image-picker";
+import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { ActionSheetIOS, Alert, Linking } from "react-native";
 import { createQueue } from "@/features/capture/queue";
 import * as moderationActions from "@/features/moderation/actions";
+import * as authActions from "@/features/auth/actions";
 import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { getSessionToken } from "@/storage/session";
 import { signInAs, tripSummary, USER } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
+import "@/test/reanimated";
 import { routes } from "@/test/routes";
 import * as featuredActions from "@/features/featured/actions";
 
@@ -22,6 +25,8 @@ beforeEach(() => {
 jest.mock("@/features/friends/actions");
 // Ajustes asks who you blocked: keep it out of the recorded fetch calls.
 jest.mock("@/features/moderation/actions");
+// The tabs sync the daily moments on mount: also out of the recorded fetch calls.
+jest.mock("@/features/moments/actions", () => ({ fetchAllMyMoments: jest.fn(async () => []) }));
 jest.mock("expo-image-picker");
 jest.mock("expo-image-manipulator", () => {
   const saved = { uri: "file:///cache/cropped.jpg", width: 512, height: 512 };
@@ -53,6 +58,12 @@ const tripDetail = (): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
@@ -145,6 +156,10 @@ describe("Login", () => {
     expect(await screen.findByText("Disponible")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
 
+    // A new account sees the app's intro once before landing in the app.
+    expect(await screen.findByText("Sacá la foto.")).toBeVisible();
+    expect(screen).toHavePathname("/intro");
+    await fireEvent.press(await screen.findByRole("button", { name: "Empezar" }, { timeout: 4000 }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(calls).toEqual(["POST /auth/email/start", "POST /auth/email/verify", "GET /usernames/juani", "PATCH /me"]);
   });
@@ -383,7 +398,7 @@ describe("Profile and settings", () => {
     const queue = await createQueue(memoryDb());
     getQueue.mockImplementation(() => Promise.resolve(queue));
     await queue.enqueue({
-      id: "q1", tripId: SUR, type: "photo", takenAt: 1, day: "2027-01-12", lat: null, lng: null, accuracyM: null,
+      id: "q1", ownerUserId: "u1", tripId: SUR, type: "photo", takenAt: 1, day: "2027-01-12", lat: null, lng: null, accuracyM: null,
       caption: null, durationS: null, width: 1, height: 1, sizeBytes: 1,
       originalUri: "file:///docs/pending/q1/original.jpg", thumbUri: "file:///docs/pending/q1/thumb.jpg", thumbhash: null,
     });
@@ -395,7 +410,57 @@ describe("Profile and settings", () => {
     expect(await screen.findByLabelText("Tu email")).toBeVisible();
     expect(calls).toContain("POST /auth/logout");
     expect(await getSessionToken()).toBeNull();
-    expect(await queue.pending()).toHaveLength(1);
+    expect(await queue.pending("u1")).toHaveLength(1);
+  });
+
+  it("dev settings can replay the app intro without a new account", async () => {
+    mockApi({});
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver intro" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/intro"));
+  });
+
+  it("log out shows the row as busy and ignores taps until it finishes", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const calls = mockApi({ "POST /auth/logout": async () => (await gate, json(204)) });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Cerrar sesión" })).toBeNull());
+    expect(calls.filter((c) => c === "POST /auth/logout")).toHaveLength(1);
+    await act(async () => release());
+    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(calls.filter((c) => c === "POST /auth/logout")).toHaveLength(1);
+  });
+
+  it("if log out rejects it shows the error inline and the row is tappable again", async () => {
+    jest.spyOn(authActions, "logout").mockRejectedValueOnce(new Error("boom"));
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
+
+    expect(await screen.findByText("boom")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Cerrar sesión" })).toBeVisible();
+    expect(await getSessionToken()).toBe("session-token");
+  });
+
+  it("log out leaves no scheduled moment notifications, and only those", async () => {
+    jest.mocked(Notifications.getAllScheduledNotificationsAsync).mockResolvedValue(
+      [{ identifier: "moment.t1.2027-01-12" }, { identifier: "other" }] as never,
+    );
+    mockApi({ "POST /auth/logout": json(204) });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
+    await screen.findByLabelText("Tu email");
+
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("moment.t1.2027-01-12");
+    expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith("other");
+    jest.mocked(Notifications.getAllScheduledNotificationsAsync).mockResolvedValue([]);
   });
 
   it("delete account asks for a native confirmation with the destructive warning", async () => {

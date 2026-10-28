@@ -29,6 +29,8 @@ beforeEach(() => {
   jest.mocked(actions).fetchFeed.mockReturnValue(new Promise(() => {}));
   featured.fetchFeatured.mockReset().mockResolvedValue([]);
   featured.unfeatureMedia.mockReset().mockResolvedValue(undefined);
+  featured.fetchPrivacySettings.mockReset().mockResolvedValue({ allowFeaturing: true });
+  featured.updatePrivacySettings.mockReset().mockImplementation(async (p) => ({ allowFeaturing: true, ...p }));
 });
 
 afterEach(() => jest.restoreAllMocks());
@@ -58,12 +60,34 @@ describe("Perfil", () => {
     await waitFor(() => expect(screen).toHavePathname("/friends"));
   });
 
-  it("without friends there is no friend count line", async () => {
+  it("without friends it shows 'Todavía no tenés amigos' and tapping it opens Amigos", async () => {
     await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
     await renderRouter(routes, { initialUrl: "/me" });
 
     await screen.findByText("@juani");
     expect(screen.queryByRole("button", { name: /^\d+ amigos?/ })).toBeNull();
+    await fireEvent.press(await screen.findByRole("button", { name: "Todavía no tenés amigos" }));
+    await waitFor(() => expect(screen).toHavePathname("/friends"));
+  });
+
+  it.each([
+    ["founder", "FOUNDER", "Insignia: Founder"],
+    ["first_edition", "FIRST EDITION", "Insignia: First Edition"],
+  ] as const)("shows the %s badge in your own header", async (badge, label, a11y) => {
+    await signInAs({ user: { ...USER, badge }, trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    expect(await screen.findByText(label)).toBeVisible();
+    expect(screen.getByLabelText(a11y)).toBeVisible();
+  });
+
+  it("shows no badge when there is none", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    await screen.findByText("@juani");
+    expect(screen.queryByText("FOUNDER")).toBeNull();
+    expect(screen.queryByLabelText(/^Insignia/)).toBeNull();
   });
 
   it("without a description there is no empty text under the handle", async () => {
@@ -103,6 +127,48 @@ describe("Perfil", () => {
 
     await fireEvent.press(showcase.getByRole("button", { name: "Fotos" }));
     expect(screen.getByText(photos)).toBeVisible();
+  });
+});
+
+describe("Ajustes: Privacidad", () => {
+  const LABEL = "Permitir que agreguen mis fotos a su perfil";
+
+  it("is on by default, next to Perfil público, and explains what it does", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    expect((await screen.findByRole("switch", { name: LABEL })).props.value).toBe(true);
+    expect(screen.getByRole("switch", { name: "Perfil público" })).toBeTruthy();
+    expect(screen.getByText(/Si lo apagás, nadie puede agregar tus fotos a su perfil/)).toBeVisible();
+  });
+
+  it("reflects the saved value", async () => {
+    featured.fetchPrivacySettings.mockResolvedValue({ allowFeaturing: false });
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await waitFor(() => expect(screen.getByRole("switch", { name: LABEL }).props.value).toBe(false));
+  });
+
+  it("turning it off saves allowFeaturing false", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent(await screen.findByRole("switch", { name: LABEL }), "valueChange", false);
+
+    expect(featured.updatePrivacySettings).toHaveBeenCalledWith({ allowFeaturing: false });
+    await waitFor(() => expect(screen.getByRole("switch", { name: LABEL }).props.value).toBe(false));
+  });
+
+  it("if saving fails it shows the error inline and the switch goes back", async () => {
+    featured.updatePrivacySettings.mockRejectedValue(new Error("No hay conexión"));
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent(await screen.findByRole("switch", { name: LABEL }), "valueChange", false);
+
+    expect(await screen.findByText("No hay conexión")).toBeVisible();
+    expect(screen.getByRole("switch", { name: LABEL }).props.value).toBe(true);
   });
 });
 
@@ -282,7 +348,7 @@ describe("Perfil: fotos destacadas", () => {
 
   it("on a friend's profile the badge shows on the photos the friend didn't take", async () => {
     jest.mocked(friendActions).fetchFriend.mockResolvedValue({ friend: { ...CAMI, bio: null }, commonTrips: [] });
-    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null }, isFriend: true, blockedByMe: false, reportedByMe: false, profileVisibility: "friends", canSee: true, friendCount: 0, mutualCount: 0 });
+    jest.spyOn(profileActions, "fetchUser").mockResolvedValue({ user: { ...CAMI, bio: null, badge: null }, isFriend: true, blockedByMe: false, reportedByMe: false, profileVisibility: "friends", canSee: true, friendCount: 0, mutualCount: 0, friendRequest: "none" });
     featured.fetchFeatured.mockImplementation(async (userId) =>
       userId === "u2"
         ? [

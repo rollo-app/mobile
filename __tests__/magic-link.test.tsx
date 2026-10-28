@@ -32,7 +32,7 @@ function mockApi(handlers: Record<string, () => Response | Promise<Response>>) {
 }
 const verifyCalls = (calls: { key: string }[]) => calls.filter((c) => c.key === "POST /auth/email/verify-link");
 
-const link = (token: string, email: string) => `/login?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+const link = (token: string, email: string) => `/login?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}` as const;
 const DEAD = "El link venció o ya se usó. Pedí otro código.";
 const OTHER_REQUEST = "Este link es de otro pedido. Pedí un código nuevo desde este iPhone.";
 const VERIFIER = "v".repeat(43);

@@ -3,6 +3,8 @@ import * as Location from "expo-location";
 import * as Network from "expo-network";
 import { queryClient } from "@/api/query-client";
 import { fetchFeed, fetchTrip } from "@/features/trips/actions";
+import { myTripsKey } from "@/features/trips/use-active-trip";
+import type { TripSummary } from "@/features/trips/active";
 import { signInAs, tripSummary } from "@/test/account";
 import { buildMapStyle } from "../style";
 import { getOfflineSyncState, scheduleOfflineSync, syncOfflineMaps } from "../offline-sync";
@@ -39,10 +41,11 @@ const meta = (tripId: string, kind: "wide" | "detail", extra: Record<string, unk
   ...extra,
 });
 
-const setTrip = (tripId: string, over: Record<string, unknown> = {}) => {
-  jest.mocked(fetchTrip).mockImplementation(async (id) => ({
-    trip: { id, startsAt: START, endsAt: END, revealed: false, timezone: "America/Argentina/Buenos_Aires", ...over },
-  }) as never);
+/** The dates and state of a roll come from the `/me/trips` summary, which is already in the cache. */
+const setTrip = (tripId: string, over: Partial<TripSummary> = {}) => {
+  const mine = queryClient.getQueryData<{ trips: TripSummary[] }>(myTripsKey)!.trips;
+  const next = mine.map((t) => (t.id === tripId ? { ...t, ...over } : t));
+  queryClient.setQueryData(myTripsKey, { trips: next });
 };
 
 const network = (type: string, isConnected = true) =>
@@ -59,8 +62,7 @@ beforeEach(async () => {
   queryClient.clear();
   jest.clearAllMocks();
 
-  await signInAs({ trips: [tripSummary("t1", "Viaje al sur", { role: "admin" })] });
-  setTrip("t1");
+  await signInAs({ trips: [tripSummary("t1", "Viaje al sur", { role: "admin", startsAt: START, endsAt: END })] });
   jest.mocked(fetchFeed).mockResolvedValue({ items: [] } as never);
   network("WIFI");
   jest.mocked(Location.getForegroundPermissionsAsync).mockResolvedValue({ granted: true } as never);
@@ -149,10 +151,12 @@ describe("syncOfflineMaps", () => {
   });
 
   it("keeps the ambient cache while another roll is current", async () => {
-    await signInAs({ trips: [tripSummary("t2", "Otro", { role: "member" })] });
-    jest.mocked(fetchTrip).mockImplementation(async (id) => ({
-      trip: id === "t2" ? { id, startsAt: START, endsAt: END, revealed: false } : { id, startsAt: NOW - 30 * DAY, endsAt: NOW - 8 * DAY, revealed: true },
-    }) as never);
+    await signInAs({
+      trips: [
+        tripSummary("t1", "Viejo", { startsAt: NOW - 30 * DAY, endsAt: NOW - 8 * DAY, revealed: true }),
+        tripSummary("t2", "Otro", { role: "member", startsAt: START, endsAt: END }),
+      ],
+    });
     packs = [{ id: "old", metadata: meta("t1", "detail"), state: "complete", size: 1 }];
     await syncOfflineMaps();
     expect(OfflineManager.deletePack).toHaveBeenCalledWith("old");
@@ -192,6 +196,28 @@ describe("syncOfflineMaps", () => {
     await syncOfflineMaps();
     expect(created()).toHaveLength(0);
     expect(fetchTrip).not.toHaveBeenCalled();
+  });
+
+  it("only asks the server for the feed of rolls in the download window, never for the detail", async () => {
+    await signInAs({
+      trips: [
+        tripSummary("t1", "En curso", { startsAt: START, endsAt: END }),
+        tripSummary("old", "Revelado", { startsAt: NOW - 30 * DAY, endsAt: NOW - 8 * DAY, revealed: true }),
+        tripSummary("future", "Lejano", { startsAt: NOW + 10 * DAY, endsAt: NOW + 20 * DAY }),
+      ],
+    });
+    await syncOfflineMaps();
+    expect(fetchFeed).toHaveBeenCalledTimes(1);
+    expect(fetchFeed).toHaveBeenCalledWith("t1");
+    expect(fetchTrip).not.toHaveBeenCalled();
+  });
+
+  it("takes the pack expiry from the summary dates when the cache has no detail", async () => {
+    setTrip("t1", { startsAt: NOW - 30 * DAY, endsAt: NOW - 8 * DAY, revealed: true });
+    packs = [{ id: "old", metadata: meta("t1", "detail", { expiresAt: NOW + 30 * DAY }), state: "complete", size: 1 }];
+    await syncOfflineMaps();
+    expect(OfflineManager.deletePack).toHaveBeenCalledWith("old");
+    expect(fetchFeed).not.toHaveBeenCalled();
   });
 
   it("does not download for revealed rolls or rolls far in the future", async () => {

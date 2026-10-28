@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { Alert } from "react-native";
 import { createQueryClient } from "@/api/query-client";
@@ -48,14 +48,16 @@ describe("useBlock", () => {
     const { queryClient, wrapper } = setup();
     queryClient.setQueryData(myTripsKey, { trips: [] });
     queryClient.setQueryData(userFriendsKey("u2"), { scope: "all", friends: [] });
+    queryClient.setQueryData(["featured-by"], { pages: [], pageParams: [] });
     const { result } = await renderHook(() => useBlock("u2", "Cami"), { wrapper });
     act(() => result.current.confirmBlock());
     const buttons = alert.mock.calls[0]![2]!;
     await act(async () => {
       buttons.find((b) => b.text === "Bloquear")!.onPress!();
     });
-    expect(queryClient.getQueryState(myTripsKey)?.isInvalidated).toBe(true);
+    await waitFor(() => expect(queryClient.getQueryState(myTripsKey)?.isInvalidated).toBe(true));
     expect(queryClient.getQueryState(userFriendsKey("u2"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["featured-by"])?.isInvalidated).toBe(true);
     alert.mockRestore();
   });
 });

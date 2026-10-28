@@ -1,4 +1,4 @@
-import { canCreate, defaultStart, effectiveStart, endAfter, revealNotBefore } from "../create-form";
+import { canCreate, dateAtMinutes, DEFAULT_MOMENT_WINDOW, defaultStart, effectiveStart, endAfter, minutesOfDay, revealNotBefore } from "../create-form";
 
 const HOUR = 60 * 60 * 1000;
 const T = Date.UTC(2027, 0, 5, 12, 0);
@@ -53,5 +53,21 @@ describe("revealNotBefore", () => {
 
   it("moves a reveal before the end to end + 12 h", () => {
     expect(revealNotBefore(T - HOUR, T)).toBe(T + 12 * HOUR);
+  });
+});
+
+describe("moment window helpers", () => {
+  it("converts a picked date to minutes from local midnight", () => {
+    expect(minutesOfDay(new Date(2027, 0, 5, 22, 15))).toBe(22 * 60 + 15);
+    expect(minutesOfDay(new Date(2027, 0, 5, 0, 0))).toBe(0);
+  });
+
+  it("builds a date whose local time is the given minutes", () => {
+    const d = dateAtMinutes(1380);
+    expect([d.getHours(), d.getMinutes()]).toEqual([23, 0]);
+  });
+
+  it("has the default window 9:00 to 23:00", () => {
+    expect(DEFAULT_MOMENT_WINDOW).toEqual({ start: 540, end: 1380 });
   });
 });

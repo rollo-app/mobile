@@ -14,6 +14,7 @@ export default function MeScreen() {
   return (
     <Screen grouped>
       <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button icon="clock.arrow.circlepath" accessibilityLabel="Tu actividad" onPress={() => router.push("/me/activity")} />
         <Stack.Toolbar.Button icon="gearshape" accessibilityLabel="Ajustes" onPress={() => router.push("/settings")} />
       </Stack.Toolbar>
       {me && (
@@ -24,7 +25,8 @@ export default function MeScreen() {
             username={me.username}
             avatarUrl={me.avatarUrl}
             bio={me.bio}
-            friends={friends ? { count: friends.length, onPress: () => router.navigate("/friends") } : undefined}
+            badge={me.badge}
+            friends={friends ? { count: friends.length, own: true, onPress: () => router.navigate("/friends") } : undefined}
           />
           <ProfileShowcase own userId={me.id} canSee />
         </>

@@ -15,7 +15,14 @@ const VIEWS = ["Galería", "Rollo"];
  * The tab's header is solid here (set by the route) with the same background as the row, so the row
  * just goes first in the flow and the views start below it.
  */
-export function RevealedRollScreen({ tripId }: { tripId: string }) {
+export function RevealedRollScreen({
+  tripId,
+  onSelectionChange,
+}: {
+  tripId: string;
+  /** Passed on from the gallery: how many photos are selected, or null when it isn't selecting. */
+  onSelectionChange?: (count: number | null) => void;
+}) {
   const router = useRouter();
   const { view } = useLocalSearchParams<{ view?: string }>();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
@@ -41,7 +48,7 @@ export function RevealedRollScreen({ tripId }: { tripId: string }) {
           accessibilityElementsHidden={showRoll}
           importantForAccessibility={showRoll ? "no-hide-descendants" : "auto"}
         >
-          <GalleryScreen tripId={tripId} toolbar={!showRoll} />
+          <GalleryScreen tripId={tripId} toolbar={!showRoll} onSelectionChange={onSelectionChange} />
         </View>
         {showRoll && (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.groupedBackground }]}>

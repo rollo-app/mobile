@@ -28,6 +28,7 @@ describe("syncQueue", () => {
       originalUri: "file:///docs/pending/a/original.jpg",
       thumbUri: "file:///docs/pending/a/thumb.jpg",
       thumbhash: null,
+      ownerUserId: "u1",
     });
     globalThis.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const req = input instanceof Request ? input : new Request(input as string, init);
@@ -49,7 +50,7 @@ describe("syncQueue", () => {
 
     expect(upload).toHaveBeenCalledTimes(2);
     expect(upload).toHaveBeenCalledWith("https://r2.test/original", expect.objectContaining({ httpMethod: "PUT" }));
-    expect((await (await getQueue()).pending())).toHaveLength(0);
+    expect((await (await getQueue()).pending("u1"))).toHaveLength(0);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["trip", TRIP] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["feed", TRIP] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["pending-items", TRIP] });

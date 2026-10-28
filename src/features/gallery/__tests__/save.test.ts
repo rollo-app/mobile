@@ -7,6 +7,7 @@ import {
   albumTitle,
   createSaver,
   downloadAll,
+  withLinkedImages,
   requestAlbumAccess,
   estimateBytes,
   formatMegabytes,
@@ -33,7 +34,12 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   featuredByMe: false,
   featureBlocked: false,
   likeCount: 0,
+  canFeature: true,
   likedByMe: false,
+  commentCount: 0,
+  momentDay: null,
+  archived: false,
+  selfie: null,
 });
 
 const ctx = {
@@ -235,5 +241,25 @@ describe("downloadAll", () => {
     });
     await expect(downloadAll(photos, save, {})).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(save.mock.calls.length).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("withLinkedImages", () => {
+  it("adds the linked image of a moment after its main photo, with the same author and time", () => {
+    const main: RevealedPhoto = {
+      ...photo("main"),
+      momentDay: "2027-01-12",
+      takenAt: 5,
+      selfie: { id: "linked", thumbPath: "/t/linked/thumb", originalPath: "/t/linked/original", thumbhash: null, width: 1080, height: 1440 },
+    };
+    const [a, b, c] = withLinkedImages([photo("x"), main]);
+    expect(a!.id).toBe("x");
+    expect(b!.id).toBe("main");
+    expect(c).toMatchObject({ id: "linked", type: "photo", originalPath: "/t/linked/original", takenAt: 5, caption: null, author: main.author, selfie: null });
+  });
+
+  it("returns ordinary photos untouched", () => {
+    const list = [photo("x"), photo("y", "video")];
+    expect(withLinkedImages(list)).toEqual(list);
   });
 });

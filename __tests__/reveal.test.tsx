@@ -1,4 +1,5 @@
 import { act } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import { router } from "expo-router";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
@@ -6,7 +7,10 @@ import { markPresentationSeen } from "@/storage/presentation";
 import { hasSeenRevealIntro, markRevealIntroSeen } from "@/storage/reveal-intro";
 import { signInAs, tripSummary } from "@/test/account";
 import { REVEAL_TIMELINE } from "@/features/reveal/timeline";
+import "@/test/reanimated";
 import { routes } from "@/test/routes";
+import { queryClient } from "@/api/query-client";
+import { feedKey } from "@/features/trips/use-feed";
 
 jest.mock("@/features/trips/actions");
 // A short intro, so the hand-over to the stories happens within the test's wait.
@@ -33,6 +37,12 @@ const detail = (): actions.TripDetail => ({
     revealed: true,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
   members: [
@@ -140,6 +150,92 @@ describe("Reveal", () => {
 
       expect(replace).not.toHaveBeenCalled();
       replace.mockRestore();
+    });
+  });
+
+  // Opened right at the reveal, the cached feed is still the one from before it (no files yet).
+  it("plays with the fresh feed instead of skipping to the stories with the cached one", async () => {
+    queryClient.setQueryData(
+      feedKey(SUR),
+      { revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), files: null }] },
+      { updatedAt: Date.now() },
+    );
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/reveal"));
+
+    await screen.findByText("Se reveló");
+    expect(screen).toHavePathname("/reveal");
+  });
+
+  it("with only moments cached from before the reveal, waits for the refetch instead of playing with just them", async () => {
+    queryClient.setQueryData(
+      feedKey(SUR),
+      { revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), momentDay: "2027-01-12" }] },
+      { updatedAt: Date.now() },
+    );
+    const full = await mocked.fetchFeed(SUR);
+    let resolve!: (f: actions.Feed) => void;
+    mocked.fetchFeed.mockReturnValue(new Promise((r) => (resolve = r)));
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/reveal"));
+
+    expect(await screen.findByTestId("reveal-loading")).toBeVisible();
+    expect(screen.queryByText("Se reveló")).toBeNull();
+    await act(async () => resolve(full));
+    await screen.findByText("Se reveló");
+  });
+
+  it("gives the skip surface a button role and label", async () => {
+    await renderRouter(routes, { initialUrl: "/reveal" });
+    await screen.findByText("Se reveló");
+    expect(screen.getByRole("button", { name: "Saltar el revelado" })).toBe(screen.getByTestId("reveal-surface"));
+  });
+
+  describe("thumbs", () => {
+    const realFetch = globalThis.fetch;
+    afterEach(() => {
+      globalThis.fetch = realFetch;
+    });
+
+    it("waits for the thumbs before it starts, up to the cap", async () => {
+      globalThis.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+      await screen.findByTestId("reveal-loading");
+
+      await act(async () => jest.advanceTimersByTime(REVEAL_TIMELINE.thumbsCapMs - 100));
+      expect(screen.queryByText("Se reveló")).toBeNull();
+
+      await act(async () => jest.advanceTimersByTime(200));
+      expect(screen.getByText("Se reveló")).toBeTruthy();
+    });
+  });
+
+  describe("with Reduce Motion", () => {
+    // Not restoreAllMocks: it wipes React Native's own jest.fn, and later tests would wait forever for the flag.
+    afterEach(() => jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false));
+
+    it("hands over to the stories after the short reduced sequence, not the full one", async () => {
+      jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+      await screen.findByText("Se reveló");
+      const { totalMs } = REVEAL_TIMELINE.reduced;
+
+      await act(async () => jest.advanceTimersByTime(totalMs - 100));
+      expect(screen).toHavePathname("/reveal");
+      await act(async () => jest.advanceTimersByTime(100));
+      expect(screen).toHavePathname("/presentation");
+    });
+
+    it("does not start until Reduce Motion is known", async () => {
+      jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockReturnValue(new Promise(() => {}));
+      await renderRouter(routes, { initialUrl: "/roll" });
+      await act(async () => router.push("/reveal"));
+      await act(async () => jest.advanceTimersByTime(REVEAL_TIMELINE.thumbsCapMs + 100));
+
+      expect(screen.queryByText("Se reveló")).toBeNull();
+      expect(screen.getByTestId("reveal-loading")).toBeTruthy();
     });
   });
 

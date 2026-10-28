@@ -1,9 +1,12 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { errorMessage } from "@/api/client";
+import { myLikesKey } from "@/features/activity/use-my-likes";
 import { likeMedia, unlikeMedia } from "./actions";
 import { cancelLikeRefetches, setLikedInCaches } from "./like-cache";
 
+const TOGGLE_KEY = ["toggle-like"];
 type Target = { id: string; likedByMe: boolean };
 
 /**
@@ -13,33 +16,43 @@ type Target = { id: string; likedByMe: boolean };
  */
 export function useToggleLike() {
   const client = useQueryClient();
-  const inFlight = useRef(new Set<string>());
-  const [pending, setPending] = useState<Set<string>>(() => new Set());
-  const [error, setError] = useState<{ mediaId: string; message: string } | null>(null);
+
+  const mutation = useMutation({
+    mutationKey: TOGGLE_KEY,
+    mutationFn: (photo: Target) => (photo.likedByMe ? unlikeMedia : likeMedia)(photo.id),
+    onMutate: async (photo) => {
+      if (!photo.likedByMe) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await cancelLikeRefetches(client);
+      setLikedInCaches(client, photo.id, !photo.likedByMe);
+    },
+    onError: (_error, photo) => setLikedInCaches(client, photo.id, photo.likedByMe),
+    // Tu actividad → Me gusta lists what you like: refetch it, the server decides what is still there.
+    onSettled: () => client.invalidateQueries({ queryKey: myLikesKey }),
+  });
+  const { mutateAsync } = mutation;
+
+  const pendingIds = useMutationState({
+    filters: { mutationKey: TOGGLE_KEY, status: "pending" },
+    select: (m) => (m.state.variables as Target).id,
+  });
+  const pending = useMemo(() => new Set(pendingIds), [pendingIds]);
 
   const toggle = useCallback(
     async (photo: Target) => {
-      if (inFlight.current.has(photo.id)) return;
-      inFlight.current.add(photo.id);
-      setPending(new Set(inFlight.current));
-      setError(null);
-
-      const next = !photo.likedByMe;
-      if (next) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      await cancelLikeRefetches(client);
-      setLikedInCaches(client, photo.id, next);
-      try {
-        await (next ? likeMedia : unlikeMedia)(photo.id);
-      } catch (e) {
-        setLikedInCaches(client, photo.id, !next);
-        setError({ mediaId: photo.id, message: e instanceof Error ? e.message : "No se pudo cambiar el me gusta" });
-      } finally {
-        inFlight.current.delete(photo.id);
-        setPending(new Set(inFlight.current));
-      }
+      const busy = client.getMutationCache().findAll({
+        mutationKey: TOGGLE_KEY,
+        status: "pending",
+        predicate: (m) => (m.state.variables as Target).id === photo.id,
+      });
+      if (busy.length > 0) return;
+      await mutateAsync(photo).catch(() => undefined);
     },
-    [client],
+    [client, mutateAsync],
   );
+
+  const error = mutation.error
+    ? { mediaId: mutation.variables?.id ?? "", message: errorMessage(mutation.error, "No se pudo cambiar el me gusta") ?? "" }
+    : null;
 
   /** Double tap: likes, never takes a like away. */
   const like = useCallback(async (photo: Target) => {

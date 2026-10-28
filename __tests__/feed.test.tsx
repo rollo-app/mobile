@@ -2,6 +2,7 @@ import { act } from "@testing-library/react-native";
 import { ActionSheetIOS, Alert, Text } from "react-native";
 import * as sections from "@/features/feed/sections";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as actions from "@/features/trips/actions";
 import { signInAs, tripSummary, USER } from "@/test/account";
@@ -39,6 +40,12 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, blockedByMe: false },
   members: [
@@ -68,6 +75,7 @@ const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false,
 const queued = (over: Partial<QueuedMedia> = {}): QueuedMedia => ({
   id: "q1",
   tripId: SUR,
+  ownerUserId: "u1",
   type: "photo",
   takenAt: Date.parse("2027-01-12T17:00:00Z"),
   day: "2027-01-12",
@@ -163,6 +171,36 @@ describe("Feed", () => {
     expect(await screen.findByText("el viento no perdona")).toBeVisible();
   });
 
+  describe("daily moments", () => {
+    const moment = (over: Partial<actions.Feed["items"][number]> = {}) =>
+      feedItem({ id: "mo1", momentDay: "2027-01-12", caption: "mi momento", files: { thumb: "/media/mo1/thumb", original: "/media/mo1/original" }, width: 1080, height: 1440, ...over });
+
+    it("shows the real photo with the moment badge instead of the thumbhash, and keeps ordinary rows blurry", async () => {
+      mocked.fetchFeed.mockResolvedValue(feed([moment(), feedItem({ id: "n1", caption: "normal", takenAt: Date.parse("2027-01-12T15:00:00Z") })]));
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+
+      const rows = await screen.findAllByTestId("feed-row");
+      await waitFor(() => expect(within(rows[0]!).getByTestId("feed-thumb").props.source).toEqual([expect.objectContaining({ uri: expect.stringContaining("/media/mo1/thumb") })]));
+      expect(within(rows[0]!).getByTestId("moment-badge")).toBeVisible();
+      expect(within(rows[1]!).getByTestId("feed-thumb").props.source).toEqual([]);
+      expect(within(rows[1]!).queryByTestId("moment-badge")).toBeNull();
+    });
+
+    it("tapping a moment opens the viewer for that photo in this roll, not the map", async () => {
+      mocked.fetchFeed.mockResolvedValue(feed([moment()]));
+      await renderRouter({ ...routes, "photo/[id]": () => <Text>Foto</Text> }, { initialUrl: "/map?view=feed" });
+
+      const row = await screen.findByRole("button", { name: /^Fede, / });
+      camera.flyTo.mockClear();
+      await fireEvent.press(row);
+
+      expect(await screen.findByText("Foto")).toBeVisible();
+      expect(screen).toHavePathname("/photo/mo1");
+      expect(screen).toHaveSearchParams({ id: "mo1", tripId: SUR });
+      expect(camera.flyTo).not.toHaveBeenCalled();
+    });
+  });
+
   it("tapping the author's photo or name opens their profile instead of the map", async () => {
     mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
     await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: "/map?view=feed" });
@@ -178,7 +216,7 @@ describe("Feed", () => {
 
   it("tapping your own name (also on an unuploaded photo) goes to Perfil", async () => {
     await signInAs({ user: { ...USER, id: "u-m1" }, trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
-    await queue.enqueue(queued());
+    await queue.enqueue(queued({ ownerUserId: "u-m1" }));
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Perfil de Juani" }));
@@ -257,8 +295,11 @@ describe("Feed", () => {
     afterEach(() => sheet.mockImplementation(() => {}));
 
     it("long-pressing someone else's row reports it and the row disappears", async () => {
-      moderation.reportMedia.mockResolvedValue(undefined);
       mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      // Like the server: once reported, the item is gone from the refetched feed too.
+      moderation.reportMedia.mockImplementation(async () => {
+        mocked.fetchFeed.mockResolvedValue(feed([]));
+      });
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
       pickReport();

@@ -1,4 +1,5 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import * as friendActions from "@/features/friends/actions";
 import * as moderation from "@/features/moderation/actions";
 import * as profileActions from "@/features/profile/actions";
@@ -17,7 +18,7 @@ const SUR = "11111111-1111-4111-8111-111111111111";
 const cami: friendActions.Friend = { id: "u2", name: "Cami", username: "cami", avatarUrl: null, bio: null };
 
 const profile = (blockedByMe: boolean): profileActions.UserProfile => ({
-  user: cami,
+  user: { ...cami, badge: null },
   isFriend: false,
   blockedByMe,
   reportedByMe: false,
@@ -25,6 +26,7 @@ const profile = (blockedByMe: boolean): profileActions.UserProfile => ({
   canSee: false,
   friendCount: 0,
   mutualCount: 0,
+  friendRequest: "none",
 });
 
 beforeEach(async () => {
@@ -103,6 +105,12 @@ describe("Members", () => {
         revealed: false,
         dailyPhotoLimit: 10,
         dailyVideoLimit: 3,
+        featuringDisabled: false,
+        photoLimitMode: "daily",
+        totalPhotoLimit: null,
+        momentMode: "off",
+        momentWindowStart: 540,
+        momentWindowEnd: 1380,
       },
       me,
       members: [me, member("m2", "u2", "Cami", "member", true)],

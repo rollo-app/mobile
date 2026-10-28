@@ -32,3 +32,39 @@ export function verifyMagicLinkOnce<T>(email: string, token: string, verify: (em
 export const forgetMagicLinks = () => attempts.clear();
 
 export const sameEmail = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+const MAGIC_LINK_URL = /^https:\/\/rollo\.juanifraga\.com(?::443)?\/entrar\/?(?:\?[^#]*)?(?:#(.*))?$/i;
+
+/** application/x-www-form-urlencoded decoding, as URLSearchParams does it (`+` is a space). */
+function formDecode(value: string): string {
+  const spaced = value.replace(/\+/g, " ");
+  try {
+    return decodeURIComponent(spaced);
+  } catch {
+    return spaced;
+  }
+}
+
+function fragmentParam(fragment: string, name: string): string {
+  for (const pair of fragment.split("&")) {
+    const eq = pair.indexOf("=");
+    const key = formDecode(eq === -1 ? pair : pair.slice(0, eq));
+    if (key === name) return formDecode(eq === -1 ? "" : pair.slice(eq + 1));
+  }
+  return "";
+}
+
+/**
+ * The in-app route for the email's Universal Link `https://rollo.juanifraga.com/entrar#t=<token>&e=<email>`
+ * (the same fragment the web page forwards to `rollo://login`); null if the URL isn't that link.
+ * Without a token or an email it is plain `/login`, which shows its invalid state.
+ */
+export function magicLinkPath(url: string): string | null {
+  const match = MAGIC_LINK_URL.exec(url.trim());
+  if (!match) return null;
+  const fragment = match[1] ?? "";
+  const token = fragmentParam(fragment, "t");
+  const email = fragmentParam(fragment, "e");
+  if (!token || !email) return "/login";
+  return `/login?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+}

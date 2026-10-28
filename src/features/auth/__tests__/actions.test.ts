@@ -1,6 +1,10 @@
 import { createHash } from "crypto";
 import { getLoginLinkVerifier, setLoginLinkVerifier } from "@/storage/login-link-verifier";
+import { createQueue, type QueuedMedia } from "@/features/capture/queue";
+import { getQueue } from "@/features/capture/store";
+import { memoryDb } from "@/test/sqlite-memory";
 import { getSessionToken, setSessionToken } from "@/storage/session";
+import { setSessionUserId } from "@/storage/session-user";
 import { deleteAccount, fetchMe, LINK_FROM_OTHER_REQUEST, logout, startEmailLogin, verifyCode, verifyMagicLink } from "../actions";
 
 const user = { id: "u1", email: "juani@rollo.test", name: "Juani", avatarUrl: null };
@@ -125,6 +129,39 @@ describe("deleteAccount", () => {
 
     expect(req(fetchMock).method).toBe("DELETE");
     expect(await getSessionToken()).toBeNull();
+  });
+
+  const queued = (id: string, ownerUserId: string): QueuedMedia => ({
+    id, ownerUserId, tripId: "t", type: "photo", takenAt: 1, day: "2027-01-12", lat: null, lng: null, accuracyM: null, caption: null,
+    durationS: null, width: 1, height: 1, sizeBytes: 1, originalUri: "o", thumbUri: "t", thumbhash: null,
+  });
+
+  it("deletes that account's pending photos, and only its", async () => {
+    await setSessionToken("tok");
+    await setSessionUserId("u1");
+    const queue = await createQueue(memoryDb());
+    jest.mocked(getQueue).mockResolvedValue(queue);
+    await queue.enqueue(queued("mine", "u1"));
+    await queue.enqueue(queued("theirs", "u2"));
+    mockFetch(204);
+
+    await deleteAccount();
+
+    expect(await queue.pending("u1")).toEqual([]);
+    expect((await queue.pending("u2")).map((m) => m.id)).toEqual(["theirs"]);
+  });
+
+  it("if the server fails, its pending photos stay too", async () => {
+    await setSessionToken("tok");
+    await setSessionUserId("u1");
+    const queue = await createQueue(memoryDb());
+    jest.mocked(getQueue).mockResolvedValue(queue);
+    await queue.enqueue(queued("mine", "u1"));
+    mockFetch(500, { error: "Error del servidor" });
+
+    await expect(deleteAccount()).rejects.toThrow();
+
+    expect(await queue.pending("u1")).toHaveLength(1);
   });
 
   it("if the server fails, the session stays", async () => {

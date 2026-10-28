@@ -18,6 +18,7 @@ import { signOut } from "@/features/auth/session";
 import { useRetryPendingLogouts } from "@/features/auth/use-retry-pending-logouts";
 import { useMe } from "@/features/auth/use-me";
 import { Button } from "@/ui/components";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PillHost } from "@/ui/pill-host";
 import { colors, spacing, type } from "@/ui/theme";
 
@@ -29,13 +30,15 @@ export default function RootLayout() {
   useEffect(() => connectAppState(), []);
   useEffect(() => void cancelLegacyRevealNotifications(), []);
   return (
-    <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE }}>
-      <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
-        <StatusBar style="auto" />
-        <RootStack />
-        <PillHost />
-      </ThemeProvider>
-    </PersistQueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE }}>
+        <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
+          <StatusBar style="auto" />
+          <RootStack />
+          <PillHost />
+        </ThemeProvider>
+      </PersistQueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -112,6 +115,8 @@ function RootStack() {
             }}
           />
           <Stack.Screen name="blocked" options={{ title: "Bloqueados" }} />
+          {/* Dev only: the profile header against worst-case data (rendered empty outside __DEV__). */}
+          <Stack.Screen name="dev/worst-case" options={{ title: "Peor caso (perfil)" }} />
           {/* Someone's profile from a roll or a photo: a push over the tabs (a sheet or viewer closes first). */}
           {/* No title: the name is already in the profile's header. */}
           <Stack.Screen name="user/[id]" options={{ title: "" }} />
@@ -127,6 +132,15 @@ function RootStack() {
             }}
           />
           <Stack.Screen
+            name="info/[topic]"
+            options={{
+              headerShown: false,
+              presentation: "formSheet",
+              sheetAllowedDetents: "fitToContents",
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="offline-maps"
             options={{
               title: "Mapa sin señal",
@@ -135,7 +149,12 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
-          <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          {/* No swipe to dismiss: once shot, the only way out of the caption screen is sending it. */}
+          <Stack.Screen name="capture" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
+          {/* The daily moment: camera with countdown; like capture, no swipe to dismiss. */}
+          <Stack.Screen name="moment" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
+          {/* The app's first presentation, once per phone after a new account completes its profile. */}
+          <Stack.Screen name="intro" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
           {/* The lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen
@@ -154,6 +173,16 @@ function RootStack() {
           <Stack.Screen
             name="photo/[id]"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }}
+          />
+          {/* Comments of a photo: a sheet over the viewer. */}
+          <Stack.Screen
+            name="comments/[mediaId]"
+            options={{
+              title: "Comentarios",
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.6, 1],
+              sheetGrabberVisible: true,
+            }}
           />
           <Stack.Screen
             name="featured/[userId]/[mediaId]"

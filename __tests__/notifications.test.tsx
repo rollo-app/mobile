@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import "@/test/reanimated";
 import { Linking, Text } from "react-native";
 import { router } from "expo-router";
 import { signIn } from "@/features/auth/session";
@@ -11,11 +12,16 @@ import { hasSeenPushPrimer, markPushPrimerSeen } from "@/storage/push-primer";
 import { clearSessionToken } from "@/storage/session";
 import { signInAs, tripSummary, USER } from "@/test/account";
 import { routes } from "@/test/routes";
+import { syncMoments } from "@/features/moments/moment-sync";
 import { queryClient } from "@/api/query-client";
 
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/notifications/actions");
 jest.mock("@/features/friends/actions");
+jest.mock("@/features/moments/moment-sync", () => ({
+  ...jest.requireActual("@/features/moments/moment-sync"),
+  syncMoments: jest.fn().mockResolvedValue(undefined),
+}));
 
 const trips = jest.mocked(actions);
 const push = jest.mocked(pushActions);
@@ -39,6 +45,12 @@ const detail = (id = SUR, name = "Viaje al sur"): actions.TripDetail => ({
     revealed: false,
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
+    featuringDisabled: false,
+    photoLimitMode: "daily",
+    totalPhotoLimit: null,
+    momentMode: "off",
+    momentWindowStart: 540,
+    momentWindowEnd: 1380,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false },
   members: [],
@@ -227,6 +239,58 @@ describe("tapping a push", () => {
     expect(await getActiveTripId()).toBe(OTRO);
   });
 
+  it("the 'momentPosted' push opens the viewer on that moment of a roll that is not revealed yet, and leaves its roll active", async () => {
+    trips.fetchFeed.mockImplementation(async (id: string) => ({
+      revealed: false,
+      revealAt: Date.now() + 4 * DAY,
+      items:
+        id === OTRO
+          ? [
+              {
+                id: "mo1",
+                type: "photo",
+                takenAt: Date.parse("2027-01-12T16:10:00Z"),
+                day: "2027-01-12",
+                lat: null,
+                lng: null,
+                caption: null,
+                thumbhash: null,
+                durationS: null,
+                momentDay: "2027-01-12",
+                author: { id: "m2", userId: "u2", name: "Fede", username: null, avatarUrl: null },
+                width: 1080,
+                height: 1440,
+                files: { thumb: "/m/mo1/thumb", original: "/m/mo1/original" },
+                selfie: { id: "se1", width: 1080, height: 1440, thumbhash: null, files: { thumb: "/m/se1/thumb", original: "/m/se1/original" } },
+              },
+            ]
+          : [],
+    }) as never);
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await screen.findAllByLabelText(/cambiar de rollo$/);
+    const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)![0];
+
+    await act(async () => listener(tapped(`/photo/mo1?tripId=${OTRO}`)));
+
+    await waitFor(() => expect(screen).toHavePathname("/photo/mo1"));
+    expect(await screen.findByTestId("viewer-info")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ver la otra foto" })).toBeVisible();
+    expect(await getActiveTripId()).toBe(OTRO);
+  });
+
+  it("a moment's local notification makes its roll active and opens /moment with its day and time", async () => {
+    const at = Date.now();
+    notifications.getLastNotificationResponseAsync.mockResolvedValue(
+      tapped(`/moment?trip=${OTRO}&day=2027-01-12&at=${at}`, `moment.${OTRO}.2027-01-12`),
+    );
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+
+    await waitFor(() => expect(screen).toHavePathname("/moment"));
+    expect(screen).toHaveSearchParams({ trip: OTRO, day: "2027-01-12", at: String(at) });
+    expect(await getActiveTripId()).toBe(OTRO);
+    await settle();
+  });
+
   it("signed out it waits for the login, then opens", async () => {
     await clearSessionToken();
     queryClient.clear();
@@ -236,15 +300,15 @@ describe("tapping a push", () => {
     expect(screen).not.toHavePathname("/user/u2");
 
     queryClient.setQueryData(["me"], USER);
-    await act(async () => signIn("session-token"));
+    await act(async () => signIn("session-token", "u1"));
 
     await waitFor(() => expect(screen).toHavePathname("/user/u2"));
   });
 });
 
 describe("Ajustes: Notificaciones", () => {
-  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true };
-  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto"];
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true, momentPosted: true };
+  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad", "Momento del día", "Momentos del grupo"];
 
   beforeEach(() => {
     push.fetchNotificationSettings.mockResolvedValue(ALL_ON);
@@ -263,7 +327,7 @@ describe("Ajustes: Notificaciones", () => {
     expect(await screen.findByRole("switch", { name: "Te suman a un rollo" })).toBeVisible();
   });
 
-  it("shows a switch per event with its explanation, from the server", async () => {
+  it("shows the switches in four titled groups, from the server", async () => {
     permission(true, true, "granted");
     push.fetchNotificationSettings.mockResolvedValue({ ...ALL_ON, photoLiked: false });
     await renderRouter(testRoutes, { initialUrl: "/notifications" });
@@ -271,14 +335,55 @@ describe("Ajustes: Notificaciones", () => {
     for (const label of LABELS) expect(await screen.findByRole("switch", { name: label })).toBeVisible();
     expect(screen.getByRole("switch", { name: "Les gusta tu foto" }).props.value).toBe(false);
     expect(screen.getByRole("switch", { name: "Te suman a un rollo" }).props.value).toBe(true);
-    expect(screen.getByText("Cuando alguien te agrega a un rollo.")).toBeVisible();
-    expect(screen.getByText("Cuando alguien acepta tu link de amistad.")).toBeVisible();
-    expect(screen.getByText("Cuando empieza un rollo en el que estás.")).toBeVisible();
-    expect(screen.getByText("Cuando se revelan las fotos de un rollo tuyo.")).toBeVisible();
-    expect(screen.getByText("Cuando alguien pone una foto tuya en su perfil.")).toBeVisible();
-    expect(screen.getByText("Cuando a alguien le gusta una foto tuya.")).toBeVisible();
+    for (const title of ["Rollos", "Amigos", "Tus fotos"]) expect(screen.getByText(title)).toBeVisible();
+    expect(screen.getAllByText("Momento del día").length).toBeGreaterThan(1); // group title + switch label
+    expect(screen.getByText("Se revela: cuando se pueden ver las fotos de un rollo tuyo.")).toBeVisible();
+    expect(screen.getByText("Cuando alguien acepta tu link de amistad o te manda una solicitud.")).toBeVisible();
+    expect(screen.getByText("Cuando alguien destaca, le da me gusta o comenta una foto tuya (o una que comentaste).")).toBeVisible();
+    expect(screen.getByText("Un aviso al día, a una hora al azar, para sacar tu foto; y otro cuando alguien del rollo sube la suya.")).toBeVisible();
     // With permission there's no banner.
     expect(screen.queryByText("Las notificaciones están desactivadas")).toBeNull();
+  });
+
+  it("'Momentos del grupo' saves only momentPosted", async () => {
+    permission(true, true, "granted");
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    const sw = await screen.findByRole("switch", { name: "Momentos del grupo" });
+    expect(sw.props.value).toBe(true);
+    await fireEvent(sw, "valueChange", false);
+
+    expect(push.updateNotificationSettings).toHaveBeenCalledWith({ momentPosted: false });
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Momentos del grupo" }).props.value).toBe(false));
+  });
+
+  it("'Momento del día' off saves it, then leaves no moment.* scheduled", async () => {
+    permission(true, true, "granted");
+    notifications.getAllScheduledNotificationsAsync.mockResolvedValue(
+      [{ identifier: "moment.t1.2027-01-12" }, { identifier: "other" }] as never,
+    );
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    await fireEvent(await screen.findByRole("switch", { name: "Momento del día" }), "valueChange", false);
+
+    expect(push.updateNotificationSettings).toHaveBeenCalledWith({ dailyMoment: false });
+    await waitFor(() => expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("moment.t1.2027-01-12"));
+    expect(notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith("other");
+    notifications.getAllScheduledNotificationsAsync.mockResolvedValue([]);
+  });
+
+  it("'Momento del día' on saves it, then syncs the moments", async () => {
+    permission(true, true, "granted");
+    push.fetchNotificationSettings.mockResolvedValue({ ...ALL_ON, dailyMoment: false });
+    jest.mocked(syncMoments).mockClear();
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    const sw = await screen.findByRole("switch", { name: "Momento del día" });
+    expect(sw.props.value).toBe(false);
+    await fireEvent(sw, "valueChange", true);
+
+    expect(push.updateNotificationSettings).toHaveBeenCalledWith({ dailyMoment: true });
+    await waitFor(() => expect(syncMoments).toHaveBeenCalledTimes(1));
   });
 
   it("a switch saves only its own key and moves at once", async () => {

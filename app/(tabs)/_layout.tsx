@@ -2,6 +2,8 @@ import { router } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { useRollStarted } from "@/features/capture/use-roll-started";
 import { useTodayLeft } from "@/features/capture/use-today-left";
+import { useAppIntro } from "@/features/intro/use-app-intro";
+import { useMomentSync } from "@/features/moments/use-moment-sync";
 import { useTabAvatar } from "@/features/profile/use-tab-avatar";
 import { useFirstPresentation } from "@/features/reveal/use-first-presentation";
 import { hasNoTrips } from "@/features/trips/active";
@@ -27,6 +29,8 @@ export default function TabsLayout() {
 
   useFirstPresentation(trip?.id, phase === "revealed", loaded);
   useRollStarted(trip?.id, phase, loaded);
+  useAppIntro();
+  useMomentSync();
 
   return (
     <NativeTabs tintColor={colors.tint} minimizeBehavior="onScrollDown">

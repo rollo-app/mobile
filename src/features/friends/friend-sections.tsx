@@ -1,18 +1,16 @@
 import { MenuView } from "@expo/ui/community/menu";
-import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Alert } from "react-native";
-import { userKey } from "@/features/profile/use-user";
+import { errorMessage } from "@/api/client";
 import { formatDateRange } from "@/features/trips/phase";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
-import { tripKey } from "@/features/trips/use-trip-detail";
 import { setActiveTripId } from "@/storage/active-trip";
 import { Button, ErrorText, Footnote, Row, Section } from "@/ui/components";
-import { addFriendsToTrip, removeFriend, type Friend } from "./actions";
 import { addableTrips } from "./addable-trips";
-import { friendKey, useFriend } from "./use-friend";
-import { friendsKey } from "./use-friends";
+import { useAddFriendsToTrip } from "./use-add-friends-to-trip";
+import { useFriend } from "./use-friend";
+import { useRemoveFriend } from "./use-remove-friend";
 
 const NO_COMMON = "Todavía no tienen rollos en común.";
 
@@ -21,14 +19,14 @@ const NO_COMMON = "Todavía no tienen rollos en común.";
  * of yours, and removing them as a friend. Nothing if the server says you aren't friends anymore.
  */
 export function FriendSections({ userId, name }: { userId: string; name: string }) {
-  const queryClient = useQueryClient();
   const { profile, notFriend, error, refetch, isRefetching } = useFriend(userId);
   const { trips } = useActiveTrip();
-  const [adding, setAdding] = useState(false);
-  // Guards against a second pick before `adding` re-renders the menu as disabled.
-  const addInFlight = useRef(false);
-  const [addError, setAddError] = useState<string | null>(null);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+  const { add, adding, error: addFailure, reset: resetAdd } = useAddFriendsToTrip();
+  // The server answered but didn't add them ("unavailable"): not a request error.
+  const [notAdded, setNotAdded] = useState(false);
+  const remove = useRemoveFriend();
+  const addError = errorMessage(addFailure, `No se pudo sumar a ${name}`) ?? (notAdded ? `No se pudo sumar a ${name}` : null);
+  const removeError = errorMessage(remove.error, "No se pudo borrar al amigo");
 
   if (notFriend) return null;
   if (!profile) {
@@ -51,49 +49,17 @@ export function FriendSections({ userId, name }: { userId: string; name: string 
     router.navigate("/roll");
   }
 
-  async function addTo(tripId: string) {
-    if (addInFlight.current) return;
-    addInFlight.current = true;
-    setAddError(null);
-    setAdding(true);
-    try {
-      const [result] = await addFriendsToTrip(tripId, [userId]);
-      if (result?.status === "added") {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: friendKey(userId) }),
-          queryClient.invalidateQueries({ queryKey: tripKey(tripId) }),
-        ]);
-      } else {
-        setAddError(`No se pudo sumar a ${name}`);
-      }
-    } catch (e) {
-      setAddError(e instanceof Error ? e.message : `No se pudo sumar a ${name}`);
-    } finally {
-      addInFlight.current = false;
-      setAdding(false);
-    }
+  function addTo(tripId: string) {
+    setNotAdded(false);
+    resetAdd();
+    add({ tripId, friendIds: [userId] }, ([result]) => setNotAdded(result?.status !== "added"));
   }
 
   function confirmRemove() {
     Alert.alert(`¿Borrar a ${name} de tus amigos?`, "Ya no vas a poder sumarlo a rollos. Los rollos en los que ya está no cambian.", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Borrar amigo", style: "destructive", onPress: () => void remove() },
+      { text: "Borrar amigo", style: "destructive", onPress: () => remove.mutate(userId, { onSuccess: () => router.dismissTo("/friends") }) },
     ]);
-  }
-
-  async function remove() {
-    setRemoveError(null);
-    try {
-      await removeFriend(userId);
-    } catch (e) {
-      setRemoveError(e instanceof Error ? e.message : "No se pudo borrar al amigo");
-      return;
-    }
-    queryClient.setQueryData<Friend[]>(friendsKey, (current) => current?.filter((f) => f.id !== userId));
-    // Their profile (and what you can see of it) changed; the friend cache isn't removed here: doing it
-    // during the dismiss would refetch it and get a 404. It's garbage-collected once the screen unmounts.
-    void queryClient.invalidateQueries({ queryKey: userKey(userId), refetchType: "none" });
-    router.dismissTo("/friends");
   }
 
   return (
@@ -115,7 +81,7 @@ export function FriendSections({ userId, name }: { userId: string; name: string 
             <MenuView
               title="Sumar a un rollo"
               actions={addable.map((t) => ({ id: t.id, title: t.name, attributes: { disabled: adding } }))}
-              onPressAction={({ nativeEvent }) => void addTo(nativeEvent.event)}
+              onPressAction={({ nativeEvent }) => addTo(nativeEvent.event)}
             >
               <Row label="Sumar a un rollo" tone="tint" loading={adding} />
             </MenuView>
@@ -125,7 +91,7 @@ export function FriendSections({ userId, name }: { userId: string; name: string 
       {addError && <ErrorText>{addError}</ErrorText>}
 
       <Section>
-        <Row label="Borrar amigo" tone="danger" onPress={confirmRemove} />
+        <Row label="Borrar amigo" tone="danger" chevron={false} onPress={confirmRemove} />
       </Section>
       {removeError && <ErrorText>{removeError}</ErrorText>}
     </>
