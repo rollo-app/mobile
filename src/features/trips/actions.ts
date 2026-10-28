@@ -91,3 +91,8 @@ export async function removeMember(tripId: string, memberId: string): Promise<vo
 export async function renameTrip(tripId: string, name: string): Promise<Trip> {
   return (await unwrap((await authedClient()).PATCH("/trips/{tripId}", { params: { path: { tripId } }, body: { name } }))).trip;
 }
+
+/** Deletes the rollo for everyone, photos included (creator only). */
+export async function deleteTrip(tripId: string): Promise<void> {
+  await unwrap((await authedClient()).DELETE("/trips/{tripId}", { params: { path: { tripId } } }));
+}

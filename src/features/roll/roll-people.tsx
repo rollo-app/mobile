@@ -11,8 +11,11 @@ import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatHandle } from "@/features/profile/username";
 import type { TripDetail } from "@/features/trips/actions";
+import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { useArchiveTrip } from "@/features/trips/use-archive-trip";
 import { canRename, memberActions, memberBadge, type MemberAction } from "@/features/trips/roles";
 import { ErrorText, Row, Section } from "@/ui/components";
+import { useDeleteTrip } from "./use-delete-trip";
 import { useMakeAdmin } from "./use-make-admin";
 import { useRemoveAdmin } from "./use-remove-admin";
 import { useRemoveMember } from "./use-remove-member";
@@ -30,6 +33,9 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
     Share.share({ message: `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}` });
 
   const leave = useLeaveTrip(detail.trip.id, detail.trip.name, { revealed: detail.trip.revealed });
+  const deleteTrip = useDeleteTrip(detail.trip.id, detail.trip.name);
+  const { setArchived } = useArchiveTrip();
+  const archived = useActiveTrip().trips.find((t) => t.id === detail.trip.id)?.archived ?? false;
   const makeAdmin = useMakeAdmin(detail.trip.id);
   const removeAdmin = useRemoveAdmin(detail.trip.id);
   const removeMember = useRemoveMember(detail.trip.id);
@@ -149,12 +155,29 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
       </Section>
       {failure && <ErrorText>{failure}</ErrorText>}
 
+      {detail.trip.revealed && (
+        <Section>
+          <Row
+            label={archived ? "Desarchivar rollo" : "Archivar rollo"}
+            chevron={false}
+            onPress={() => setArchived(detail.trip.id, !archived)}
+          />
+        </Section>
+      )}
+
       {!detail.me.isCreator && (
         <Section>
           <Row label="Salirme del rollo" tone="danger" chevron={false} loading={leave.leaving} onPress={leave.leaving ? undefined : leave.confirm} />
         </Section>
       )}
       {leave.error && <ErrorText>{leave.error}</ErrorText>}
+
+      {detail.me.isCreator && (
+        <Section>
+          <Row label="Borrar rollo" tone="danger" chevron={false} loading={deleteTrip.deleting} onPress={deleteTrip.deleting ? undefined : deleteTrip.confirm} />
+        </Section>
+      )}
+      {deleteTrip.error && <ErrorText>{deleteTrip.error}</ErrorText>}
     </>
   );
 }

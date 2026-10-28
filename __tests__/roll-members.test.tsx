@@ -1,14 +1,20 @@
 import { Alert } from "react-native";
+import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
 import * as friendActions from "@/features/friends/actions";
 import * as tripActions from "@/features/trips/actions";
-import { setActiveTripId } from "@/storage/active-trip";
+import * as momentCancel from "@/features/moments/cancel";
+import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
+import { queryClient } from "@/api/query-client";
+import { myTripsKey } from "@/features/trips/use-active-trip";
+import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/friends/actions");
 jest.mock("@/features/trips/actions");
+jest.mock("@/features/moments/cancel", () => ({ ...jest.requireActual("@/features/moments/cancel"), cancelMomentNotifications: jest.fn(async () => {}) }));
 const friends = jest.mocked(friendActions);
 const trips = jest.mocked(tripActions);
 
@@ -251,5 +257,90 @@ describe("Renaming", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Nombre, Viaje al sur" }));
     await act(async () => savePrompt().onPress!("Otro"));
     expect(await screen.findByText("No se pudo")).toBeVisible();
+  });
+});
+
+describe("Archiving from the rollo", () => {
+  const revealedDetail = (me: Member) => detail(me, { revealed: true, revealAt: Date.now() - DAY });
+  const openRevealed = async (d: tripActions.TripDetail, archived: boolean) => {
+    const list = { trips: [tripSummary(SUR, "Viaje al sur", { revealed: true, archived })] };
+    trips.fetchMyTrips.mockResolvedValue(list);
+    queryClient.setQueryData(myTripsKey, list);
+    trips.fetchTrip.mockResolvedValue(d);
+    trips.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [] });
+    await setActiveTripId(SUR);
+    await markPresentationSeen(SUR);
+    await renderRouter(routes, { initialUrl: "/roll?view=roll" });
+    await screen.findByText(/^En el rollo · /);
+  };
+
+  it("offers Archivar rollo on a revealed rollo and archives it", async () => {
+    trips.setTripArchived.mockResolvedValue(undefined);
+    await openRevealed(revealedDetail(tomi), false);
+    await fireEvent.press(await screen.findByRole("button", { name: "Archivar rollo" }));
+    await waitFor(() => expect(trips.setTripArchived).toHaveBeenCalledWith(SUR, true));
+  });
+
+  it("offers Desarchivar rollo when it is archived", async () => {
+    trips.setTripArchived.mockResolvedValue(undefined);
+    await openRevealed(revealedDetail(tomi), true);
+    await fireEvent.press(await screen.findByRole("button", { name: "Desarchivar rollo" }));
+    await waitFor(() => expect(trips.setTripArchived).toHaveBeenCalledWith(SUR, false));
+  });
+
+  it("does not offer archiving before the reveal", async () => {
+    await openBoard(detail(tomi));
+    expect(screen.queryByRole("button", { name: /archivar rollo/i })).toBeNull();
+  });
+});
+
+describe("Borrar rollo (creator)", () => {
+  let dismissTo: jest.SpyInstance;
+  // The router is only live once rendered, so the spy goes on after `openBoard`.
+  const open = async (d: tripActions.TripDetail) => {
+    await openBoard(d);
+    dismissTo = jest.spyOn(router, "dismissTo").mockImplementation(() => {});
+  };
+  afterEach(() => dismissTo?.mockRestore());
+
+  it("is hidden for an admin who is not the creator", async () => {
+    await openBoard(detail(adminCami));
+    expect(screen.queryByRole("button", { name: "Borrar rollo" })).toBeNull();
+  });
+
+  it("asks first and does nothing on Cancelar", async () => {
+    await openBoard(detail(creator));
+    await fireEvent.press(screen.getByRole("button", { name: "Borrar rollo" }));
+    expect(alert).toHaveBeenCalledWith(
+      '¿Borrar "Viaje al sur" para todos?',
+      "Se borran todas las fotos de todos y no se puede deshacer.",
+      expect.any(Array),
+    );
+    expect(alertButtons().map((b) => b.text)).toEqual(["Cancelar", "Borrar"]);
+    expect(alertButtons().find((b) => b.text === "Borrar")).toMatchObject({ style: "destructive" });
+    expect(trips.deleteTrip).not.toHaveBeenCalled();
+  });
+
+  it("deletes, cancels moments, clears the active rollo, refreshes the list and goes back to /roll", async () => {
+    trips.deleteTrip.mockResolvedValue(undefined);
+    await open(detail(creator));
+    const before = trips.fetchMyTrips.mock.calls.length;
+    await fireEvent.press(screen.getByRole("button", { name: "Borrar rollo" }));
+    await act(async () => alertButtons().find((b) => b.text === "Borrar")!.onPress!());
+    await waitFor(() => expect(trips.deleteTrip).toHaveBeenCalledWith(SUR));
+    await waitFor(() => expect(dismissTo).toHaveBeenCalledWith("/roll"));
+    expect(momentCancel.cancelMomentNotifications).toHaveBeenCalledWith(SUR);
+    expect(await getActiveTripId()).toBeNull();
+    expect(trips.fetchMyTrips.mock.calls.length).toBeGreaterThan(before);
+  });
+
+  it("shows the failure under the row and stays", async () => {
+    trips.deleteTrip.mockRejectedValue(new Error("Solo quien creó el rollo puede hacer esto"));
+    await open(detail(creator));
+    await fireEvent.press(screen.getByRole("button", { name: "Borrar rollo" }));
+    await act(async () => alertButtons().find((b) => b.text === "Borrar")!.onPress!());
+    expect(await screen.findByText("Solo quien creó el rollo puede hacer esto")).toBeVisible();
+    expect(dismissTo).not.toHaveBeenCalled();
+    expect(await getActiveTripId()).toBe(SUR);
   });
 });
