@@ -442,6 +442,34 @@ describe("uploader", () => {
       expect(removed).toEqual([]);
     });
 
+    it("drops a photo whose rollo was deleted without marking it failed (410 on register)", async () => {
+      routes.push((c) => (c.method === "POST" && c.url.endsWith("/media") ? json(410, { error: "Este rollo se borró" }) : undefined));
+      await queue.enqueue(item());
+      const discarded: string[] = [];
+      deps.onDiscarded = async (tripId) => {
+        discarded.push(tripId);
+      };
+
+      await createUploader(deps).run();
+
+      expect(await queue.pending("u1")).toEqual([]);
+      expect(await queue.failed("u1")).toEqual([]);
+      expect(removed).toHaveLength(1);
+      expect(discarded).toEqual([TRIP]);
+    });
+
+    it("drops a photo whose rollo was deleted without marking it failed (410 on confirm)", async () => {
+      routes.push((c) => (c.url.endsWith("/complete") ? json(410, { error: "Este rollo se borró" }) : undefined));
+      happyServer();
+      await queue.enqueue(item());
+
+      await createUploader(deps).run();
+
+      expect(await queue.pending("u1")).toEqual([]);
+      expect(await queue.failed("u1")).toEqual([]);
+      expect(removed).toHaveLength(1);
+    });
+
     it("other 4xx on confirm (file that never arrived) keep being retried", async () => {
       routes.push((c) => (c.url.endsWith("/complete") ? json(400, { error: "Falta el archivo" }) : undefined));
       happyServer();
