@@ -7,6 +7,7 @@ import { markPresentationSeen } from "@/storage/presentation";
 import { hasSeenRevealIntro, markRevealIntroSeen } from "@/storage/reveal-intro";
 import { signInAs, tripSummary } from "@/test/account";
 import { REVEAL_TIMELINE } from "@/features/reveal/timeline";
+import "@/test/reanimated";
 import { routes } from "@/test/routes";
 import { queryClient } from "@/api/query-client";
 import { feedKey } from "@/features/trips/use-feed";

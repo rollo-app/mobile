@@ -1,12 +1,15 @@
 import { act } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { Text } from "react-native";
+import { fireGestureHandler, getByGestureTestId } from "react-native-gesture-handler/jest-utils";
+import { State } from "react-native-gesture-handler";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as likeActions from "@/features/likes/actions";
 import * as actions from "@/features/trips/actions";
 import { PHOTO_MS } from "@/features/presentation/story";
 import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
+import "@/test/reanimated";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
@@ -150,6 +153,45 @@ describe("Presentation", () => {
 
     await fireEvent(await screen.findByTestId("story-surface"), "accessibilityAction", { nativeEvent: { actionName: "escape" } });
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  const drag = async (translationY: number, velocityY: number) => {
+    await screen.findByTestId("story-surface");
+    await act(async () => {
+      fireGestureHandler(getByGestureTestId("story-pan"), [
+        { state: State.BEGAN, translationY: 0 },
+        { state: State.ACTIVE, translationY: translationY / 2 },
+        { translationY },
+        { state: State.END, translationY, velocityY },
+      ]);
+    });
+  };
+
+  it("closes when swiped down past the distance threshold", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/presentation"));
+    await screen.findByText("Día 1");
+    await drag(150, 0);
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("closes on a short but fast downward fling", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/presentation"));
+    await screen.findByText("Día 1");
+    await drag(50, 1500); // 1.5 pt/ms
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("snaps back and keeps the story when the swipe is short and slow", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await act(async () => router.push("/presentation"));
+    await screen.findByText("Día 1");
+    await drag(60, 200);
+    expect(screen).toHavePathname("/presentation");
+    expect(screen.getByText("Día 1")).toBeTruthy();
+    await tap(); // taps still navigate after a cancelled drag
+    await screen.findByText("el viento no perdona");
   });
 
   it("closes from the hidden 'Cerrar presentación' button", async () => {

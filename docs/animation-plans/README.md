@@ -26,6 +26,6 @@ Ninguno toca el "worst case" del perfil que se está haciendo en paralelo.
 - Me gusta sin animación (decisión del dueño, CLAUDE.md), cortes secos entre historias, chevron de "Anteriores" (200 ms, raro),
   cuenta regresiva y chips de zoom de la cámara, cámaras del mapa (MapLibre), revelado (`darkroom-intro.tsx`, ya bien con RM),
   salida de "Mandar al rollo", subida del teclado del caption, intro/candado/momento (salvo RM, plan 001).
-- Gesto de cerrar las historias con `PanResponder` (hilo JS): moverlo a Gesture Handler pide dependencia nativa + rebuild; después de enero.
+- ~~Gesto de cerrar las historias con `PanResponder`~~ (hecho: Gesture Handler + Reanimated en el hilo de UI, `story-player.tsx`).
 - "Mandar al rollo": press de 120 ms simétrico; podría ser asimétrico (100 / 200 ms) pero es polish mínimo.
 - Comentario de `src/ui/badge.tsx:9` dice que el punto LIVE late "still with Reduce Motion" y el código lo frena con RM: corregir el comentario cuando se toque el archivo.
