@@ -16,6 +16,8 @@ import RollScreen from "../../app/(tabs)/roll/index";
 import MeLayout from "../../app/(tabs)/me/_layout";
 import MeActivityScreen from "../../app/(tabs)/me/activity";
 import MeLikesScreen from "../../app/(tabs)/me/likes";
+import MeCommentsScreen from "../../app/(tabs)/me/comments";
+import MeFeaturedByScreen from "../../app/(tabs)/me/featured-by";
 import MeScreen from "../../app/(tabs)/me/index";
 import RootLayout from "../../app/_layout";
 import FriendLinkRoute from "../../app/friends/[code]";
@@ -96,5 +98,7 @@ export const routes = {
   "(tabs)/me/index": MeScreen,
   "(tabs)/me/activity": MeActivityScreen,
   "(tabs)/me/likes": MeLikesScreen,
+  "(tabs)/me/comments": MeCommentsScreen,
+  "(tabs)/me/featured-by": MeFeaturedByScreen,
 };
 

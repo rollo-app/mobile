@@ -31,6 +31,24 @@ const liked = (mediaId: string, over: Partial<LikedPhoto> = {}): LikedPhoto => (
   source: { kind: "trip", tripId: SUR },
   ...over,
 });
+const comment = (commentId: string, over: Partial<activityActions.MyComment> = {}): activityActions.MyComment => ({
+  commentId,
+  mediaId: `m-${commentId}`,
+  tripId: SUR,
+  text: "Qué día",
+  createdAt: Date.now() - 5 * 60_000,
+  thumbPath: `/trips/${SUR}/media/m-${commentId}/thumb`,
+  thumbHash: null,
+  ...over,
+});
+const featuredBy = (mediaId: string, over: Partial<activityActions.FeaturedByItem> = {}): activityActions.FeaturedByItem => ({
+  mediaId,
+  user: { ...CAMI, bio: null },
+  featuredAt: Date.now() - 2 * 3_600_000,
+  thumbPath: `/featured/u2/${mediaId}/thumb`,
+  thumbHash: null,
+  ...over,
+});
 const page = (items: LikedPhoto[], over: Partial<activityActions.MyLikes> = {}) => ({ items, nextCursor: null, total: items.length, ...over });
 
 beforeEach(async () => {
@@ -41,6 +59,8 @@ beforeEach(async () => {
   featured.fetchFeatured.mockReset().mockResolvedValue([]);
   likes.unlikeMedia.mockReset().mockResolvedValue(undefined);
   activity.fetchMyLikes.mockReset().mockResolvedValue(page([liked("p1"), liked("p2", { author: CAMI, authorUserId: CAMI.id })]));
+  activity.fetchMyComments.mockReset().mockResolvedValue({ items: [comment("c1"), comment("c2")], nextCursor: null, total: 2 });
+  activity.fetchFeaturedBy.mockReset().mockResolvedValue({ items: [featuredBy("p1")], nextCursor: null, total: 1 });
 });
 
 afterEach(() => queryClient.clear());
@@ -53,6 +73,20 @@ describe("Tu actividad", () => {
 
     await waitFor(() => expect(screen).toHavePathname("/me/activity"));
     expect(await screen.findByRole("button", { name: /^Me gusta, 2/ })).toBeVisible();
+  });
+
+  it("lists Comentarios and Destacaron tus fotos with their counts and opens each", async () => {
+    await renderRouter(routes, { initialUrl: "/me/activity" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: /^Comentarios, 2/ }));
+    await waitFor(() => expect(screen).toHavePathname("/me/comments"));
+  });
+
+  it("opens Destacaron tus fotos with its count", async () => {
+    await renderRouter(routes, { initialUrl: "/me/activity" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: /^Destacaron tus fotos, 1/ }));
+    await waitFor(() => expect(screen).toHavePathname("/me/featured-by"));
   });
 
   it("shows no count until it is known", async () => {
@@ -137,5 +171,104 @@ describe("Me gusta", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Ya no me gusta" }));
 
     await waitFor(() => expect(activity.fetchMyLikes).toHaveBeenCalledWith(undefined));
+  });
+});
+
+describe("Comentarios", () => {
+  it("lists your comments with the text and how long ago", async () => {
+    await renderRouter(routes, { initialUrl: "/me/comments" });
+
+    expect(await screen.findAllByRole("button", { name: "Qué día, hace 5 min" })).toHaveLength(2);
+    expect(screen.getAllByText("hace 5 min")).toHaveLength(2);
+  });
+
+  it("opens the photo with its comments open", async () => {
+    await renderRouter(routes, { initialUrl: "/me/comments" });
+
+    await fireEvent.press((await screen.findAllByRole("button", { name: "Qué día, hace 5 min" }))[0]!);
+
+    await waitFor(() => expect(screen).toHavePathname("/photo/m-c1"));
+    expect(screen).toHaveSearchParams({ id: "m-c1", tripId: SUR, comments: "1" });
+  });
+
+  it("is empty with a message", async () => {
+    activity.fetchMyComments.mockResolvedValue({ items: [], nextCursor: null, total: 0 });
+    await renderRouter(routes, { initialUrl: "/me/comments" });
+
+    expect(await screen.findByText("Todavía no comentaste ninguna foto.")).toBeVisible();
+  });
+
+  it("shows the error with a retry that loads again", async () => {
+    activity.fetchMyComments.mockRejectedValueOnce(new Error("Sin conexión"));
+    await renderRouter(routes, { initialUrl: "/me/comments" });
+
+    expect(await screen.findByText("Sin conexión")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+
+    expect(await screen.findAllByRole("button", { name: /Qué día/ })).toHaveLength(2);
+  });
+
+  it("asks for the next page with the cursor when it reaches the end", async () => {
+    activity.fetchMyComments
+      .mockReset()
+      .mockResolvedValueOnce({ items: [comment("c1")], nextCursor: "c1", total: 2 })
+      .mockResolvedValueOnce({ items: [comment("c2")], nextCursor: null, total: 2 });
+    await renderRouter(routes, { initialUrl: "/me/comments" });
+    await screen.findAllByRole("button", { name: /Qué día/ });
+
+    await fireEvent(screen.getByTestId("my-comments-list"), "endReached");
+
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /Qué día/ })).toHaveLength(2));
+    expect(activity.fetchMyComments).toHaveBeenLastCalledWith("c1");
+  });
+});
+
+describe("Destacaron tus fotos", () => {
+  it("lists who featured your photos and how long ago", async () => {
+    await renderRouter(routes, { initialUrl: "/me/featured-by" });
+
+    expect(await screen.findByRole("button", { name: "Cami destacó tu foto, hace 2 h" })).toBeVisible();
+    expect(screen.getByText("Cami destacó tu foto")).toBeVisible();
+    expect(screen.getByText("hace 2 h")).toBeVisible();
+  });
+
+  it("opens the photo on that person's profile", async () => {
+    featured.fetchFeatured.mockResolvedValue([featuredPhoto("p1", {}, "u2")]);
+    await renderRouter(routes, { initialUrl: "/me/featured-by" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: /^Cami destacó tu foto/ }));
+
+    await waitFor(() => expect(screen).toHavePathname("/featured/u2/p1"));
+  });
+
+  it("is empty with a message", async () => {
+    activity.fetchFeaturedBy.mockResolvedValue({ items: [], nextCursor: null, total: 0 });
+    await renderRouter(routes, { initialUrl: "/me/featured-by" });
+
+    expect(await screen.findByText("Nadie destacó tus fotos todavía.")).toBeVisible();
+  });
+
+  it("shows the error with a retry that loads again", async () => {
+    activity.fetchFeaturedBy.mockRejectedValueOnce(new Error("Sin conexión"));
+    await renderRouter(routes, { initialUrl: "/me/featured-by" });
+
+    expect(await screen.findByText("Sin conexión")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+
+    expect(await screen.findByRole("button", { name: /^Cami destacó tu foto/ })).toBeVisible();
+  });
+
+  it("asks for the next page with the cursor when it reaches the end", async () => {
+    activity.fetchFeaturedBy
+      .mockReset()
+      .mockResolvedValueOnce({ items: [featuredBy("p1")], nextCursor: "c1", total: 2 })
+      .mockResolvedValueOnce({ items: [featuredBy("p2")], nextCursor: null, total: 2 });
+    await renderRouter(routes, { initialUrl: "/me/featured-by" });
+    await screen.findByRole("button", { name: /^Cami destacó tu foto/ });
+
+    await fireEvent(screen.getByTestId("featured-by-list"), "endReached");
+
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Cami destacó tu foto/ })).toHaveLength(2));
+    expect(activity.fetchFeaturedBy).toHaveBeenLastCalledWith("c1");
   });
 });
