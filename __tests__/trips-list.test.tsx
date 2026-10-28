@@ -116,4 +116,16 @@ describe("Tus rollos: archived and row actions", () => {
     );
     spy.mockRestore();
   });
+
+  it("alerts natively and keeps the row when leaving from the list fails", async () => {
+    friends.leaveTrip.mockRejectedValue(new Error("boom"));
+    const spy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await renderRouter(routes, { initialUrl: "/trips" });
+    await screen.findByRole("button", { name: /^Sur/ });
+    await fireEvent(screen.getByRole("button", { name: /^Sur/ }), "accessibilityAction", { nativeEvent: { actionName: "leave" } });
+    spy.mock.calls[0]![2]!.find((b) => b.text === "Eliminar")!.onPress!();
+    await waitFor(() => expect(Burnt.alert).toHaveBeenCalledWith(expect.objectContaining({ preset: "error" })));
+    expect(screen.getByRole("button", { name: /^Sur/ })).toBeVisible();
+    spy.mockRestore();
+  });
 });

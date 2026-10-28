@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import * as Burnt from "burnt";
 import { router } from "expo-router";
 import { Alert } from "react-native";
 import { errorMessage } from "@/api/client";
@@ -25,6 +26,10 @@ export function useLeaveTrip(tripId: string, tripName: string, { revealed, copy 
       await queryClient.invalidateQueries({ queryKey: myTripsKey });
       queryClient.removeQueries({ queryKey: tripKey(tripId) });
       if (copy === "board") router.dismissTo("/roll");
+    },
+    // The board shows the error inline; the list has no place for it, so it says so natively.
+    onError: (error) => {
+      if (copy === "list") Burnt.alert({ preset: "error", title: errorMessage(error, "No pudiste salirte del rollo") ?? "No pudiste salirte del rollo" });
     },
   });
 

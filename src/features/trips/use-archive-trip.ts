@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Burnt from "burnt";
-import { errorMessage } from "@/api/client";
 import { setTripArchived } from "./actions";
 import type { TripSummary } from "./active";
 import { myTripsKey } from "./use-active-trip";
@@ -34,8 +33,5 @@ export function useArchiveTrip() {
     },
   });
 
-  return {
-    setArchived: (tripId: string, archived: boolean) => mutation.mutate({ tripId, archived }),
-    error: mutation.error ? errorMessage(mutation.error, "No se pudo archivar") : null,
-  };
+  return { setArchived: (tripId: string, archived: boolean) => mutation.mutate({ tripId, archived }) };
 }

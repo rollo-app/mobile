@@ -612,7 +612,6 @@ describe("Create roll", () => {
       momentMode: "photo_selfie",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
-      createdBy: null,
     });
   });
 
