@@ -179,7 +179,16 @@ const Cell = memo(function Cell({ photo, token, size, selecting, selected, own, 
  * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
  * its header buttons while it stays mounted behind another view.
  */
-export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId: string; toolbar?: boolean }) {
+export function GalleryScreen({
+  tripId,
+  toolbar: showToolbar = true,
+  onSelectionChange,
+}: {
+  tripId: string;
+  toolbar?: boolean;
+  /** How many photos are selected while selecting, null otherwise: the screen that owns the header shows it as the title. */
+  onSelectionChange?: (count: number | null) => void;
+}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -199,6 +208,9 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [bar, setBar] = useState<Bar | null>(null);
   const abort = useRef<AbortController | null>(null);
+  const selectedCount = selecting ? selected.size : null;
+  useEffect(() => onSelectionChange?.(selectedCount), [onSelectionChange, selectedCount]);
+  useEffect(() => () => onSelectionChange?.(null), [onSelectionChange]);
 
   const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
   const authors = useMemo(() => authorsOf(photos), [photos]);

@@ -1,4 +1,6 @@
 import { Stack } from "expo-router";
+import { useState } from "react";
+import { SelectionHeaderTitle } from "@/features/gallery/selection-header-title";
 import type { ColorValue } from "react-native";
 import { hasNoTrips } from "@/features/trips/active";
 import { TripSwitcher } from "@/features/trips/trip-switcher";
@@ -15,8 +17,11 @@ export function RollScreen({ view }: { view?: string }) {
   const { trip, loaded } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
+  // While the gallery is selecting, the title is the selection: the trip's name doesn't fit between its two buttons.
+  const [selection, setSelection] = useState<number | null>(null);
   if (hasNoTrips(loaded, trip)) return <Welcome />;
   const revealed = trip && phase === "revealed";
+  const selecting = revealed && view !== "roll" && selection !== null;
   // The gallery's right toolbar (select + menu) is wider, so its title gets less room.
   const maxWidthRatio = revealed && view !== "roll" ? 0.45 : 0.5;
   // Revealed, the header is solid with the screen's background so it reads as one block with the
@@ -27,10 +32,14 @@ export function RollScreen({ view }: { view?: string }) {
     <>
       {trip && (
         <Stack.Screen
-          options={{ ...header, headerTitle: () => <TripSwitcher name={trip.name} maxWidthRatio={maxWidthRatio} /> }}
+          options={{
+            ...header,
+            headerTitle: () =>
+              selecting ? <SelectionHeaderTitle count={selection} /> : <TripSwitcher name={trip.name} maxWidthRatio={maxWidthRatio} />,
+          }}
         />
       )}
-      {revealed ? <RevealedRollScreen tripId={trip.id} /> : <RollBoard />}
+      {revealed ? <RevealedRollScreen tripId={trip.id} onSelectionChange={setSelection} /> : <RollBoard />}
     </>
   );
 }
