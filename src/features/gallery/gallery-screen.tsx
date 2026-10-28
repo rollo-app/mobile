@@ -34,7 +34,16 @@ const GAP = 2;
  * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
  * its header buttons while it stays mounted behind another view.
  */
-export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId: string; toolbar?: boolean }) {
+export function GalleryScreen({
+  tripId,
+  toolbar: showToolbar = true,
+  onSelectionChange,
+}: {
+  tripId: string;
+  toolbar?: boolean;
+  /** How many photos are selected while selecting, null otherwise: the screen that owns the header shows it as the title. */
+  onSelectionChange?: (count: number | null) => void;
+}) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -66,6 +75,9 @@ export function GalleryScreen({ tripId, toolbar: showToolbar = true }: { tripId:
 
   const { selecting, selected, allSelected, toggle, toggleAll, start: startSelecting, stop: stopSelecting } =
     useGallerySelection(shown);
+  const selectedCount = selecting ? selected.size : null;
+  useEffect(() => onSelectionChange?.(selectedCount), [onSelectionChange, selectedCount]);
+  useEffect(() => () => onSelectionChange?.(null), [onSelectionChange]);
   const { bar, busy, canSaveAll, run, confirmSaveAll, cancel, dismiss } = useBulkSave({
     saver,
     tripName: detail?.trip.name,
