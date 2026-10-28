@@ -83,6 +83,7 @@ Decisiones de producto:
 - **Offline first:** al disparar se guardan foto, hora (UTC + zona) y GPS. Pedir ubicación apenas se
   abre la cámara; sin fix, usar la última conocida y guardar su precisión. Cola local en SQLite, subida
   en segundo plano cuando hay señal, **UUID generado en el celular** (reintentar es seguro).
+  Si el server contesta **410** (el rollo se borró para todos), la foto se descarta en silencio (fila de la cola y archivos) sin marcarla fallida; el 404 de `complete` sigue como antes.
   Con la app cerrada o suspendida sube `expo-background-task` (tarea `rollo-upload`, BGProcessingTask de iOS: solo
   con red, cuándo corre lo decide el sistema, ~25 s por pasada con corte limpio entre ítems); los PUT usan sesión
   de URLSession en background. Si se mata la app a mano, iOS no la despierta hasta que se vuelva a abrir.
@@ -116,7 +117,7 @@ Decisiones de producto:
   "Sumar a un rollo" y "Borrar amigo" (silencioso). Cualquier miembro suma a **sus** amigos al rollo
   desde "Sumar amigos" (sheet `add-friends`, respuesta por amigo: "Ya está" / "No disponible"); al crear un rollo, si tenés
   amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el admin
-  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código). Sin la app, `/friends` del sitio muestra el código, "Abrir Rollo" y el link para bajarla.
+  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código; el creador no lo ve: él "Borra el rollo para todos", ver "Roles, archivar y eliminar rollos"). Sin la app, `/friends` del sitio muestra el código, "Abrir Rollo" y el link para bajarla.
   **Solicitudes de amistad** (`friend-request-button.tsx`, `friend-requests-row.tsx`, `friend-requests-screen.tsx`, `use-friend-request.ts`): en el perfil de otra persona, si no son amigos y no la bloqueaste, un botón debajo del encabezado según `friendRequest` (`none` → "Agregar amigo"; `sent` → "Solicitud enviada", su menú ofrece "Cancelar solicitud"; `received` → "Aceptar solicitud" y "Rechazar"). Es optimista (el perfil y la lista cambian al toque y vuelven si el server dice que no) y el error va inline. Las recibidas entran por una fila "Solicitudes" con la cantidad arriba en la tab Amigos (solo si hay), que abre la pantalla "Solicitudes" (`(tabs)/friends/requests`) con Aceptar / Rechazar por fila y "No tenés solicitudes pendientes." si no queda ninguna (`GET /me/friend-requests`). Rechazar es silencioso. Séptimo aviso push `friendRequest` ("Cami te mandó una solicitud de amistad", abre la tab Amigos) con su switch "Solicitudes de amistad" en Ajustes → Notificaciones.
 - **Perfil de cualquier usuario** (`src/features/friends/user-profile-screen.tsx`, `GET /users/{userId}` →
   `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
@@ -145,6 +146,7 @@ Decisiones de producto:
   (la descripción y la cantidad de amigos son siempre públicas).
 - **Insignias** (`src/features/profile/badge.ts`): `badge` (`"founder"` | `"first_edition"` | null) viene del server en el usuario (`GET /me`, `GET /users/{id}`) y se asigna a mano en el backend. Se muestra solo en el encabezado del perfil (`ProfileHeader`, el tuyo y el de otros) bajo el nombre, con `Badge` neutral y las etiquetas en inglés **FOUNDER** / **FIRST EDITION**; valores desconocidos no muestran nada. No va en listas, Feed ni mapa.
 - **Límites para crear rollos** (los aplica el server en `POST /trips`, **409** con el mensaje): máximo 2 rollos sin revelar creados por vos a la vez y 4 creados en los últimos 30 días; los rollos a los que te sumaste no cuentan y hay usuarios exentos (flag a mano en la DB). La app no chequea nada antes: `create-screen.tsx` muestra el mensaje del server debajo del botón (`ErrorText`, como cualquier error del form) sin perder lo cargado.
+- **Roles, archivar y eliminar rollos** (`src/features/trips/roles.ts`, `row-actions.ts`, `use-archive-trip.ts`; `src/features/roll/roll-people.tsx`): el rol de la API sigue siendo `admin` | `member`; el **creador** es el miembro con `isCreator` (también en `TripSummary`; el trip trae `createdBy`) y se muestra como "Creador", los demás admins como "Admin" (`memberBadge`). Mantener apretado un miembro (`MenuView` + acciones de VoiceOver, `memberActions`) ofrece "Hacer admin" / "Quitar admin" / "Sacar del rollo" (con `Alert`; hooks `use-make-admin`, `use-remove-admin`, `use-remove-member`). Cualquier admin cambia el nombre del rollo con la fila "Nombre" (`Alert.prompt` "Nombre del rollo", `use-rename-trip`; más de 60 caracteres: `ErrorText`). **Archivar** es por miembro y solo de rollos revelados: menú de mantener apretado en "Tus rollos" y fila "Archivar rollo" / "Desarchivar rollo" en el rollo revelado (`useArchiveTrip`, optimista; si falla, `Burnt.alert` "No se pudo archivar" / "No se pudo desarchivar"). **Eliminar** (menú de la fila, no lo ve el creador) es salirse: `useLeaveTrip(tripId, name, { revealed, copy: "list" | "board" })`; en un rollo revelado avisa "…No vas a poder volver a entrar." (a un revelado no se entra de nuevo con el código) y en uno sin revelar "…Podés volver con el código."; si falla desde la lista, `Burnt.alert`. **"Borrar rollo"** (solo el creador, fila roja con `Alert` "¿Borrar "{rollo}" para todos?", `useDeleteTrip`, `DELETE /trips/{id}`) lo borra para todos; un 403 del server dice "Solo quien creó el rollo puede hacer esto".
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
@@ -183,7 +185,7 @@ Decisiones de producto:
   está en curso (una vez por rollo) un candado grande se sacude y se abre (SF Symbol `lock` → `lock.open` con `.symbolEffect(.replace.magic)`,
   módulo local `modules/rollo-symbol`; sin el módulo nativo cae a `expo-symbols`) con un "clac" y pasa a cámara. Texto "Arrancó el rollo.
   Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En "Tus rollos" el badge del rollo en curso dice LIVE.
-  "Tus rollos" se agrupa con `groupTrips` (`src/features/trips/group-trips.ts`): en curso, próximos y sin revelar arriba; "Revelados" (últimos 3 meses por fecha de revelado); y "Anteriores · N" colapsado (se abre solo si el rollo activo está ahí, sin recordar nada).
+  "Tus rollos" se agrupa con `groupTrips` (`src/features/trips/group-trips.ts`): en curso, próximos y sin revelar arriba; "Revelados" (últimos 3 meses por fecha de revelado); "Anteriores · N" colapsado (se abre solo si el rollo activo está ahí, sin recordar nada) y, al final, **"Archivados · N"** (`archived`, `archivedExpandedByDefault`: colapsado salvo que el rollo activo esté ahí; los archivados no entran en los otros grupos).
 - **Notificaciones push** (`src/features/notifications/`): las manda el backend con Expo Push Service. El token se registra con
   `PUT /me/push-tokens/{token}` atado a la sesión **solo si cambió el token o la sesión** desde el último registro exitoso (`rollo.pushTokenRegistered` en SecureStore: token + hash SHA-256 de la sesión, `src/storage/push-registered.ts`; no se renombra) y se borra al cerrar sesión y cuando un `401` la cierra (así un celular que cambia de
   cuenta no recibe avisos de la anterior). **Permiso con explicación propia** (`/push-primer`, `push-primer.tsx`): se ofrece una sola vez,
@@ -245,7 +247,7 @@ Decisiones de producto:
   vuelve al Mapa enfocando ese pin. El segmento Feed existe solo antes del revelado. "Solo hoy" va en el menú de filtros.
   La lógica vive en `src/features/map/roll-map.tsx`, `src/features/map/activity-screen.tsx` y `src/features/feed/feed-list.tsx`.
 - Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
-  miembros): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
+  miembros con sus roles, "Nombre" y "Creado por {nombre}" en el pie de Fechas): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
   `gallery` por defecto o `roll`, como "Mapa | Feed"; la galería queda montada y su toolbar solo se ve en Galería). El
   segmento Rollo es una lista agrupada con el resumen ("64 fotos · 3 videos · 8 personas · 6 días"), Fechas (el mismo
   `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,
@@ -426,7 +428,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1762 tests
+npm test                      # ~1800 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
