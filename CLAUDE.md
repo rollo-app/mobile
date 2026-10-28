@@ -116,8 +116,8 @@ Decisiones de producto:
   perfil (`/friends/user/<id>`) con su encabezado, sus destacadas ("Fotos | Mapa"), "Rollos en común" (`GET /friends/{userId}`),
   "Sumar a un rollo" y "Borrar amigo" (silencioso). Cualquier miembro suma a **sus** amigos al rollo
   desde "Sumar amigos" (sheet `add-friends`, respuesta por amigo: "Ya está" / "No disponible"); al crear un rollo, si tenés
-  amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el admin
-  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código; el creador no lo ve: él "Borra el rollo para todos", ver "Roles, archivar y eliminar rollos"). Sin la app, `/friends` del sitio muestra el código, "Abrir Rollo" y el link para bajarla.
+  amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el creador
+  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código, pero solo antes del revelado; el creador no lo ve: él "Borra el rollo para todos", ver "Roles, archivar y eliminar rollos"). Sin la app, `/friends` del sitio muestra el código, "Abrir Rollo" y el link para bajarla.
   **Solicitudes de amistad** (`friend-request-button.tsx`, `friend-requests-row.tsx`, `friend-requests-screen.tsx`, `use-friend-request.ts`): en el perfil de otra persona, si no son amigos y no la bloqueaste, un botón debajo del encabezado según `friendRequest` (`none` → "Agregar amigo"; `sent` → "Solicitud enviada", su menú ofrece "Cancelar solicitud"; `received` → "Aceptar solicitud" y "Rechazar"). Es optimista (el perfil y la lista cambian al toque y vuelven si el server dice que no) y el error va inline. Las recibidas entran por una fila "Solicitudes" con la cantidad arriba en la tab Amigos (solo si hay), que abre la pantalla "Solicitudes" (`(tabs)/friends/requests`) con Aceptar / Rechazar por fila y "No tenés solicitudes pendientes." si no queda ninguna (`GET /me/friend-requests`). Rechazar es silencioso. Séptimo aviso push `friendRequest` ("Cami te mandó una solicitud de amistad", abre la tab Amigos) con su switch "Solicitudes de amistad" en Ajustes → Notificaciones.
 - **Perfil de cualquier usuario** (`src/features/friends/user-profile-screen.tsx`, `GET /users/{userId}` →
   `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
@@ -138,7 +138,7 @@ Decisiones de producto:
   insignia del autor si no es el dueño del perfil; tocar una abre `/featured/<userId>/<mediaId>`) y el mapa por zonas.
   **Adónde pueden ir tus fotos** (cuatro niveles, gana el más restrictivo; `featuring-section.tsx`, `use-featuring-levels.ts`, `use-privacy-settings.ts`):
   cuenta (Ajustes: "Permitir que agreguen mis fotos a su perfil", `PATCH /me/settings` `privacy.allowFeaturing`), rollo ("Tus fotos en otros perfiles" en el
-  tablero y en el segmento "Rollo", `PATCH /trips/{id}/members/me`), foto ("No dejar que la destaquen") y **rollo privado** (el admin lo elige al crear y lo cambia
+  tablero y en el segmento "Rollo", `PATCH /trips/{id}/members/me`), foto ("No dejar que la destaquen") y **rollo privado** (el creador lo elige al crear y lo cambia
   en el tablero con confirmación, `featuringDisabled`: ninguna foto sale, ni la del autor). Apagar un nivel saca las fotos de los perfiles ajenos; prender no devuelve nada. El feed
   trae `canFeature` por foto: sin él (o sin `featuredByMe`) no aparece "Agregar a tu perfil" en el visor ni en el menú de la grilla (`feature-action.ts`).
   **Visibilidad:** `profileVisibility` `"friends"` (por defecto) o `"public"`, con el switch "Perfil público" de Ajustes
@@ -225,7 +225,7 @@ Decisiones de producto:
 - **Comentarios** (`src/features/comments/`): solo en fotos reveladas (no videos, no en las destacadas de un perfil: mostrarían nombres y charla del
   rollo a gente de afuera) y solo entre miembros activos del rollo. En el visor de la galería, la burbuja `bubble.left` (con la cantidad,
   `commentCount` del feed) abre la sheet `/comments/<mediaId>` (`comments-screen.tsx`): lista (avatar, nombre, texto, "hace 5 min") y campo abajo
-  (texto plano, hasta 500, `draft.ts`). **Borrar es deslizando la fila de derecha a izquierda** (`ReanimatedSwipeable`, botón rojo con tacho de 80 pt que borra al tocarlo; abrir una cierra la otra; acción de VoiceOver "Borrar") y solo en filas con `canDelete`, que decide el server: borrás lo tuyo; el dueño de la foto y el admin del rollo, cualquiera. El "…" de cada fila ofrece solo
+  (texto plano, hasta 500, `draft.ts`). **Borrar es deslizando la fila de derecha a izquierda** (`ReanimatedSwipeable`, botón rojo con tacho de 80 pt que borra al tocarlo; abrir una cierra la otra; acción de VoiceOver "Borrar") y solo en filas con `canDelete`, que decide el server: borrás lo tuyo; el dueño de la foto y cualquier admin del rollo, cualquiera. El "…" de cada fila ofrece solo
   "Denunciar" (ajeno; `useReport().reportComment`, mail a soporte como el resto de la moderación; en una fila tuya no hay "…"). Error al enviar: inline y no pierde lo escrito.
   El aviso `photoCommented` ("Cami comentó tu foto", "Cami también comentó una foto") abre `/photo/<id>?tripId=…&comments=1`: el visor abre la sheet
   una vez (`openComments`). Ajustes → Notificaciones: switch "Comentan tu foto".
@@ -247,7 +247,7 @@ Decisiones de producto:
   vuelve al Mapa enfocando ese pin. El segmento Feed existe solo antes del revelado. "Solo hoy" va en el menú de filtros.
   La lógica vive en `src/features/map/roll-map.tsx`, `src/features/map/activity-screen.tsx` y `src/features/feed/feed-list.tsx`.
 - Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
-  miembros con sus roles, "Nombre" y "Creado por {nombre}" en el pie de Fechas): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
+  miembros con sus roles, "Nombre" (solo para admins) y "Creado por {nombre}" en el pie de Fechas): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
   `gallery` por defecto o `roll`, como "Mapa | Feed"; la galería queda montada y su toolbar solo se ve en Galería). El
   segmento Rollo es una lista agrupada con el resumen ("64 fotos · 3 videos · 8 personas · 6 días"), Fechas (el mismo
   `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,

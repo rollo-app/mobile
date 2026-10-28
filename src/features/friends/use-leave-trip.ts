@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { Alert } from "react-native";
 import { errorMessage } from "@/api/client";
 import { cancelMomentNotifications } from "@/features/moments/cancel";
+import { bestEffort } from "@/features/trips/best-effort";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { tripKey } from "@/features/trips/use-trip-detail";
 import { clearActiveTripId, getActiveTripId } from "@/storage/active-trip";
@@ -19,12 +20,15 @@ export function useLeaveTrip(tripId: string, tripName: string, { revealed, copy 
   const mutation = useMutation({
     mutationFn: async () => {
       await leaveTrip(tripId);
-      if ((await getActiveTripId()) === tripId) await clearActiveTripId();
     },
     onSuccess: async () => {
-      await cancelMomentNotifications(tripId);
-      await queryClient.invalidateQueries({ queryKey: myTripsKey });
-      queryClient.removeQueries({ queryKey: tripKey(tripId) });
+      // The server already did it: a failing cleanup step must not turn that into an error or block the navigation.
+      await bestEffort(async () => {
+        if ((await getActiveTripId()) === tripId) await clearActiveTripId();
+      });
+      await bestEffort(() => cancelMomentNotifications(tripId));
+      await bestEffort(() => queryClient.invalidateQueries({ queryKey: myTripsKey }));
+      await bestEffort(() => queryClient.removeQueries({ queryKey: tripKey(tripId) }));
       if (copy === "board") router.dismissTo("/roll");
     },
     // The board shows the error inline; the list has no place for it, so it says so natively.

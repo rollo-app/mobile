@@ -4,6 +4,7 @@ import { Alert } from "react-native";
 import { errorMessage } from "@/api/client";
 import { cancelMomentNotifications } from "@/features/moments/cancel";
 import { deleteTrip } from "@/features/trips/actions";
+import { bestEffort } from "@/features/trips/best-effort";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { tripKey } from "@/features/trips/use-trip-detail";
 import { clearActiveTripId, getActiveTripId } from "@/storage/active-trip";
@@ -14,12 +15,15 @@ export function useDeleteTrip(tripId: string, tripName: string) {
   const mutation = useMutation({
     mutationFn: async () => {
       await deleteTrip(tripId);
-      if ((await getActiveTripId()) === tripId) await clearActiveTripId();
     },
     onSuccess: async () => {
-      await cancelMomentNotifications(tripId);
-      await queryClient.invalidateQueries({ queryKey: myTripsKey });
-      queryClient.removeQueries({ queryKey: tripKey(tripId) });
+      // The server already did it: a failing cleanup step must not turn that into an error or block the navigation.
+      await bestEffort(async () => {
+        if ((await getActiveTripId()) === tripId) await clearActiveTripId();
+      });
+      await bestEffort(() => cancelMomentNotifications(tripId));
+      await bestEffort(() => queryClient.invalidateQueries({ queryKey: myTripsKey }));
+      await bestEffort(() => queryClient.removeQueries({ queryKey: tripKey(tripId) }));
       router.dismissTo("/roll");
     },
   });

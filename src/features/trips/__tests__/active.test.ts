@@ -31,6 +31,20 @@ describe("pickActiveTrip", () => {
     expect(pickActiveTrip(trips, "zzz")?.id).toBe("a");
   });
 
+  it("skips archived rollos when falling back", () => {
+    const list = [{ ...trip("a"), archived: true }, trip("b")];
+    expect(pickActiveTrip(list, null)?.id).toBe("b");
+    expect(pickActiveTrip(list, "zzz")?.id).toBe("b");
+  });
+
+  it("falls back to the first when all are archived", () => {
+    expect(pickActiveTrip([{ ...trip("a"), archived: true }], null)?.id).toBe("a");
+  });
+
+  it("keeps an archived saved one", () => {
+    expect(pickActiveTrip([{ ...trip("a"), archived: true }, trip("b")], "a")?.id).toBe("a");
+  });
+
   it("is null without trips", () => {
     expect(pickActiveTrip([], "a")).toBeNull();
   });

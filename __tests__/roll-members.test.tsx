@@ -334,6 +334,19 @@ describe("Borrar rollo (creator)", () => {
     expect(trips.fetchMyTrips.mock.calls.length).toBeGreaterThan(before);
   });
 
+  it("a failing cleanup step doesn't hide the success: no error and it still goes back to /roll", async () => {
+    trips.deleteTrip.mockResolvedValue(undefined);
+    jest.mocked(momentCancel.cancelMomentNotifications).mockRejectedValueOnce(new Error("notifications down"));
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    await open(detail(creator));
+    await fireEvent.press(screen.getByRole("button", { name: "Borrar rollo" }));
+    await act(async () => alertButtons().find((b) => b.text === "Borrar")!.onPress!());
+    await waitFor(() => expect(dismissTo).toHaveBeenCalledWith("/roll"));
+    expect(screen.queryByText("No se pudo borrar el rollo")).toBeNull();
+    expect(await getActiveTripId()).toBeNull();
+    warn.mockRestore();
+  });
+
   it("shows the failure under the row and stays", async () => {
     trips.deleteTrip.mockRejectedValue(new Error("Solo quien creó el rollo puede hacer esto"));
     await open(detail(creator));

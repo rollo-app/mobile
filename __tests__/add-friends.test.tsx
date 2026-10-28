@@ -208,6 +208,23 @@ describe("Leaving a roll", () => {
     expect(await getActiveTripId()).toBeNull();
   });
 
+  it("a failing cleanup step doesn't hide the success: no error and the roll is gone", async () => {
+    const N = jest.requireMock("expo-notifications") as typeof import("expo-notifications");
+    jest.mocked(N.getAllScheduledNotificationsAsync).mockRejectedValueOnce(new Error("notifications down"));
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    friends.leaveTrip.mockResolvedValue();
+    await setActiveTripId(SUR);
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
+    trips.fetchMyTrips.mockResolvedValue({ trips: [] });
+    await confirmLeave();
+
+    expect(await screen.findByText("Todavía no tenés rollos")).toBeVisible();
+    expect(screen.queryByText("No te pudiste salir del rollo")).toBeNull();
+    expect(await getActiveTripId()).toBeNull();
+    warn.mockRestore();
+  });
+
   it("the admin can't: the server's message shows inline and the roll stays", async () => {
     friends.leaveTrip.mockRejectedValue(new Error("Sos el admin: no podés salirte del rollo"));
     await renderRouter(routes, { initialUrl: "/roll" });

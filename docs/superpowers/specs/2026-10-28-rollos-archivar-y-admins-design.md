@@ -87,8 +87,7 @@ grupo. Y un rollo grande necesita más de una persona que lo administre, sin que
   R2 van a una cola `r2_purge` que el **cron** vacía de a tandas *(decisión de Claude, por los límites de los Workers)*. Se borra: fotos y archivos en R2, me gusta, comentarios,
   destacadas en perfiles (también "Tu actividad"), denuncias, códigos, miembros. Sin aviso push *(decisión de Claude)*.
 - En los demás celulares el rollo deja de venir en `/me/trips`; si era el activo, se limpia igual que hoy cuando un rollo
-  desaparece. Fotos de ese rollo en la cola offline: las subidas a un rollo borrado responden **410** con un código propio
-  (`trip_deleted`), distinto del 403 de "ya no sos miembro"; solo con ese código la app las descarta (fila y archivo) sin marcarse
+  desaparece. Fotos de ese rollo en la cola offline: las subidas a un rollo borrado responden **410** `{ error: "Este rollo se borró" }` (sin código; el `complete` de una foto ya registrada sigue en 404), distinto del 403 de "ya no sos miembro"; solo con ese 410 la app las descarta (fila y archivo) sin marcarse
   "no se pudieron subir". Las de alguien que se salió o al que sacaron siguen como hoy *(decisión de Claude)*. Se cancelan los momentos (`syncMoments` ya lo hace cuando un rollo deja de venir).
 
 ## Fuera de alcance
