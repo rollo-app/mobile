@@ -1,15 +1,6 @@
-import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { StatusBar } from "expo-status-bar";
-import { SymbolView } from "expo-symbols";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -21,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useToggleLike } from "@/features/likes/use-toggle-like";
-import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
+import type { RevealedPhoto } from "@/features/media/revealed";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { spacing } from "@/ui/theme";
 import { DayCard } from "./day-card";
@@ -29,10 +20,12 @@ import { isDownwardDrag, shouldDismiss } from "./dismiss";
 import { Outro } from "./outro";
 import { initialPlayer, playerReducer } from "./player";
 import { ProgressBar } from "./progress-bar";
+import { RoundButton } from "./round-button";
 import { Slide } from "./slide";
-import { buildStory, daySegments, elapsedProgress, stepDuration } from "./story";
+import { buildStory, daySegments } from "./story";
 import { useScreenReader } from "./use-accessibility";
-import { upcomingPhotos } from "./upcoming";
+import { useStoryClock } from "./use-story-clock";
+import { useStoryPrefetch } from "./use-story-prefetch";
 
 const TAP_BACK_FRACTION = 0.35;
 const HOLD_MS = 200;
@@ -72,48 +65,14 @@ export function StoryPlayer({
   const [muted, setMuted] = useState(true);
   const openProfile = useOpenProfile();
 
-  // The story changes only if the feed refreshes underneath: start over rather than point at a stale index.
-  // Auto-advance: a timer per step; the bar animates on the native thread and, after a pause, resumes from where the clock says it was.
-  const progress = useRef(new Animated.Value(0)).current;
-  const value = useRef(0);
-  const lastIndex = useRef(-1);
-
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) first.current = false;
-    else {
-      // Starting over also restarts the step's clock (same index 0, but a fresh step).
-      lastIndex.current = -1;
-      dispatch({ type: "load", steps });
-    }
-  }, [steps]);
-  useEffect(() => {
-    if (lastIndex.current !== state.index) {
-      lastIndex.current = state.index;
-      value.current = 0;
-      progress.setValue(0);
-    }
-    const duration = stepDuration(step);
-    if (duration == null || state.paused || screenReader) return;
-    const from = value.current;
-    // Native-driven: JS never sees the frames, so start explicitly from the saved point.
-    progress.setValue(from);
-    const startedAt = Date.now();
-    const anim = Animated.timing(progress, {
-      toValue: 1,
-      duration: duration * (1 - from),
-      easing: Easing.linear,
-      useNativeDriver: true,
-    });
-    anim.start();
-    // The clock lives here; the bar only shows it.
-    const next = setTimeout(() => dispatch({ type: "next" }), duration * (1 - from));
-    return () => {
-      clearTimeout(next);
-      anim.stop();
-      value.current = elapsedProgress(from, Date.now() - startedAt, duration);
-    };
-  }, [state.index, state.paused, step, progress, screenReader]);
+  const progress = useStoryClock({
+    steps,
+    index: state.index,
+    step,
+    paused: state.paused,
+    screenReader,
+    dispatch,
+  });
 
   // Soft haptic on each new day.
   useEffect(() => {
@@ -121,29 +80,7 @@ export function StoryPlayer({
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [step]);
 
-  // Only the next two photos are preloaded; on each day card the memory cache is dropped (what's behind is gone).
-  useEffect(() => {
-    const urls = upcomingPhotos(
-      state.steps,
-      state.index,
-      state.index === 0 ? 3 : 2,
-    ).flatMap((p) => [
-      `${mediaSource(p.thumbPath, token).uri}`,
-      ...(p.type === "photo" ? [mediaSource(p.originalPath, token).uri] : []),
-    ]);
-    const headers = { Authorization: `Bearer ${token}` };
-    let active = true;
-    const run = async () => {
-      if (state.steps[state.index]?.kind === "day")
-        await Image.clearMemoryCache().catch(() => false);
-      if (active && urls.length)
-        await Image.prefetch(urls, { headers }).catch(() => false);
-    };
-    void run();
-    return () => {
-      active = false;
-    };
-  }, [state.steps, state.index, token]);
+  useStoryPrefetch(state.steps, state.index, token);
 
   const held = useRef(false);
   const onPress = useCallback(
@@ -315,28 +252,6 @@ export function StoryPlayer({
   );
 }
 
-function RoundButton({
-  symbol,
-  label,
-  onPress,
-}: {
-  symbol: "speaker.slash.fill" | "speaker.wave.2.fill";
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={8}
-      onPress={onPress}
-      style={({ pressed }) => [styles.round, { opacity: pressed ? 0.6 : 1 }]}
-    >
-      <SymbolView name={symbol} size={16} tintColor="#fff" />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
   backdrop: { backgroundColor: "#000" },
@@ -354,13 +269,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: spacing.md,
-  },
-  round: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.4)",
   },
 });

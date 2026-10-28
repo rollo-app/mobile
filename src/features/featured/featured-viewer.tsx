@@ -16,9 +16,10 @@ import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { OverlayCornerSymbol, OverlayIconButton, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
 import { spacing, type } from "@/ui/theme";
-import { unfeatureMedia, type FeaturedPhoto } from "./actions";
+import type { FeaturedPhoto } from "./actions";
 import { featuredLabel } from "./featured-grid";
 import { featuredKey, useFeatured } from "./use-featured";
+import { useUnfeaturePhoto } from "./use-unfeature-photo";
 
 function Page({
   photo,
@@ -88,30 +89,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
   const [chrome, setChrome] = useState(true);
   const toggle = useCallback(() => setChrome((v) => !v), []);
 
-  // Guards against a second tap before `removing` re-renders the button as busy.
-  const removeInFlight = useRef(false);
-  const [removing, setRemoving] = useState(false);
-  const [removeError, setRemoveError] = useState<{ mediaId: string; message: string } | null>(null);
-
-  async function remove(target: FeaturedPhoto) {
-    if (removeInFlight.current) return;
-    removeInFlight.current = true;
-    setRemoving(true);
-    setRemoveError(null);
-    try {
-      await unfeatureMedia(target.mediaId);
-    } catch (e) {
-      setRemoveError({ mediaId: target.mediaId, message: e instanceof Error ? e.message : "No se pudo sacar de tu perfil" });
-      return;
-    } finally {
-      removeInFlight.current = false;
-      setRemoving(false);
-    }
-    queryClient.setQueryData<FeaturedPhoto[]>(featuredKey(userId), (list) => list?.filter((p) => p.mediaId !== target.mediaId));
-    // The roll galleries mark the photo as featured: they refetch.
-    void queryClient.invalidateQueries({ queryKey: ["feed"] });
-    router.back();
-  }
+  const { unfeature, removing, error: removeError } = useUnfeaturePhoto(userId);
 
   const report = useReport();
   // The photo's author (the profile's owner when nobody is named): you can't report your own.
@@ -206,7 +184,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                     symbolTestID="unfeature-symbol"
                     label="Sacar de tu perfil"
                     busy={removing}
-                    onPress={() => void remove(photo)}
+                    onPress={() => unfeature(photo.mediaId, () => router.back())}
                   />
                 )}
               </View>

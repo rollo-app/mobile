@@ -1,5 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { errorMessage } from "@/api/client";
 import { memo, useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
@@ -9,10 +9,10 @@ import { useReport } from "@/features/moderation/use-report";
 import { useMediaToken } from "@/features/media/revealed";
 import { feedToItems, mergeItems, pendingToItems, type MapItem } from "@/features/map/features";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
-import { deleteMedia } from "@/features/trips/actions";
+import { useRemoveFeedPhoto } from "./use-remove-feed-photo";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
-import { feedKey, useFeed } from "@/features/trips/use-feed";
-import { tripKey, useTripDetail } from "@/features/trips/use-trip-detail";
+import { useFeed } from "@/features/trips/use-feed";
+import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Footnote } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 
@@ -35,7 +35,6 @@ type FeedListProps = {
 };
 
 export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
-  const queryClient = useQueryClient();
   const { trip } = useActiveTrip();
   const tripId = trip?.id;
   const { detail } = useTripDetail(tripId);
@@ -59,27 +58,23 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
   const sections = useMemo(() => groupByDay(newest(all, limit), timeZone), [all, limit, timeZone]);
   const loadMore = useCallback(() => setLimit((n) => (n < all.length ? n + PAGE : n)), [all.length]);
 
+  const { mutate: removePhoto } = useRemoveFeedPhoto();
   const remove = useCallback(
-    async (item: MapItem) => {
+    (item: MapItem) => {
       if (!tripId) return;
-      try {
-        await deleteMedia(item.id);
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: feedKey(tripId) }),
-          queryClient.invalidateQueries({ queryKey: tripKey(tripId) }),
-        ]);
-      } catch (e) {
-        Alert.alert("No se pudo borrar", e instanceof Error ? e.message : "Probá de nuevo");
-      }
+      removePhoto(
+        { mediaId: item.id, tripId },
+        { onError: (e) => Alert.alert("No se pudo borrar", errorMessage(e, "Probá de nuevo") ?? undefined) },
+      );
     },
-    [tripId, queryClient],
+    [tripId, removePhoto],
   );
 
   const confirmRemove = useCallback(
     (item: MapItem) =>
       Alert.alert("¿Borrar esta foto?", "No se puede deshacer.", [
         { text: "Cancelar", style: "cancel" },
-        { text: "Borrar", style: "destructive", onPress: () => void remove(item) },
+        { text: "Borrar", style: "destructive", onPress: () => remove(item) },
       ]),
     [remove],
   );

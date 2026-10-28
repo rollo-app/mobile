@@ -1,13 +1,12 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { errorMessage } from "@/api/client";
 import { useState } from "react";
 import { ActionSheetIOS, ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { meKey, type User } from "@/features/auth/actions";
-import { stashFriendCode } from "@/features/friends/handle-friend-link";
+import type { User } from "@/features/auth/actions";
 import { Button, ErrorText, Field, Row, Section } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
-import { updateProfile } from "./actions";
 import { Avatar } from "./avatar";
 import { useAvatarUpload } from "./use-avatar-upload";
+import { useSaveProfile } from "./use-save-profile";
 import { USERNAME_TAKEN, useUsernameStatus } from "./use-username-status";
 import { normalizeUsername, suggestUsername } from "./username";
 
@@ -36,14 +35,17 @@ export function ProfileForm({
   /** Optional "Descripción", only when editing (not when completing the profile). */
   showBio?: boolean;
 }) {
-  const queryClient = useQueryClient();
   const avatar = useAvatarUpload();
   const [name, setName] = useState(user.name ?? "");
   const [username, setUsername] = useState(user.username ?? suggestUsername(user.email));
   const [bio, setBio] = useState(user.bio ?? "");
   const [friendCode, setFriendCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const saveProfile = useSaveProfile();
+  const error = errorMessage(saveProfile.error, "No se pudo guardar el perfil");
+  // Editing a field dismisses the last error; a save still running keeps its state.
+  const clearError = () => {
+    if (saveProfile.isError) saveProfile.reset();
+  };
 
   const trimmed = name.trim();
   const normalized = normalizeUsername(username);
@@ -61,31 +63,17 @@ export function ProfileForm({
     );
   }
 
-  async function save() {
-    setError(null);
-    setSaving(true);
-    try {
-      // A wrong code is told here, before saving: the friendship itself is made once the profile is done.
-      if (askFriendCode && friendCode.trim()) await stashFriendCode(friendCode);
-      const bioChanged = showBio && bio !== (user.bio ?? "");
-      if (trimmed !== user.name || normalized !== user.username || bioChanged) {
-        const updated = await updateProfile({ name: trimmed, username: normalized, ...(bioChanged ? { bio } : {}) });
-        await beforeApply?.();
-        queryClient.setQueryData(meKey, (current: User | undefined) => ({
-          ...(current ?? updated),
-          name: updated.name,
-          username: updated.username,
-          bio: updated.bio,
-        }));
-        void queryClient.invalidateQueries({ queryKey: ["trip"] });
-        void queryClient.invalidateQueries({ queryKey: ["feed"] });
-      }
-      onSaved();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo guardar el perfil");
-    } finally {
-      setSaving(false);
-    }
+  function save() {
+    const bioChanged = showBio && bio !== (user.bio ?? "");
+    const changed = trimmed !== user.name || normalized !== user.username || bioChanged;
+    saveProfile.mutate(
+      {
+        changes: changed ? { name: trimmed, username: normalized, ...(bioChanged ? { bio } : {}) } : null,
+        friendCode: askFriendCode ? friendCode : undefined,
+        beforeApply,
+      },
+      { onSuccess: () => onSaved() },
+    );
   }
 
   return (
@@ -135,7 +123,7 @@ export function ProfileForm({
           value={username}
           onChangeText={(value) => {
             setUsername(value);
-            setError(null);
+            clearError();
           }}
           maxLength={31}
           placeholder="usuario"
@@ -158,7 +146,7 @@ export function ProfileForm({
             value={bio}
             onChangeText={(value) => {
               setBio(value);
-              setError(null);
+              clearError();
             }}
             maxLength={BIO_MAX}
             multiline
@@ -175,7 +163,7 @@ export function ProfileForm({
           value={friendCode}
           onChangeText={(value) => {
             setFriendCode(value);
-            setError(null);
+            clearError();
           }}
           autoCapitalize="characters"
           autoCorrect={false}
@@ -186,7 +174,7 @@ export function ProfileForm({
 
       {error && <ErrorText>{error}</ErrorText>}
 
-      <Button label={submitLabel} onPress={save} disabled={!valid} loading={saving} />
+      <Button label={submitLabel} onPress={save} disabled={!valid} loading={saveProfile.isPending} />
     </View>
   );
 }
