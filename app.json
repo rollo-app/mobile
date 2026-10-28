@@ -19,11 +19,7 @@
         ]
       },
       "bundleIdentifier": "com.juanifraga.rollo",
-      "icon": {
-        "light": "./assets/icon.png",
-        "dark": "./assets/icon-dark.png",
-        "tinted": "./assets/icon-tinted.png"
-      },
+      "icon": "./assets/app.icon",
       "runtimeVersion": {
         "policy": "appVersion"
       }

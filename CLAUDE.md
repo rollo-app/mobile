@@ -266,7 +266,9 @@ Decisiones de producto:
   - MapLibre no acepta colores dinámicos: ahí se usa `tintHex[scheme]` según `useColorScheme`.
   - El ícono (claro / oscuro / tinted) y el splash salen de `scripts/build-icons.mjs`: `npm run icons`
     regenera los PNG de `assets/`. Son nativos: cambiarlos pide `npx expo prebuild --clean` + rebuild.
-    Pendiente: un `.icon` de Icon Composer (Liquid Glass) en vez de los PNG.
+    El ícono de iOS es un bundle de Icon Composer (Liquid Glass) `assets/app.icon` (`ios.icon` en `app.json`; lo genera el mismo script: `icon.json` + un SVG por
+    círculo, grande → chico de atrás para adelante, con fondo y colores/opacidades propios para oscuro). En iOS 26 se ve como vidrio; en versiones anteriores Xcode compila
+    los PNG de respaldo desde el `.icon`. Los PNG de `assets/` quedan para Android, splash y respaldo. Cambiarlo es nativo: `npx expo prebuild --clean` + rebuild.
 - **Cómo se entera el usuario de lo que pasa (sin toasts: en iOS no existen):**
   - **Éxito = la UI cambia**, sin cartel: se cierra la sheet, aparece el dato nuevo, vuelve a donde
     estaba. Al mandar una foto: haptic + la animación de "mandar al rollo".

@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import appJson from "../app.json";
 import appConfig from "../app.config";
 
@@ -35,5 +37,26 @@ describe("app config", () => {
 
   it("keeps the EAS project id push tokens need", () => {
     expect(configFor("production").extra?.eas?.projectId).toBe("124fc671-d309-4a16-9606-e4e900286752");
+  });
+});
+
+describe("Liquid Glass icon", () => {
+  const iconPath = (appJson.expo.ios as { icon: string }).icon;
+  const dir = path.join(__dirname, "..", iconPath);
+
+  it("ios.icon points to an Icon Composer bundle", () => {
+    expect(iconPath).toMatch(/\.icon$/);
+    expect(fs.existsSync(path.join(dir, "icon.json"))).toBe(true);
+  });
+
+  it("every asset icon.json references exists in Assets/", () => {
+    const json = JSON.parse(fs.readFileSync(path.join(dir, "icon.json"), "utf8"));
+    const layers = json.groups.flatMap((g: { layers: unknown[] }) => g.layers) as {
+      "image-name": string;
+      "image-name-specializations"?: { value: string }[];
+    }[];
+    const names = layers.flatMap((l) => [l["image-name"], ...(l["image-name-specializations"] ?? []).map((s) => s.value)]);
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) expect(fs.existsSync(path.join(dir, "Assets", name))).toBe(true);
   });
 });
