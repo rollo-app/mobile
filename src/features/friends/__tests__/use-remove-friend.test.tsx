@@ -33,6 +33,19 @@ describe("useRemoveFriend", () => {
     expect(queryClient.getQueryState(userKey("f1"))?.fetchStatus).toBe("idle");
   });
 
+  it("refreshes the featured photos (the server takes each other's off both profiles)", async () => {
+    jest.mocked(actions).removeFriend.mockResolvedValue(undefined);
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(["featured", "me"], []);
+    queryClient.setQueryData(["featured-by"], { pages: [], pageParams: [] });
+    const { result } = await renderHook(() => useRemoveFriend(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync("f1");
+    });
+    expect(queryClient.getQueryState(["featured", "me"])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["featured-by"])?.isInvalidated).toBe(true);
+  });
+
   it("keeps the list when removing fails", async () => {
     jest.mocked(actions).removeFriend.mockRejectedValue(new Error("nope"));
     const { queryClient, wrapper } = setup();

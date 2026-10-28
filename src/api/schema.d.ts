@@ -1283,7 +1283,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a friend link
-         * @description Returns an 8-character code (the link is rollo://friends/<code>) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
+         * @description Returns an 8-character code (the link is https://rollo.juanifraga.com/friends#<code>; rollo://friends/<code> is still accepted) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
          */
         post: {
             parameters: {
@@ -3206,7 +3206,7 @@ export interface paths {
         get?: never;
         /**
          * Feature a photo on your profile
-         * @description A photo (not a video) of a revealed rollo you are an active member of, yours or someone else's. Idempotent. 404 if it does not exist or you are not an active member; 409 if the rollo is not revealed, if its author does not let others feature it (unless you took it) or if you already have 60; 400 for a video.
+         * @description A photo (not a video) of a revealed rollo you are an active member of: yours or a current friend's. Idempotent. 404 if it does not exist or you are not an active member; 409 if the rollo is not revealed, if its author is someone who is not your friend, if its author does not let others feature it (unless you took it) or if you already have 60; 400 for a video. When a friendship ends (either side) or one of the two blocks the other, each profile loses the other's photos and they do not come back if the two become friends again.
          */
         put: {
             parameters: {
@@ -3442,6 +3442,68 @@ export interface paths {
                 };
                 /** @description Daily limit or rate limit reached */
                 429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/featured-by": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who featured your photos
+         * @description Only yours. The times another user featured one of your photos on their profile, newest first, paginated with `cursor`. Only the ones you can see today: you can see that profile (friend or public), there is no block with that user in either direction and the photo is still featured there. Your own featuring of your own photos is not listed. Open one at `/featured/<user.id>/<mediaId>`; `thumbPath` is served with the permission of that profile.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description `nextCursor` of the previous page */
+                    cursor?: string;
+                    /** @description Page size (default 60) */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page of featurings of your photos */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FeaturedByList"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3818,6 +3880,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Comments you wrote
+         * @description Only yours. Your live comments on photos you can open today in a rollo gallery, newest first, paginated with `cursor`. Filtered by the server: a comment drops out if you deleted it, its photo was deleted, archived by its author (yours stay), its rollo is not revealed or you left it, there is a block with the photo's author or you reported the photo (it comes back if you regain access). Open it at `/photo/<mediaId>?tripId=<tripId>&comments=1`.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description `nextCursor` of the previous page */
+                    cursor?: string;
+                    /** @description Page size (default 60) */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A page of your comments */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyComments"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4166,7 +4290,7 @@ export interface components {
         };
         FriendLink: {
             /**
-             * @description 8-character code; the link is rollo://friends/<code>
+             * @description 8-character code; the link is https://rollo.juanifraga.com/friends#<code> (rollo://friends/<code> is also accepted)
              * @example K7M2QX9A
              */
             code: string;
@@ -4548,7 +4672,7 @@ export interface components {
             featuredByMe?: boolean;
             /** @description Only after the reveal: the author does not let others feature it (they still can) */
             featureBlocked?: boolean;
-            /** @description Only after the reveal: whether you can feature it on your profile now (false if its rollo is private, or if its author, their rollo membership or their account does not let others; its author can unless the rollo is private; always false for the photos of a daily moment) */
+            /** @description Only after the reveal: whether you can feature it on your profile now (false if its rollo is private, if its author is neither you nor one of your friends, or if its author, their rollo membership or their account does not let others; its author can unless the rollo is private; always false for the photos of a daily moment) */
             canFeature?: boolean;
             /** @description Only after the reveal: how many people like it (one counter, also likes from profiles that feature it). Always 0 for videos */
             likeCount?: number;
@@ -4618,6 +4742,30 @@ export interface components {
             lat: number;
             lng: number;
         } | null;
+        FeaturedByList: {
+            /** @description Newest first */
+            items: components["schemas"]["FeaturedByItem"][];
+            /** @description null on the last page */
+            nextCursor: string | null;
+            /** @description How many featurings you can see today, across all pages */
+            total: number;
+        };
+        FeaturedByItem: {
+            /**
+             * Format: uuid
+             * @description Your photo
+             */
+            mediaId: string;
+            user: components["schemas"]["Friend"] & unknown;
+            /** @description When they featured it (epoch ms) */
+            featuredAt: number;
+            /**
+             * @description Served with the permission of that profile
+             * @example /featured/<userId>/<mediaId>/thumb
+             */
+            thumbPath: string;
+            thumbHash: string | null;
+        };
         MyLikes: {
             /** @description Most recent like first */
             items: components["schemas"]["LikedPhoto"][];
@@ -4683,6 +4831,34 @@ export interface components {
         CreateCommentRequest: {
             /** @description Plain text, trimmed, 1 to 500 characters */
             text: string;
+        };
+        MyComments: {
+            /** @description Newest comment first */
+            items: components["schemas"]["MyComment"][];
+            /** @description null on the last page */
+            nextCursor: string | null;
+            /** @description How many of your comments you can open today, across all pages */
+            total: number;
+        };
+        MyComment: {
+            /** Format: uuid */
+            commentId: string;
+            /**
+             * Format: uuid
+             * @description The photo you commented on
+             */
+            mediaId: string;
+            /**
+             * Format: uuid
+             * @description Its rollo, to open it in the gallery
+             */
+            tripId: string;
+            text: string;
+            /** @description When you wrote it (epoch ms) */
+            createdAt: number;
+            /** @example /trips/<tripId>/media/<mediaId>/thumb */
+            thumbPath: string;
+            thumbHash: string | null;
         };
     };
     responses: never;

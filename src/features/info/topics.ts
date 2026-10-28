@@ -49,8 +49,8 @@ const topics = {
     id: "othersProfiles",
     title: "Tus fotos en otros perfiles",
     body:
-      "Cuando un rollo se revela, cada uno puede destacar fotos en su perfil, también las de otros. Acá decidís si los demás pueden destacar las tuyas.\n\n" +
-      "Si lo apagás, las tuyas que ya estaban en otros perfiles se sacan, y si lo prendés de nuevo no vuelven solas. Vos siempre podés destacar las tuyas.",
+      "Cuando un rollo se revela, cada uno puede destacar en su perfil fotos propias o de sus amigos. Acá decidís si tus amigos pueden destacar las tuyas.\n\n" +
+      "Si lo apagás, las tuyas que ya estaban en otros perfiles se sacan, y si lo prendés de nuevo no vuelven solas. Si dejan de ser amigos, también se sacan las fotos del otro. Vos siempre podés destacar las tuyas.",
   },
   offlineMap: {
     id: "offlineMap",

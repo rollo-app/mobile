@@ -130,7 +130,7 @@ Decisiones de producto:
   `useOpenProfile()`: desde una sheet o el visor (modales) primero se cierra el modal (`leave`) y después
   se hace el push, porque un push después de un modal se presentaría como otro modal.
 - **Fotos destacadas** (`src/features/featured/`): de un rollo **revelado** donde sos miembro activo destacás **fotos** (no
-  videos), tuyas o de otros, hasta **60**: en el visor con el ícono de perfil "Agregar a tu perfil" / "Sacar de tu perfil" (`person.crop.circle.badge.plus` / `.badge.checkmark`) y en la
+  videos), **tuyas o de tus amigos** (el server rechaza las de quien no es amigo con 409 y `canFeature` lo refleja; si dejan de ser amigos o hay un bloqueo, se sacan de los dos perfiles las fotos del otro y volver a ser amigos no las devuelve; "Borrar amigo" y bloquear invalidan `["featured"]` y `["featured-by"]`), hasta **60**: en el visor con el ícono de perfil "Agregar a tu perfil" / "Sacar de tu perfil" (`person.crop.circle.badge.plus` / `.badge.checkmark`) y en la
   grilla con el menú de mantener apretado "Agregar a tu perfil" / "Sacar de tu perfil". Al agregar una, sale la pastilla "Destacada en tu perfil" (`showPill`). El autor puede "No dejar que la
   destaquen" (borra las de otros y bloquea nuevas; él siempre puede destacar las suyas). Nunca sale el rollo, el caption ni la
   coordenada: la ubicación va como **zona de ~5 km** (celda de 0.05°). En un perfil, "Fotos | Mapa": la grilla (con la
@@ -211,11 +211,15 @@ Decisiones de producto:
   da el me gusta (sin animación: el corazón se llena), así que un toque simple espera 250 ms (`tap-gate.ts`) antes de contar como toque
   simple. En las historias, corazón abajo a la derecha sin contador: el doble toque da me gusta y tocarlo lo saca o lo pone. Es optimista y con cache (`like-cache.ts`).
 - **Tu actividad** (`src/features/activity/`, solo en tu Perfil): ícono `clock.arrow.circlepath` en la barra del Perfil, al lado del engranaje, que
-  abre `/me/activity` (lista agrupada, hoy una fila "Me gusta" con la cantidad, lista para sumar más). "Me gusta" (`/me/likes`) es una grilla con
+  abre `/me/activity` (lista agrupada con tres filas y su cantidad, el `total` del server: "Me gusta", "Comentarios" y "Destacaron tus fotos"). "Me gusta" (`/me/likes`) es una grilla con
   las fotos que te gustaron, de la más reciente a la más vieja (`GET /me/likes`, paginado con cursor; **lo que hoy podés ver lo filtra el server**,
   nunca la app), con la insignia del autor si no sos vos; tocar una abre el visor de la galería si `source.kind` es `trip` o el de destacadas
   si es `featured` (`likes-target.ts`). Dar o sacar un me gusta (`use-toggle-like.ts`) invalida la query `["my-likes"]`. Vacío: "Todavía no te gustó
-  ninguna foto."; error con "Reintentar".
+  ninguna foto."; error con "Reintentar". **"Comentarios"** (`/me/comments`, `GET /me/comments`, paginado con cursor, filtrado por el server): lista plana, miniatura a la izquierda, tu texto (hasta 2 renglones) y
+  "hace 5 min" (`formatAgo`) debajo; tocar abre `/photo/<mediaId>?tripId=…&comments=1` (`activity-targets.ts`); vacío "Todavía no comentaste ninguna foto."; mandar o borrar un comentario invalida `["my-comments"]`.
+  **"Destacaron tus fotos"** (`/me/featured-by`, `GET /me/featured-by`): avatar, "Cami destacó tu foto", "hace 2 h" y la miniatura de tu foto a la derecha; tocar abre `/featured/<userId>/<mediaId>`; solo salen
+  perfiles que hoy podés ver (si es privado y no son amigos, no); vacío "Nadie destacó tus fotos todavía."; lo invalida todo lo que saca tus fotos de otros perfiles (`["featured-by"]`: "No dejar que la destaquen", Ajustes
+  "Permitir que agreguen mis fotos…", el ajuste del rollo, rollo privado, archivar, eliminar, "Borrar amigo" y bloquear). Las filas comparten `ActivityRow` / `ActivityThumb`.
 - **Comentarios** (`src/features/comments/`): solo en fotos reveladas (no videos, no en las destacadas de un perfil: mostrarían nombres y charla del
   rollo a gente de afuera) y solo entre miembros activos del rollo. En el visor de la galería, la burbuja `bubble.left` (con la cantidad,
   `commentCount` del feed) abre la sheet `/comments/<mediaId>` (`comments-screen.tsx`): lista (avatar, nombre, texto, "hace 5 min") y campo abajo

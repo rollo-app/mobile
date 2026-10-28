@@ -29,6 +29,14 @@ describe("useBlockFeature", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("also refreshes who featured your photos", async () => {
+    globalThis.fetch = jest.fn(async () => json(204)) as unknown as typeof fetch;
+    client.setQueryData(["featured-by"], { pages: [], pageParams: [] });
+    const { result } = await renderHook(() => useBlockFeature(), { wrapper });
+    await act(async () => result.current.setBlocked("m1", "t1", true));
+    expect(client.getQueryState(["featured-by"])?.isInvalidated).toBe(true);
+  });
+
   it("unblocks with DELETE", async () => {
     const fetchMock = jest.fn(async () => json(204));
     globalThis.fetch = fetchMock as unknown as typeof fetch;

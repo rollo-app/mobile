@@ -1,6 +1,7 @@
 import { OWN_DATA_STALE_TIME } from "@/api/query-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "@/api/client";
+import { featuredByKey } from "@/features/activity/use-featured-by";
 import { fetchPrivacySettings, updatePrivacySettings, type PrivacySettings } from "./actions";
 
 export const privacySettingsKey = ["privacy-settings"] as const;
@@ -24,7 +25,11 @@ export function usePrivacySettings() {
     onError: (_error, _value, context) => {
       if (context?.before) queryClient.setQueryData(privacySettingsKey, context.before);
     },
-    onSuccess: (saved) => queryClient.setQueryData(privacySettingsKey, saved),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(privacySettingsKey, saved);
+      // Turning it off takes your photos off other profiles.
+      void queryClient.invalidateQueries({ queryKey: featuredByKey });
+    },
   });
 
   return {
