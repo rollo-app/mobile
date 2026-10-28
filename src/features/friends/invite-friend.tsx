@@ -1,25 +1,20 @@
 import { useState } from "react";
 import { Share } from "react-native";
+import { errorMessage } from "@/api/client";
 import { ErrorText, Row, Section } from "@/ui/components";
-import { createFriendLink, type FriendLink } from "./actions";
+import type { FriendLink } from "./actions";
 import { friendLinkUrl } from "./friend-link";
+import { useCreateFriendLink } from "./use-create-friend-link";
 
 /** Makes the friend link (1 hour, replaces the previous one) and offers to share it. */
 export function InviteFriend() {
   const [link, setLink] = useState<FriendLink | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const create = useCreateFriendLink();
+  const loading = create.isPending;
+  const error = errorMessage(create.error, "No se pudo armar el link");
 
-  async function generate() {
-    setError(null);
-    setLoading(true);
-    try {
-      setLink(await createFriendLink());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo armar el link");
-    } finally {
-      setLoading(false);
-    }
+  function generate() {
+    create.mutate(undefined, { onSuccess: setLink });
   }
 
   const share = () => {
@@ -35,11 +30,11 @@ export function InviteFriend() {
         <Section title="Tu link" footer="Vale 1 hora y lo puede abrir cualquiera que lo reciba. Si armás otro, este deja de servir.">
           <Row label="Código" value={link.code} />
           <Row label="Compartir" chevron={false} onPress={share} />
-          <Row label="Armar otro link" chevron={false} loading={loading} onPress={loading ? undefined : () => void generate()} />
+          <Row label="Armar otro link" chevron={false} loading={loading} onPress={loading ? undefined : generate} />
         </Section>
       ) : (
         <Section footer="Mandales un link: cuando lo abren, quedan como amigos tuyos.">
-          <Row label="Invitar a un amigo" chevron={false} loading={loading} onPress={loading ? undefined : () => void generate()} />
+          <Row label="Invitar a un amigo" chevron={false} loading={loading} onPress={loading ? undefined : generate} />
         </Section>
       )}
       {error && <ErrorText>{error}</ErrorText>}

@@ -1,101 +1,30 @@
-import { featureActionAvailable } from "@/features/featured/feature-action";
-import { MenuView, type MenuAction } from "@expo/ui/community/menu";
-import { useQueryClient } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
-import { Image } from "expo-image";
+import { MenuView } from "@expo/ui/community/menu";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useVideoPlayer, VideoView } from "expo-video";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
-import { CommentButton } from "@/features/comments/comment-button";
-import { blockFeature, unblockFeature } from "@/features/featured/actions";
-import { useReport } from "@/features/moderation/use-report";
+import { useBlockFeature } from "@/features/featured/use-block-feature";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
-import { LikeButton } from "@/features/likes/like-button";
-import { useDoubleTap } from "@/features/likes/use-double-tap";
 import { useToggleLike } from "@/features/likes/use-toggle-like";
-import { Avatar } from "@/features/profile/avatar";
-import { useOpenProfile } from "@/features/profile/use-open-profile";
-import { formatPinTime } from "@/features/map/pin-time";
 import { MomentBadge } from "@/features/media/moment-badge";
 import { SelfieInset } from "@/features/media/selfie-inset";
-import { mediaSource, useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
+import { useRevealedPhotos } from "@/features/media/revealed";
+import { useReport } from "@/features/moderation/use-report";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
-import { feedKey } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { OverlayCornerSymbol, OverlayIconButton, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
-import { spacing, tintHex, type } from "@/ui/theme";
-import { PermissionNotice } from "./permission-notice";
-import { PermissionDeniedError, linkedImage } from "./save";
-import { ownPhotoActions } from "./own-photo-actions";
+import { OverlayCornerSymbol, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
+import { spacing, type } from "@/ui/theme";
 import { useArchivePhoto } from "./use-archive-photo";
 import { useDeletePhoto } from "./use-delete-photo";
+import { useOpenCommentsOnce } from "./use-open-comments-once";
+import { savedTarget, useSavePhoto } from "./use-save-photo";
 import { useSaver } from "./use-saver";
-
-type SaveState = "idle" | "saving" | "saved" | "failed" | "denied";
-
-function VideoPage({ photo, token, active }: { photo: RevealedPhoto; token: string; active: boolean }) {
-  const player = useVideoPlayer(mediaSource(photo.originalPath, token), (p) => {
-    p.loop = true;
-  });
-  if (!active) return <Image source={mediaSource(photo.thumbPath, token)} contentFit="contain" style={StyleSheet.absoluteFill} />;
-  return <VideoView player={player} nativeControls contentFit="contain" style={StyleSheet.absoluteFill} />;
-}
-
-function Page({
-  photo,
-  token,
-  active,
-  selfieBig,
-  width,
-  height,
-  onTap,
-  onDoubleTap,
-}: {
-  photo: RevealedPhoto;
-  token: string;
-  active: boolean;
-  /** The moment's selfie is the big picture (likes still go to `photo`, the main one). */
-  selfieBig: boolean;
-  width: number;
-  height: number;
-  onTap: () => void;
-  /** Photos only: a double tap likes it (the heart below fills). */
-  onDoubleTap: (photo: RevealedPhoto) => void;
-}) {
-  const taps = useDoubleTap(onTap, () => onDoubleTap(photo));
-  if (photo.type === "video") {
-    return (
-      <View style={{ width, height }}>
-        <VideoPage photo={photo} token={token} active={active} />
-      </View>
-    );
-  }
-  return (
-    <ScrollView
-      style={{ width, height }}
-      contentContainerStyle={{ width, height }}
-      maximumZoomScale={4}
-      minimumZoomScale={1}
-      centerContent
-      showsHorizontalScrollIndicator={false}
-      showsVerticalScrollIndicator={false}
-    >
-      <Pressable accessibilityLabel={`Foto de ${photo.author.name}`} onPress={() => taps.tap()} style={{ width, height }}>
-        <Image
-          source={mediaSource(selfieBig && photo.selfie ? photo.selfie.originalPath : photo.originalPath, token)}
-          placeholder={mediaSource(selfieBig && photo.selfie ? photo.selfie.thumbPath : photo.thumbPath, token)}
-          transition={150}
-          contentFit="contain"
-          style={{ width, height }}
-        />
-      </Pressable>
-    </ScrollView>
-  );
-}
+import { useViewerStart } from "./use-viewer-start";
+import { ViewerInfo } from "./viewer-info";
+import { viewerMenu } from "./viewer-menu";
+import { ViewerPage } from "./viewer-page";
 
 /** Full-screen pager over the roll's photos, starting at `id`. Tap hides or shows the overlay; double tap likes a photo. */
 export function PhotoViewer({
@@ -117,90 +46,39 @@ export function PhotoViewer({
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
   const { me } = useMe();
-  const openProfile = useOpenProfile();
-  const queryClient = useQueryClient();
   const featured = useToggleFeatured();
+  const blocker = useBlockFeature();
   const likes = useToggleLike();
   // Which photo the last feature/block attempt was for, so its error shows only on that page.
   const [featureTarget, setFeatureTarget] = useState<string | null>(null);
-  const [blocking, setBlocking] = useState(false);
-  const [blockError, setBlockError] = useState<string | null>(null);
 
-  const startIndex = useRef<number | null>(null);
-  // Locked only once the photo is found: a stale cached feed may not have it yet (a push for a new moment).
-  if (startIndex.current === null) {
-    const found = photos.findIndex((p) => p.id === id);
-    if (found >= 0) startIndex.current = found;
-  }
-  // The photo is missing from what we have: ask the server once; if it is still missing, say so.
-  const [missingChecked, setMissingChecked] = useState(false);
-  const missing = startIndex.current === null;
-  useEffect(() => {
-    if (!missing || !tripId) return;
-    let active = true;
-    void refetch({ cancelRefetch: false }).finally(() => active && setMissingChecked(true));
-    return () => {
-      active = false;
-    };
-  }, [missing, tripId, refetch]);
-  const notFound = missing && missingChecked && !loading;
+  const { startIndex, missing, notFound } = useViewerStart(photos, id, tripId, loading, refetch);
   const [index, setIndex] = useState<number | null>(null);
-  const current = index ?? startIndex.current ?? 0;
+  const current = index ?? startIndex ?? 0;
   const photo = missing ? undefined : photos[current];
-
-  // The comments push opens the photo with its sheet, once.
-  const commentsOpened = useRef(false);
-  const sheetTarget = openComments && !commentsOpened.current ? photos.find((p) => p.id === id && p.type === "photo") : undefined;
-  useEffect(() => {
-    if (!sheetTarget) return;
-    commentsOpened.current = true;
-    router.push({ pathname: "/comments/[mediaId]", params: { mediaId: sheetTarget.id } });
-  }, [sheetTarget, router]);
+  useOpenCommentsOnce(photos, id, openComments);
 
   // Photos whose moment selfie is the big picture now; the actions below always act on the main photo.
   const [selfieBig, setSelfieBig] = useState<Record<string, boolean>>({});
   const [chrome, setChrome] = useState(true);
-  const [saves, setSaves] = useState<Record<string, SaveState>>({});
+  const { saves, save } = useSavePhoto(saver);
   const toggle = useCallback(() => setChrome((v) => !v), []);
 
-  // "Guardar" saves the image that is big: the moment's linked one once it was swapped in.
-  const savedTarget = (p: RevealedPhoto) => (selfieBig[p.id] && p.selfie ? linkedImage(p) : p);
-  async function save(target: RevealedPhoto) {
-    if (!saver) return;
-    setSaves((s) => ({ ...s, [target.id]: "saving" }));
-    try {
-      await saver(target);
-      setSaves((s) => ({ ...s, [target.id]: "saved" }));
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (e) {
-      setSaves((s) => ({ ...s, [target.id]: e instanceof PermissionDeniedError ? "denied" : "failed" }));
-    }
-  }
-
-  function toggleFeatured(target: RevealedPhoto) {
+  function toggleFeatured(target: { id: string; featuredByMe: boolean }) {
     if (!tripId) return;
     setFeatureTarget(target.id);
-    setBlockError(null);
+    blocker.reset();
     void featured.toggle(target, tripId);
   }
 
-  async function setBlocked(target: RevealedPhoto, blocked: boolean) {
-    if (!tripId || blocking) return;
+  function setBlocked(target: { id: string }, blocked: boolean) {
+    if (!tripId || blocker.blocking) return;
     setFeatureTarget(target.id);
-    setBlocking(true);
-    setBlockError(null);
-    try {
-      await (blocked ? blockFeature : unblockFeature)(target.id);
-      await queryClient.invalidateQueries({ queryKey: feedKey(tripId) });
-    } catch (e) {
-      setBlockError(e instanceof Error ? e.message : "No se pudo cambiar");
-    } finally {
-      setBlocking(false);
-    }
+    void blocker.setBlocked(target.id, tripId, blocked);
   }
 
   const report = useReport();
-  async function reportPhoto(target: RevealedPhoto) {
+  async function reportPhoto(target: { id: string }) {
     if (report.busy || !(await report.reportMedia({ mediaId: target.id, tripId }))) return;
     // The photo left the feed cache: the list shrank under the same index, so the next one is showing. The last one closes.
     if (current >= photos.length - 1) router.back();
@@ -208,46 +86,24 @@ export function PhotoViewer({
 
   const setArchived = useArchivePhoto();
   const remover = useDeletePhoto();
-  async function deletePhoto(target: RevealedPhoto) {
+  async function deletePhoto(target: Parameters<typeof remover.confirmDelete>[0]) {
     if (!tripId || remover.busy || !(await remover.confirmDelete(target, tripId))) return;
     // Same as reporting: the next photo slides in under the same index, and deleting the last one closes.
     if (current >= photos.length - 1) router.back();
   }
 
-  const state = (photo && saves[savedTarget(photo).id]) || "idle";
-  const featuring = !!photo && featured.pending.has(photo.id);
-  const featureError = photo && featureTarget === photo.id ? (blockError ?? featured.error) : null;
-  const liking = !!photo && likes.pending.has(photo.id);
+  const saveState = (photo && saves[savedTarget(photo, !!selfieBig[photo.id]).id]) || "idle";
+  const featureError = photo && featureTarget === photo.id ? (blocker.error ?? featured.error) : null;
   const likeError = photo && likes.error?.mediaId === photo.id ? likes.error.message : null;
-  const timeZone = detail?.trip.timezone ?? "America/Argentina/Buenos_Aires";
-  // Someone else's photo can be reported; on your own photo you decide whether others may feature it.
-  const own = !!photo && !!me && photo.authorUserId === me.id;
   // Before the reveal only daily moments have files: you can look at them, comment on them and report them, nothing else
   // (likes, saving and featuring wait for the reveal; the server rejects them).
   const readOnly = !!photo?.momentDay && detail?.trip.revealed !== true;
-  const menu: MenuAction[] = !photo || !me
-    ? []
-    : !own
-      ? [{ id: "report", title: "Denunciar", image: "exclamationmark.bubble" }]
-      : [
-          ...(photo.type === "photo" && !photo.momentDay // moment photos can never be featured
-            ? [
-                {
-                  id: photo.featureBlocked ? "unblock" : "block",
-                  title: photo.featureBlocked ? "Dejar que la destaquen" : "No dejar que la destaquen",
-                  image: photo.featureBlocked ? "star" : "star.slash",
-                  attributes: { disabled: blocking },
-                } as MenuAction,
-              ]
-            : []),
-          // Your own photos and videos, once revealed: archive (only you keep seeing it) or delete for good.
-          ...(detail?.trip.revealed === true ? ownPhotoActions(photo) : []),
-        ];
+  const menu = viewerMenu({ photo, meId: me?.id, revealed: detail?.trip.revealed === true, blocking: blocker.blocking });
 
   return (
     <View style={styles.fill}>
       <StatusBar style="light" />
-      {token && photos.length > 0 && startIndex.current !== null ? (
+      {token && photos.length > 0 && startIndex !== null ? (
         <FlatList
           testID="viewer-pager"
           data={photos}
@@ -255,13 +111,13 @@ export function PhotoViewer({
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          initialScrollIndex={startIndex.current}
+          initialScrollIndex={startIndex}
           getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
           windowSize={3}
           initialNumToRender={1}
           onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
           renderItem={({ item, index: i }) => (
-            <Page
+            <ViewerPage
               photo={item}
               token={token}
               active={i === current}
@@ -314,7 +170,7 @@ export function PhotoViewer({
                   if (event === "report") void reportPhoto(photo);
                   else if (event === "archive" || event === "unarchive") tripId && setArchived(photo, tripId, event === "archive");
                   else if (event === "delete") void deletePhoto(photo);
-                  else void setBlocked(photo, event === "block");
+                  else setBlocked(photo, event === "block");
                 }}
               >
                 <OverlayMoreButton />
@@ -322,65 +178,21 @@ export function PhotoViewer({
             </View>
           )}
           {photo && (
-            <View testID="viewer-info" pointerEvents="box-none" style={[styles.info, { paddingBottom: insets.bottom + spacing.sm }]}>
-              <View style={styles.authorRow}>
-                {/* Closes the viewer and opens the author's profile over the tabs (or Perfil if it's you). */}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Perfil de ${photo.author.name}`}
-                  onPress={() => openProfile(photo.authorUserId, { leave: true })}
-                  style={({ pressed }) => [styles.authorRow, pressed && styles.pressed]}
-                >
-                  <Avatar id={photo.author.id} name={photo.author.name} avatarUrl={photo.author.avatarUrl} size={40} />
-                  <Text style={[type.headline, styles.white]}>{photo.author.name}</Text>
-                </Pressable>
-                <Text style={[type.subhead, styles.dim]}>{formatPinTime(photo.takenAt, timeZone)}</Text>
-                {photo.archived && <Text style={[type.subhead, styles.dim]}>Archivada</Text>}
-              </View>
-              {photo.caption ? <Text style={[type.quote, styles.white]}>{photo.caption}</Text> : null}
-              <View style={styles.actions}>
-                {photo.type === "photo" && !readOnly && (
-                  <LikeButton liked={photo.likedByMe} count={photo.likeCount} busy={liking} onPress={() => void likes.toggle(photo)} />
-                )}
-                {photo.type === "photo" && (
-                  <CommentButton
-                    count={photo.commentCount}
-                    onPress={() => router.push({ pathname: "/comments/[mediaId]", params: { mediaId: photo.id } })}
-                  />
-                )}
-                {photo.type === "photo" && !readOnly && featureActionAvailable(photo) && (
-                  <OverlayIconButton
-                    symbol={photo.featuredByMe ? "person.crop.circle.badge.checkmark" : "person.crop.circle.badge.plus"}
-                    symbolTestID="feature-symbol"
-                    label={photo.featuredByMe ? "Sacar de tu perfil" : "Agregar a tu perfil"}
-                    // Featured is a selection: cobalt (its dark-scheme value, since the viewer is always black).
-                    tint={photo.featuredByMe ? tintHex.dark : "#FFFFFF"}
-                    disabled={featuring}
-                    onPress={() => toggleFeatured(photo)}
-                  />
-                )}
-                {photo.lat !== null && photo.lng !== null && (
-                  <OverlayIconButton
-                    symbol="map"
-                    label="Ver en el mapa"
-                    onPress={() => router.navigate({ pathname: "/map", params: { focus: photo.id } })}
-                  />
-                )}
-                {!readOnly && (
-                  <OverlayIconButton
-                    symbol={state === "saved" ? "checkmark" : "square.and.arrow.down"}
-                    label={state === "saved" ? "Guardada" : "Guardar en Fotos"}
-                    busy={state === "saving"}
-                    disabled={state === "saved" || !saver}
-                    onPress={() => void save(savedTarget(photo))}
-                  />
-                )}
-              </View>
-              {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
-              {featureError && <Text style={[type.footnote, styles.dim]}>{featureError}</Text>}
-              {state === "failed" && <Text style={[type.footnote, styles.dim]}>No se pudo guardar. Probá de nuevo.</Text>}
-              {state === "denied" && <PermissionNotice />}
-            </View>
+            <ViewerInfo
+              photo={photo}
+              timeZone={detail?.trip.timezone ?? "America/Argentina/Buenos_Aires"}
+              bottomInset={insets.bottom}
+              readOnly={readOnly}
+              liking={likes.pending.has(photo.id)}
+              featuring={featured.pending.has(photo.id)}
+              saveState={saveState}
+              canSave={!!saver}
+              likeError={likeError}
+              featureError={featureError}
+              onLike={() => void likes.toggle(photo)}
+              onToggleFeatured={() => toggleFeatured(photo)}
+              onSave={() => void save(savedTarget(photo, !!selfieBig[photo.id]))}
+            />
           )}
         </>
       )}
@@ -394,19 +206,5 @@ const styles = StyleSheet.create({
   close: { position: "absolute", left: spacing.md },
   moment: { position: "absolute", left: spacing.md },
   more: { position: "absolute", right: spacing.md },
-  info: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    backgroundColor: "rgba(0,0,0,0.55)",
-  },
-  authorRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  pressed: { opacity: 0.5 },
-  white: { color: "#FFFFFF" },
   dim: { color: "rgba(255,255,255,0.7)" },
-  actions: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
 });

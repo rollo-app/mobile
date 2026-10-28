@@ -1,35 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as Haptics from "expo-haptics";
+import { useState } from "react";
 import { SymbolView } from "expo-symbols";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View, type AccessibilityActionEvent } from "react-native";
-import Animated, {
-  cubicBezier,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-  type CSSTransitionProperties,
-} from "react-native-reanimated";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import Animated, { cubicBezier, type CSSTransitionProperties } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  Camera as VisionCamera,
-  useCameraDevices,
-  usePhotoOutput,
-  type CameraRef,
-  type CapturePhotoSettings,
-} from "react-native-vision-camera";
+import { Camera as VisionCamera } from "react-native-vision-camera";
 import { ErrorText } from "@/ui/components";
-import { EASE_OUT_BEZIER, easeOut } from "@/ui/motion";
+import { EASE_OUT_BEZIER } from "@/ui/motion";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
-import { loadCameraGrid, saveCameraGrid } from "@/storage/camera-grid";
 import type { CapturedPhoto } from "./captured-photo";
-import { ensureFourThree } from "./crop-photo";
-import { bestPhotoResolution, pickCameraDevice, uprightSize } from "./device";
-import { biasRange, dragBias, formatBias, meteringModes, stepBias, sunOffset } from "./exposure";
+import { formatBias, sunOffset } from "./exposure";
 import { FRAME_ASPECT } from "./frame";
 import { flashLabel, flashSymbol, nextFlash, type FlashMode } from "./flash";
-import { nextTimer, timerLabel, type TimerDelay } from "./timer";
-import { activePreset, expandTarget, formatFactor, frontExpand, isExpanded, pinchZoom, touchDistance, zoomLevels } from "./zoom";
+import { timerLabel } from "./timer";
+import { useCameraExposure } from "./use-camera-exposure";
+import { useCameraGrid } from "./use-camera-grid";
+import { useCameraSession } from "./use-camera-session";
+import { useCameraTouch } from "./use-camera-touch";
+import { useCameraZoom } from "./use-camera-zoom";
+import { useSelfTimer } from "./use-self-timer";
+import { useTakePhoto } from "./use-take-photo";
+import { expandTarget, formatFactor } from "./zoom";
 import { spacing, tintHex, type } from "@/ui/theme";
 
 /** The round "Cerrar" over a dark screen. */
@@ -48,24 +38,9 @@ export function CloseButton(props: { onPress: () => void }) {
   );
 }
 
-/**
- * Every shot: the chosen flash. No `enableDistortionCorrection`: VisionCamera 5.2.3 sets it per shot without enabling
- * it on the photo output, and AVFoundation throws inside capturePhoto (a native crash).
- */
-const captureSettings = (flash: FlashMode): CapturePhotoSettings => ({ flashMode: flash });
-
-/** How fast a chip tap ramps the zoom (AVFoundation's rate: doublings per second), about 0.2 s from 1× to 3×. */
-const ZOOM_RAMP_RATE = 8;
-
-/** A finger that moves less than this is a tap (focus), not a gesture. */
-const TAP_SLOP = 10;
-
 /** The focus square's side, and how far the exposure sun travels each way along its line. */
 const FOCUS_SIZE = 72;
 const SUN_TRAVEL = 44;
-
-/** The focus square dims this long after the last touch, like the iPhone's. */
-const FOCUS_DIM_MS = 2000;
 
 // Built on first use, never at import: route test suites mock Reanimated as an empty object.
 let shutterTransition: CSSTransitionProperties | undefined;
@@ -78,13 +53,6 @@ const getShutterTransition = (pressed: boolean): CSSTransitionProperties => ({
 /** The top band: one row of round controls (Cerrar left; flash, timer, grid right), the title and notice under it. */
 const CONTROL = 36;
 const TOP_ROW = spacing.sm + CONTROL + spacing.sm;
-
-type FocusPoint = { deviceId: string; x: number; y: number };
-
-/** The timer's tick each second. */
-const tick = () => {
-  Promise.resolve(Haptics.selectionAsync()).catch(() => {});
-};
 
 /**
  * The app's camera (VisionCamera): the preview is a full-width 3:4 frame (what the sensor's 4:3 photo really is, like the
@@ -110,192 +78,19 @@ export function Camera(props: {
 }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const camera = useRef<CameraRef>(null);
-  const devices = useCameraDevices();
-  const device = pickCameraDevice(devices, props.facing);
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
   const [flash, setFlash] = useState<FlashMode>("auto");
-  const [timer, setTimer] = useState<TimerDelay>(0);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [grid, setGrid] = useState(false);
   const reduceMotion = useReduceMotion();
-  const blink = useSharedValue(0);
-  const focusScale = useSharedValue(1);
-  const focusOpacity = useSharedValue(1);
-  const blinkStyle = useAnimatedStyle(() => ({ opacity: blink.get() }));
-  const focusStyle = useAnimatedStyle(() => ({ opacity: focusOpacity.get(), transform: [{ scale: focusScale.get() }] }));
-
-  useEffect(() => {
-    let live = true;
-    loadCameraGrid()
-      .then((on) => {
-        if (live && on) setGrid(true);
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  function toggleGrid() {
-    const next = !grid;
-    setGrid(next);
-    saveCameraGrid(next).catch(() => {});
-  }
-
-  const targetResolution = useMemo(() => bestPhotoResolution(device?.getSupportedResolutions("photo") ?? []), [device]);
-  const photoOutput = usePhotoOutput({ targetResolution, containerFormat: "jpeg", quality: 1, qualityPrioritization: "quality" });
-  const outputs = useMemo(() => [photoOutput], [photoOutput]);
-  const constraints = useMemo(() => [{ resolutionBias: photoOutput }], [photoOutput]);
-  // The running session (after `onStarted`): its controller knows the active format's real zoom range, and how iOS
-  // displays its zoom (`displayableZoomFactor / zoom`: where the front camera's 1× is on iPhones that can expand it).
-  const [running, setRunning] = useState<{ deviceId: string; minZoom: number; maxZoom: number; multiplier: number } | null>(null);
-  const session = running && device && running.deviceId === device.id ? running : null;
-  useEffect(() => {
-    // Warms up the capture pipeline once the outputs are configured, so the first "quality" shot doesn't pay for it.
-    if (session) photoOutput.prepareSettings([captureSettings(flash)]).catch(() => {});
-  }, [session, photoOutput, flash]);
-
-  const warned = useRef(false);
-  const onError = useCallback((error: Error) => {
-    // A rejected zoom or a session hiccup: not worth an error screen (or LogBox), but worth one line in the log.
-    if (warned.current) return;
-    warned.current = true;
-    console.warn(`Cámara: ${error.message}`);
-  }, []);
-
-  // Zoom is raw device zoom; each device starts at its 1x (the wide lens), so flipping starts over. The `zoom` prop only
-  // sets that start: pinch, chips and "Ampliar encuadre" drive the controller directly (with a ramp, like the iPhone).
-  const levels = useMemo(
-    () =>
-      device
-        ? zoomLevels({
-            position: device.position,
-            minZoom: Math.max(device.minZoom, session?.minZoom ?? 0),
-            maxZoom: Math.min(device.maxZoom, session?.maxZoom ?? Infinity),
-            zoomLensSwitchFactors: device.zoomLensSwitchFactors,
-            physicalDevices: device.physicalDevices,
-            displayMultiplier: session?.multiplier,
-          })
-        : null,
-    [device, session],
-  );
-  const [zoomState, setZoomState] = useState<{ deviceId: string; zoom: number } | null>(null);
-  const zoom = levels && device ? (zoomState?.deviceId === device.id ? zoomState.zoom : levels.neutral) : 1;
-  const factor = levels ? zoom / levels.neutral : 1;
-  const chip = levels ? activePreset(levels.presets, factor) : undefined;
-  const expand = levels && device && session ? frontExpand(levels, device.position) : null;
-
-  function applyZoom(next: number, ramp: boolean) {
-    if (!device || !session) return;
-    setZoomState({ deviceId: device.id, zoom: next });
-    try {
-      const done = ramp ? camera.current?.startZoomAnimation(next, ZOOM_RAMP_RATE) : camera.current?.controller?.setZoom(next);
-      done?.catch(onError);
-    } catch (error) {
-      onError(error as Error);
-    }
-  }
-
-  // Exposure: a tap meters there (focus + exposure + white balance) and resets the bias; dragging afterwards biases it.
-  // Both belong to one device: flipping (or remounting) starts over with no point and 0 EV.
-  const range = device ? biasRange(device) : null;
-  const [focusState, setFocusState] = useState<FocusPoint | null>(null);
-  const focus = focusState && device && focusState.deviceId === device.id ? focusState : null;
-  const [biasState, setBiasState] = useState<{ deviceId: string; bias: number } | null>(null);
-  const bias = biasState && device && biasState.deviceId === device.id ? biasState.bias : 0;
-  useEffect(() => {
-    if (!focus) return;
-    focusOpacity.set(1);
-    const t = setTimeout(() => focusOpacity.set(withTiming(0.5, { duration: 300, easing: easeOut() })), FOCUS_DIM_MS);
-    return () => clearTimeout(t);
-  }, [focus, bias]); // eslint-disable-line react-hooks/exhaustive-deps -- the shared value is stable
-
-  function setBias(next: number) {
-    if (device) setBiasState({ deviceId: device.id, bias: next });
-  }
-
-  function focusAt(x: number, y: number) {
-    if (!device) return;
-    setFocusState({ deviceId: device.id, x, y });
-    setBias(0);
-    focusScale.set(reduceMotion === false ? withSequence(withTiming(1.25, { duration: 0 }), withTiming(1, { duration: 200, easing: easeOut() })) : 1);
-    const modes = meteringModes(device);
-    if (modes.length === 0) return;
-    try {
-      camera.current?.focusTo({ x, y }, { modes, autoResetAfter: null }).catch(() => {});
-    } catch {
-      // Not running yet: the square still shows where the user tapped.
-    }
-  }
-
-  function onExposureAction(event: AccessibilityActionEvent) {
-    if (!range) return;
-    const { actionName } = event.nativeEvent;
-    if (actionName === "increment") setBias(stepBias(range, bias, 1));
-    if (actionName === "decrement") setBias(stepBias(range, bias, -1));
-  }
-
-  const touch = useRef({ startZoom: 0, startDistance: 0, startBias: 0, x: 0, y: 0, pageX: 0, pageY: 0, gesture: false, pinched: false, exposure: false });
-
-  async function shoot() {
-    if (busy) return;
-    setBusy(true);
-    setFailed(false);
-    // The preview blinks at the instant of the shot, like the iPhone's camera (opacity only: also with Reduce Motion).
-    blink.set(withSequence(withTiming(1, { duration: 40 }), withTiming(0, { duration: 220, easing: easeOut() })));
-    try {
-      const photo = await photoOutput.capturePhoto(captureSettings(flash), {});
-      let shot: CapturedPhoto;
-      // The front preview is mirrored: the photo comes out the same. When the camera already mirrored it (EXIF), as is.
-      const mirror = device?.position === "front" && !photo.isMirrored;
-      try {
-        const path = await photo.saveToTemporaryFileAsync();
-        shot = { uri: path.startsWith("file://") ? path : `file://${path}`, ...uprightSize(photo.width, photo.height, photo.orientation) };
-      } finally {
-        photo.dispose();
-      }
-      props.onCapture(await ensureFourThree(shot, { mirror }));
-    } catch {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // The self-timer: the shutter starts the countdown (or cancels it), each second ticks, and at 0 it shoots.
-  const shootRef = useRef(shoot);
-  shootRef.current = shoot;
-  useEffect(() => {
-    if (countdown === null) return;
-    if (countdown === 0) {
-      setCountdown(null);
-      void shootRef.current();
-      return;
-    }
-    const t = setTimeout(() => {
-      if (countdown > 1) tick();
-      setCountdown(countdown - 1);
-    }, 1000);
-    return () => clearTimeout(t);
-  }, [countdown]);
-
-  function onShutter() {
-    if (countdown !== null) {
-      setCountdown(null);
-      return;
-    }
-    if (timer === 0) {
-      void shoot();
-      return;
-    }
-    tick();
-    setCountdown(timer);
-  }
+  const { grid, toggleGrid } = useCameraGrid();
+  const { camera, device, photoOutput, outputs, constraints, session, onStarted, onError } = useCameraSession(props.facing, flash);
+  const zoomControl = useCameraZoom({ camera, device, session, onError });
+  const { levels, zoom, factor, chip, expand, expanded, applyZoom } = zoomControl;
+  const exposure = useCameraExposure({ camera, device, reduceMotion });
+  const { range, focus, bias, onExposureAction, focusStyle } = exposure;
+  const touchHandlers = useCameraTouch(zoomControl, exposure);
+  const { busy, failed, shoot, blinkStyle } = useTakePhoto({ photoOutput, device, flash, onCapture: props.onCapture });
+  const { timer, cycleTimer, countdown, onShutter } = useSelfTimer(shoot);
 
   const topBand = TOP_ROW + (props.title ? 24 : 0) + (props.notice ? 44 : 0);
-  const expanded = expand ? isExpanded(expand, zoom) : false;
 
   return (
     <View style={styles.dark}>
@@ -312,12 +107,7 @@ export function Camera(props: {
             exposure={range ? bias : undefined}
             // Only where supported: VisionCamera's `configure` throws for any value (even false) on a device without it.
             enableLowLightBoost={device.supportsLowLightBoost ? true : undefined}
-            onStarted={() => {
-              const controller = camera.current?.controller;
-              if (!controller) return;
-              const multiplier = controller.zoom > 0 ? controller.displayableZoomFactor / controller.zoom : 1;
-              setRunning({ deviceId: device.id, minZoom: controller.minZoom, maxZoom: controller.maxZoom, multiplier });
-            }}
+            onStarted={onStarted}
             onError={onError}
             style={StyleSheet.absoluteFill}
           />
@@ -334,52 +124,7 @@ export function Camera(props: {
         <View
           testID="camera-pinch"
           style={StyleSheet.absoluteFill}
-          onStartShouldSetResponder={() => true}
-          onResponderGrant={(e) => {
-            const { touches, locationX, locationY, pageX, pageY } = e.nativeEvent;
-            const pinching = touches.length > 1;
-            touch.current = {
-              startZoom: zoom,
-              startDistance: touchDistance(touches),
-              startBias: bias,
-              x: locationX,
-              y: locationY,
-              pageX,
-              pageY,
-              gesture: pinching,
-              pinched: pinching,
-              exposure: false,
-            };
-          }}
-          onResponderMove={(e) => {
-            const { touches } = e.nativeEvent;
-            const t = touch.current;
-            if (touches.length < 2) {
-              // A finger lifted: the next two-finger gesture starts over from the current zoom.
-              t.startDistance = 0;
-              const [only] = touches;
-              if (!only) return;
-              const dx = only.pageX - t.pageX;
-              const dy = only.pageY - t.pageY;
-              if (Math.hypot(dx, dy) > TAP_SLOP) {
-                t.gesture = true;
-                // One finger moving up or down after a tap is the exposure, like the iPhone (never the end of a pinch).
-                if (!t.pinched && focus && range && Math.abs(dy) > Math.abs(dx)) t.exposure = true;
-              }
-              if (t.exposure && range) setBias(dragBias(range, t.startBias, dy));
-              return;
-            }
-            t.gesture = true;
-            t.pinched = true;
-            t.exposure = false;
-            if (!levels) return;
-            if (t.startDistance <= 0) touch.current = { ...t, startZoom: zoom, startDistance: touchDistance(touches) };
-            applyZoom(pinchZoom(levels, touch.current.startZoom, touch.current.startDistance, touchDistance(touches)), false);
-          }}
-          onResponderRelease={() => {
-            if (touch.current.gesture) return;
-            focusAt(touch.current.x, touch.current.y);
-          }}
+          {...touchHandlers}
         />
         {focus && (
           <Animated.View
@@ -467,7 +212,7 @@ export function Camera(props: {
           accessibilityLabel={timerLabel(timer)}
           accessibilityState={{ selected: timer > 0 }}
           hitSlop={6}
-          onPress={() => setTimer(nextTimer)}
+          onPress={cycleTimer}
           style={[styles.round, timer > 0 && styles.pill]}
         >
           <SymbolView name="timer" size={18} tintColor={timer > 0 ? tintHex.dark : "#fff"} />

@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { errorMessage } from "@/api/client";
 import { router, Stack } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Fragment, useState } from "react";
@@ -6,27 +6,27 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
-import { tripKey, useTripDetail } from "@/features/trips/use-trip-detail";
+import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Screen } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
-import { addFriendsToTrip, type Friend } from "./actions";
+import type { Friend } from "./actions";
+import { useAddFriendsToTrip } from "./use-add-friends-to-trip";
 import { useFriends } from "./use-friends";
 
 /** "Sumar amigos" (sheet): pick friends and they join the active roll directly. */
 export function AddFriendsSheet() {
-  const queryClient = useQueryClient();
   const { trip } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const { friends, error: loadError, refetch, isRefetching } = useFriends();
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [unavailable, setUnavailable] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { add, adding: saving, error: addFailure, reset } = useAddFriendsToTrip();
+  const error = errorMessage(addFailure, "No se pudo sumar a tus amigos");
 
   const members = new Set(detail?.members.map((m) => m.userId));
 
   function toggle(id: string) {
-    setError(null);
+    reset();
     setPicked((current) => {
       const next = new Set(current);
       if (!next.delete(id)) next.add(id);
@@ -34,13 +34,10 @@ export function AddFriendsSheet() {
     });
   }
 
-  async function submit() {
+  function submit() {
     if (!trip) return;
-    setError(null);
-    setSaving(true);
-    try {
-      const results = await addFriendsToTrip(trip.id, [...picked]);
-      await queryClient.invalidateQueries({ queryKey: tripKey(trip.id) });
+    reset();
+    add({ tripId: trip.id, friendIds: [...picked] }, (results) => {
       const failed = results.filter((r) => r.status === "unavailable").map((r) => r.userId);
       if (failed.length === 0) {
         router.back();
@@ -48,11 +45,7 @@ export function AddFriendsSheet() {
       }
       setUnavailable((current) => new Set([...current, ...failed]));
       setPicked(new Set());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo sumar a tus amigos");
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   return (
