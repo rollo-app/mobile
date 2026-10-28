@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { errorMessage } from "@/api/client";
+import { featuredByKey } from "@/features/activity/use-featured-by";
 import { feedKey } from "@/features/trips/use-feed";
 import { blockFeature, unblockFeature } from "./actions";
 
@@ -15,7 +16,12 @@ export function useBlockFeature() {
   const client = useQueryClient();
   const mutation = useMutation({
     mutationFn: ({ mediaId, blocked }: Vars) => (blocked ? blockFeature : unblockFeature)(mediaId),
-    onSuccess: (_data, { tripId }) => client.invalidateQueries({ queryKey: feedKey(tripId) }),
+    onSuccess: (_data, { tripId }) =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: feedKey(tripId) }),
+        // Blocking takes the photo off other profiles, so it leaves "Destacaron tus fotos".
+        client.invalidateQueries({ queryKey: featuredByKey }),
+      ]),
   });
   const { mutateAsync, reset, isPending } = mutation;
 

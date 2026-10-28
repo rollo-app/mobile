@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "@/api/client";
+import { featuredByKey } from "@/features/activity/use-featured-by";
 import { feedKey } from "@/features/trips/use-feed";
 import { tripKey } from "@/features/trips/use-trip-detail";
 import { setMyFeaturing, setTripPrivate } from "./actions";
@@ -12,6 +13,7 @@ function useRefresh(tripId: string) {
       queryClient.invalidateQueries({ queryKey: tripKey(tripId) }),
       queryClient.invalidateQueries({ queryKey: feedKey(tripId) }),
       queryClient.invalidateQueries({ queryKey: ["featured"] }),
+      queryClient.invalidateQueries({ queryKey: featuredByKey }),
     ]);
 }
 

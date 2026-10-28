@@ -48,6 +48,7 @@ describe("useBlock", () => {
     const { queryClient, wrapper } = setup();
     queryClient.setQueryData(myTripsKey, { trips: [] });
     queryClient.setQueryData(userFriendsKey("u2"), { scope: "all", friends: [] });
+    queryClient.setQueryData(["featured-by"], { pages: [], pageParams: [] });
     const { result } = await renderHook(() => useBlock("u2", "Cami"), { wrapper });
     act(() => result.current.confirmBlock());
     const buttons = alert.mock.calls[0]![2]!;
@@ -56,6 +57,7 @@ describe("useBlock", () => {
     });
     await waitFor(() => expect(queryClient.getQueryState(myTripsKey)?.isInvalidated).toBe(true));
     expect(queryClient.getQueryState(userFriendsKey("u2"))?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(["featured-by"])?.isInvalidated).toBe(true);
     alert.mockRestore();
   });
 });

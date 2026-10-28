@@ -72,4 +72,16 @@ describe("comment counts in the feed", () => {
     await act(async () => result.current.mutate("hola"));
     await waitFor(() => expect(client.getQueryState(commentsKey("a"))!.isInvalidated).toBe(true));
   });
+
+  it("refreshes Tu actividad > Comentarios when you add or delete a comment", async () => {
+    client.setQueryData(["my-comments"], { pages: [], pageParams: [] });
+    const add = await renderHook(() => useAddComment("a"), { wrapper });
+    await act(async () => add.result.current.mutate("hola"));
+    await waitFor(() => expect(client.getQueryState(["my-comments"])!.isInvalidated).toBe(true));
+
+    client.setQueryData(["my-comments"], { pages: [], pageParams: [] });
+    const del = await renderHook(() => useDeleteComment("a"), { wrapper });
+    await act(async () => del.result.current.mutate("c1"));
+    await waitFor(() => expect(client.getQueryState(["my-comments"])!.isInvalidated).toBe(true));
+  });
 });

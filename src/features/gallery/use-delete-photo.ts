@@ -3,6 +3,8 @@ import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
 import { useCallback } from "react";
 import { Alert } from "react-native";
+import { featuredByKey } from "@/features/activity/use-featured-by";
+import { myCommentsKey } from "@/features/activity/use-my-comments";
 import { myLikesKey } from "@/features/activity/use-my-likes";
 import type { Feed } from "@/features/trips/actions";
 import { myTripsKey } from "@/features/trips/use-active-trip";
@@ -29,6 +31,8 @@ export function useDeletePhoto() {
       void client.invalidateQueries({ queryKey: myTripsKey });
       void client.invalidateQueries({ queryKey: ["featured"] });
       void client.invalidateQueries({ queryKey: myLikesKey });
+      void client.invalidateQueries({ queryKey: featuredByKey });
+      void client.invalidateQueries({ queryKey: myCommentsKey });
     },
     onError: () =>
       Burnt.alert({ preset: "error", title: "No se pudo eliminar", message: "Probá de nuevo cuando tengas señal." }),

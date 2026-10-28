@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as Burnt from "burnt";
 import { useCallback } from "react";
+import { featuredByKey } from "@/features/activity/use-featured-by";
 import type { Feed } from "@/features/trips/actions";
 import { feedKey } from "@/features/trips/use-feed";
 import { archiveMedia, unarchiveMedia } from "./actions";
@@ -46,7 +47,10 @@ export function useArchivePhoto() {
     },
     // Profiles that featured it (yours or someone else's you looked at) lost it.
     onSuccess: (_data, { archived }) => {
-      if (archived) void client.invalidateQueries({ queryKey: ["featured"] });
+      if (archived) {
+        void client.invalidateQueries({ queryKey: ["featured"] });
+        void client.invalidateQueries({ queryKey: featuredByKey });
+      }
     },
   });
 
