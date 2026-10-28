@@ -65,7 +65,8 @@ grupo. Y un rollo grande necesita más de una persona que lo administre, sin que
 - Hacer admin y quitar admin: desde la lista de miembros del tablero / segmento "Rollo", en el menú de cada fila
   ("Hacer admin", "Quitar admin", "Sacar del rollo"; solo las que tu rol permite) *(decisión de Claude)*. Sin confirmación
   para hacer admin; `Alert` para sacar (como hoy) *(decisión de Claude)*. Sin aviso push *(decisión de Claude)*.
-- La API manda tu rol en el detalle (`creator` | `admin` | `member`) y el de cada miembro; la app muestra u oculta las
+- La API sigue mandando `role` (`admin` | `member`, sin valores nuevos, para no romper el 1.1.0 instalado) y suma `isCreator`
+  en cada miembro y en cada rollo de `/me/trips`, y `createdBy` (`{ userId, name }` o null) en el rollo; la app muestra u oculta las
   acciones por eso, pero **lo valida siempre el server** (403 si no te toca).
 - **Si el creador borra su cuenta**: hoy el admin pasa al miembro activo más viejo. Ahora `created_by` pasa al **admin más
   viejo** que quede, y si no hay ninguno al miembro activo más viejo (que además queda admin) *(decisión de Claude)*:
@@ -81,9 +82,9 @@ grupo. Y un rollo grande necesita más de una persona que lo administre, sin que
 
 - Al final del tablero / segmento "Rollo", fila roja **"Borrar rollo"**, cualquier etapa.
 - `Alert`: *¿Borrar "{rollo}" para todos?* / *Se borran todas las fotos de todos y no se puede deshacer.* / "Borrar" destructivo.
-- Server: `DELETE /trips/{id}` (creador; otro → 403). **Al instante** el rollo deja de existir para todos (soft delete:
-  `trips.deleted_at`, todos los endpoints lo tratan como inexistente) y el **cron** borra después de a tandas *(decisión de Claude,
-  por los límites de los Workers)*: fotos y archivos en R2, me gusta, comentarios,
+- Server: `DELETE /trips/{id}` (creador; otro → 403). **Al instante** se borran las filas de la base (un `db.batch`; me gusta,
+  comentarios, destacadas y avisos caen en cascada con `media`) y queda una lápida en `deleted_trips` para responder 410; las claves de
+  R2 van a una cola `r2_purge` que el **cron** vacía de a tandas *(decisión de Claude, por los límites de los Workers)*. Se borra: fotos y archivos en R2, me gusta, comentarios,
   destacadas en perfiles (también "Tu actividad"), denuncias, códigos, miembros. Sin aviso push *(decisión de Claude)*.
 - En los demás celulares el rollo deja de venir en `/me/trips`; si era el activo, se limpia igual que hoy cuando un rollo
   desaparece. Fotos de ese rollo en la cola offline: las subidas a un rollo borrado responden **410** con un código propio
