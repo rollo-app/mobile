@@ -47,10 +47,11 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    createdBy: null,
     ...over,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
-  members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false }],
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
 });
@@ -332,7 +333,7 @@ describe("revealed roll: Galería | Rollo", () => {
       friendRequest: "none",
     });
     const base = detail();
-    const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const, blockedByMe: false };
+    const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const, isCreator: false, blockedByMe: false };
     mocked.fetchTrip.mockResolvedValue({ ...base, members: [...base.members, fede] });
     await markPresentationSeen(SUR);
     await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });

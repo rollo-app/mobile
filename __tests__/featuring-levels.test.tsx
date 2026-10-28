@@ -24,6 +24,7 @@ const member = (id: string, name: string, role: "admin" | "member") => ({
   username: null,
   avatarUrl: null,
   role,
+  isCreator: false,
   blockedByMe: false,
 });
 
@@ -48,6 +49,7 @@ const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; 
       momentMode: "off",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      createdBy: null,
     },
     me,
     members: [me, member("m2", "Fede", role === "admin" ? "member" : "admin")],

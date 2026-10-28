@@ -463,7 +463,7 @@ export interface paths {
         post?: never;
         /**
          * Delete your account
-         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your reports and blocks (made and received), push tokens, settings and likes (yours, and the ones on your photos) are deleted too. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
+         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you created a rollo, the oldest remaining active admin becomes its creator (with no admins, the oldest active member, who is promoted). If no active members remain, the whole rollo is deleted with all its files. Your reports and blocks (made and received), push tokens, settings and likes (yours, and the ones on your photos) are deleted too. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
          */
         delete: {
             parameters: {
@@ -2101,10 +2101,63 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete the rollo for everyone (creator)
+         * @description Only whoever created it (403 otherwise). Removes the rollo, its members, photos, likes, comments and featured photos at once; the files in storage are purged later. Afterwards any route of that rollo answers 410 `{ error: "Este rollo se borró" }`. Cannot be undone.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Rollo deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
-        /** Edit the trip (admin) */
+        /**
+         * Edit the trip (admin)
+         * @description Any admin can rename the rollo (`name`). Everything else (dates, limits, private rollo) is only for the creator: 403 without applying anything if the body has more than `name`.
+         */
         patch: {
             parameters: {
                 query?: never;
@@ -2169,7 +2222,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reveal the roll now (admin) */
+        /**
+         * Reveal the roll now (creator)
+         * @description Only whoever created the rollo.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2318,7 +2374,7 @@ export interface paths {
         post?: never;
         /**
          * Leave the trip
-         * @description You lose access and the rollo leaves your list; your photos stay in the roll. You can come back with the code or if a friend adds you (before the reveal). The admin can't leave (409).
+         * @description You lose access and the rollo leaves your list; your photos stay in the roll. You can come back with the code or if a friend adds you (before the reveal). Any admin can leave and comes back as a regular member; the creator can't (409).
          */
         delete: {
             parameters: {
@@ -2371,7 +2427,7 @@ export interface paths {
         head?: never;
         /**
          * Your settings in this rollo
-         * @description `allowFeaturing`: whether others may feature your photos of this rollo on their profile (on by default). Turning it off removes them from other profiles; turning it on restores nothing.
+         * @description `allowFeaturing`: whether others may feature your photos of this rollo on their profile (on by default). Turning it off removes them from other profiles; turning it on restores nothing. `archived`: archive or unarchive the rollo for you only (409 if it is not revealed). Send at least one field.
          */
         patch: {
             parameters: {
@@ -2424,6 +2480,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         trace?: never;
@@ -2440,7 +2505,7 @@ export interface paths {
         post?: never;
         /**
          * Remove someone from the trip (admin)
-         * @description They lose access to the rollo and cannot rejoin by code or through a regular member; only the admin can add them back as a friend. Their photos stay in the roll.
+         * @description Admins remove regular members; only the creator removes other admins; nobody removes the creator (403). They lose access to the rollo and cannot rejoin by code or through a regular member; only the admin can add them back as a friend. Their photos stay in the roll.
          */
         delete: {
             parameters: {
@@ -2460,6 +2525,137 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/members/{memberId}/admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a member admin (admin)
+         * @description Any admin can. The target must be an active member (404 otherwise); if they are already admin it still answers 200.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    memberId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The member, now admin */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Member"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /**
+         * Take the admin role away (creator)
+         * @description Only the creator. The creator's own admin role can't be removed (400).
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    memberId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The member, now a regular member */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Member"];
+                    };
                 };
                 /** @description Invalid data */
                 400: {
@@ -2579,6 +2775,15 @@ export interface paths {
                 };
                 /** @description Conflict with the current state */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4136,6 +4341,10 @@ export interface components {
             revealAt: number;
             revealed: boolean;
             role: components["schemas"]["Role"];
+            /** @description You created this rollo */
+            isCreator: boolean;
+            /** @description You archived this rollo (only for you) */
+            archived: boolean;
             totalUploaded: number;
             /**
              * @description Daily moment: off, a photo, or a photo plus a selfie
@@ -4421,6 +4630,12 @@ export interface components {
             momentWindowStart: number;
             /** @description Moment window end, minutes from midnight in the rollo's time zone */
             momentWindowEnd: number;
+            /** @description Who created the rollo (always an admin). Only filled in by GET /trips/{tripId}, create, join and the edit routes; null if unknown */
+            createdBy: {
+                /** Format: uuid */
+                userId: string;
+                name: string;
+            } | null;
         };
         Member: {
             /**
@@ -4439,6 +4654,8 @@ export interface components {
             username: string | null;
             avatarUrl: string | null;
             role: components["schemas"]["Role"];
+            /** @description Created the rollo: always an admin, can't leave and can't be removed */
+            isCreator: boolean;
             /** @description Whether you blocked this member */
             blockedByMe: boolean;
             /** @description Only on `me`: others may feature your photos of this rollo on their profile */
@@ -4556,10 +4773,13 @@ export interface components {
         };
         MyMembership: {
             allowFeaturing: boolean;
+            archived: boolean;
         };
         UpdateMyMembershipRequest: {
             /** @description Others may feature your photos of this rollo. Turning it off removes them from other profiles; turning it on restores nothing */
-            allowFeaturing: boolean;
+            allowFeaturing?: boolean;
+            /** @description Archive the rollo for you only (revealed rollos only, 409 otherwise); it stays in your list marked as archived */
+            archived?: boolean;
         };
         MediaRegistered: {
             /** Format: uuid */

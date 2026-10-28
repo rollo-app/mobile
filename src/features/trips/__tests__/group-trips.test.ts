@@ -13,6 +13,8 @@ const trip = (id: string, over: Partial<TripSummary> = {}): TripSummary => ({
   revealAt: NOW - 4 * DAY,
   revealed: true,
   role: "member",
+  isCreator: false,
+  archived: false,
   totalUploaded: 0,
   momentMode: "off",
   coverThumbhash: null,

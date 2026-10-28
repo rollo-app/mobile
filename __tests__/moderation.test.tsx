@@ -89,6 +89,7 @@ describe("Members", () => {
       username: null,
       avatarUrl: null,
       role,
+      isCreator: false,
       blockedByMe,
     });
     const me = member("m1", "u1", "Juani", "admin", false);
@@ -111,6 +112,7 @@ describe("Members", () => {
         momentMode: "off",
         momentWindowStart: 540,
         momentWindowEnd: 1380,
+        createdBy: null,
       },
       me,
       members: [me, member("m2", "u2", "Cami", "member", true)],

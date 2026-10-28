@@ -9,6 +9,8 @@ const trip = (id: string): TripSummary => ({
   revealAt: 1,
   revealed: false,
   role: "member",
+  isCreator: false,
+  archived: false,
   totalUploaded: 0,
   momentMode: "off",
   coverThumbhash: null,
