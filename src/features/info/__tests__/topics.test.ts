@@ -47,6 +47,11 @@ describe("info topics", () => {
     for (const topic of Object.values(INFO_TOPICS)) expect(topic.body.length).toBeLessThan(600);
   });
 
+  it("says featuring is with your photos or your friends' photos", () => {
+    expect(INFO_TOPICS.othersProfiles.body).toContain("propias o de sus amigos");
+    expect(INFO_TOPICS.othersProfiles.body).toContain("dejan de ser amigos");
+  });
+
   it("looks a topic up only by a known id", () => {
     expect(isInfoTopicId("reveal")).toBe(true);
     expect(isInfoTopicId("nope")).toBe(false);
