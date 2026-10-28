@@ -23,9 +23,21 @@ Object.assign(require("react-native-reanimated"), {
   },
   // The keyboard is never open in tests.
   useAnimatedKeyboard: () => ({ height: { value: 0, get: () => 0 }, state: { value: 0, get: () => 0 } }),
+  // Gesture Handler subscribes its worklet callbacks with these; in tests `fireGestureHandler` calls them directly.
+  useEvent: () => () => {},
   useAnimatedStyle: (style: () => object) => style(),
   withDelay: <T>(_ms: number, value: T) => value,
-  withTiming: <T>(value: T) => value,
+  // Animations jump to their end value; the completion callback runs right away.
+  withTiming: <T>(value: T, _config?: unknown, done?: (finished: boolean) => void) => {
+    done?.(true);
+    return value;
+  },
+  withSpring: <T>(value: T) => value,
+  interpolate: (x: number, input: number[], output: number[]) => {
+    const t = Math.min(1, Math.max(0, (x - input[0]!) / (input[1]! - input[0]!)));
+    return output[0]! + t * (output[1]! - output[0]!);
+  },
+  Extrapolation: { CLAMP: "clamp", EXTEND: "extend", IDENTITY: "identity" },
   // A sequence ends at its last step.
   withSequence: (...steps: unknown[]) => steps[steps.length - 1],
   Easing: { bezier: () => (t: number) => t },
