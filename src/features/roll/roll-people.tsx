@@ -17,7 +17,7 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
   const share = () =>
     Share.share({ message: `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}` });
 
-  const leave = useLeaveTrip(detail.trip.id, detail.trip.name);
+  const leave = useLeaveTrip(detail.trip.id, detail.trip.name, { revealed: detail.trip.revealed });
 
   return (
     <>

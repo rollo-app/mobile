@@ -8,8 +8,12 @@ import { tripKey } from "@/features/trips/use-trip-detail";
 import { clearActiveTripId, getActiveTripId } from "@/storage/active-trip";
 import { leaveTrip } from "./actions";
 
-/** "Salirme del rollo": asks first; on success the roll leaves your list and you land back on the board. */
-export function useLeaveTrip(tripId: string, tripName: string) {
+/**
+ * "Salirme del rollo": asks first; on success the roll leaves your list. From the board (`"board"`) you land back on
+ * the roll tab; from "Tus rollos" (`"list"`, "Eliminar") you stay in the list. A revealed roll can't be rejoined
+ * with the code, so the warning changes with `revealed`.
+ */
+export function useLeaveTrip(tripId: string, tripName: string, { revealed, copy = "board" }: { revealed: boolean; copy?: "board" | "list" }) {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
@@ -20,14 +24,21 @@ export function useLeaveTrip(tripId: string, tripName: string) {
       await cancelMomentNotifications(tripId);
       await queryClient.invalidateQueries({ queryKey: myTripsKey });
       queryClient.removeQueries({ queryKey: tripKey(tripId) });
-      router.dismissTo("/roll");
+      if (copy === "board") router.dismissTo("/roll");
     },
   });
 
   function confirm() {
-    Alert.alert(`¿Salirte de "${tripName}"?`, "Tus fotos se quedan en el rollo y ya no lo vas a ver en tu lista. Podés volver con el código.", [
+    const list = copy === "list";
+    const title = list ? `¿Eliminar "${tripName}" de tus rollos?` : `¿Salirte de "${tripName}"?`;
+    const message = revealed
+      ? "Salís del rollo y tus fotos se quedan para el grupo. No vas a poder volver a entrar."
+      : list
+        ? "Salís del rollo y tus fotos se quedan para el grupo. Podés volver con el código."
+        : "Tus fotos se quedan en el rollo y ya no lo vas a ver en tu lista. Podés volver con el código.";
+    Alert.alert(title, message, [
       { text: "Cancelar", style: "cancel" },
-      { text: "Salirme", style: "destructive", onPress: () => mutation.mutate() },
+      { text: list ? "Eliminar" : "Salirme", style: "destructive", onPress: () => mutation.mutate() },
     ]);
   }
 

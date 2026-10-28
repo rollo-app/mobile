@@ -64,3 +64,8 @@ export async function fetchFeed(tripId: string): Promise<Schemas["Feed"]> {
 export async function deleteMedia(mediaId: string): Promise<void> {
   await unwrap((await authedClient()).DELETE("/media/{mediaId}", { params: { path: { mediaId } } }));
 }
+
+/** Archives or unarchives a revealed roll for you only (it moves to "Archivados" in your list). */
+export async function setTripArchived(tripId: string, archived: boolean): Promise<void> {
+  await unwrap((await authedClient()).PATCH("/trips/{tripId}/members/me", { params: { path: { tripId } }, body: { archived } }));
+}
