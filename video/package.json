@@ -5,7 +5,7 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "still": "remotion still src/index.ts",
-    "render": "remotion render src/index.ts Hero out/hero.mp4 --muted",
+    "render": "node scripts/render.mjs",
     "test": "tsx --test \"src/**/*.test.ts\" \"scripts/**/*.test.ts\"",
     "photos": "node scripts/prepare-photos.mjs"
   },

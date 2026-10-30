@@ -94,7 +94,10 @@ export const MapScene = () => {
               }}
             >
               <div style={{ position: "absolute", inset: 0, borderRadius: size, overflow: "hidden" }}>
-                <Avatar person={person} size={size - 8} />
+                {/* Fixed font size, scaled with a transform: changing font-size every frame trips a Chromium text-shaping DCHECK. */}
+                <div style={{ width: 48, height: 48, transform: `scale(${(size - 8) / 48})`, transformOrigin: "0 0" }}>
+                  <Avatar person={person} size={48} />
+                </div>
               </div>
               {t > 0.85 && (selected || (!crowded(points, i) && pt.x > 60 && pt.x < 480)) && (
                 <div
