@@ -1,3 +1,5 @@
+import type { LiveClip } from "./live-photo.ts";
+
 export type PhotoRecord = {
   id: string;
   file: string;
@@ -10,6 +12,8 @@ export type PhotoRecord = {
   /** Display size in pixels (orientation already applied). */
   width: number;
   height: number;
+  /** Live Photo companion clip, when the photo has one. */
+  live?: LiveClip;
 };
 
 /** Stored pixel size -> size as displayed: EXIF orientations 5-8 swap the axes. */
@@ -56,6 +60,7 @@ export function parseExifDate(wall: string, offset: string): Date | null {
 export function toPhotoRecord(
   id: string,
   exif: Record<string, unknown>,
+  live?: LiveClip,
 ): PhotoRecord {
   const date = exif.DateTimeOriginal;
   const offset =
@@ -78,5 +83,6 @@ export function toPhotoRecord(
     orientation,
     width: size.width,
     height: size.height,
+    ...(live ? { live } : {}),
   };
 }

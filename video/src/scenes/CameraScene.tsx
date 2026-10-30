@@ -1,5 +1,6 @@
 import { AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { CAMERA_VIEW } from "../selection.ts";
+import { LivePhoto } from "../ui/LivePhoto.tsx";
 import { Photo } from "../ui/Photo.tsx";
 import { BOX_H, BOX_TOP, FlipButton, Shutter, TopBar, TopGlyphs } from "./camera-parts.tsx";
 import { Screen } from "../ui/Screen.tsx";
@@ -34,7 +35,7 @@ const Viewfinder = ({ frame }: { frame: number }) => {
     <AbsoluteFill style={{ opacity: enter }}>
       <div style={{ position: "absolute", top: BOX_TOP, left: 0, width: 540, height: BOX_H, overflow: "hidden" }}>
         <div style={{ width: "100%", height: "100%", transform: `scale(${zoom})` }}>
-          <Photo id={CAMERA_VIEW} />
+          <LivePhoto id={CAMERA_VIEW} shutterAt={SHUTTER_AT} />
         </div>
         <div style={{ position: "absolute", bottom: 20, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 14 }}>
           <Chip label="0,5" />

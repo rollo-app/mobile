@@ -72,3 +72,10 @@ test("displaySize swaps the axes for orientations 5-8 only", () => {
   assert.deepEqual(displaySize(5712, 4284, 5), { width: 4284, height: 5712 });
   assert.deepEqual(displaySize(5712, 4284, 1), { width: 5712, height: 4284 });
 });
+
+test("a record can carry its Live Photo clip", () => {
+  const live = { file: "live/IMG_6198.mp4", stillAt: 1.3667, duration: 1.84 };
+  const record = toPhotoRecord("IMG_6198", { Orientation: 6, PixelWidth: 1200, PixelHeight: 900 }, live);
+  assert.deepEqual(record.live, live);
+  assert.equal("live" in toPhotoRecord("IMG_6198", {}), false);
+});
