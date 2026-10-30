@@ -45,7 +45,7 @@ grupo. Y un rollo grande necesita más de una persona que lo administre, sin que
 | Sacar a un miembro del rollo (y volver a sumar a alguien sacado) | ✓ | ✓ | |
 | Sacar a otro admin del rollo | ✓ | | |
 | Quitarle el admin a alguien | ✓ | | |
-| Editar fechas, cupo, momento | ✓ | | |
+| Editar fechas, cupo, momento | ✓ | ✓ | | <!-- ver 2026-10-29-editar-rollo-design.md -->
 | Revelar antes de tiempo | ✓ | | |
 | Rollo privado (prender / apagar) | ✓ | | |
 | Borrar el rollo para todos | ✓ | | |
