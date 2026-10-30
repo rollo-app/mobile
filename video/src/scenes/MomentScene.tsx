@@ -171,13 +171,13 @@ export const MomentScene = () => {
   const clock = formatHour(usePhoto(MOMENT_MAIN).takenAt);
   const flash = (at: number) => interpolate(frame, [at, at + 2, at + 8], [0, 0.6, 0], clamp);
   const toBlack = interpolate(frame, [INTRO_AT - 4, INTRO_AT], [0, 1], clamp);
-  const frontFade = interpolate(frame, [FRONT_AT, FRONT_AT + 6], [0, 1], clamp);
+  const frontFade = interpolate(frame, [FRONT_AT, FRONT_AT + 2], [0, 1], clamp);
   return (
     <Screen showClock={frame >= INTRO_AT} clock={clock}>
       {frame < INTRO_AT ? <LockScreen frame={frame} /> : null}
       {frame < INTRO_AT ? <AbsoluteFill style={{ backgroundColor: "#000", opacity: toBlack }} /> : null}
       {frame >= INTRO_AT && frame < FINDER_AT ? <Sequence from={INTRO_AT}><Intro /></Sequence> : null}
-      {frame >= FINDER_AT && frame < FRONT_AT + 6 ? (
+      {frame >= FINDER_AT && frame < FRONT_AT + 2 ? (
         <Sequence from={FINDER_AT}><Finder id={MOMENT_MAIN} mirror={false} frame={frame - FINDER_AT} shutterAt={SHUTTER_MAIN - FINDER_AT} /></Sequence>
       ) : null}
       {frame >= FRONT_AT && frame < RESULT_AT ? (
