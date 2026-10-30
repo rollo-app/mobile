@@ -7,7 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const site = join(root, "..", "scripts", "site");
 const bin = join(root, "node_modules", ".bin", "remotion");
 const scale = process.env.RENDER_SCALE ?? "1";
-const crf = { h264: process.env.CRF_H264 ?? "31", vp9: process.env.CRF_VP9 ?? "50" };
+const crf = { h264: process.env.CRF_H264 ?? "28", vp9: process.env.CRF_VP9 ?? "45" };
 // Poster: gallery scene start (ts: sceneStart("gallery")) + 30.
 const posterFrame = process.env.POSTER_FRAME ?? "384";
 mkdirSync(join(root, "out"), { recursive: true });
