@@ -11,7 +11,8 @@ import { colors, fonts, type } from "../ui/theme.ts";
 const juani = PEOPLE.find((p) => p.id === "juani")!;
 const GAP = 4;
 const CELL = (540 - 2 * GAP) / 3;
-const FEATURED = [GALLERY[3]!, GALLERY[6]!, GALLERY[9]!, GALLERY[11]!, GALLERY[14]!, GALLERY[16]!];
+const FEATURED = [3, 6, 9, 11, 14, 16, 2, 5, 8].map((i) => GALLERY[i]!);
+const pos = (n: number) => ({ x: (n % 3) * (CELL + GAP), y: Math.floor(n / 3) * (CELL + GAP) });
 const LANDING = GALLERY[0]!;
 const LAND_AT = 45;
 const EXIT = Easing.bezier(0.23, 1, 0.32, 1);
@@ -21,6 +22,7 @@ export const ProfileScene = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const land = spring({ frame: frame - LAND_AT, fps, config: { damping: 200 }, durationInFrames: 12 });
+  const shift = interpolate(frame, [LAND_AT, LAND_AT + 12], [0, 1], { ...clamp, easing: EXIT });
   const pillIn = interpolate(frame, [LAND_AT + 6, LAND_AT + 12], [0, 1], { ...clamp, easing: EXIT });
   const pillOut = interpolate(frame, [LAND_AT + 36, LAND_AT + 44], [1, 0], { ...clamp, easing: EXIT });
   const pill = Math.min(pillIn, pillOut);
@@ -49,13 +51,27 @@ export const ProfileScene = () => {
         <div style={{ position: "absolute", top: 470, left: 32, right: 32 }}>
           <Segmented items={["Fotos", "Mapa"]} active={0} />
         </div>
-        <div style={{ position: "absolute", top: 566, left: 0, right: 0, display: "flex", flexWrap: "wrap", gap: GAP }}>
-          {FEATURED.map((id) => (
-            <div key={id} style={{ width: CELL, height: CELL }}><Photo id={id} /></div>
-          ))}
+        <div style={{ position: "absolute", top: 566, left: 0, right: 0 }}>
+          {FEATURED.map((id, i) => {
+            const from = pos(i);
+            const to = pos(i + 1);
+            return (
+              <div
+                key={id}
+                style={{
+                  position: "absolute", left: from.x, top: from.y, width: CELL, height: CELL,
+                  transform: `translate(${(to.x - from.x) * shift}px, ${(to.y - from.y) * shift}px)`,
+                }}
+              >
+                <Photo id={id} />
+              </div>
+            );
+          })}
+          <div style={{ position: "absolute", left: 0, top: 0, width: CELL, height: CELL, opacity: land, transform: `scale(${0.9 + 0.1 * land})` }}>
+            <Photo id={LANDING} />
+          </div>
         </div>
       </AbsoluteFill>
-      <LandingCell land={land} />
       <div
         style={{
           position: "absolute", left: "50%", top: 862, transform: `translateX(-50%) translateY(${(1 - pill) * 10}px)`, opacity: pill,
@@ -69,14 +85,3 @@ export const ProfileScene = () => {
     </Screen>
   );
 };
-
-const LandingCell = ({ land }: { land: number }) => (
-  <div
-    style={{
-      position: "absolute", top: 566 + 2 * (CELL + GAP), left: 0, width: CELL, height: CELL, overflow: "hidden",
-      opacity: land, transform: `scale(${0.92 + 0.08 * land})`,
-    }}
-  >
-    <Photo id={LANDING} />
-  </div>
-);
