@@ -471,6 +471,7 @@ Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y m
   El deploy no setea `SITE_STORE_MODE`, así que lo que sale es el default del código. **Para cambiar cuando Apple apruebe:** cambiar
   el default `"beta"` → `"appstore"` en `build-site.mjs`, completar `APP_STORE_URL` y agregar el badge oficial (la ruta del badge se
   puede pisar con `SITE_APP_STORE_BADGE`, lo usa el test).
+- **Video del hero:** proyecto Remotion en `video/` (escenas que recrean la app con las fotos del viaje de Juani: cámara, mapa real, revelado, galería, perfil y momento); las fotos no entran al repo (`npm run photos -- <zip>` en `video/` las prepara en una carpeta ignorada), `npm run render` deja `hero.mp4`, `hero.webm` y `hero-poster.jpg` en `scripts/site/` (se commitean); con "Reducir movimiento" queda el póster.
 - **Momento del día:** la sección `#momento` reproduce el Lottie una vez al entrar en pantalla (`lottie-web` light, `/lottie.js`, mismo JSON que la intro de la app en sus variantes `scripts/site/moment-intro-{light,dark}.json`); el SVG estático del HTML es el fallback.
 - **Animaciones:** Motion (`animate`, `scroll`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
   `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).

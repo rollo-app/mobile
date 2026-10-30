@@ -1,6 +1,19 @@
 // Scroll animations for the home. Without Motion or with Reduce Motion (no js-motion class) the page stays in its final state.
 (function () {
   var root = document.documentElement;
+  // Reduced motion: the hero video goes back to its poster. Runs before the js-motion check (that class is never set then).
+  try {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      var videos = document.querySelectorAll(".hero-video");
+      for (var i = 0; i < videos.length; i++) {
+        videos[i].removeAttribute("autoplay");
+        videos[i].pause();
+        videos[i].load();
+      }
+    }
+  } catch (error) {
+    // keep the video as is
+  }
   if (!root.classList.contains("js-motion")) return;
   // If Motion is missing or init throws, drop the class so sections and photos show in their final state.
   if (!window.Motion) {

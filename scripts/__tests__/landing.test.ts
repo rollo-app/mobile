@@ -113,6 +113,39 @@ describe("the home", () => {
   });
 });
 
+describe("the hero video", () => {
+  const html = () => read("index.html");
+  const hero = () => html().match(/<section[^>]*id="inicio"[\s\S]*?<\/section>/)?.[0] ?? "";
+
+  it("plays a muted looping video inside the phone frame, with the poster and both sources", () => {
+    const h = hero();
+    expect(h).toMatch(/<div class="phone" aria-hidden="true">\s*<video class="hero-video"/);
+    for (const needle of ["hero.webm", "hero.mp4", 'poster="/hero-poster.jpg"', " muted", " autoplay", " loop", " playsinline"]) {
+      expect(h).toContain(needle);
+    }
+    expect(h).not.toContain('class="screen m-roll"');
+    expect(h).toMatch(/<figure class="figure" aria-label="[^"]+"/);
+  });
+
+  it("copies the three hero files to dist", () => {
+    for (const f of ["hero.mp4", "hero.webm", "hero-poster.jpg"]) expect(existsSync(join(dist, f))).toBe(true);
+  });
+
+  it("fails the build naming npm run render when a hero file is missing", () => {
+    const empty = mkdtempSync(join(tmpdir(), "rollo-hero-empty-"));
+    try {
+      expect(() =>
+        execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], {
+          env: { ...process.env, SITE_DIST: mkdtempSync(join(tmpdir(), "rollo-landing-x-")), SITE_HERO_DIR: empty },
+          stdio: "pipe",
+        }),
+      ).toThrow(/npm run render/);
+    } finally {
+      rmSync(empty, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("the home mockups", () => {
   let html: string;
   beforeAll(() => {
@@ -124,7 +157,8 @@ describe("the home mockups", () => {
   it("draws a phone with app content in every slot", () => {
     const slots = [...html.matchAll(/data-shot="([^"]+)">\s*(<div class="phone"[\s\S]*?)<\/figure>/g)];
     expect(slots.map((s) => s[1])).toEqual(["inicio", "como-funciona", "como-funciona", "como-funciona", "mapa", "revelado", "perfil"]);
-    for (const [, , phone] of slots) {
+    for (const [id, , phone] of slots.filter((s) => s[1] !== "inicio")) {
+      expect(id).toBeTruthy();
       expect(phone).toMatch(/<div class="screen m-[a-z]+"><div class="status">[\s\S]*<\/div>\s*<\/div>\s*<\/div>\s*$/);
     }
   });
@@ -144,7 +178,7 @@ describe("the home mockups", () => {
   });
 
   it("paints photos as color blobs, sharp in the static CSS", () => {
-    expect(section("inicio")).toMatch(/<span class="photo" style="--a:#[0-9a-f]{6};--b:#[0-9a-f]{6}"/);
+    expect(section("como-funciona")).toMatch(/<span class="photo" style="--a:#[0-9a-f]{6};--b:#[0-9a-f]{6}"/);
     const style = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
     expect(style).toContain("linear-gradient(135deg,var(--a),var(--b))");
     const unscoped = style
@@ -294,7 +328,7 @@ describe("the home motion", () => {
   });
 
   describe("landing.js", () => {
-    const run = (win: object, querySelectorAll: () => unknown[] = () => []) => {
+    const run = (win: object, querySelectorAll: (sel?: string) => unknown[] = () => []) => {
       const classes = new Set(["js-motion"]);
       const root = {
         dataset: {} as Record<string, string>,
@@ -334,6 +368,32 @@ describe("the home motion", () => {
       const options = inView.mock.calls[0][2];
       expect(options.amount).toBe("some");
       expect(options.margin).toBe("0px 0px -10% 0px");
+    });
+
+    describe("hero video", () => {
+      const fakeVideo = () => ({ removeAttribute: jest.fn(), pause: jest.fn(), load: jest.fn() });
+      const withVideo = (video: unknown) => (sel?: string) => (sel === ".hero-video" ? [video] : []);
+
+      it("goes back to the poster with reduced motion", () => {
+        const video = fakeVideo();
+        run({ matchMedia: () => ({ matches: true }) }, withVideo(video));
+        expect(video.removeAttribute).toHaveBeenCalledWith("autoplay");
+        expect(video.pause).toHaveBeenCalled();
+        expect(video.load).toHaveBeenCalled();
+      });
+
+      it("leaves the video alone without reduced motion", () => {
+        const video = fakeVideo();
+        run({ matchMedia: () => ({ matches: false }) }, withVideo(video));
+        expect(video.pause).not.toHaveBeenCalled();
+        expect(video.load).not.toHaveBeenCalled();
+      });
+
+      it("does not throw without matchMedia", () => {
+        const video = fakeVideo();
+        expect(() => run({}, withVideo(video))).not.toThrow();
+        expect(video.pause).not.toHaveBeenCalled();
+      });
     });
 
     it("marks motion as on when init succeeds", () => {

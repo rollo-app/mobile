@@ -142,6 +142,13 @@ for (const scheme of ["light", "dark"]) {
 }
 copyFileSync(join(root, "scripts", "site", "landing.js"), join(dist, "landing.js"));
 if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
+const HERO_DIR = process.env.SITE_HERO_DIR ?? join(root, "scripts", "site");
+for (const name of ["hero.mp4", "hero.webm", "hero-poster.jpg"]) {
+  if (!existsSync(join(HERO_DIR, name))) {
+    throw new Error(`Missing ${name} in ${HERO_DIR}: render the hero video with \`npm run render\` (in video/)`);
+  }
+  copyFileSync(join(HERO_DIR, name), join(dist, name));
+}
 copyFileSync(join(root, "scripts", "site", "og.png"), join(dist, "og.png"));
 const soporte = `<h2>Soporte</h2>
 <p>Escribinos a <a href="mailto:soporte@juanifraga.com">soporte@juanifraga.com</a> y te respondemos.</p>
