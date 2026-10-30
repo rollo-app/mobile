@@ -16,15 +16,29 @@ mkdirSync(join(root, "out"), { recursive: true });
 const run = (args) => execFileSync(bin, ["render", ...args], { cwd: root, stdio: "inherit" });
 const common = ["--concurrency=2", `--scale=${scale}`, "--muted"];
 
+const still = (composition, frame, out) =>
+  execFileSync(
+    bin,
+    ["still", "src/index.ts", composition, `out/${out}`, `--frame=${frame}`, "--image-format", "jpeg", "--jpeg-quality", "80", `--scale=${scale}`],
+    { cwd: root, stdio: "inherit" },
+  );
+// Section images of the landing: Budapest close-up with the card, and "Se reveló · Europa".
+const stillsOnly = process.argv.includes("--stills");
+const sectionStills = [["Map", process.env.MAP_FRAME ?? "130", "map.jpg"], ["Reveal", process.env.REVEAL_FRAME ?? "125", "reveal.jpg"]];
+const renderStills = () => { for (const [c, f, o] of sectionStills) still(c, f, o); };
+
+if (stillsOnly) {
+  renderStills();
+  for (const [, , o] of sectionStills) copyFileSync(join(root, "out", o), join(site, o));
+  process.exit(0);
+}
+
 run(["src/index.ts", "Hero", "out/hero.mp4", "--codec", "h264", "--crf", crf.h264, "--pixel-format", "yuv420p", ...common]);
 run(["src/index.ts", "Hero", "out/hero.webm", "--codec", "vp9", "--crf", crf.vp9, ...common]);
-execFileSync(
-  bin,
-  ["still", "src/index.ts", "Hero", "out/hero-poster.jpg", `--frame=${posterFrame}`, "--image-format", "jpeg", "--jpeg-quality", "80", `--scale=${scale}`],
-  { cwd: root, stdio: "inherit" },
-);
+still("Hero", posterFrame, "hero-poster.jpg");
+renderStills();
 
-const files = ["hero.mp4", "hero.webm", "hero-poster.jpg"];
+const files = ["hero.mp4", "hero.webm", "hero-poster.jpg", "map.jpg", "reveal.jpg"];
 let fail = false;
 // Check sizes in out/ first: nothing reaches scripts/site/ if a video is over the ceiling.
 for (const f of files) {
