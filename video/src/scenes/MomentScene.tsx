@@ -1,6 +1,8 @@
 import { Lottie, type LottieAnimationData } from "@remotion/lottie";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { AbsoluteFill, cancelRender, continueRender, delayRender, Easing, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { formatHour, formatLongDate } from "../format.ts";
+import { usePhoto } from "../data/photos-context.tsx";
 import { MOMENT_MAIN, MOMENT_SECOND } from "../selection.ts";
 import { Photo } from "../ui/Photo.tsx";
 import { Screen } from "../ui/Screen.tsx";
@@ -10,13 +12,15 @@ import { BOX_H, BOX_TOP, FlipButton, Shutter, TopBar, TopGlyphs } from "./camera
 const EXIT = Easing.bezier(0.23, 1, 0.32, 1);
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
-const NOTIFY_AT = 10;
-const TAP_AT = 35;
-const INTRO_AT = 40;
-const FINDER_AT = 75;
-const SHUTTER_MAIN = 100;
-const FRONT_AT = 110;
-const SHUTTER_FRONT = 135;
+const NOTIFY_AT = 8;
+const TAP_AT = 30;
+const INTRO_AT = 34;
+const FINDER_AT = 64;
+const SHUTTER_MAIN = 84;
+const FRONT_AT = 92;
+const SHUTTER_FRONT = 110;
+/** The result (both photos) holds from here to the end of the scene. */
+const RESULT_AT = SHUTTER_FRONT + 4;
 
 const GLASS = { backgroundColor: "rgba(40,40,44,0.55)", backdropFilter: "blur(30px) saturate(1.6)" } as const;
 
@@ -32,6 +36,7 @@ const AppIcon = ({ size }: { size: number }) => (
 );
 
 const LockScreen = ({ frame }: { frame: number }) => {
+  const takenAt = usePhoto(MOMENT_MAIN).takenAt;
   const { fps } = useVideoConfig();
   const enter = spring({ frame: frame - NOTIFY_AT, fps, config: { damping: 200 }, durationInFrames: 14 });
   const press = interpolate(frame, [TAP_AT - 2, TAP_AT + 1, TAP_AT + 5], [1, 0.97, 1], clamp);
@@ -43,8 +48,8 @@ const LockScreen = ({ frame }: { frame: number }) => {
         <AbsoluteFill style={{ backgroundColor: "rgba(0,0,0,0.5)" }} />
       </div>
       <div style={{ position: "absolute", top: 150, left: 0, right: 0, textAlign: "center", fontFamily: fonts.sans, color: "rgba(255,255,255,0.85)" }}>
-        <div style={{ fontSize: 34, fontWeight: 500 }}>jueves 9 de julio</div>
-        <div style={{ fontSize: 196, lineHeight: "200px", fontWeight: 200, letterSpacing: -4, color: "rgba(255,255,255,0.95)", marginTop: 4 }}>12:04</div>
+        <div style={{ fontSize: 34, fontWeight: 500 }}>{formatLongDate(takenAt)}</div>
+        <div style={{ fontSize: 196, lineHeight: "200px", fontWeight: 200, letterSpacing: -4, color: "rgba(255,255,255,0.95)", marginTop: 4 }}>{formatHour(takenAt)}</div>
       </div>
       <div
         style={{
@@ -77,25 +82,37 @@ const LockScreen = ({ frame }: { frame: number }) => {
 
 const useMomentIntro = () => {
   const [data, setData] = useState<LottieAnimationData | null>(null);
-  const [handle] = useState(() => delayRender("moment-intro.json"));
-  useEffect(() => {
+  // Layout effect so the handle exists at commit; released once, also when unmounted early.
+  useLayoutEffect(() => {
+    let cancelled = false;
+    let released = false;
+    const handle = delayRender("moment-intro.json");
+    const release = () => {
+      if (released) return;
+      released = true;
+      continueRender(handle);
+    };
     fetch(staticFile("moment-intro.json"))
       .then((r) => r.json())
-      .then((json) => { setData(json); continueRender(handle); })
-      .catch((e) => cancelRender(e));
-  }, [handle]);
+      .then((json) => { if (cancelled) return; setData(json); release(); })
+      .catch((e) => { if (!cancelled) cancelRender(e); });
+    return () => {
+      cancelled = true;
+      release();
+    };
+  }, []);
   return data;
 };
 
 const Intro = () => {
   const data = useMomentIntro();
   const frame = useCurrentFrame();
-  const text = interpolate(frame, [14, 24], [0, 1], { ...clamp, easing: EXIT });
+  const text = interpolate(frame, [8, 16], [0, 1], { ...clamp, easing: EXIT });
   return (
     <AbsoluteFill style={{ backgroundColor: "#000", alignItems: "center", justifyContent: "center" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, marginTop: -40 }}>
         <div style={{ width: 440, height: 440 }}>
-          {data ? <Lottie animationData={data} playbackRate={1.4} loop={false} style={{ width: 440, height: 440 }} /> : null}
+          {data ? <Lottie animationData={data} playbackRate={1.7} loop={false} style={{ width: 440, height: 440 }} /> : null}
         </div>
         <div style={{ textAlign: "center", fontFamily: fonts.sans, opacity: text, transform: `translateY(${(1 - text) * 12}px)` }}>
           <div style={{ fontSize: 56, lineHeight: "66px", fontWeight: 700, color: "#fff" }}>Tu momento</div>
@@ -128,7 +145,7 @@ const INSET_H = Math.round(144 * 1.33);
 
 const Result = ({ frame }: { frame: number }) => {
   const { fps } = useVideoConfig();
-  const enter = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 12 });
+  const enter = spring({ frame, fps, config: { damping: 200 }, durationInFrames: 18 });
   return (
     <AbsoluteFill style={{ backgroundColor: "#000", opacity: enter }}>
       <div style={{ position: "absolute", top: BOX_TOP, left: 0, width: 540, height: BOX_H, overflow: "hidden", borderRadius: 24 }}>
@@ -137,7 +154,7 @@ const Result = ({ frame }: { frame: number }) => {
           style={{
             position: "absolute", top: 20, left: 20, width: INSET_W, height: INSET_H, borderRadius: 20, border: "4px solid #fff",
             boxSizing: "border-box", overflow: "hidden", backgroundColor: "#222",
-            transform: `scale(${interpolate(frame, [4, 12], [0.9, 1], { ...clamp, easing: EXIT })})`, transformOrigin: "top left",
+            transform: `scale(${interpolate(frame, [6, 18], [0.9, 1], { ...clamp, easing: EXIT })})`, transformOrigin: "top left",
           }}
         >
           <Photo id={MOMENT_SECOND} mirror />
@@ -149,23 +166,24 @@ const Result = ({ frame }: { frame: number }) => {
 
 export const MomentScene = () => {
   const frame = useCurrentFrame();
+  const clock = formatHour(usePhoto(MOMENT_MAIN).takenAt);
   const flash = (at: number) => interpolate(frame, [at, at + 2, at + 8], [0, 0.6, 0], clamp);
   const toBlack = interpolate(frame, [INTRO_AT - 4, INTRO_AT], [0, 1], clamp);
   const frontFade = interpolate(frame, [FRONT_AT, FRONT_AT + 6], [0, 1], clamp);
   return (
-    <Screen showClock={frame >= INTRO_AT} clock="12:04">
+    <Screen showClock={frame >= INTRO_AT} clock={clock}>
       {frame < INTRO_AT ? <LockScreen frame={frame} /> : null}
       {frame < INTRO_AT ? <AbsoluteFill style={{ backgroundColor: "#000", opacity: toBlack }} /> : null}
       {frame >= INTRO_AT && frame < FINDER_AT ? <Sequence from={INTRO_AT}><Intro /></Sequence> : null}
       {frame >= FINDER_AT && frame < FRONT_AT ? (
         <Sequence from={FINDER_AT}><Finder id={MOMENT_MAIN} mirror={false} frame={frame - FINDER_AT} shutterAt={SHUTTER_MAIN - FINDER_AT} /></Sequence>
       ) : null}
-      {frame >= FRONT_AT && frame < SHUTTER_FRONT + 4 ? (
+      {frame >= FRONT_AT && frame < RESULT_AT ? (
         <AbsoluteFill style={{ opacity: frontFade }}>
           <Finder id={MOMENT_SECOND} mirror frame={frame - FRONT_AT} shutterAt={SHUTTER_FRONT - FRONT_AT} />
         </AbsoluteFill>
       ) : null}
-      {frame >= SHUTTER_FRONT + 4 ? <Result frame={frame - SHUTTER_FRONT - 4} /> : null}
+      {frame >= RESULT_AT ? <Result frame={frame - RESULT_AT} /> : null}
       <AbsoluteFill style={{ backgroundColor: "#fff", opacity: Math.max(flash(SHUTTER_MAIN), flash(SHUTTER_FRONT)), zIndex: 70 }} />
     </Screen>
   );

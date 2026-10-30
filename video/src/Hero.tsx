@@ -9,7 +9,7 @@ import { MapScene } from "./scenes/MapScene";
 import { MomentScene } from "./scenes/MomentScene";
 import { ProfileScene } from "./scenes/ProfileScene";
 import { RevealScene } from "./scenes/RevealScene";
-import { SCENES, SEAM_FRAMES, TRANSITION_FRAMES, totalFrames, type SceneId } from "./timeline";
+import { SCENES, TRANSITION_FRAMES, seamOpacity, type SceneId } from "./timeline";
 
 const SCENE_COMPONENTS: Record<SceneId, () => React.JSX.Element> = {
   camera: CameraScene,
@@ -34,16 +34,11 @@ const DipToBlack: React.FC<{ children: React.ReactNode; presentationProgress: nu
 };
 const dipToBlack = (): TransitionPresentation<Record<string, never>> => ({ component: DipToBlack as never, props: {} });
 
-const PEAK = 0.92;
-/** White shutter flash symmetric around the loop wrap: ramps up over the last frames, down over the first. */
-const SeamFlash = () => {
-  const frame = useCurrentFrame();
-  const total = totalFrames();
-  const half = SEAM_FRAMES / 2;
-  const d = frame >= total - half ? frame - (total - half) + 1 : half - frame;
-  const opacity = interpolate(d, [0, half], [0, PEAK], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+/** Dip to black over the loop wrap: fully black on the last and the first frame, no white flash. */
+const SeamDip = () => {
+  const opacity = seamOpacity(useCurrentFrame());
   if (opacity <= 0) return null;
-  return <AbsoluteFill style={{ backgroundColor: "#fff", opacity }} />;
+  return <AbsoluteFill style={{ backgroundColor: "#000", opacity, zIndex: 100 }} />;
 };
 
 export const Hero = ({ photos }: { photos: PhotoRecord[] }) => (
@@ -70,7 +65,7 @@ export const Hero = ({ photos }: { photos: PhotoRecord[] }) => (
           return items;
         })}
       </TransitionSeries>
-      <SeamFlash />
+      <SeamDip />
     </AbsoluteFill>
   </PhotosProvider>
 );
