@@ -19,9 +19,9 @@ const SITE_URL = "https://rollo.juanifraga.com";
 const STORE_MODE = process.env.SITE_STORE_MODE ?? "beta";
 const TESTFLIGHT_URL = "https://testflight.apple.com/join/Q557gZkR";
 const APP_STORE_URL = null; // filled in when the app is approved
-// Cloudflare Web Analytics (cookieless, page views only). Paste the token here once the owner has it (like APP_STORE_URL);
-// until then no beacon is added. Never added to /entrar (strict CSP, no third-party requests).
-const CF_ANALYTICS_TOKEN = process.env.SITE_CF_ANALYTICS_TOKEN || null;
+// Cloudflare Web Analytics (cookieless, page views only); public token from the Web Analytics site. SITE_CF_ANALYTICS_TOKEN=""
+// builds without it (the tests do). Never added to /entrar (strict CSP, no third-party requests).
+const CF_ANALYTICS_TOKEN = (process.env.SITE_CF_ANALYTICS_TOKEN ?? "773f8a15b710464095838f919b7389d8") || null;
 const APP_STORE_BADGE = process.env.SITE_APP_STORE_BADGE ?? join(root, "scripts", "site", "app-store-badge.svg");
 
 if (STORE_MODE !== "beta" && STORE_MODE !== "appstore") throw new Error(`Unknown SITE_STORE_MODE: ${STORE_MODE}`);

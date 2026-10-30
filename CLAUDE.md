@@ -476,7 +476,7 @@ Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y m
 - **Animaciones:** Motion (`animate`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
   `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
   Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.
-- **Analytics:** Cloudflare Web Analytics (sin cookies, solo vistas). Pegar el token en `CF_ANALYTICS_TOKEN` de `build-site.mjs` (o `SITE_CF_ANALYTICS_TOKEN`); sin token no se agrega nada. El beacon va en todas las páginas menos `/entrar`; en `/friends` el CSP suma `static.cloudflareinsights.com` solo cuando hay token.
+- **Analytics:** Cloudflare Web Analytics (sin cookies, solo vistas). El token (público) está en `CF_ANALYTICS_TOKEN` de `build-site.mjs`; `SITE_CF_ANALYTICS_TOKEN=""` arma sin beacon (lo usan los tests). Las vistas se ven en Cloudflare → Web Analytics → `rollo.juanifraga.com`. El beacon va en todas las páginas menos `/entrar`; en `/friends` el CSP suma `static.cloudflareinsights.com` solo cuando hay token.
 - **QR en desktop:** el hero lleva un QR inline (`qrcode`, generado en el build, del link de TestFlight o de la App Store según `STORE_MODE`) con "Escaneá con tu iPhone"; solo se ve en pantallas anchas con mouse (`hover:hover` + `pointer:fine`).
 - **Smart App Banner:** con `STORE_MODE === "appstore"` la home suma `apple-itunes-app` (app-id 6825843502); en beta no hay nada.
 - **Imagen para compartir:** `npm run og` regenera `scripts/site/og.png` (1200×630, `scripts/build-og.mjs`: título a la izquierda y el still del revelado en un marco de teléfono a la derecha); se commitea.

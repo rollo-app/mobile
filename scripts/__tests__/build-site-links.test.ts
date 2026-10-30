@@ -10,7 +10,7 @@ let html: string;
 
 beforeAll(() => {
   dist = mkdtempSync(join(tmpdir(), "rollo-site-links-"));
-  execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], { env: { ...process.env, SITE_DIST: dist } });
+  execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], { env: { ...process.env, SITE_DIST: dist, SITE_CF_ANALYTICS_TOKEN: "" } });
   html = readFileSync(join(dist, "friends", "index.html"), "utf8");
 });
 afterAll(() => rmSync(dist, { recursive: true, force: true }));
