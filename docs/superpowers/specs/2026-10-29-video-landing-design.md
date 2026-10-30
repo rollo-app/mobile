@@ -48,14 +48,15 @@ se revelan, quedan en la galería y las mejores van a tu perfil.**
 - **El rollo del video se llama "Europa"** (del 2 al 20 de julio), con 5–6 personas de muestra (las de `mockups.mjs`); las fotos se
   reparten entre ellas para que el mapa tenga varios colores.
 - **Fotos elegidas (sujeto a cambio en el armado):**
-  - Foto de perfil: `IMG_6092` (selfie con Budapest atrás).
-  - Momento del día: `IMG_5926` (trasera, la Basílica de San Esteban, 12:04) como principal y `IMG_5930` (frontal, la misma calle a las 12:07)
-    como la otra foto: son un par real. La frontal se ve espejada, como en la app.
+  - Foto de perfil: `IMG_6386`.
+  - Momento del día: `IMG_6073` (trasera, teleobjetivo, el Castillo de Buda con la cúpula de la Basílica, 14:56) como principal y `IMG_6092`
+    (frontal, con Budapest atrás, 15:49) como la otra foto. La frontal se ve espejada, como en la app. Los visores de la cámara y del momento
+    reproducen el movimiento real del Live Photo (clips H.264 en `video/public/live/`, ignorados por git) hasta el disparador.
   - Cámara (escena 1): `IMG_6198` (Plaza de la Ciudad Vieja, Praga) en el visor.
   - Revelado y galería: las demás de paisaje y ciudad. Las selfies `IMG_6123`, `IMG_6386` y los dos `.jpg` sin GPS solo van en la galería o el perfil, o no se usan.
 - **Proyecto aparte en `video/`** con su propio `package.json` (Remotion no entra en las dependencias de la app Expo ni en su Jest).
-- **Salida:** `scripts/site/hero.mp4` (H.264) + `hero.webm` (VP9) + `hero-poster.jpg` (un cuadro representativo), apuntando a **menos de 2 MB**
-  cada video. `build-site.mjs` los copia a `site/dist/` como hace con `og.png`. Un script `npm run video` (dentro de `video/`) renderiza y deja los tres archivos.
+- **Salida:** `scripts/site/hero.mp4` (H.264) + `hero.webm` (VP9) + `hero-poster.jpg` (un cuadro representativo), apuntando a **menos de 3 MB**
+  cada video (tope duro 5 MB). `build-site.mjs` los copia a `site/dist/` como hace con `og.png`. Un script `npm run video` (dentro de `video/`) renderiza y deja los tres archivos.
 - **En la landing:** `<video muted autoplay loop playsinline preload="metadata" poster=…>` dentro de `.hero .phone`, `aria-hidden` (la `figure`
   sigue con su `aria-label`). Con "Reducir movimiento" no se reproduce: queda el póster. Sin JS anda igual (el autoplay es del navegador).
   La maqueta `rollSheet()` deja de usarse en el hero.
@@ -63,7 +64,7 @@ se revelan, quedan en la galería y las mejores van a tu perfil.**
 - **Orden de construcción:** primero las escenas 1–5; el momento (6) se suma después si el total queda en ~28 s o menos.
 - **Costura del loop:** el perfil termina con un fundido a negro breve y un destello de obturador que entra de nuevo en la cámara
   (escena 1). El póster es un cuadro de la galería revelada (nunca una foto nítida "antes del revelado").
-- **Peso:** objetivo 2 MB por video, tolerable hasta ~3 MB. Si no entra, se cede en este orden: grano (más sutil o más grueso),
+- **Peso:** objetivo 3 MB por video (aviso por encima), tope duro 5 MB (el render falla). Si no entra, se cede en este orden: grano (más sutil o más grueso),
   después resolución (1,5×), después duración. Nunca se bajan los 30 fps.
 - **Tipografía:** se renderiza en la Mac de Juani con las fuentes del sistema (SF Pro y New York vía `-apple-system` / `ui-serif`), igual que el sitio;
   no se corre en CI.

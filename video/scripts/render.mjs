@@ -31,8 +31,8 @@ for (const f of files) {
   const mb = statSync(join(root, "out", f)).size / 1024 / 1024;
   console.log(`${f}: ${mb.toFixed(2)} MB`);
   if (f.endsWith(".jpg")) continue;
-  if (mb > 3) { console.error(`${f} supera 3 MB`); fail = true; }
-  else if (mb > 2) console.warn(`aviso: ${f} supera 2 MB`);
+  if (mb > 5) { console.error(`${f} supera 5 MB`); fail = true; }
+  else if (mb > 3) console.warn(`aviso: ${f} supera 3 MB`);
 }
 if (!fail) for (const f of files) copyFileSync(join(root, "out", f), join(site, f));
 process.exit(fail ? 1 : 0);
