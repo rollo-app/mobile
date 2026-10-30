@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { AbsoluteFill } from "remotion";
 import { colors, fonts } from "./theme.ts";
 
-const StatusBar = ({ showClock }: { showClock: boolean }) => (
+const StatusBar = ({ showClock, clock }: { showClock: boolean; clock: string }) => (
   <div
     style={{
       position: "absolute", top: 0, left: 0, right: 0, height: 102, display: "flex",
@@ -10,7 +10,7 @@ const StatusBar = ({ showClock }: { showClock: boolean }) => (
       color: colors.label, fontFamily: fonts.sans, zIndex: 50, pointerEvents: "none",
     }}
   >
-    <span style={{ fontSize: 31, fontWeight: 600, letterSpacing: -0.3, opacity: showClock ? 1 : 0 }}>9:41</span>
+    <span style={{ fontSize: 31, fontWeight: 600, letterSpacing: -0.3, opacity: showClock ? 1 : 0 }}>{clock}</span>
     <svg width="104" height="28" viewBox="0 0 104 28" fill="#fff">
       <rect x="0" y="18" width="5" height="8" rx="1.5" />
       <rect x="8" y="13" width="5" height="13" rx="1.5" />
@@ -24,10 +24,10 @@ const StatusBar = ({ showClock }: { showClock: boolean }) => (
   </div>
 );
 
-export const Screen = ({ children, style, showClock = true }: { children?: ReactNode; style?: CSSProperties; showClock?: boolean }) => (
+export const Screen = ({ children, style, showClock = true, clock = "9:41" }: { children?: ReactNode; style?: CSSProperties; showClock?: boolean; clock?: string }) => (
   <AbsoluteFill style={{ backgroundColor: colors.background, fontFamily: fonts.sans, color: colors.label, overflow: "hidden", ...style }}>
     {children}
-    <StatusBar showClock={showClock} />
+    <StatusBar showClock={showClock} clock={clock} />
     <div
       style={{
         position: "absolute", bottom: 14, left: "50%", marginLeft: -68, width: 136, height: 10,

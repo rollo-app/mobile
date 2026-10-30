@@ -153,7 +153,7 @@ export const MomentScene = () => {
   const toBlack = interpolate(frame, [INTRO_AT - 4, INTRO_AT], [0, 1], clamp);
   const frontFade = interpolate(frame, [FRONT_AT, FRONT_AT + 6], [0, 1], clamp);
   return (
-    <Screen showClock={frame >= INTRO_AT}>
+    <Screen showClock={frame >= INTRO_AT} clock="12:04">
       {frame < INTRO_AT ? <LockScreen frame={frame} /> : null}
       {frame < INTRO_AT ? <AbsoluteFill style={{ backgroundColor: "#000", opacity: toBlack }} /> : null}
       {frame >= INTRO_AT && frame < FINDER_AT ? <Sequence from={INTRO_AT}><Intro /></Sequence> : null}
