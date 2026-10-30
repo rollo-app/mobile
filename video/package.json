@@ -1,0 +1,27 @@
+{
+  "name": "rollo-landing-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "still": "remotion still src/index.ts",
+    "render": "remotion render src/index.ts Hero out/hero.mp4 --muted",
+    "test": "tsx --test src/**/*.test.ts scripts/**/*.test.ts",
+    "photos": "node scripts/prepare-photos.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/lottie": "4.0.539",
+    "@remotion/transitions": "4.0.539",
+    "exifr": "7.1.3",
+    "maplibre-gl": "6.16.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.539",
+    "tsx": "4.23.15"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "7.0.2"
+  }
+}
