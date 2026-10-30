@@ -4,7 +4,7 @@ import { PEOPLE, authorOf } from "./cast.ts";
 import type { PhotoRecord } from "./data/load-photos.ts";
 
 const photo = (id: string, camera: "back" | "front", takenAt: string): PhotoRecord => ({
-  id, file: `photos/${id}.jpg`, lat: 1, lng: 2, takenAt, camera, orientation: 1,
+  id, file: `photos/${id}.jpg`, lat: 1, lng: 2, takenAt, camera, orientation: 1, width: 900, height: 1200,
 });
 const all = [
   photo("a", "back", "2026-07-02T10:00:00+02:00"),

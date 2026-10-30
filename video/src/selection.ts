@@ -52,9 +52,9 @@ export const REVEAL = [
   "IMG_6406",
 ];
 
-/** Photos that have a real location, chronologically. Never places anything at 0,0. */
+/** Photos with a real location and a date, chronologically. Never places anything at 0,0. */
 export function mapPhotos(all: PhotoRecord[]): PhotoRecord[] {
   return all
-    .filter((p) => p.lat !== null && p.lng !== null)
+    .filter((p) => p.lat !== null && p.lng !== null && p.takenAt !== "")
     .sort((a, b) => a.takenAt.localeCompare(b.takenAt));
 }

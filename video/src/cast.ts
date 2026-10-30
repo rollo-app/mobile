@@ -1,4 +1,4 @@
-import { loadPhotos, type PhotoRecord } from "./data/load-photos.ts";
+import type { PhotoRecord } from "./data/load-photos.ts";
 
 export type Person = { id: string; name: string; initial: string; color: string };
 
@@ -15,19 +15,11 @@ export const PEOPLE: Person[] = [
 const JUANI = PEOPLE.find((p) => p.id === "juani")!;
 const OTHERS = PEOPLE.filter((p) => p.id !== "juani");
 
-function safeLoad(): PhotoRecord[] {
-  try {
-    return loadPhotos();
-  } catch {
-    return [];
-  }
-}
-
 /**
  * Juani took every front-camera photo; the rest rotate through the others by capture order.
  * Deterministic: the same photo always gets the same person.
  */
-export function authorOf(photo: PhotoRecord, all: PhotoRecord[] = safeLoad()): Person {
+export function authorOf(photo: PhotoRecord, all: PhotoRecord[]): Person {
   if (photo.camera === "front") return JUANI;
   const backs = all
     .filter((p) => p.camera === "back")

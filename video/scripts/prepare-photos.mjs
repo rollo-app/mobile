@@ -44,6 +44,9 @@ for (const file of files) {
     stdio: "ignore",
   });
   // Raw values: numeric Orientation, and the date as the camera wrote it (see parseExifDate).
+  const size = execFileSync("sips", ["-g", "pixelWidth", "-g", "pixelHeight", out]).toString();
+  const PixelWidth = Number(/pixelWidth: (\d+)/.exec(size)?.[1]);
+  const PixelHeight = Number(/pixelHeight: (\d+)/.exec(size)?.[1]);
   const exif =
     (await exifr.parse(readFileSync(file), {
       gps: true,
@@ -52,8 +55,11 @@ for (const file of files) {
       reviveValues: false,
       translateValues: false,
     })) ?? {};
+  if (!exif.OffsetTimeOriginal) {
+    console.warn(`Aviso: ${basename(file)} no trae OffsetTimeOriginal; se usa +00:00 para su hora.`);
+  }
   const date = parseExifDate(String(exif.DateTimeOriginal ?? ""), exif.OffsetTimeOriginal ?? "+00:00");
-  records.push(toPhotoRecord(id, { ...exif, DateTimeOriginal: date }));
+  records.push(toPhotoRecord(id, { ...exif, DateTimeOriginal: date, PixelWidth, PixelHeight }));
 }
 
 // Chronological; records without a date go last.
@@ -64,7 +70,10 @@ records.sort((a, b) => {
 });
 
 mkdirSync(join(root, "src", "data"), { recursive: true });
-writeFileSync(join(root, "src", "data", "photos.json"), JSON.stringify(records, null, 2) + "\n");
+const json = JSON.stringify(records, null, 2) + "\n";
+writeFileSync(join(root, "src", "data", "photos.json"), json);
+// Same records for Remotion (calculateMetadata fetches it); the dir is gitignored.
+writeFileSync(join(outDir, "index.json"), json);
 if (temp) rmSync(temp, { recursive: true, force: true });
 
 console.log(

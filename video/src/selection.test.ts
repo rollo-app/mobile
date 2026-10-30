@@ -6,7 +6,7 @@ import {
 import type { PhotoRecord } from "./data/load-photos.ts";
 
 const rec = (id: string, lat: number | null, takenAt: string): PhotoRecord => ({
-  id, file: `photos/${id}.jpg`, lat, lng: lat === null ? null : 2, takenAt, camera: "back", orientation: 1,
+  id, file: `photos/${id}.jpg`, lat, lng: lat === null ? null : 2, takenAt, camera: "back", orientation: 1, width: 900, height: 1200,
 });
 
 test("mapPhotos drops photos without GPS and sorts by time", () => {
@@ -14,6 +14,7 @@ test("mapPhotos drops photos without GPS and sorts by time", () => {
     rec("late", 1, "2026-07-05T10:00:00+02:00"),
     rec("nogps", null, "2026-07-01T10:00:00+02:00"),
     rec("early", 1, "2026-07-02T10:00:00+02:00"),
+    rec("undated", 1, ""),
   ]);
   assert.deepEqual(result.map((p) => p.id), ["early", "late"]);
 });

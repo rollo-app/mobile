@@ -7,7 +7,19 @@ export type PhotoRecord = {
   takenAt: string;
   camera: "back" | "front";
   orientation: number;
+  /** Display size in pixels (orientation already applied). */
+  width: number;
+  height: number;
 };
+
+/** Stored pixel size -> size as displayed: EXIF orientations 5-8 swap the axes. */
+export function displaySize(
+  width: number,
+  height: number,
+  orientation: number,
+): { width: number; height: number } {
+  return orientation >= 5 && orientation <= 8 ? { width: height, height: width } : { width, height };
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -50,6 +62,12 @@ export function toPhotoRecord(
     typeof exif.OffsetTimeOriginal === "string" ? exif.OffsetTimeOriginal : "+00:00";
   const takenAt = date instanceof Date ? formatWithOffset(date, offset) : "";
   const lens = typeof exif.LensModel === "string" ? exif.LensModel : "";
+  const orientation = typeof exif.Orientation === "number" ? exif.Orientation : 1;
+  const size = displaySize(
+    typeof exif.PixelWidth === "number" ? exif.PixelWidth : 0,
+    typeof exif.PixelHeight === "number" ? exif.PixelHeight : 0,
+    orientation,
+  );
   return {
     id,
     file: `photos/${id}.jpg`,
@@ -57,6 +75,8 @@ export function toPhotoRecord(
     lng: typeof exif.longitude === "number" ? exif.longitude : null,
     takenAt,
     camera: /front/i.test(lens) ? "front" : "back",
-    orientation: typeof exif.Orientation === "number" ? exif.Orientation : 1,
+    orientation,
+    width: size.width,
+    height: size.height,
   };
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseExifDate, toPhotoRecord } from "./photo-record.ts";
+import { displaySize, parseExifDate, toPhotoRecord } from "./photo-record.ts";
 import { loadPhotos } from "../src/data/load-photos.ts";
 
 const BACK = "iPhone 15 Pro Max back triple camera 6.765mm f/1.78";
@@ -13,6 +13,8 @@ test("builds a record with local time at the photo's own offset", () => {
     OffsetTimeOriginal: "+02:00",
     LensModel: BACK,
     Orientation: 6,
+    PixelWidth: 1200,
+    PixelHeight: 900,
   });
   assert.deepEqual(record, {
     id: "IMG_5926",
@@ -22,6 +24,8 @@ test("builds a record with local time at the photo's own offset", () => {
     takenAt: "2026-07-09T12:04:40+02:00",
     camera: "back",
     orientation: 6,
+    width: 900,
+    height: 1200,
   });
 });
 
@@ -61,4 +65,10 @@ test("parseExifDate reads the wall clock at the photo's offset, whatever the mac
   const date = parseExifDate("2026:07:09 12:04:40", "+02:00");
   assert.equal(date?.toISOString(), "2026-07-09T10:04:40.000Z");
   assert.equal(parseExifDate("garbage", "+02:00"), null);
+});
+
+test("displaySize swaps the axes for orientations 5-8 only", () => {
+  assert.deepEqual(displaySize(5712, 4284, 6), { width: 4284, height: 5712 });
+  assert.deepEqual(displaySize(5712, 4284, 5), { width: 4284, height: 5712 });
+  assert.deepEqual(displaySize(5712, 4284, 1), { width: 5712, height: 4284 });
 });
