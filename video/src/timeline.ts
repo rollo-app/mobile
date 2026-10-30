@@ -11,10 +11,10 @@ export const SEAM_IN_FRAMES = 6;
 export const SCENES: { id: SceneId; frames: number }[] = [
   { id: "camera", frames: 120 },
   { id: "map", frames: 135 },
+  { id: "moment", frames: 150 },
   { id: "reveal", frames: 135 },
   { id: "gallery", frames: 90 },
   { id: "profile", frames: 90 },
-  { id: "moment", frames: 150 },
 ];
 
 export function totalFrames(): number {

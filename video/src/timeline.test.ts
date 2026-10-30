@@ -10,7 +10,12 @@ test("the scenes add up to the 22 s composition", () => {
 test("scenes overlap by the transition length", () => {
   assert.equal(sceneStart("camera"), 0);
   assert.equal(sceneStart("map"), 108);
-  assert.equal(sceneStart("reveal"), 108 + 135 - TRANSITION_FRAMES);
+  assert.equal(sceneStart("moment"), 108 + 135 - TRANSITION_FRAMES);
+  assert.equal(sceneStart("reveal"), sceneStart("moment") + 150 - TRANSITION_FRAMES);
+});
+
+test("scene order: the moment comes before the reveal", () => {
+  assert.deepEqual(SCENES.map((s) => s.id), ["camera", "map", "moment", "reveal", "gallery", "profile"]);
 });
 
 test("the last scene ends exactly on the last frame", () => {

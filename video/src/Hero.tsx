@@ -53,7 +53,7 @@ export const Hero = ({ photos }: { photos: PhotoRecord[] }) => (
             </TransitionSeries.Sequence>,
           ];
           if (i < SCENES.length - 1) {
-            const dip = scene.id === "map";
+            const dip = scene.id === "moment";
             items.push(
               <TransitionSeries.Transition
                 key={`${scene.id}-t`}
