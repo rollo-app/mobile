@@ -18,6 +18,8 @@ import {
   defaultStart,
   effectiveStart,
   endAfter,
+  MAX_DAILY_PHOTOS,
+  MAX_TOTAL_PHOTOS,
   minutesOfDay,
   revealNotBefore,
   type MomentMode,
@@ -198,9 +200,9 @@ export function CreateScreen() {
               <Text modifiers={[tag("total")]}>Todo el rollo</Text>
             </Picker>
             {limitMode === "daily" ? (
-              <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={100} onValueChange={setPhotos} />
+              <Stepper label={count(photos, "foto", "fotos")} value={photos} min={1} max={MAX_DAILY_PHOTOS} onValueChange={setPhotos} />
             ) : (
-              <Stepper label={count(totalPhotos, "foto", "fotos")} value={totalPhotos} min={1} max={500} onValueChange={setTotalPhotos} />
+              <Stepper label={count(totalPhotos, "foto", "fotos")} value={totalPhotos} min={1} max={MAX_TOTAL_PHOTOS} onValueChange={setTotalPhotos} />
             )}
           </Section>
 
