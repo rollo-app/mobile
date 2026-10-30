@@ -14,8 +14,19 @@ import { colors, fonts, type } from "../ui/theme.ts";
 
 const BUDAPEST: Camera = { lat: 47.5, lng: 19.05, zoom: 12.5 };
 const MOVE = [60, 110] as const;
-const mercatorY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-const latFromMercatorY = (y: number) => ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
+const CENTER = { x: 270, y: 585 };
+const worldSize = (zoom: number) => 512 * 2 ** zoom;
+/** Web Mercator pixel of a location at a zoom. */
+const toWorld = (c: { lng: number; lat: number }, zoom: number) => {
+  const size = worldSize(zoom);
+  const sin = Math.sin((c.lat * Math.PI) / 180);
+  return { x: ((c.lng + 180) / 360) * size, y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * size };
+};
+const fromWorld = (p: { x: number; y: number }, zoom: number) => {
+  const size = worldSize(zoom);
+  const n = Math.PI - (2 * Math.PI * p.y) / size;
+  return { lng: (p.x / size) * 360 - 180, lat: (Math.atan(Math.sinh(n)) * 180) / Math.PI };
+};
 const ease = Easing.bezier(0.45, 0, 0.55, 1);
 /** Within ~25 km of the city center. */
 const inBudapest = (p: { lat: number | null; lng: number | null }) => Math.abs(p.lat! - BUDAPEST.lat) < 0.22 && Math.abs(p.lng! - BUDAPEST.lng) < 0.32;
@@ -40,13 +51,14 @@ export const MapScene = () => {
     cameraAt: (f, wide) => {
       const t = progressAt(f);
       const zoom = wide.zoom + (BUDAPEST.zoom - wide.zoom) * t;
-      // Pan in step with the zoom (constant screen-space speed): a plain linear lerp of the center
-      // leaves the target far off-screen until the very end of the move.
-      const inv = (z: number) => 2 ** -z;
-      const s = (inv(zoom) - inv(wide.zoom)) / (inv(BUDAPEST.zoom) - inv(wide.zoom));
-      const y0 = mercatorY(wide.lat);
-      const y1 = mercatorY(BUDAPEST.lat);
-      return { lng: wide.lng + (BUDAPEST.lng - wide.lng) * s, lat: latFromMercatorY(y0 + (y1 - y0) * s), zoom };
+      // Zoom around Budapest: its screen position eases from where it sits in the wide shot to the
+      // viewport center, so the pins never drift off while the zoom changes.
+      const b0 = toWorld(BUDAPEST, wide.zoom);
+      const c0 = toWorld(wide, wide.zoom);
+      const start = { x: CENTER.x + (b0.x - c0.x), y: CENTER.y + (b0.y - c0.y) };
+      const screen = { x: start.x + (CENTER.x - start.x) * t, y: start.y + (CENTER.y - start.y) * t };
+      const b = toWorld(BUDAPEST, zoom);
+      return { ...fromWorld({ x: b.x - (screen.x - CENTER.x), y: b.y - (screen.y - CENTER.y) }, zoom), zoom };
     },
     locations: pins.map((p) => ({ lng: p.lng!, lat: p.lat! })),
   });
