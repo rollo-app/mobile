@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { marked } from "marked";
 import { homeCss, homeHtml } from "./site/home.mjs";
-import { mockups, mockupsCss } from "./site/mockups.mjs";
 import { tokensCss } from "./site/tokens.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -112,14 +111,13 @@ const home = homeHtml({
   testflightUrl: TESTFLIGHT_URL,
   appStoreUrl: APP_STORE_URL,
   siteUrl: SITE_URL,
-  mockups,
 });
 write("index.html", page({
   title: "Rollo · Fotos en grupo para iPhone",
   description: "Rollo: fotos y videos en grupo que nadie ve hasta el revelado. App para iPhone.",
   body: home.body,
   head: home.head,
-  css: homeCss + mockupsCss,
+  css: homeCss,
   wide: true,
 }));
 await build({
@@ -130,20 +128,10 @@ await build({
   globalName: "Motion",
   outfile: join(dist, "motion.js"),
 });
-await build({
-  stdin: { contents: `import lottie from "lottie-web/build/player/lottie_light"; window.lottie = lottie;`, resolveDir: root },
-  bundle: true,
-  minify: true,
-  format: "iife",
-  outfile: join(dist, "lottie.js"),
-});
-for (const scheme of ["light", "dark"]) {
-  copyFileSync(join(root, "scripts", "site", `moment-intro-${scheme}.json`), join(dist, `moment-intro-${scheme}.json`));
-}
 copyFileSync(join(root, "scripts", "site", "landing.js"), join(dist, "landing.js"));
 if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
 const HERO_DIR = process.env.SITE_HERO_DIR ?? join(root, "scripts", "site");
-for (const name of ["hero.mp4", "hero.webm", "hero-poster.jpg"]) {
+for (const name of ["hero.mp4", "hero.webm", "hero-poster.jpg", "map.jpg", "reveal.jpg"]) {
   if (!existsSync(join(HERO_DIR, name))) {
     throw new Error(`Missing ${name} in ${HERO_DIR}: render the hero video with \`npm run render\` (in video/)`);
   }

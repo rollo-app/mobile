@@ -458,8 +458,8 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 ## Sitio público
 
-`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** (8 secciones
-con maquetas de la app en HTML/CSS y el botón "Probar la beta en iPhone" a TestFlight), `/soporte` (preguntas frecuentes y contacto;
+`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** corta (hero con el video del
+celular + 2 secciones, mapa y revelado, con una captura de la app cada una + cierre; botón "Probar la beta en iPhone" a TestFlight), `/soporte` (preguntas frecuentes y contacto;
 `/#soporte` cae en el link a esa página), `/privacidad`, `/terminos`, `/friends` (respaldo del link de amistad: código, "Abrir Rollo" y bajar la app, sin redirigir) y `/entrar` (el link mágico del mail; script inline, sin pedidos a
 ningún lado, con su CSP). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
 se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/` (la home vive en `scripts/site/home.mjs` y `mockups.mjs`, los
@@ -472,8 +472,8 @@ Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y m
   el default `"beta"` → `"appstore"` en `build-site.mjs`, completar `APP_STORE_URL` y agregar el badge oficial (la ruta del badge se
   puede pisar con `SITE_APP_STORE_BADGE`, lo usa el test).
 - **Video del hero:** proyecto Remotion en `video/` (escenas que recrean la app con las fotos del viaje de Juani: cámara, mapa real, revelado, galería, perfil y momento); las fotos no entran al repo (`npm run photos -- <zip>` en `video/` las prepara en una carpeta ignorada), `npm run render` deja `hero.mp4`, `hero.webm` y `hero-poster.jpg` en `scripts/site/` (se commitean); con "Reducir movimiento" queda el póster.
-- **Momento del día:** la sección `#momento` reproduce el Lottie una vez al entrar en pantalla (`lottie-web` light, `/lottie.js`, mismo JSON que la intro de la app en sus variantes `scripts/site/moment-intro-{light,dark}.json`); el SVG estático del HTML es el fallback.
-- **Animaciones:** Motion (`animate`, `scroll`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
+- **Imágenes de la home:** el video del hero (`hero.mp4`, `hero.webm`, `hero-poster.jpg`) y las capturas `map.jpg` / `reveal.jpg` salen de `video/` (Remotion) y se commitean en `scripts/site/`; `npm run render` en `video/` rehace todo y `npm run stills` solo las dos capturas, sin recodificar los videos. En el celular todo va sobre un solo margen de 20 px y una escala fija de espacios (variables `--s-*` de `home.mjs`).
+- **Animaciones:** Motion (`animate`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
   `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
   Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.
 - **Imagen para compartir:** `npm run og` regenera `scripts/site/og.png` (1200×630, `scripts/build-og.mjs`); se commitea.
