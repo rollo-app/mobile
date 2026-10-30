@@ -70,7 +70,7 @@ describe("the home", () => {
   it("has the exact copy", () => {
     const text = visibleText(html).replace(/\s+/g, " ");
     for (const copy of [
-      "Un rollo compartido para viajar con amigos. Cada uno saca sus fotos y nadie las ve hasta el revelado.",
+      "Un rollo compartido con tus amigos para el viaje, el casamiento o la última semana de facu. Cada uno saca sus fotos y nadie las ve hasta el revelado.",
       "Ves dónde sacan, no qué sacan.",
       "Mientras dura el rollo, el mapa se llena con los pins del grupo: quién sacó, dónde y a qué hora. Las fotos siguen ocultas. Sin señal, se guardan y se suben solas cuando vuelve.",
       "Todas juntas, al final del viaje.",
@@ -400,5 +400,83 @@ describe("the Open Graph image", () => {
     expect(png.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
     expect(png.readUInt32BE(16)).toBe(1200);
     expect(png.readUInt32BE(20)).toBe(630);
+  });
+});
+
+describe("the home description", () => {
+  it("is the ≤160-char version in the meta and og tags", () => {
+    const html = read("index.html");
+    const copy = "Un rollo de fotos compartido con tus amigos para el viaje, el casamiento o la última semana de facu. Nadie las ve hasta el revelado.";
+    expect(copy.length).toBeLessThanOrEqual(160);
+    expect(html).toContain(`<meta name="description" content="${copy}">`);
+    expect(html).toContain(`<meta property="og:description" content="${copy}">`);
+  });
+});
+
+describe("the desktop QR", () => {
+  it("renders one QR for the TestFlight URL in the hero only, hidden unless wide and pointer-fine", () => {
+    const html = read("index.html");
+    expect(html.match(/class="qr"/g)).toHaveLength(1);
+    const block = html.match(/<div class="qr"[\s\S]*?<\/div>/)![0];
+    expect(block).toContain(`data-url="${TESTFLIGHT}"`);
+    expect(block).toMatch(/<svg[^>]*aria-hidden="true"[\s\S]*currentColor/);
+    expect(block).toContain("Escaneá con tu iPhone");
+    expect(html.match(/<section[^>]*id="inicio"[\s\S]*?<\/section>/)![0]).toContain('class="qr"');
+    const style = html.match(/<style>([\s\S]*?)<\/style>/)![1]!;
+    expect(style).toMatch(/(^|[}\s])\.qr\{display:none\}/);
+    expect(style).toMatch(/@media \(min-width:768px\) and \(hover:hover\) and \(pointer:fine\)\{[^@]*\.qr\{display:flex/);
+  });
+});
+
+describe("the Smart App Banner", () => {
+  const homeModule = join(__dirname, "..", "site", "home.mjs");
+  const head = (storeMode: string) =>
+    (
+      JSON.parse(
+        execFileSync(process.execPath, [
+          "--input-type=module",
+          "-e",
+          `import { homeHtml } from ${JSON.stringify(homeModule)};
+           process.stdout.write(JSON.stringify(homeHtml({ storeMode: ${JSON.stringify(storeMode)}, testflightUrl: "${TESTFLIGHT}",
+             appStoreUrl: "https://apps.apple.com/app/id6825843502", siteUrl: "${SITE}" })));`,
+        ]).toString(),
+      ) as { head: string }
+    ).head;
+
+  it("is added in App Store mode only", () => {
+    expect(head("appstore")).toContain('<meta name="apple-itunes-app" content="app-id=6825843502">');
+    expect(head("beta")).not.toContain("apple-itunes-app");
+    expect(read("index.html")).not.toContain("apple-itunes-app");
+  });
+});
+
+describe("Cloudflare Web Analytics", () => {
+  const build = (token?: string) => {
+    const out = mkdtempSync(join(tmpdir(), "rollo-analytics-"));
+    execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], {
+      env: { ...process.env, SITE_DIST: out, ...(token ? { SITE_CF_ANALYTICS_TOKEN: token } : { SITE_CF_ANALYTICS_TOKEN: "" }) },
+    });
+    return out;
+  };
+  const pages = ["index.html", "soporte/index.html", "privacidad/index.html", "terminos/index.html", "friends/index.html", "entrar/index.html"];
+
+  it("adds no beacon without a token", () => {
+    for (const page of pages) expect(read(page)).not.toContain("cloudflareinsights");
+  });
+
+  it("adds the beacon to every page but /entrar when a token is set, widening only the friends CSP", () => {
+    const out = build("tok123");
+    try {
+      const get = (page: string) => readFileSync(join(out, page), "utf8");
+      const tag = `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"tok123"}'></script>`;
+      for (const page of pages.slice(0, 5)) expect(get(page)).toContain(tag);
+      expect(get("entrar/index.html")).not.toContain("cloudflareinsights");
+      expect(get("entrar/index.html")).toContain("connect-src 'none'");
+      const csp = get("friends/index.html").match(/Content-Security-Policy" content="([^"]+)"/)![1]!;
+      expect(csp).toContain("https://static.cloudflareinsights.com");
+      expect(csp).toContain("connect-src https://cloudflareinsights.com");
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
   });
 });

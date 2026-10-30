@@ -14,7 +14,14 @@ const stillPhone = (src) =>
 const shot = (id, label, phone) =>
   `<figure class="figure" aria-label="${label}"><div class="shot" data-shot="${id}">${phone}</div></figure>`;
 
-const cta = ({ storeMode, testflightUrl, appStoreUrl }) =>
+// Apple ID of the app in App Store Connect (eas.json ascAppId): used by the Smart App Banner.
+const APP_STORE_ID = "6825843502";
+
+/** The QR block (desktop only, via CSS) next to the hero CTA; `qr` is { svg, url } built by the site build. */
+const qrBlock = (qr) =>
+  qr ? `<div class="qr" data-url="${qr.url}">${qr.svg}<p class="note">Escaneá con tu iPhone</p></div>\n` : "";
+
+const cta = ({ storeMode, testflightUrl, appStoreUrl }, qr) =>
   `<div class="cta">
 ${
   storeMode === "appstore"
@@ -22,19 +29,20 @@ ${
     : `<a class="btn" href="${testflightUrl}">Probar la beta en iPhone</a>`
 }
 <p class="note">${IPHONE_ONLY}</p>
-</div>`;
+${qrBlock(qr)}</div>`;
 
 /** Enables the scroll animations unless the visitor asked for reduced motion; drops it again if landing.js did not take over (fires after deferred scripts). Runs with `document` and `matchMedia` in scope. */
 const HEAD_SCRIPT = `if(!matchMedia("(prefers-reduced-motion: reduce)").matches){var h=document.documentElement;h.classList.add("js-motion");document.addEventListener("DOMContentLoaded",function(){if(h.dataset.motion!=="on")h.classList.remove("js-motion")})}`;
 
 /**
- * @param {{ storeMode: "beta" | "appstore", testflightUrl: string, appStoreUrl: string | null, siteUrl: string }} opts
+ * @param {{ storeMode: "beta" | "appstore", testflightUrl: string, appStoreUrl: string | null, siteUrl: string, qr?: { svg: string, url: string } | null }} opts
  * @returns {{ head: string, body: string }}
  */
-export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl }) {
+export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl, qr = null }) {
   const button = cta({ storeMode, testflightUrl, appStoreUrl });
+  const heroButton = cta({ storeMode, testflightUrl, appStoreUrl }, qr);
   const description =
-    "Un rollo compartido para tu próximo viaje con amigos. Nadie ve las fotos hasta el revelado. Solo para iPhone.";
+    "Un rollo de fotos compartido con tus amigos para el viaje, el casamiento o la última semana de facu. Nadie las ve hasta el revelado.";
 
   const head = [
     `<link rel="canonical" href="${siteUrl}/">`,
@@ -48,6 +56,7 @@ export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl }) {
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2F0EB">`,
     `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0F14">`,
+    ...(storeMode === "appstore" ? [`<meta name="apple-itunes-app" content="app-id=${APP_STORE_ID}">`] : []),
     `<script>${HEAD_SCRIPT}</script>`,
     `<script src="/motion.js" defer></script>`,
     `<script src="/landing.js" defer></script>`,
@@ -57,8 +66,8 @@ export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl }) {
   const body = `<section id="inicio" class="hero">
 <div class="text">
 <h1 class="serif">Sacá la foto.<br>Mirala después.</h1>
-<p class="lead">Un rollo compartido para viajar con amigos. Cada uno saca sus fotos y nadie las ve hasta el revelado.</p>
-${button}
+<p class="lead">Un rollo compartido con tus amigos para el viaje, el casamiento o la última semana de facu. Cada uno saca sus fotos y nadie las ve hasta el revelado.</p>
+${heroButton}
 </div>
 ${shot("inicio", "La app en uso: sacás la foto, el mapa del grupo, el revelado y tu perfil", heroVideo())}
 </section>
@@ -119,6 +128,7 @@ section.hero{margin-top:0}
 .store{display:inline-block;line-height:0}
 .store img{display:block}
 .note{font-size:15px;color:var(--muted)}
+.qr{display:none}
 .help{margin-top:var(--s-cta)}
 .figure{display:flex;justify-content:flex-start;margin-top:var(--s-figure)}
 .phone{width:min(74vw,280px);aspect-ratio:9/19.5;border-radius:40px;background:var(--bezel);padding:9px;box-shadow:0 24px 48px rgba(0,0,0,.16)}
@@ -126,6 +136,11 @@ section.hero{margin-top:0}
 footer{margin-top:var(--s-section);padding-top:16px;border-top:1px solid var(--rule);color:var(--muted);font-size:14px}
 footer p{margin:0 0 6px}
 footer a{color:var(--muted)}
+@media (min-width:768px) and (hover:hover) and (pointer:fine){
+  .qr{display:flex;align-items:center;gap:16px;color:var(--fg)}
+  .qr svg{width:112px;height:112px;flex:none}
+  .qr .note{max-width:9em}
+}
 @media (min-width:768px){
   .wrap.wide{padding:28px 32px 48px}
   h1{font-size:clamp(44px,6vw,64px)}
