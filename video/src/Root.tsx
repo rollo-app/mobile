@@ -4,6 +4,7 @@ import type { PhotoRecord } from "./data/load-photos";
 import { Hero } from "./Hero";
 import { CameraScene } from "./scenes/CameraScene";
 import { GalleryScene } from "./scenes/GalleryScene";
+import { MapScene } from "./scenes/MapScene";
 import { ProfileScene } from "./scenes/ProfileScene";
 import { PhotosProvider } from "./data/photos-context";
 import { Playground } from "./ui/Playground";
@@ -14,6 +15,7 @@ const dev = (Scene: () => React.JSX.Element) => ({ photos }: { photos: PhotoReco
 const Camera = dev(CameraScene);
 const Gallery = dev(GalleryScene);
 const Profile = dev(ProfileScene);
+const MapDev = dev(MapScene);
 
 const loadProps = async () => ({
   props: { photos: await fetchPhotos(staticFile("photos/index.json")) },
@@ -46,6 +48,8 @@ export const Root = () => (
   <Composition id="Gallery" component={Gallery} fps={30} width={540} height={1170} durationInFrames={90}
     defaultProps={{ photos: [] as PhotoRecord[] }} calculateMetadata={loadProps} />
   <Composition id="Profile" component={Profile} fps={30} width={540} height={1170} durationInFrames={90}
+    defaultProps={{ photos: [] as PhotoRecord[] }} calculateMetadata={loadProps} />
+  <Composition id="Map" component={MapDev} fps={30} width={540} height={1170} durationInFrames={135}
     defaultProps={{ photos: [] as PhotoRecord[] }} calculateMetadata={loadProps} />
   </>
 );
