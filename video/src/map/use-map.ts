@@ -9,6 +9,16 @@ export type Point = { x: number; y: number };
 // Webpack emits the worker as an asset; MapLibre loads it by URL.
 maplibregl.setWorkerUrl(new URL("../../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).href);
 
+/** Labels in Spanish, like a Spanish-language iPhone; never Cyrillic or Arabic. */
+function spanishLabels(style: maplibregl.StyleSpecification): maplibregl.StyleSpecification {
+  const layers = style.layers.map((l) =>
+    l.type === "symbol" && l.layout?.["text-field"] !== undefined
+      ? { ...l, layout: { ...l.layout, "text-field": ["coalesce", ["get", "name:es"], ["get", "name:latin"], ["get", "name"]] } }
+      : l,
+  );
+  return { ...style, layers } as maplibregl.StyleSpecification;
+}
+
 const TIMEOUT = { timeoutInMilliseconds: 30000 };
 
 /** Resolves once the style, sources and every visible tile are painted for the current camera. */
@@ -58,7 +68,7 @@ export function useMap({ container, frame, bounds, padding, cameraAt, locations 
     const el = container.current!;
     const map = new maplibregl.Map({
       container: el,
-      style: buildMapStyle("dark") as unknown as maplibregl.StyleSpecification,
+      style: spanishLabels(buildMapStyle("dark") as unknown as maplibregl.StyleSpecification),
       center: [0, 0],
       zoom: 1,
       interactive: false,

@@ -36,7 +36,7 @@ export const MapScene = () => {
     container,
     frame,
     bounds: lightBounds(pins.map((p) => ({ lng: p.lng!, lat: p.lat! }))),
-    padding: { top: 260, bottom: 300, left: 50, right: 50 },
+    padding: { top: 200, bottom: 180, left: 70, right: 70 },
     cameraAt: (f, wide) => {
       const t = progressAt(f);
       const zoom = wide.zoom + (BUDAPEST.zoom - wide.zoom) * t;
@@ -76,7 +76,7 @@ export const MapScene = () => {
               key={p.id}
               style={{
                 position: "absolute", left: pt.x - size / 2, top: pt.y - size / 2, width: size, height: size,
-                transform: `scale(${pop})`, borderRadius: size, boxSizing: "border-box",
+                transform: `scale(${0.5 + 0.5 * pop})`, opacity: Math.min(1, pop * 2), borderRadius: size, boxSizing: "border-box",
                 border: "4px solid #fff", boxShadow: selected ? `0 0 0 8px ${colors.tint}, 0 4px 10px rgba(0,0,0,0.5)` : "0 4px 10px rgba(0,0,0,0.5)",
                 zIndex: selected ? 5 : 1,
               }}
