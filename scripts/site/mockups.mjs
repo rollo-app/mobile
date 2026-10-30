@@ -69,17 +69,6 @@ const segmented = (left, right) => `<div class="seg"><span class="sel">${left}</
 const phone = (kind, content) =>
   `<div class="phone" aria-hidden="true"><div class="screen m-${kind}">${statusBar}${content}</div></div>`;
 
-const rollSheet = () =>
-  phone(
-    "roll",
-    `<div class="bar"><span></span>${svg(ICONS.cloud, "muted")}</div>
-<h4 class="title switch">Bariloche ${svg(ICONS.chevron)}</h4>
-<p class="sub">8 personas · se revela el domingo</p>
-<div class="sheet">${PALETTE.map((_, i) => photo(i)).join("")}</div>
-<div class="group"><div class="row"><span>Hoy</span><span class="value">Te quedan 7 fotos</span></div><div class="row"><span>Fechas</span><span class="value">18 al 24 de enero</span></div><div class="row"><span>En el rollo</span><span class="faces">${["cami", "lu", "juani", "tomi"].map((w) => avatar(w)).join("")}</span></div></div>
-${tabs(BEFORE_REVEAL, "roll")}`,
-  );
-
 const steps = () => [
   phone(
     "join",
@@ -158,7 +147,7 @@ ${tabs(BEFORE_REVEAL, "profile")}`,
   );
 };
 
-export const mockups = { rollSheet, steps, map, reveal, profile };
+export const mockups = { steps, map, reveal, profile };
 
 /** Styles for the mockups. Static state is final: photos are sharp (Task 4's `.js-motion` adds the blur). */
 export const mockupsCss = `

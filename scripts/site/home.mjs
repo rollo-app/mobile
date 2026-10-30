@@ -6,6 +6,10 @@ const IPHONE_ONLY = "Solo para iPhone · Gratis";
 /** Empty phone frame; Task 3's mockups replace it. */
 const emptyPhone = () => `<div class="phone"><div class="screen"></div></div>`;
 
+/** Hero: the rendered loop inside the phone frame (the video is decorative; the figure carries the label). */
+const heroVideo = () =>
+  `<div class="phone"><video class="hero-video" muted autoplay loop playsinline preload="metadata" poster="/hero-poster.jpg" aria-hidden="true"><source src="/hero.webm" type="video/webm"><source src="/hero.mp4" type="video/mp4"></video></div>`;
+
 const shot = (id, label, phone) =>
   `<figure class="figure" aria-label="${label}"><div class="shot" data-shot="${id}">${phone}</div></figure>`;
 
@@ -24,7 +28,7 @@ const HEAD_SCRIPT = `if(!matchMedia("(prefers-reduced-motion: reduce)").matches)
 
 /**
  * @param {{ storeMode: "beta" | "appstore", testflightUrl: string, appStoreUrl: string | null, siteUrl: string,
- *   mockups?: { rollSheet(): string, steps(): string[], map(): string, reveal(): string, profile(): string } }} opts
+ *   mockups?: { steps(): string[], map(): string, reveal(): string, profile(): string } }} opts
  * @returns {{ head: string, body: string }}
  */
 export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl, mockups }) {
@@ -58,7 +62,7 @@ export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl, mocku
 <p class="lead">Un rollo compartido para tu próximo viaje con amigos. Nadie ve las fotos hasta el revelado, y ahí descubrís cómo lo vivió cada uno.</p>
 ${button}
 </div>
-${shot("inicio", "El rollo en la app, con las fotos todavía sin revelar", mockups?.rollSheet() ?? emptyPhone())}
+${shot("inicio", "La app en uso: sacás la foto, el mapa del grupo, el revelado y tu perfil", heroVideo())}
 </section>
 
 <section id="como-funciona" data-enter>
@@ -171,6 +175,7 @@ section.hero{border-top:0;padding-top:36px}
 .note{margin-top:10px;font-size:15px;color:var(--muted)}
 .figure{display:flex;justify-content:center;margin-top:40px}
 .phone{width:240px;aspect-ratio:9/19.5;border-radius:40px;background:var(--bezel);padding:9px;box-shadow:0 24px 48px rgba(0,0,0,.16)}
+.hero-video{width:100%;height:100%;object-fit:cover;border-radius:31px;display:block}
 .screen{width:100%;height:100%;border-radius:32px;background:var(--screen);overflow:hidden}
 .moment-mark{position:relative;width:min(100%,360px);aspect-ratio:1}
 .moment-mark svg,.moment-anim{position:absolute;inset:0;width:100%;height:100%;display:block}
