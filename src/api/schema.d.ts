@@ -2156,7 +2156,7 @@ export interface paths {
         head?: never;
         /**
          * Edit the trip (admin)
-         * @description Any admin can rename the rollo (`name`). Everything else (dates, limits, private rollo) is only for the creator: 403 without applying anything if the body has more than `name`.
+         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything.
          */
         patch: {
             parameters: {
@@ -2202,6 +2202,15 @@ export interface paths {
                 };
                 /** @description Forbidden */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4287,6 +4296,11 @@ export interface components {
             day: string;
             /** @description Epoch ms when the moment starts; the user has 15 minutes from then */
             notifyAt: number;
+            /**
+             * @description How this moment is taken, fixed when it was drawn; later changes to the rollo do not affect it
+             * @enum {string}
+             */
+            mode?: "photo" | "photo_selfie";
         };
         UpdateProfileRequest: {
             /** @example Juani */
@@ -4704,7 +4718,7 @@ export interface components {
             /** @description Photos per person in the whole rollo; required when photoLimitMode is total, ignored otherwise */
             totalPhotoLimit?: number;
             /**
-             * @description Daily moment: off, a photo, or a photo plus a selfie. Cannot be changed after creating the rollo
+             * @description Daily moment: off, a photo, or a photo plus a selfie. Any admin can change it later (PATCH /trips/{tripId}), effective from the next day
              * @default off
              * @enum {string}
              */
@@ -4746,16 +4760,32 @@ export interface components {
         };
         UpdateTripRequest: {
             name?: string;
-            /** @description Trip end; must be after startsAt and <= the resulting revealAt */
+            /** @description Only before the rollo starts; never in the past */
+            startsAt?: number;
+            /** @description Trip end; must be after startsAt, at most 31 days after it and <= the resulting revealAt. Not once the rollo ended */
             endsAt?: number;
             /** @description Must be >= the resulting endsAt */
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
-            /** @description Private rollo. Turning it on removes every photo of the rollo from every profile; turning it off restores nothing */
+            /** @description Private rollo (creator only). Turning it on removes every photo of the rollo from every profile; turning it off restores nothing */
             featuringDisabled?: boolean;
-            /** @description Only for rollos in total mode */
+            /**
+             * @description Only before the rollo starts
+             * @enum {string}
+             */
+            photoLimitMode?: "daily" | "total";
+            /** @description Only for rollos in total mode; required when switching to total and none is stored */
             totalPhotoLimit?: number;
+            /**
+             * @description Daily moment; in a running rollo it applies from the next day
+             * @enum {string}
+             */
+            momentMode?: "off" | "photo" | "photo_selfie";
+            /** @description Minutes from midnight in the rollo's time zone */
+            momentWindowStart?: number;
+            /** @description Minutes from midnight; at least 30 after the resulting start */
+            momentWindowEnd?: number;
         };
         AddMembersResponse: {
             results: {

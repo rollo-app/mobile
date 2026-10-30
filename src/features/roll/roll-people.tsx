@@ -12,6 +12,7 @@ import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatHandle } from "@/features/profile/username";
 import type { TripDetail } from "@/features/trips/actions";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { editableFields } from "@/features/trips/edit-form";
 import { useArchiveTrip } from "@/features/trips/use-archive-trip";
 import { canRename, memberActions, memberBadge, type MemberAction } from "@/features/trips/roles";
 import { ErrorText, Row, Section } from "@/ui/components";
@@ -103,6 +104,9 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
       {canRename(detail.me) && (
         <Section>
           <Row label="Nombre" value={detail.trip.name} onPress={editName} />
+          {editableFields(detail.trip, Date.now()).end && (
+            <Row label="Editar rollo" onPress={() => router.push({ pathname: "/edit-trip", params: { tripId: detail.trip.id } })} />
+          )}
         </Section>
       )}
 

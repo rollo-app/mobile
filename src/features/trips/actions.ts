@@ -2,6 +2,7 @@ import { unwrap, type Schemas } from "@/api/client";
 import { authedClient } from "@/features/auth/session";
 import { setActiveTripId } from "@/storage/active-trip";
 import type { TripSummary } from "./active";
+import type { UpdateTripBody } from "./edit-form";
 
 export type Trip = Schemas["Trip"];
 export type TripDetail = Schemas["TripDetail"];
@@ -95,4 +96,9 @@ export async function renameTrip(tripId: string, name: string): Promise<Trip> {
 /** Deletes the rollo for everyone, photos included (creator only). */
 export async function deleteTrip(tripId: string): Promise<void> {
   await unwrap((await authedClient()).DELETE("/trips/{tripId}", { params: { path: { tripId } } }));
+}
+
+/** Changes dates, quota or daily moment of the rollo (any admin; only the fields sent change). */
+export async function updateTrip(tripId: string, body: UpdateTripBody): Promise<Trip> {
+  return (await unwrap((await authedClient()).PATCH("/trips/{tripId}", { params: { path: { tripId } }, body }))).trip;
 }

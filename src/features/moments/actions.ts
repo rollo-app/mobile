@@ -1,7 +1,7 @@
 import { unwrap } from "@/api/client";
 import { authedClient } from "@/features/auth/session";
 
-export type MyTripMoments = { tripId: string; tripName: string; momentMode: "photo" | "photo_selfie"; moments: { day: string; notifyAt: number }[] };
+export type MyTripMoments = { tripId: string; tripName: string; momentMode: "photo" | "photo_selfie"; moments: { day: string; notifyAt: number; mode?: "photo" | "photo_selfie" }[] };
 
 /**
  * The caller's moments in every rollo the server says has some to schedule (active member, moment on, not revealed,

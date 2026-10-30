@@ -19,6 +19,16 @@ describe("planMoments", () => {
     expect(planned[0]).toMatchObject({ id: momentNotificationId("a", "d2"), tripName: "A", day: "d2" });
   });
 
+  it("uses the moment's own mode over the trip's, falling back to the trip's", () => {
+    const trip: TripMoments = {
+      tripId: "a",
+      tripName: "A",
+      momentMode: "photo",
+      moments: [{ day: "d1", notifyAt: now + 1, mode: "photo_selfie" }, { day: "d2", notifyAt: now + 2 }],
+    };
+    expect(planMoments([trip], now).map((p) => p.momentMode)).toEqual(["photo_selfie", "photo"]);
+  });
+
   it("keeps only the first 40", () => {
     const times = Array.from({ length: 50 }, (_, i) => now + 50 - i);
     const planned = planMoments([t("a", times)], now);

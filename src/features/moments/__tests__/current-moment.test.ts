@@ -17,6 +17,12 @@ describe("currentMoment", () => {
     });
   });
 
+  it("carries the selfie param of the notification url, and omits it when absent", () => {
+    const withParam = { identifier: "moment.t1.2027-01-12", data: { url: `/moment?trip=t1&day=2027-01-12&at=${NOW - 60_000}&selfie=1` } };
+    expect(currentMoment([withParam], NOW)?.selfie).toBe("1");
+    expect(currentMoment([delivered("t1", "2027-01-12", NOW - 60_000)], NOW)?.selfie).toBeUndefined();
+  });
+
   it("returns null for one delivered 16 minutes ago", () => {
     expect(currentMoment([delivered("t1", "2027-01-12", NOW - MOMENT_WINDOW_MS - 60_000)], NOW)).toBeNull();
   });

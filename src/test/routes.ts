@@ -26,6 +26,7 @@ import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
 import CommentsRoute from "../../app/comments/[mediaId]";
 import CreateScreen from "../../app/create";
+import EditTripRoute from "../../app/edit-trip";
 import WorstCaseRoute from "../../app/dev/worst-case";
 import CropAvatarScreen from "../../app/crop-avatar";
 import EditProfileScreen from "../../app/edit-profile";
@@ -57,6 +58,7 @@ export const routes = {
   join: JoinScreen,
   "info/[topic]": InfoRoute,
   create: CreateScreen,
+  "edit-trip": EditTripRoute,
   "crop-avatar": CropAvatarScreen,
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
