@@ -30,10 +30,10 @@ export const ProfileScene = () => {
     <Screen>
       <AbsoluteFill style={{ top: 0 }}>
         <div style={{ position: "absolute", top: 150, left: 32, right: 32, display: "flex", gap: 24, alignItems: "flex-start" }}>
-          <Avatar person={juani} size={160} photoId={PROFILE_AVATAR} />
+          <Avatar person={juani} size={160} photoId={PROFILE_AVATAR} framing={{ objectPosition: "50% 70%" }} />
           <div style={{ flex: 1, minWidth: 0, paddingTop: 8 }}>
             <div style={{ ...type.title, fontFamily: fonts.sans }}>Juani</div>
-            <div style={{ ...type.footnote, color: colors.secondaryLabel }}>@juani</div>
+            <div style={{ ...type.footnote, color: colors.secondaryLabel }}>@juanifraga</div>
             <div
               style={{
                 display: "inline-block", marginTop: 10, padding: "4px 14px", borderRadius: 14, backgroundColor: colors.fill,
@@ -46,7 +46,7 @@ export const ProfileScene = () => {
         </div>
         <div style={{ position: "absolute", top: 340, left: 32, right: 32 }}>
           <div style={type.body}>Viajando con amigos.</div>
-          <div style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 6 }}>12 amigos · 3 en común</div>
+          <div style={{ ...type.footnote, color: colors.secondaryLabel, marginTop: 6 }}>12 amigos</div>
         </div>
         <div style={{ position: "absolute", top: 470, left: 32, right: 32 }}>
           <Segmented items={["Fotos", "Mapa"]} active={0} />

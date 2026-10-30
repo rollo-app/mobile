@@ -29,7 +29,7 @@ test("GALLERY and REVEAL have unique ids and no selfies", () => {
 });
 
 test("the fixed roles point at the agreed photos", () => {
-  assert.equal(PROFILE_AVATAR, "IMG_6092");
+  assert.equal(PROFILE_AVATAR, "IMG_6386");
   assert.equal(MOMENT_MAIN, "IMG_5926");
   assert.equal(MOMENT_SECOND, "IMG_5930");
   assert.equal(CAMERA_VIEW, "IMG_6198");
