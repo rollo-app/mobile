@@ -12,7 +12,11 @@ export function MomentBanner({ tripId }: { tripId: string }) {
       <Row
         tone="tint"
         label={`Tu momento · quedan ${formatLeft(moment.leftMs)}`}
-        onPress={() => router.push(`/moment?trip=${moment.tripId}&day=${moment.day}&at=${moment.at}` as never)}
+        onPress={() =>
+          router.push(
+            `/moment?trip=${moment.tripId}&day=${moment.day}&at=${moment.at}${moment.selfie ? `&selfie=${moment.selfie}` : ""}` as never,
+          )
+        }
       />
     </Section>
   );

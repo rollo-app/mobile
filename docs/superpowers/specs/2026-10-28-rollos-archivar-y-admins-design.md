@@ -45,12 +45,14 @@ grupo. Y un rollo grande necesita más de una persona que lo administre, sin que
 | Sacar a un miembro del rollo (y volver a sumar a alguien sacado) | ✓ | ✓ | |
 | Sacar a otro admin del rollo | ✓ | | |
 | Quitarle el admin a alguien | ✓ | | |
-| Editar fechas, cupo, momento | ✓ | ✓ | | <!-- ver 2026-10-29-editar-rollo-design.md -->
+| Editar fechas, cupo, momento | ✓ | ✓ | |
 | Revelar antes de tiempo | ✓ | | |
 | Rollo privado (prender / apagar) | ✓ | | |
 | Borrar el rollo para todos | ✓ | | |
 | Borrar comentarios ajenos / fotos ajenas antes del revelado (moderación) | ✓ | ✓ | |
 | Salirse del rollo | | ✓ | ✓ |
+
+"Editar fechas, cupo, momento": ver `2026-10-29-editar-rollo-design.md`.
 
 - **Creador**: el que creó el rollo (`trips.created_by`, ya existe desde la migración 0027). Uno solo; nadie lo puede
   sacar ni quitarle nada. Nadie puede sacar al creador ni a sí mismo. Los permisos de creador se chequean **solo** contra

@@ -62,12 +62,14 @@ type Props = {
   locks?: TripFormLocks;
   /** Why the start / the quota type are locked, shown as the section footer. */
   notes?: { start?: string; limitMode?: string };
+  /** Edit of a rollo in progress: moment changes apply from tomorrow. */
+  momentFromTomorrow?: boolean;
   /** The server's message, in the footer of the first section (under the dates). */
   whenFooter?: ReactNode;
 };
 
 /** The dates, reveal, quota and daily moment sections, shared by Create and Edit. Rendered inside a `<Form>`. */
-export function TripForm({ values, on, locks = {}, notes = {}, whenFooter }: Props) {
+export function TripForm({ values, on, locks = {}, notes = {}, whenFooter, momentFromTomorrow }: Props) {
   const lock = (locked?: boolean) => (locked ? [disabledModifier(true)] : []);
   const { startMode, limitMode, momentMode } = values;
   const whenNote = whenFooter ?? (notes.start && locks.start ? <Text>{notes.start}</Text> : undefined);
@@ -165,6 +167,7 @@ export function TripForm({ values, on, locks = {}, notes = {}, whenFooter }: Pro
               : momentMode === "photo"
                 ? "Un aviso por día a una hora al azar para cada uno. Tienen 15 minutos para sacar una foto."
                 : "Un aviso por día a una hora al azar para cada uno. Tienen 15 minutos para sacar una foto con cada cámara; la primera es la grande."}
+            {momentFromTomorrow ? " Los cambios valen desde mañana." : ""}
           </Text>
         }
       >

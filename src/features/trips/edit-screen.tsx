@@ -98,6 +98,7 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
               moment: !editable.moment,
             }}
             notes={{ start: lockedNote("start"), limitMode: lockedNote("limitMode") }}
+            momentFromTomorrow={editable.moment && !editable.start}
             whenFooter={error ? <Text modifiers={[foregroundStyle("red")]}>{error}</Text> : undefined}
           />
         </Form>

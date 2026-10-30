@@ -113,6 +113,16 @@ describe("Editar rollo screen", () => {
     expect(screen.getByText("El rollo ya empezó: el tipo de cupo no se cambia.")).toBeVisible();
   });
 
+  it("tells that moment changes apply from tomorrow only on a rollo in progress", async () => {
+    await openEditor(detail(admin));
+    expect(screen.getByText(/Los cambios valen desde mañana\./)).toBeVisible();
+  });
+
+  it("does not say it before the rollo starts", async () => {
+    await openEditor(detail(admin, { startsAt: Date.now() + DAY }));
+    expect(screen.queryByText(/Los cambios valen desde mañana/)).toBeNull();
+  });
+
   it("keeps Guardar disabled until something changes", async () => {
     await openEditor();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
