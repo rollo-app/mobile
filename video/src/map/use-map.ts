@@ -1,5 +1,5 @@
 import * as maplibregl from "maplibre-gl";
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { cancelRender, continueRender, delayRender } from "remotion";
 import { buildMapStyle } from "../../../src/features/map/style";
 
@@ -21,16 +21,27 @@ function spanishLabels(style: maplibregl.StyleSpecification): maplibregl.StyleSp
 
 const TIMEOUT = { timeoutInMilliseconds: 30000 };
 
-/** Resolves once the style, sources and every visible tile are painted for the current camera. */
-function whenPainted(map: maplibregl.Map): Promise<void> {
+/** Resolves once the style, sources and every visible tile are painted for the current camera (or once cancelled). */
+function whenPainted(map: maplibregl.Map, isCancelled: () => boolean): Promise<void> {
   return new Promise((resolve) => {
     const check = () => {
-      if (map.loaded() && map.areTilesLoaded() && !map.isMoving()) resolve();
+      if (isCancelled() || (map.loaded() && map.areTilesLoaded() && !map.isMoving())) resolve();
       else map.once("render", check);
     };
     map.once("render", check);
     map.triggerRepaint();
   });
+}
+
+/** A delayRender handle that can be released from several places, but only once. */
+function holdRender(label: string): () => void {
+  const handle = delayRender(label, TIMEOUT);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    continueRender(handle);
+  };
 }
 
 export function lightBounds(points: { lng: number; lat: number }[]): maplibregl.LngLatBoundsLike {
@@ -63,8 +74,13 @@ export function useMap({ container, frame, bounds, padding, cameraAt, locations 
   const optionsRef = useRef({ bounds, padding, cameraAt, locations });
   optionsRef.current = { bounds, padding, cameraAt, locations };
 
+  // Held from the map's creation until the first frame is painted (released by the per-frame effect).
+  const releaseLoad = useRef<(() => void) | null>(null);
+
   useLayoutEffect(() => {
-    const handle = delayRender("Creando el mapa", TIMEOUT);
+    let cancelled = false;
+    const release = holdRender("Creando el mapa");
+    releaseLoad.current = release;
     const el = container.current!;
     const map = new maplibregl.Map({
       container: el,
@@ -78,8 +94,9 @@ export function useMap({ container, frame, bounds, padding, cameraAt, locations 
       canvasContextAttributes: { preserveDrawingBuffer: true },
     });
     mapRef.current = map;
-    map.on("error", (e) => cancelRender(new Error("MAPDBG " + String((e as unknown as { error?: Error }).error?.message))));
+    map.on("error", (e) => cancelRender(new Error(`Map error: ${(e as unknown as { error?: Error }).error?.message ?? e.type}`)));
     map.once("load", () => {
+      if (cancelled) return;
       const cam = map.cameraForBounds(optionsRef.current.bounds, { padding: optionsRef.current.padding });
       if (!cam || !cam.center) {
         cancelRender(new Error("No se pudo encuadrar Europa"));
@@ -88,20 +105,23 @@ export function useMap({ container, frame, bounds, padding, cameraAt, locations 
       const c = maplibregl.LngLat.convert(cam.center as maplibregl.LngLatLike);
       wideRef.current = { lng: c.lng, lat: c.lat, zoom: cam.zoom ?? 4 };
       setReady(true);
-      continueRender(handle);
     });
-    map.on("error", (e) => console.warn("map error", (e as unknown as { error?: Error }).error?.message));
     return () => {
+      cancelled = true;
+      release();
+      releaseLoad.current = null;
       map.remove();
       mapRef.current = null;
     };
   }, [container]);
 
-  useEffect(() => {
+  // Layout effect: its delayRender exists at commit, before Remotion's rAF check.
+  useLayoutEffect(() => {
     const map = mapRef.current;
     const wide = wideRef.current;
     if (!ready || !map || !wide) return;
-    const handle = delayRender(`Mapa, cuadro ${frame}`, TIMEOUT);
+    let cancelled = false;
+    const release = holdRender(`Mapa, cuadro ${frame}`);
     const o = optionsRef.current;
     const cam = o.cameraAt(frame, wide);
     map.jumpTo({ center: [cam.lng, cam.lat], zoom: cam.zoom });
@@ -109,7 +129,18 @@ export function useMap({ container, frame, bounds, padding, cameraAt, locations 
       const p = map.project([l.lng, l.lat]);
       return { x: p.x, y: p.y };
     }));
-    whenPainted(map).then(() => continueRender(handle), (e) => cancelRender(e));
+    whenPainted(map, () => cancelled).then(
+      () => {
+        if (cancelled) return;
+        release();
+        releaseLoad.current?.();
+      },
+      (e) => cancelRender(e),
+    );
+    return () => {
+      cancelled = true;
+      release();
+    };
   }, [ready, frame]);
 
   return { points, ready };

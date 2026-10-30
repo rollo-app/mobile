@@ -8,8 +8,9 @@ const site = join(root, "..", "scripts", "site");
 const bin = join(root, "node_modules", ".bin", "remotion");
 const scale = process.env.RENDER_SCALE ?? "1";
 const crf = { h264: process.env.CRF_H264 ?? "28", vp9: process.env.CRF_VP9 ?? "45" };
-// Poster: gallery scene start (ts: sceneStart("gallery")) + 30.
-const posterFrame = process.env.POSTER_FRAME ?? "384";
+// Poster: 30 frames into the gallery scene (Node strips the types of timeline.ts).
+const { sceneStart } = await import("../src/timeline.ts");
+const posterFrame = process.env.POSTER_FRAME ?? String(sceneStart("gallery") + 30);
 mkdirSync(join(root, "out"), { recursive: true });
 
 const run = (args) => execFileSync(bin, ["render", ...args], { cwd: root, stdio: "inherit" });
@@ -23,13 +24,15 @@ execFileSync(
   { cwd: root, stdio: "inherit" },
 );
 
+const files = ["hero.mp4", "hero.webm", "hero-poster.jpg"];
 let fail = false;
-for (const [src, dest] of [["hero.mp4", "hero.mp4"], ["hero.webm", "hero.webm"], ["hero-poster.jpg", "hero-poster.jpg"]]) {
-  copyFileSync(join(root, "out", src), join(site, dest));
-  const mb = statSync(join(site, dest)).size / 1024 / 1024;
-  console.log(`${dest}: ${mb.toFixed(2)} MB`);
-  if (dest.endsWith(".jpg")) continue;
-  if (mb > 3) { console.error(`${dest} supera 3 MB`); fail = true; }
-  else if (mb > 2) console.warn(`aviso: ${dest} supera 2 MB`);
+// Check sizes in out/ first: nothing reaches scripts/site/ if a video is over the ceiling.
+for (const f of files) {
+  const mb = statSync(join(root, "out", f)).size / 1024 / 1024;
+  console.log(`${f}: ${mb.toFixed(2)} MB`);
+  if (f.endsWith(".jpg")) continue;
+  if (mb > 3) { console.error(`${f} supera 3 MB`); fail = true; }
+  else if (mb > 2) console.warn(`aviso: ${f} supera 2 MB`);
 }
+if (!fail) for (const f of files) copyFileSync(join(root, "out", f), join(site, f));
 process.exit(fail ? 1 : 0);

@@ -119,7 +119,8 @@ describe("the hero video", () => {
 
   it("plays a muted looping video inside the phone frame, with the poster and both sources", () => {
     const h = hero();
-    expect(h).toMatch(/<div class="phone" aria-hidden="true">\s*<video class="hero-video"/);
+    expect(h).toMatch(/<div class="phone">\s*<video class="hero-video"[^>]*aria-hidden="true"/);
+    expect(h).toContain('aria-label="La app en uso: sacás la foto, el mapa del grupo, el revelado y tu perfil"');
     for (const needle of ["hero.webm", "hero.mp4", 'poster="/hero-poster.jpg"', " muted", " autoplay", " loop", " playsinline"]) {
       expect(h).toContain(needle);
     }
@@ -168,7 +169,10 @@ describe("the home mockups", () => {
     expect(all).toHaveLength(7);
     for (const [, attrs, inner] of all) {
       expect(attrs).toMatch(/aria-label="[^"]*[a-záéíóúñ]{3,}[^"]*"/);
-      expect(inner).toMatch(/^<div class="shot" data-shot="[^"]+">\s*<div class="phone" aria-hidden="true">/);
+      // The hero hides the <video> itself; every other figure hides its mockup frame.
+      expect(inner).toMatch(
+        /^<div class="shot" data-shot="[^"]+">\s*(?:<div class="phone" aria-hidden="true">|<div class="phone"><video[^>]*aria-hidden="true")/,
+      );
     }
   });
 

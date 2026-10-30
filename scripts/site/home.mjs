@@ -8,7 +8,7 @@ const emptyPhone = () => `<div class="phone"><div class="screen"></div></div>`;
 
 /** Hero: the rendered loop inside the phone frame (the video is decorative; the figure carries the label). */
 const heroVideo = () =>
-  `<div class="phone" aria-hidden="true"><video class="hero-video" muted autoplay loop playsinline preload="metadata" poster="/hero-poster.jpg" aria-hidden="true"><source src="/hero.webm" type="video/webm"><source src="/hero.mp4" type="video/mp4"></video></div>`;
+  `<div class="phone"><video class="hero-video" muted autoplay loop playsinline preload="metadata" poster="/hero-poster.jpg" aria-hidden="true"><source src="/hero.webm" type="video/webm"><source src="/hero.mp4" type="video/mp4"></video></div>`;
 
 const shot = (id, label, phone) =>
   `<figure class="figure" aria-label="${label}"><div class="shot" data-shot="${id}">${phone}</div></figure>`;
@@ -62,7 +62,7 @@ export function homeHtml({ storeMode, testflightUrl, appStoreUrl, siteUrl, mocku
 <p class="lead">Un rollo compartido para tu próximo viaje con amigos. Nadie ve las fotos hasta el revelado, y ahí descubrís cómo lo vivió cada uno.</p>
 ${button}
 </div>
-${shot("inicio", "El rollo en la app, con las fotos todavía sin revelar", heroVideo())}
+${shot("inicio", "La app en uso: sacás la foto, el mapa del grupo, el revelado y tu perfil", heroVideo())}
 </section>
 
 <section id="como-funciona" data-enter>
