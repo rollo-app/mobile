@@ -4,6 +4,7 @@ import { AbsoluteFill, cancelRender, continueRender, delayRender, Easing, interp
 import { formatHour, formatLongDate } from "../format.ts";
 import { usePhoto } from "../data/photos-context.tsx";
 import { MOMENT_MAIN, MOMENT_SECOND } from "../selection.ts";
+import { LivePhoto } from "../ui/LivePhoto.tsx";
 import { Photo } from "../ui/Photo.tsx";
 import { Screen } from "../ui/Screen.tsx";
 import { colors, fonts } from "../ui/theme.ts";
@@ -13,12 +14,13 @@ const EXIT = Easing.bezier(0.23, 1, 0.32, 1);
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
 const NOTIFY_AT = 8;
-const TAP_AT = 30;
-const INTRO_AT = 34;
-const FINDER_AT = 64;
-const SHUTTER_MAIN = 84;
-const FRONT_AT = 92;
-const SHUTTER_FRONT = 110;
+const TAP_AT = 26;
+const INTRO_AT = 30;
+/** Each viewfinder gets 26 frames of live motion. */
+const FINDER_AT = 50;
+const SHUTTER_MAIN = FINDER_AT + 26;
+const FRONT_AT = SHUTTER_MAIN + 7;
+const SHUTTER_FRONT = FRONT_AT + 26;
 /** The result (both photos) holds from here to the end of the scene. */
 const RESULT_AT = SHUTTER_FRONT + 4;
 
@@ -112,7 +114,7 @@ const Intro = () => {
     <AbsoluteFill style={{ backgroundColor: "#000", alignItems: "center", justifyContent: "center" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, marginTop: -40 }}>
         <div style={{ width: 440, height: 440 }}>
-          {data ? <Lottie animationData={data} playbackRate={1.7} loop={false} style={{ width: 440, height: 440 }} /> : null}
+          {data ? <Lottie animationData={data} playbackRate={2.4} loop={false} style={{ width: 440, height: 440 }} /> : null}
         </div>
         <div style={{ textAlign: "center", fontFamily: fonts.sans, opacity: text, transform: `translateY(${(1 - text) * 12}px)` }}>
           <div style={{ fontSize: 56, lineHeight: "66px", fontWeight: 700, color: "#fff" }}>Tu momento</div>
@@ -130,7 +132,7 @@ const Finder = ({ id, mirror, frame, shutterAt }: { id: string; mirror: boolean;
     <AbsoluteFill>
       <div style={{ position: "absolute", top: BOX_TOP, left: 0, width: 540, height: BOX_H, overflow: "hidden" }}>
         <div style={{ width: "100%", height: "100%", transform: `scale(${zoom})` }}>
-          <Photo id={id} mirror={mirror} />
+          <LivePhoto id={id} mirror={mirror} shutterAt={shutterAt} />
         </div>
       </div>
       <TopBar right={<TopGlyphs />} />
@@ -175,12 +177,12 @@ export const MomentScene = () => {
       {frame < INTRO_AT ? <LockScreen frame={frame} /> : null}
       {frame < INTRO_AT ? <AbsoluteFill style={{ backgroundColor: "#000", opacity: toBlack }} /> : null}
       {frame >= INTRO_AT && frame < FINDER_AT ? <Sequence from={INTRO_AT}><Intro /></Sequence> : null}
-      {frame >= FINDER_AT && frame < FRONT_AT ? (
+      {frame >= FINDER_AT && frame < FRONT_AT + 6 ? (
         <Sequence from={FINDER_AT}><Finder id={MOMENT_MAIN} mirror={false} frame={frame - FINDER_AT} shutterAt={SHUTTER_MAIN - FINDER_AT} /></Sequence>
       ) : null}
       {frame >= FRONT_AT && frame < RESULT_AT ? (
         <AbsoluteFill style={{ opacity: frontFade }}>
-          <Finder id={MOMENT_SECOND} mirror frame={frame - FRONT_AT} shutterAt={SHUTTER_FRONT - FRONT_AT} />
+          <Sequence from={FRONT_AT}><Finder id={MOMENT_SECOND} mirror frame={frame - FRONT_AT} shutterAt={SHUTTER_FRONT - FRONT_AT} /></Sequence>
         </AbsoluteFill>
       ) : null}
       {frame >= RESULT_AT ? <Result frame={frame - RESULT_AT} /> : null}

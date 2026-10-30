@@ -1,8 +1,8 @@
 import type { PhotoRecord } from "./data/load-photos.ts";
 
 export const PROFILE_AVATAR = "IMG_6386";
-export const MOMENT_MAIN = "IMG_5926";
-export const MOMENT_SECOND = "IMG_5930";
+export const MOMENT_MAIN = "IMG_6073";
+export const MOMENT_SECOND = "IMG_6092";
 export const CAMERA_VIEW = "IMG_6198";
 
 /** Front camera or no GPS: never shown in the gallery or the reveal. */
