@@ -53,6 +53,13 @@ describe("useUserSearch", () => {
     await waitFor(() => expect(result.current.results).toEqual([row("b")]));
   });
 
+  it("never sends more than 30 characters", async () => {
+    jest.mocked(actions).searchUsers.mockResolvedValue([row("a")]);
+    const { result } = await renderHook(() => useUserSearch("x".repeat(45)), { wrapper });
+    await waitFor(() => expect(result.current.results).toEqual([row("a")]));
+    expect(actions.searchUsers).toHaveBeenCalledWith("x".repeat(30));
+  });
+
   it("exposes the error message", async () => {
     jest.mocked(actions).searchUsers.mockRejectedValue(new Error("boom"));
     const { result } = await renderHook(() => useUserSearch("cami"), { wrapper });

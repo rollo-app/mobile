@@ -3,7 +3,7 @@ import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { Button, ErrorText, Footnote, Loading, Row, Section } from "@/ui/components";
 import { SearchRequestButton } from "./search-request-button";
-import { matchesSearch, normalizeSearch, SEARCH_MIN } from "./search-text";
+import { matchesSearch, normalizeSearch, SEARCH_MIN, searchQuery } from "./search-text";
 import { useFriends } from "./use-friends";
 import { useUserSearch } from "./use-user-search";
 
@@ -17,7 +17,7 @@ export function FriendSearchResults({ text }: { text: string }) {
   const matching = (friends ?? []).filter((f) => matchesSearch(f, q));
   const searching = q.length >= SEARCH_MIN;
   // Results of an older query stay on screen while the next one loads; they only count as "the answer" when they are this query's.
-  const current = search.query === q && !search.isPlaceholderData;
+  const current = search.query === searchQuery(text) && !search.isPlaceholderData;
   const results = search.results ?? [];
 
   return (
@@ -31,6 +31,7 @@ export function FriendSearchResults({ text }: { text: string }) {
               label={f.name}
               detail={f.username ? formatHandle(f.username) : undefined}
               value="Amigos"
+              accessibilityLabel={[f.name, f.username ? formatHandle(f.username) : null, "Amigos"].filter(Boolean).join(", ")}
               onPress={() => router.push(`/friends/user/${f.id}`)}
             />
           ))}
@@ -45,6 +46,7 @@ export function FriendSearchResults({ text }: { text: string }) {
               leading={<Avatar id={r.id} name={r.name} avatarUrl={r.avatarUrl} size={40} />}
               label={r.name}
               detail={`${formatHandle(r.username)}${r.mutualCount > 0 ? ` · ${r.mutualCount} en común` : ""}`}
+              accessibilityLabel={`${r.name}, ${formatHandle(r.username)}${r.mutualCount > 0 ? `, ${r.mutualCount} en común` : ""}`}
               accessory={<SearchRequestButton user={r} />}
               onPress={() => router.push(`/friends/user/${r.id}`)}
             />
@@ -59,7 +61,7 @@ export function FriendSearchResults({ text }: { text: string }) {
         </>
       )}
       {searching && !search.error && !search.results && <Loading />}
-      {searching && !search.error && current && results.length === 0 && <Footnote>{`No encontramos a nadie con "${text.trim()}".`}</Footnote>}
+      {searching && !search.error && current && results.length === 0 && matching.length === 0 && <Footnote>{`No encontramos a nadie con "${text.trim()}".`}</Footnote>}
       {searching && !search.error && current && results.length >= MAX_RESULTS && <Footnote>Si no está, escribí más de su nombre o su @.</Footnote>}
     </>
   );

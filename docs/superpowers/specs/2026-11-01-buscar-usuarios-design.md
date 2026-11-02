@@ -106,8 +106,8 @@ a mantener una tabla virtual sincronizada; y solo por @, que no busca por nombre
 - **Backfill de los usuarios existentes** *(decisión de Claude)*: un script de Node en `backend/scripts/` que lee `users` con
   `wrangler d1 execute --remote`, calcula `name_search` con la misma función de `src/lib/` y escribe los `UPDATE` en un `.sql` que se
   corre con `wrangler d1 execute --remote --file`. Es idempotente (se puede correr de nuevo).
-- **Orden del deploy:** migración → backfill → Worker con el endpoint → recién ahí la app (EAS Update o build). Una app que llama a
-  `/users/search` contra un Worker viejo recibiría 404.
+- **Orden del deploy:** migración → deploy del Worker con el endpoint → backfill → recién ahí la app (EAS Update o build). Una app que llama a
+  `/users/search` contra un Worker viejo recibiría 404, y un Worker viejo escribiría `name` sin `name_search` después del backfill (el nuevo tolera NULL).
 - Índice sobre `users.username` ya existe (único); `LIKE 'q%'` con `COLLATE` adecuado o `username >= q AND username < q || '{'`
   para usarlo, a elección del builder.
 

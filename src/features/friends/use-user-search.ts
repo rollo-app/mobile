@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { errorMessage } from "@/api/client";
 import { searchUsers } from "./actions";
-import { normalizeSearch, SEARCH_MIN } from "./search-text";
+import { SEARCH_MIN, searchQuery } from "./search-text";
 
 export const userSearchKey = (q: string) => ["user-search", q] as const;
 
@@ -19,7 +19,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 /** Searches people by @username or name; waits for a pause in typing and for 2+ characters. */
 export function useUserSearch(raw: string) {
-  const query = useDebouncedValue(normalizeSearch(raw), DEBOUNCE_MS);
+  const query = useDebouncedValue(searchQuery(raw), DEBOUNCE_MS);
   const enabled = query.length >= SEARCH_MIN;
   const result = useQuery({
     queryKey: userSearchKey(query),

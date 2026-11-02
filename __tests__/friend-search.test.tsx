@@ -1,4 +1,4 @@
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/friends/actions";
 import { useSearchBar } from "@/features/friends/use-search-bar";
 import { signInAs } from "@/test/account";
@@ -83,6 +83,23 @@ describe("Friends search", () => {
     mocked.searchUsers.mockResolvedValue([]);
     await renderRouter(routes, { initialUrl: "/friends" });
     expect(await screen.findByText('No encontramos a nadie con "zz".')).toBeVisible();
+  });
+
+  it("does not show the empty message while a friend matches", async () => {
+    typed("cami");
+    mocked.searchUsers.mockResolvedValue([]);
+    await renderRouter(routes, { initialUrl: "/friends" });
+    expect(await screen.findByText("Cami")).toBeVisible();
+    await waitFor(() => expect(mocked.searchUsers).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByText(/No encontramos a nadie/)).toBeNull();
+  });
+
+  it("reads name, handle and mutual friends in one label for VoiceOver", async () => {
+    typed("cami");
+    await renderRouter(routes, { initialUrl: "/friends" });
+    expect(await screen.findByLabelText("Camilo Pérez, @cami.p, 3 en común")).toBeVisible();
+    expect(screen.getByLabelText("Cami, @cami, Amigos")).toBeVisible();
   });
 
   it("shows the error with Reintentar and keeps the friends section", async () => {

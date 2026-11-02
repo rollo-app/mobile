@@ -1,15 +1,21 @@
 /** Minimum normalized length before searching (the server answers 400 below it). */
 export const SEARCH_MIN = 2;
+/** Maximum normalized length the server accepts (it answers 400 above it). */
+export const SEARCH_MAX = 30;
 
 /** Folds text the same way the server does: no accents, lowercase, single spaces. Order matters. */
 export function searchText(input: string): string {
   return input.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim().replace(/\s+/g, " ");
 }
 
-/** A typed query: trimmed, one leading "@" dropped, then folded. */
+/** A typed query: trimmed, every leading "@" dropped, then folded. */
 export function normalizeSearch(raw: string): string {
-  const trimmed = raw.trim();
-  return searchText(trimmed.startsWith("@") ? trimmed.slice(1) : trimmed);
+  return searchText(raw.trim().replace(/^@+/, ""));
+}
+
+/** What goes to the server: the normalized query cut to the server maximum. */
+export function searchQuery(raw: string): string {
+  return normalizeSearch(raw).slice(0, SEARCH_MAX).trimEnd();
 }
 
 /** Mirrors the server: username starts with `q`, or some word of the name does. `q` is already normalized. */

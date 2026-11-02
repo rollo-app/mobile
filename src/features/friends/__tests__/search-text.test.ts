@@ -1,4 +1,4 @@
-import { matchesSearch, normalizeSearch, searchText, SEARCH_MIN } from "../search-text";
+import { matchesSearch, normalizeSearch, searchQuery, searchText, SEARCH_MAX, SEARCH_MIN } from "../search-text";
 
 describe("searchText", () => {
   it("lowercases, strips accents and collapses whitespace", () => {
@@ -8,9 +8,9 @@ describe("searchText", () => {
 });
 
 describe("normalizeSearch", () => {
-  it("drops one leading @", () => {
+  it("drops every leading @", () => {
     expect(normalizeSearch("@Cámi")).toBe("cami");
-    expect(normalizeSearch("@@cami")).toBe("@cami");
+    expect(normalizeSearch("@@cami")).toBe("cami");
   });
   it("trims before dropping the @", () => {
     expect(normalizeSearch("  @cami.p ")).toBe("cami.p");
@@ -18,6 +18,15 @@ describe("normalizeSearch", () => {
   });
   it("exposes the minimum length", () => {
     expect(SEARCH_MIN).toBe(2);
+  });
+});
+
+describe("searchQuery", () => {
+  it("caps the normalized query at the server maximum, without a trailing space", () => {
+    expect(SEARCH_MAX).toBe(30);
+    expect(searchQuery("a".repeat(40))).toBe("a".repeat(30));
+    expect(searchQuery(`${"a".repeat(29)} bbb`)).toBe("a".repeat(29));
+    expect(searchQuery("@Cámi")).toBe("cami");
   });
 });
 

@@ -177,6 +177,6 @@
 ### Task 7: Release order (needs the owner's OK at each prod step)
 
 - [ ] **Step 1:** Merge the backend PR; release `develop` → `main` as usual; `npm run db:migrate:remote`.
-- [ ] **Step 2:** `npm run db:backfill-name-search -- --remote`; verify `SELECT COUNT(*) FROM users WHERE name IS NOT NULL AND TRIM(name) <> '' AND name_search IS NULL` → 0 on remote.
-- [ ] **Step 3:** `npm run deploy` (Worker with `RL_SEARCH`); smoke test `GET /users/search?q=ju` with a real session → 200.
+- [ ] **Step 2:** `npm run deploy` (Worker with `RL_SEARCH`; it tolerates `name_search` NULL, while an old Worker would write `name` without `name_search` after a backfill); smoke test `GET /users/search?q=ju` with a real session → 200.
+- [ ] **Step 3:** `npm run db:backfill-name-search -- --remote`; verify `SELECT COUNT(*) FROM users WHERE name IS NOT NULL AND TRIM(name) <> '' AND name_search IS NULL` → 0 on remote.
 - [ ] **Step 4:** Only then ship the app (EAS Update `npm run update:production -- --message "…"` or the next build).

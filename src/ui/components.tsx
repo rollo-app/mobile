@@ -90,6 +90,15 @@ export function Button({
   );
 }
 
+/** The small secondary button's look without being pressable: the tap goes to the parent (a menu that opens on tap). */
+export function ButtonPill({ label, accessibilityLabel }: { label: string; accessibilityLabel?: string }) {
+  return (
+    <View accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} style={[styles.button, styles.buttonSmall, { backgroundColor: colors.fill }]}>
+      <Text style={[styles.smallLabel, { color: colors.label }]}>{label}</Text>
+    </View>
+  );
+}
+
 export function Field({ label, prefix, style, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
   return (
     <View style={styles.field}>
@@ -164,7 +173,10 @@ export function Row({
   chevron = true,
   accessibilityActions,
   onAccessibilityAction,
+  accessibilityLabel,
 }: {
+  /** What VoiceOver reads for a tappable row; defaults to the label (plus the value). */
+  accessibilityLabel?: string;
   /** VoiceOver custom actions (the long-press menu's twin). Only on tappable rows. */
   accessibilityActions?: { name: string; label: string }[];
   onAccessibilityAction?: (name: string) => void;
@@ -221,7 +233,7 @@ export function Row({
   const pressable = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={value ? `${label}, ${value}` : label}
+      accessibilityLabel={accessibilityLabel ?? (value ? `${label}, ${value}` : label)}
       accessibilityActions={accessibilityActions?.length ? accessibilityActions : undefined}
       onAccessibilityAction={onAccessibilityAction ? ({ nativeEvent }) => onAccessibilityAction(nativeEvent.actionName) : undefined}
       onPress={onPress}
