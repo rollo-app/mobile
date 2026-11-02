@@ -267,6 +267,15 @@ write("friends/index.html", page({
     `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${createHash("sha256").update(friendsScript).digest("base64")}'${CF_ANALYTICS_TOKEN ? " https://static.cloudflareinsights.com" : ""}; style-src 'unsafe-inline'; img-src 'self'; connect-src ${CF_ANALYTICS_TOKEN ? "https://cloudflareinsights.com" : "'none'"}; form-action 'none'; base-uri 'none'">`,
     `<meta name="referrer" content="no-referrer">`,
     `<meta name="robots" content="noindex">`,
+    // Link preview card (WhatsApp, iMessage): same image as the home.
+    `<meta property="og:type" content="website">`,
+    `<meta property="og:url" content="${SITE_URL}/friends">`,
+    `<meta property="og:title" content="Te invitaron a Rollo">`,
+    `<meta property="og:description" content="Sumate como amigo en Rollo.">`,
+    `<meta property="og:image" content="${SITE_URL}/og.png">`,
+    `<meta property="og:image:width" content="1200">`,
+    `<meta property="og:image:height" content="630">`,
+    `<meta name="twitter:card" content="summary_large_image">`,
     "",
   ].join("\n"),
 }));
