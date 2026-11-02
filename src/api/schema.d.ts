@@ -1154,6 +1154,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search users by @username or name
+         * @description Finds people to add as friends: the username starts with q, or the name or any word of it does (case and accents ignored). Never lists yourself, your friends, anyone with a block in either direction, or accounts without a username or a name. Order: exact username first, then most mutual friends, then by name. At most 20, no paging. 400 if q has fewer than 2 or more than 30 characters once trimmed and without the leading @. Limited per user (429).
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description What to look for: a username (with or without @) or the start of a name or of any word of it. Case and accents are ignored. 2 to 30 characters once trimmed and without the leading @; otherwise 400 */
+                    q: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Matching users */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserSearch"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userId}": {
         parameters: {
             query?: never;
@@ -4440,6 +4509,32 @@ export interface components {
              * @enum {string}
              */
             status: "sent" | "friends";
+        };
+        UserSearch: {
+            /** @description Up to 20 matches: exact username first, then most mutual friends, then by name */
+            users: components["schemas"]["UserSearchResult"][];
+        };
+        UserSearchResult: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string;
+            avatarUrl: string | null;
+            /** @description How many of your friends are also this user's friends */
+            mutualCount: number;
+            /**
+             * @description Pending friend request between you and this user: sent (you sent one, also after they rejected it), received (they sent you one you have not answered), none
+             * @enum {string}
+             */
+            friendRequest: "none" | "sent" | "received";
         };
         UserProfile: {
             user: components["schemas"]["PublicUser"];
