@@ -28,6 +28,19 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Si el backend tiene una rama con el mismo nombre (feature que cambia los dos repos), se compara
+      # contra su contrato; si no, contra develop.
+      - name: Contrato del backend
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          spec="https://raw.githubusercontent.com/rollo-app/backend/${BRANCH}/openapi.json"
+          if curl -sfIo /dev/null "$spec"; then
+            echo "Contrato de la rama ${BRANCH} del backend"
+            echo "API_SPEC=$spec" >> "$GITHUB_ENV"
+          else
+            echo "Contrato de develop del backend"
+          fi
       - run: npm run api:generate
       - name: El cliente está al día con el backend
         run: |
