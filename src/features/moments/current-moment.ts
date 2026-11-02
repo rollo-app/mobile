@@ -1,6 +1,6 @@
 import { momentState } from "./moment-time";
 
-export type CurrentMoment = { tripId: string; day: string; at: number; leftMs: number };
+export type CurrentMoment = { tripId: string; day: string; at: number; leftMs: number; selfie?: string };
 
 const PREFIX = "moment.";
 
@@ -20,12 +20,16 @@ export function currentMoment(
     const day = identifier.slice(lastDot + 1);
     const url = data?.url;
     if (!tripId || lastDot <= PREFIX.length || !day || typeof url !== "string") continue;
-    const raw = new URLSearchParams(url.split("?", 2)[1] ?? "").get("at");
+    const params = new URLSearchParams(url.split("?", 2)[1] ?? "");
+    const raw = params.get("at");
     const at = raw == null || raw === "" ? NaN : Number(raw);
     if (!Number.isFinite(at)) continue;
     const state = momentState(at, now);
     if (state.kind !== "open") continue;
-    if (!best || at > best.at) best = { tripId, day, at, leftMs: state.leftMs };
+    if (!best || at > best.at) {
+      const selfie = params.get("selfie");
+      best = { tripId, day, at, leftMs: state.leftMs, ...(selfie === "0" || selfie === "1" ? { selfie } : {}) };
+    }
   }
   return best;
 }

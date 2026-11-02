@@ -9,6 +9,10 @@ export type TripGroups = {
   older: TripSummary[];
   /** The active roll is among the old ones, so the group starts open. */
   olderExpandedByDefault: boolean;
+  /** Rolls the user archived (they leave every other section), newest reveal first. */
+  archived: TripSummary[];
+  /** The active roll is archived, so the group starts open. */
+  archivedExpandedByDefault: boolean;
 };
 
 /** Splits the list of "Tus rollos" into sections at `now`. Exactly 3 months ago still counts as recent. */
@@ -20,13 +24,23 @@ export function groupTrips(trips: TripSummary[], now: number, activeId: string |
   const top: TripSummary[] = [];
   const revealed: TripSummary[] = [];
   const older: TripSummary[] = [];
+  const archived: TripSummary[] = [];
   for (const t of trips) {
-    if (!t.revealed) top.push(t);
+    if (t.archived) archived.push(t);
+    else if (!t.revealed) top.push(t);
     else if (t.revealAt >= limit) revealed.push(t);
     else older.push(t);
   }
   const newestFirst = (a: TripSummary, b: TripSummary) => b.revealAt - a.revealAt;
   revealed.sort(newestFirst);
   older.sort(newestFirst);
-  return { top, revealed, older, olderExpandedByDefault: older.some((t) => t.id === activeId) };
+  archived.sort(newestFirst);
+  return {
+    top,
+    revealed,
+    older,
+    olderExpandedByDefault: older.some((t) => t.id === activeId),
+    archived,
+    archivedExpandedByDefault: archived.some((t) => t.id === activeId),
+  };
 }

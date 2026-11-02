@@ -61,10 +61,10 @@
     "esbuild": "0.28.2",
     "jest": "^30.5.2",
     "jest-expo": "~58.0.11",
-    "lottie-web": "^5.13.0",
     "marked": "^18.1.1",
     "motion": "14.0.0",
     "openapi-typescript": "^7.13.0",
+    "qrcode": "^1.5.4",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -97,7 +97,8 @@
     },
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "<rootDir>/.claude/"
+      "<rootDir>/.claude/",
+      "<rootDir>/video/"
     ],
     "modulePathIgnorePatterns": [
       "<rootDir>/.claude/"

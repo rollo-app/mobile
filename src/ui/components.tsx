@@ -49,36 +49,43 @@ export function ErrorText({ children }: { children: ReactNode }) {
 
 export function Button({
   label,
+  accessibilityLabel,
   onPress,
   disabled,
   loading,
   variant = "primary",
+  size = "regular",
   style,
 }: {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
   variant?: "primary" | "secondary";
+  /** "small" is a compact pill for inside a row. */
+  size?: "regular" | "small";
   style?: StyleProp<ViewStyle>;
 }) {
+  const small = size === "small";
   const isDisabled = disabled || loading;
   const primary = variant === "primary";
   const textColor = primary ? colors.onTint : colors.label;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        small && styles.buttonSmall,
         { backgroundColor: primary ? colors.tint : colors.fill, opacity: isDisabled ? 0.35 : pressed ? 0.7 : 1 },
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[type.headline, { color: textColor }]}>{label}</Text>}
+      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[small ? styles.smallLabel : type.headline, { color: textColor }]}>{label}</Text>}
     </Pressable>
   );
 }
@@ -155,7 +162,15 @@ export function Row({
   detail,
   accessory,
   chevron = true,
+  accessibilityActions,
+  onAccessibilityAction,
+  accessibilityLabel,
 }: {
+  /** What VoiceOver reads for a tappable row; defaults to the label (plus the value). */
+  accessibilityLabel?: string;
+  /** VoiceOver custom actions (the long-press menu's twin). Only on tappable rows. */
+  accessibilityActions?: { name: string; label: string }[];
+  onAccessibilityAction?: (name: string) => void;
   /** Outside the tappable area, at the end of the row (an "i" button). */
   accessory?: ReactNode;
   /** Secondary text under the label (a handle). */
@@ -209,7 +224,9 @@ export function Row({
   const pressable = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={value ? `${label}, ${value}` : label}
+      accessibilityLabel={accessibilityLabel ?? (value ? `${label}, ${value}` : label)}
+      accessibilityActions={accessibilityActions?.length ? accessibilityActions : undefined}
+      onAccessibilityAction={onAccessibilityAction ? ({ nativeEvent }) => onAccessibilityAction(nativeEvent.actionName) : undefined}
       onPress={onPress}
       style={({ pressed }) => [styles.row, accessory ? styles.rowGrow : null, pressed && { backgroundColor: colors.fill }]}
     >
@@ -281,6 +298,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
   },
+  buttonSmall: { minHeight: 30, paddingHorizontal: 12 },
+  smallLabel: { ...type.subhead, fontWeight: "600" },
   field: { gap: spacing.sm },
   input: {
     minHeight: 50,

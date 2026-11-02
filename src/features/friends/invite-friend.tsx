@@ -3,7 +3,7 @@ import { Share } from "react-native";
 import { errorMessage } from "@/api/client";
 import { ErrorText, Row, Section } from "@/ui/components";
 import type { FriendLink } from "./actions";
-import { friendLinkUrl } from "./friend-link";
+import { friendShareMessage } from "./friend-link";
 import { useCreateFriendLink } from "./use-create-friend-link";
 
 /** Makes the friend link (1 hour, replaces the previous one) and offers to share it. */
@@ -20,7 +20,7 @@ export function InviteFriend() {
   const share = () => {
     if (!link) return;
     void Share.share({
-      message: `Sumate como amigo en Rollo: ${friendLinkUrl(link.code)}\nSi no se abre, escribí el código ${link.code} cuando armes tu perfil.`,
+      message: friendShareMessage(link.code),
     });
   };
 

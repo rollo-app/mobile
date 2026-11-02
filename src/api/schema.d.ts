@@ -257,6 +257,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -318,6 +327,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -366,6 +384,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -405,6 +432,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -463,7 +499,7 @@ export interface paths {
         post?: never;
         /**
          * Delete your account
-         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you were the admin, the oldest remaining active member becomes admin. If no active members remain, the whole rollo is deleted with all its files. Your reports and blocks (made and received), push tokens, settings and likes (yours, and the ones on your photos) are deleted too. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
+         * @description Permanently deletes the account. In every rollo you belong to (also those you were removed from), your photos and videos are deleted (database rows and files, even after the reveal) and your membership is removed. If you created a rollo, the oldest remaining active admin becomes its creator (with no admins, the oldest active member, who is promoted). If no active members remain, the whole rollo is deleted with all its files. Your reports and blocks (made and received), push tokens, settings and likes (yours, and the ones on your photos) are deleted too. Your friendships, friend links and claims, avatar, sessions and pending login codes are deleted too (your friends keep their rollos). The same email can sign up again later as a brand-new user.
          */
         delete: {
             parameters: {
@@ -734,6 +770,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -880,6 +925,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -924,6 +978,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1105,6 +1168,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -1147,8 +1219,86 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search users by @username or name
+         * @description Finds people to add as friends: the username starts with q, or the name or any word of it does (case and accents ignored). Never lists yourself, your friends, anyone with a block in either direction, or accounts without a username or a name. Order: exact username first, then most mutual friends, then by name. At most 20, no paging. 400 if q has fewer than 2 or more than 30 characters once trimmed and without the leading @. Limited per user (429).
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description What to look for: a username (with or without @) or the start of a name or of any word of it. Case and accents are ignored. 2 to 30 characters once trimmed and without the leading @; otherwise 400 */
+                    q: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Matching users */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserSearch"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1196,6 +1346,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1262,6 +1421,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -1305,6 +1473,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1373,6 +1550,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -1421,6 +1607,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1487,6 +1682,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -1515,6 +1719,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1560,6 +1773,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1634,6 +1856,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -1670,6 +1901,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1737,6 +1977,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1871,6 +2120,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -1936,6 +2194,15 @@ export interface paths {
                 };
                 /** @description Conflict with the current state */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2040,6 +2307,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -2097,14 +2373,85 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete the rollo for everyone (creator)
+         * @description Only whoever created it (403 otherwise). Removes the rollo, its members, photos, likes, comments and featured photos at once; the files in storage are purged later. Afterwards any route of that rollo answers 410 `{ error: "Este rollo se borró" }`. Cannot be undone.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Rollo deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
-        /** Edit the trip (admin) */
+        /**
+         * Edit the trip (admin)
+         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything.
+         */
         patch: {
             parameters: {
                 query?: never;
@@ -2156,6 +2503,24 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         trace?: never;
@@ -2169,7 +2534,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reveal the roll now (admin) */
+        /**
+         * Reveal the roll now (creator)
+         * @description Only whoever created the rollo.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2201,6 +2569,15 @@ export interface paths {
                 };
                 /** @description Forbidden */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2289,6 +2666,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -2318,7 +2704,7 @@ export interface paths {
         post?: never;
         /**
          * Leave the trip
-         * @description You lose access and the rollo leaves your list; your photos stay in the roll. You can come back with the code or if a friend adds you (before the reveal). The admin can't leave (409).
+         * @description You lose access and the rollo leaves your list; your photos stay in the roll. You can come back with the code or if a friend adds you (before the reveal). Any admin can leave and comes back as a regular member; the creator can't (409).
          */
         delete: {
             parameters: {
@@ -2365,13 +2751,22 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         options?: never;
         head?: never;
         /**
          * Your settings in this rollo
-         * @description `allowFeaturing`: whether others may feature your photos of this rollo on their profile (on by default). Turning it off removes them from other profiles; turning it on restores nothing.
+         * @description `allowFeaturing`: whether others may feature your photos of this rollo on their profile (on by default). Turning it off removes them from other profiles; turning it on restores nothing. `archived`: archive or unarchive the rollo for you only (409 if it is not revealed). Send at least one field.
          */
         patch: {
             parameters: {
@@ -2424,6 +2819,24 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         trace?: never;
@@ -2440,7 +2853,7 @@ export interface paths {
         post?: never;
         /**
          * Remove someone from the trip (admin)
-         * @description They lose access to the rollo and cannot rejoin by code or through a regular member; only the admin can add them back as a friend. Their photos stay in the roll.
+         * @description Admins remove regular members; only the creator removes other admins; nobody removes the creator (403). They lose access to the rollo and cannot rejoin by code or through a regular member; only the admin can add them back as a friend. Their photos stay in the roll.
          */
         delete: {
             parameters: {
@@ -2490,6 +2903,164 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/members/{memberId}/admin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a member admin (admin)
+         * @description Any admin can. The target must be an active member (404 otherwise); if they are already admin it still answers 200.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    memberId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The member, now admin */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Member"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /**
+         * Take the admin role away (creator)
+         * @description Only the creator. The creator's own admin role can't be removed (400).
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    memberId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The member, now a regular member */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Member"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2586,6 +3157,24 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -2672,6 +3261,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -2731,6 +3329,15 @@ export interface paths {
                 };
                 /** @description Forbidden */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2802,6 +3409,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2905,6 +3521,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         options?: never;
@@ -2981,6 +3606,15 @@ export interface paths {
                 };
                 /** @description Conflict with the current state */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3072,6 +3706,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -3137,6 +3780,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         post?: never;
@@ -3182,6 +3834,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3262,6 +3923,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         post?: never;
@@ -3289,6 +3959,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3354,6 +4033,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3440,6 +4128,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -3504,6 +4201,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3578,6 +4284,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -3614,6 +4329,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3680,6 +4404,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -3739,6 +4472,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -3790,6 +4532,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3873,6 +4624,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         options?: never;
@@ -3925,6 +4685,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4082,6 +4851,11 @@ export interface components {
             day: string;
             /** @description Epoch ms when the moment starts; the user has 15 minutes from then */
             notifyAt: number;
+            /**
+             * @description How this moment is taken, fixed when it was drawn; later changes to the rollo do not affect it
+             * @enum {string}
+             */
+            mode?: "photo" | "photo_selfie";
         };
         UpdateProfileRequest: {
             /** @example Juani */
@@ -4136,6 +4910,10 @@ export interface components {
             revealAt: number;
             revealed: boolean;
             role: components["schemas"]["Role"];
+            /** @description You created this rollo */
+            isCreator: boolean;
+            /** @description You archived this rollo (only for you) */
+            archived: boolean;
             totalUploaded: number;
             /**
              * @description Daily moment: off, a photo, or a photo plus a selfie
@@ -4217,6 +4995,32 @@ export interface components {
              * @enum {string}
              */
             status: "sent" | "friends";
+        };
+        UserSearch: {
+            /** @description Up to 20 matches: exact username first, then most mutual friends, then by name */
+            users: components["schemas"]["UserSearchResult"][];
+        };
+        UserSearchResult: {
+            /**
+             * Format: uuid
+             * @description User id
+             */
+            id: string;
+            /** @example Cami */
+            name: string;
+            /**
+             * @description Unique handle without the @
+             * @example cami
+             */
+            username: string;
+            avatarUrl: string | null;
+            /** @description How many of your friends are also this user's friends */
+            mutualCount: number;
+            /**
+             * @description Pending friend request between you and this user: sent (you sent one, also after they rejected it), received (they sent you one you have not answered), none
+             * @enum {string}
+             */
+            friendRequest: "none" | "sent" | "received";
         };
         UserProfile: {
             user: components["schemas"]["PublicUser"];
@@ -4421,6 +5225,12 @@ export interface components {
             momentWindowStart: number;
             /** @description Moment window end, minutes from midnight in the rollo's time zone */
             momentWindowEnd: number;
+            /** @description Who created the rollo (always an admin). Only filled in by GET /trips/{tripId}, create, join and the edit routes; null if unknown */
+            createdBy: {
+                /** Format: uuid */
+                userId: string;
+                name: string;
+            } | null;
         };
         Member: {
             /**
@@ -4439,6 +5249,8 @@ export interface components {
             username: string | null;
             avatarUrl: string | null;
             role: components["schemas"]["Role"];
+            /** @description Created the rollo: always an admin, can't leave and can't be removed */
+            isCreator: boolean;
             /** @description Whether you blocked this member */
             blockedByMe: boolean;
             /** @description Only on `me`: others may feature your photos of this rollo on their profile */
@@ -4487,7 +5299,7 @@ export interface components {
             /** @description Photos per person in the whole rollo; required when photoLimitMode is total, ignored otherwise */
             totalPhotoLimit?: number;
             /**
-             * @description Daily moment: off, a photo, or a photo plus a selfie. Cannot be changed after creating the rollo
+             * @description Daily moment: off, a photo, or a photo plus a selfie. Any admin can change it later (PATCH /trips/{tripId}), effective from the next day
              * @default off
              * @enum {string}
              */
@@ -4529,16 +5341,32 @@ export interface components {
         };
         UpdateTripRequest: {
             name?: string;
-            /** @description Trip end; must be after startsAt and <= the resulting revealAt */
+            /** @description Only before the rollo starts; never in the past */
+            startsAt?: number;
+            /** @description Trip end; must be after startsAt, at most 31 days after it and <= the resulting revealAt. Not once the rollo ended */
             endsAt?: number;
             /** @description Must be >= the resulting endsAt */
             revealAt?: number;
             dailyPhotoLimit?: number;
             dailyVideoLimit?: number;
-            /** @description Private rollo. Turning it on removes every photo of the rollo from every profile; turning it off restores nothing */
+            /** @description Private rollo (creator only). Turning it on removes every photo of the rollo from every profile; turning it off restores nothing */
             featuringDisabled?: boolean;
-            /** @description Only for rollos in total mode */
+            /**
+             * @description Only before the rollo starts
+             * @enum {string}
+             */
+            photoLimitMode?: "daily" | "total";
+            /** @description Only for rollos in total mode; required when switching to total and none is stored */
             totalPhotoLimit?: number;
+            /**
+             * @description Daily moment; in a running rollo it applies from the next day
+             * @enum {string}
+             */
+            momentMode?: "off" | "photo" | "photo_selfie";
+            /** @description Minutes from midnight in the rollo's time zone */
+            momentWindowStart?: number;
+            /** @description Minutes from midnight; at least 30 after the resulting start */
+            momentWindowEnd?: number;
         };
         AddMembersResponse: {
             results: {
@@ -4556,10 +5384,13 @@ export interface components {
         };
         MyMembership: {
             allowFeaturing: boolean;
+            archived: boolean;
         };
         UpdateMyMembershipRequest: {
             /** @description Others may feature your photos of this rollo. Turning it off removes them from other profiles; turning it on restores nothing */
-            allowFeaturing: boolean;
+            allowFeaturing?: boolean;
+            /** @description Archive the rollo for you only (revealed rollos only, 409 otherwise); it stays in your list marked as archived */
+            archived?: boolean;
         };
         MediaRegistered: {
             /** Format: uuid */

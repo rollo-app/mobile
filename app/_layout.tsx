@@ -83,6 +83,7 @@ function RootStack() {
       <Stack.Protected guard={gate === "app"}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create" options={{ title: "Nuevo rollo", presentation: "modal" }} />
+          <Stack.Screen name="edit-trip" options={{ title: "Editar rollo", presentation: "modal" }} />
           <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />
           <Stack.Screen
             name="trips"

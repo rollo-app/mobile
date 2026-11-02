@@ -64,11 +64,12 @@ const tripDetail = (): actions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    createdBy: null,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
+  me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
   members: [
-    { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", blockedByMe: false },
-    { id: "m2", userId: "u2", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", blockedByMe: false },
+    { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+    { id: "m2", userId: "u2", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -392,6 +393,19 @@ describe("Profile and settings", () => {
     expect(screen.getAllByText("Juani").length).toBeGreaterThan(0);
     expect(screen.queryByText("juani@rollo.test")).toBeNull();
     expect(screen.queryByRole("button", { name: "Viaje al sur, Admin" })).toBeNull();
+  });
+
+  it("the profile step can sign out", async () => {
+    await signInAs({ user: { ...USER, name: null, username: null } });
+    const calls = mockApi({ "POST /auth/logout": json(204) });
+    await renderRouter(routes, { initialUrl: "/" });
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Cerrar sesión" }));
+
+    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(calls).toContain("POST /auth/logout");
+    expect(await getSessionToken()).toBeNull();
   });
 
   it("log out tells the server, lands on the login and keeps the pending photos", async () => {

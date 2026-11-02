@@ -5,7 +5,11 @@ import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { setActiveTripId } from "@/storage/active-trip";
 import { Button, Screen, Section } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
+import { useLeaveTrip } from "@/features/friends/use-leave-trip";
+import type { TripSummary } from "./active";
 import { groupTrips } from "./group-trips";
+import { rowActions, type RowActionId } from "./row-actions";
+import { useArchiveTrip } from "./use-archive-trip";
 import { TripRow } from "./trip-row";
 import { useActiveTrip } from "./use-active-trip";
 
@@ -21,8 +25,9 @@ export function TripsScreen() {
     router.dismissTo("/roll");
   }
 
-  const row = (t: (typeof trips)[number]) => (
-    <TripRow key={t.id} trip={t} selected={t.id === active?.id} now={now} timeZone={timeZone} onPress={() => select(t.id)} />
+  const { setArchived } = useArchiveTrip();
+  const row = (t: TripSummary) => (
+    <ActionableRow key={t.id} trip={t} selected={t.id === active?.id} now={now} timeZone={timeZone} onPress={() => select(t.id)} setArchived={setArchived} />
   );
 
   return (
@@ -30,9 +35,14 @@ export function TripsScreen() {
       {groups.top.length > 0 && <Group>{groups.top.map(row)}</Group>}
       {groups.revealed.length > 0 && <Section title="Revelados">{groups.revealed.map(row)}</Section>}
       {groups.older.length > 0 && (
-        <OlderRolls count={groups.older.length} initiallyOpen={groups.olderExpandedByDefault}>
+        <FoldedRolls label="Anteriores" count={groups.older.length} initiallyOpen={groups.olderExpandedByDefault}>
           {groups.older.map(row)}
-        </OlderRolls>
+        </FoldedRolls>
+      )}
+      {groups.archived.length > 0 && (
+        <FoldedRolls label="Archivados" count={groups.archived.length} initiallyOpen={groups.archivedExpandedByDefault}>
+          {groups.archived.map(row)}
+        </FoldedRolls>
       )}
 
       <View style={styles.actions}>
@@ -41,6 +51,27 @@ export function TripsScreen() {
       </View>
     </Screen>
   );
+}
+
+/** A row with its actions; leaving needs the hook per roll, so this is a component of its own. */
+function ActionableRow({
+  trip,
+  setArchived,
+  ...rest
+}: {
+  trip: TripSummary;
+  selected: boolean;
+  now: number;
+  timeZone: string;
+  onPress: () => void;
+  setArchived: (tripId: string, archived: boolean) => void;
+}) {
+  const leave = useLeaveTrip(trip.id, trip.name, { revealed: trip.revealed, copy: "list" });
+  const onAction = (id: RowActionId) => {
+    if (id === "leave") leave.confirm();
+    else setArchived(trip.id, id === "archive");
+  };
+  return <TripRow trip={trip} actions={rowActions(trip)} onAction={onAction} {...rest} />;
 }
 
 function Group({ children }: { children: ReactNode }) {
@@ -57,8 +88,8 @@ function Group({ children }: { children: ReactNode }) {
   );
 }
 
-/** "Anteriores · N": a disclosure row that opens the rolls revealed long ago inline. Remembers nothing. */
-function OlderRolls({ count, initiallyOpen, children }: { count: number; initiallyOpen: boolean; children: ReactNode[] }) {
+/** "Anteriores · N" / "Archivados · N": a disclosure row that opens those rolls inline. Remembers nothing. */
+function FoldedRolls({ label, count, initiallyOpen, children }: { label: string; count: number; initiallyOpen: boolean; children: ReactNode[] }) {
   // The saved active id loads after the first render, so the default follows the data until the user taps.
   const [chosen, setChosen] = useState<boolean | null>(null);
   const open = chosen ?? initiallyOpen;
@@ -72,12 +103,12 @@ function OlderRolls({ count, initiallyOpen, children }: { count: number; initial
     <View style={styles.group}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Anteriores, ${count}`}
+        accessibilityLabel={`${label}, ${count}`}
         accessibilityState={{ expanded: open }}
         onPress={() => setChosen(!open)}
         style={({ pressed }) => [styles.disclosure, pressed && { backgroundColor: colors.fill }]}
       >
-        <Text style={[type.body, styles.disclosureLabel, { color: colors.label }]}>{`Anteriores · ${count}`}</Text>
+        <Text style={[type.body, styles.disclosureLabel, { color: colors.label }]}>{`${label} · ${count}`}</Text>
         <Animated.View style={{ transform: [{ rotate }] }}>
           <SymbolView name="chevron.right" size={13} weight="semibold" tintColor={colors.tertiaryLabel as string} />
         </Animated.View>

@@ -1,3 +1,7 @@
+/** Caps the server enforces on the photo quota. */
+export const MAX_DAILY_PHOTOS = 30;
+export const MAX_TOTAL_PHOTOS = 200;
+
 const HOUR = 60 * 60 * 1000;
 
 /** The next full hour after `now`. */

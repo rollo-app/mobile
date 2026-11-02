@@ -1,4 +1,4 @@
-import { canCreate, dateAtMinutes, DEFAULT_MOMENT_WINDOW, defaultStart, effectiveStart, endAfter, minutesOfDay, revealNotBefore } from "../create-form";
+import { MAX_DAILY_PHOTOS, MAX_TOTAL_PHOTOS, canCreate, dateAtMinutes, DEFAULT_MOMENT_WINDOW, defaultStart, effectiveStart, endAfter, minutesOfDay, revealNotBefore } from "../create-form";
 
 const HOUR = 60 * 60 * 1000;
 const T = Date.UTC(2027, 0, 5, 12, 0);
@@ -70,4 +70,9 @@ describe("moment window helpers", () => {
   it("has the default window 9:00 to 23:00", () => {
     expect(DEFAULT_MOMENT_WINDOW).toEqual({ start: 540, end: 1380 });
   });
+});
+
+it("exposes the photo caps the server enforces", () => {
+  expect(MAX_DAILY_PHOTOS).toBe(30);
+  expect(MAX_TOTAL_PHOTOS).toBe(200);
 });

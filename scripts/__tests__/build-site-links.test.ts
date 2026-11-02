@@ -10,7 +10,7 @@ let html: string;
 
 beforeAll(() => {
   dist = mkdtempSync(join(tmpdir(), "rollo-site-links-"));
-  execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], { env: { ...process.env, SITE_DIST: dist } });
+  execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], { env: { ...process.env, SITE_DIST: dist, SITE_CF_ANALYTICS_TOKEN: "" } });
   html = readFileSync(join(dist, "friends", "index.html"), "utf8");
 });
 afterAll(() => rmSync(dist, { recursive: true, force: true }));
@@ -55,6 +55,15 @@ function open(hash: string) {
 }
 
 describe("the /friends page (friend link fallback)", () => {
+  it("has a link preview card (Open Graph and Twitter)", () => {
+    expect(html).toContain('<meta property="og:title" content="Te invitaron a Rollo">');
+    expect(html).toContain('<meta property="og:description" content="Sumate como amigo en Rollo.">');
+    expect(html).toContain('<meta property="og:image" content="https://rollo.juanifraga.com/og.png">');
+    expect(html).toContain('<meta property="og:url" content="https://rollo.juanifraga.com/friends">');
+    expect(html).toContain('<meta property="og:image:width" content="1200">');
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+  });
+
   it("shows the code and an Abrir Rollo button pointing at the deep link, without redirecting", () => {
     const { location, elements, history } = open("#K7M2QX9A");
     expect(elements.open.href).toBe("rollo://friends/K7M2QX9A");
@@ -83,7 +92,7 @@ describe("the /friends page (friend link fallback)", () => {
     expect(html).toContain("Abr&iacute; el link en el iPhone donde ten&eacute;s Rollo.");
     expect(html).toContain("Este link no es v&aacute;lido. Pedile a tu amigo que te mande uno nuevo.");
     expect(html).toContain("&iquest;Te invit&oacute; un amigo?");
-    expect(html).toContain('href="https://testflight.apple.com/join/Q557gZkR"');
+    expect(html).toContain('href="https://apps.apple.com/app/id6825843502"');
     expect(html.match(/<noscript>[\s\S]*Pedile a tu amigo[\s\S]*<\/noscript>/)).not.toBeNull();
   });
 

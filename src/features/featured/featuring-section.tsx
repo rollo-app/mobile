@@ -7,14 +7,14 @@ export const PRIVATE_ROLLO_NOTE = "Ninguna foto de este rollo sale a perfiles, n
 
 /**
  * Where your photos of this rollo can go (the rollo-level switches): your own "Tus fotos en otros perfiles" and,
- * for the admin, "Rollo privado". A private rollo has no photos on any profile, so the first one hides.
+ * for the creator, "Rollo privado". A private rollo has no photos on any profile, so the first one hides.
  */
 export function FeaturingSection({ detail }: { detail: TripDetail }) {
   const tripId = detail.trip.id;
   const isPrivate = detail.trip.featuringDisabled;
   const mine = useMyRolloFeaturing(tripId, detail.me.allowFeaturing ?? true);
   const rolloPrivate = useRolloPrivate(tripId, isPrivate);
-  const admin = detail.me.role === "admin";
+  const creator = detail.me.isCreator;
 
   function setPrivate(next: boolean) {
     if (!next) return rolloPrivate.set(false);
@@ -38,7 +38,7 @@ export function FeaturingSection({ detail }: { detail: TripDetail }) {
           {mine.error && <ErrorText>{mine.error}</ErrorText>}
         </>
       )}
-      {admin ? (
+      {creator ? (
         <>
           <Section footer={PRIVATE_ROLLO_NOTE}>
             <SwitchRow label="Rollo privado" value={rolloPrivate.value} onValueChange={setPrivate} />

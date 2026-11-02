@@ -1,3 +1,4 @@
+import { MenuView } from "@expo/ui/community/menu";
 import { SymbolView } from "expo-symbols";
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
@@ -5,6 +6,7 @@ import { Badge } from "@/ui/badge";
 import { colors, spacing, type } from "@/ui/theme";
 import type { TripSummary } from "./active";
 import { tripRowState } from "./row-state";
+import { ROW_ACTION_TITLES, type RowActionId } from "./row-actions";
 import { rowTint } from "./row-tint";
 import { thumbHashAverageColor, type RGB } from "./thumbhash-color";
 
@@ -17,23 +19,30 @@ export function TripRow({
   now,
   timeZone,
   onPress,
+  actions = [],
+  onAction,
 }: {
   trip: TripSummary;
   selected: boolean;
   now: number;
   timeZone: string;
   onPress: () => void;
+  /** Long-press menu (and VoiceOver actions). */
+  actions?: RowActionId[];
+  onAction?: (id: RowActionId) => void;
 }) {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const state = tripRowState(trip, now, timeZone);
   const average = useMemo(() => (trip.coverThumbhash ? thumbHashAverageColor(trip.coverThumbhash) : null), [trip.coverThumbhash]);
   const tint = average ? rowTint(average, scheme) : null;
 
-  return (
+  const row = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={state.stateLabel ? `${trip.name}, ${state.stateLabel}` : trip.name}
       accessibilityState={{ selected }}
+      accessibilityActions={actions.map((id) => ({ name: id, label: ROW_ACTION_TITLES[id] }))}
+      onAccessibilityAction={({ nativeEvent }) => onAction?.(nativeEvent.actionName as RowActionId)}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.fill }]}
     >
@@ -53,6 +62,21 @@ export function TripRow({
         </View>
       )}
     </Pressable>
+  );
+  if (actions.length === 0) return row;
+  return (
+    <MenuView
+      shouldOpenOnLongPress
+      actions={actions.map((id) => ({
+        id,
+        title: ROW_ACTION_TITLES[id],
+        image: id === "leave" ? "trash" : id === "archive" ? "archivebox" : "tray.and.arrow.up",
+        ...(id === "leave" && { attributes: { destructive: true } }),
+      }))}
+      onPressAction={({ nativeEvent }) => onAction?.(nativeEvent.event as RowActionId)}
+    >
+      {row}
+    </MenuView>
   );
 }
 

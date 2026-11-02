@@ -281,10 +281,10 @@ jest.mock("@expo/ui/swift-ui", () => {
       ),
     TextField: ({ placeholder, onTextChange }: any) =>
       h(TextInput, { placeholder, onChangeText: onTextChange }),
-    DatePicker: ({ title, selection, range }: any) =>
-      h(View, { accessibilityLabel: title, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
-    Stepper: ({ label, value }: any) =>
-      h(View, { accessibilityLabel: label, accessibilityValue: { text: String(value) } }, h(RNText, null, label)),
+    DatePicker: ({ title, selection, range, modifiers }: any) =>
+      h(View, { accessibilityLabel: title, accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled }, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
+    Stepper: ({ label, value, modifiers }: any) =>
+      h(View, { accessibilityLabel: label, accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled }, accessibilityValue: { text: String(value) } }, h(RNText, null, label)),
     Toggle: ({ isOn, onIsOnChange, modifiers }: any) =>
       h(View, {
         accessible: true,

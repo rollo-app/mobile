@@ -5,7 +5,7 @@ export const MAX_SCHEDULED = 40;
 
 export type MomentMode = "off" | "photo" | "photo_selfie";
 
-export type TripMoments = { tripId: string; tripName: string; momentMode?: MomentMode; moments: { day: string; notifyAt: number }[] };
+export type TripMoments = { tripId: string; tripName: string; momentMode?: MomentMode; moments: { day: string; notifyAt: number; mode?: Exclude<MomentMode, "off"> }[] };
 export type PlannedMoment = { id: string; tripId: string; tripName: string; momentMode?: MomentMode; day: string; notifyAt: number };
 
 export const momentNotificationId = (tripId: string, day: string) => `moment.${tripId}.${day}`;
@@ -16,7 +16,7 @@ export function planMoments(trips: TripMoments[], now: number): PlannedMoment[] 
     .flatMap((t) =>
       t.moments
         .filter((m) => m.notifyAt > now)
-        .map((m) => ({ id: momentNotificationId(t.tripId, m.day), tripId: t.tripId, tripName: t.tripName, momentMode: t.momentMode, ...m })),
+        .map((m) => ({ id: momentNotificationId(t.tripId, m.day), tripId: t.tripId, tripName: t.tripName, momentMode: m.mode ?? t.momentMode, day: m.day, notifyAt: m.notifyAt })),
     )
     .sort((a, b) => a.notifyAt - b.notifyAt)
     .slice(0, MAX_SCHEDULED);

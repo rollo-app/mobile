@@ -33,20 +33,21 @@ function tripDetail(): actions.TripDetail {
       momentMode: "photo",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      createdBy: null,
     },
-    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", blockedByMe: false },
+    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     members: [],
     today: { date: "2027-01-12", photosLeft: 7, videosLeft: 0 },
     totalUploaded: 0,
   };
 }
 
-const deliveredAt = (at: number) => [
+const deliveredAt = (at: number, extra = "") => [
   {
     date: at,
     request: {
       identifier: `moment.${SUR}.2027-01-12`,
-      content: { data: { url: `/moment?trip=${SUR}&day=2027-01-12&at=${at}` } },
+      content: { data: { url: `/moment?trip=${SUR}&day=2027-01-12&at=${at}${extra}` } },
     },
   },
 ];
@@ -79,6 +80,14 @@ describe("Moment banner in Rollo", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: /^Tu momento · quedan/ }));
     expect(screen).toHavePathname("/moment");
+  });
+
+  it("forwards the selfie param of the delivered notification to /moment", async () => {
+    presented.mockResolvedValue(deliveredAt(Date.now() - 120_000, "&selfie=1"));
+    await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: /^Tu momento · quedan/ }));
+    expect(screen).toHavePathname("/moment");
+    expect(screen).toHaveSearchParams(expect.objectContaining({ selfie: "1" }));
   });
 
   it("appears when the moment fires while Rollo is open", async () => {

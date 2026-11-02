@@ -21,7 +21,7 @@ Decisiones de producto:
   único token en SecureStore (`rollo.session`)** que usan todas las llamadas; un `401` en cualquiera cierra la
   sesión local y vuelve al login (`setUnauthorizedHandler` en `src/api/client.ts`). Los rollos salen de
   `GET /me/trips` (cache de TanStack Query); el rollo activo es el último que abriste y solo se guarda su id
-  (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
+  (`rollo.activeTrip`). "Completá tu perfil" tiene su propio "Cerrar sesión" (`complete-profile-screen.tsx`): el server contesta **428** "Completá tu perfil" a una cuenta sin nombre o sin @ (la cola de fotos y el código de amigo esperan, como con un 401). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
   cola de fotos pendientes. **La cola es por cuenta:** cada foto guarda su dueño (`owner_user_id`, el id de la cuenta al encolarla; el id vive en SecureStore `rollo.sessionUserId`, se guarda en `signIn(token, userId)` y se borra en `signOut`; `getSessionUserId()` lo pide a `GET /me` si falta en una sesión vieja). Solo se suben y se ven (tablero de subidas, contadores, cupo, pins pendientes, nube) las de la cuenta con sesión; las de otra esperan sin marcarse fallidas ni borrarse y se suben solas cuando vuelve su dueña. Las filas sin dueño (de antes de este cambio, o encoladas por una sesión vieja que todavía no sabía su id) las reclama **solo esa misma sesión** cuando aprende su id por `GET /me` (`claimLegacyQueue`); una cuenta que entra después nunca se las queda. "Borrar cuenta" borra sus fotos pendientes (filas y archivos; `discardAccountQueue`). Si `POST /auth/logout` no llega al server, esa sesión queda en `rollo.pendingLogout`
   (SecureStore) y se reintenta en silencio al abrir la app, al volver a primer plano y al volver la red (`src/features/auth/pending-logout.ts`).
   **Link mágico:** el mail del código trae además un botón a `rollo.juanifraga.com/entrar#t=<token>&e=<email>` (fragmento:
@@ -79,10 +79,11 @@ Decisiones de producto:
   genera el celular. **Sin videos en rollos nuevos** (la cámara saca solo fotos; los videos de rollos viejos se siguen viendo).
 - **Metadatos:** al mandar, la foto lleva EXIF (fecha/hora local del rollo con offset, GPS, `Software: Rollo`) y XMP
   con caption y autor en Unicode (`piexifjs`, JS puro). Al guardar en Fotos se inyectan si el original no tiene fecha.
-- **Límite de fotos por persona**, que el admin elige al crear el rollo: **"Por día"** (10 por defecto) o **"Todo el rollo"** (`photoLimitMode` `daily` | `total` + `totalPhotoLimit`; 20 por defecto). Lo aplica el server. Con cupo total, el badge de la cámara, "Tenés N fotos en el rollo", el tablero ("Te quedan N de M") y la cola offline (`countPending` sin día) cuentan lo que queda en todo el rollo.
+- **Límite de fotos por persona**, que el admin elige al crear el rollo: **"Por día"** (10 por defecto) o **"Todo el rollo"** (`photoLimitMode` `daily` | `total` + `totalPhotoLimit`; 20 por defecto). Lo aplica el server, con tope de **30 por día** y **200 en todo el rollo** (`MAX_DAILY_PHOTOS` / `MAX_TOTAL_PHOTOS` de `create-form.ts`, los de los steppers; al crear y al editar; un rollo viejo que ya pasa el tope lo conserva hasta que se cambie ese valor). Con cupo total, el badge de la cámara, "Tenés N fotos en el rollo", el tablero ("Te quedan N de M") y la cola offline (`countPending` sin día) cuentan lo que queda en todo el rollo.
 - **Offline first:** al disparar se guardan foto, hora (UTC + zona) y GPS. Pedir ubicación apenas se
   abre la cámara; sin fix, usar la última conocida y guardar su precisión. Cola local en SQLite, subida
   en segundo plano cuando hay señal, **UUID generado en el celular** (reintentar es seguro).
+  Si el server contesta **410** (el rollo se borró para todos), la foto se descarta en silencio (fila de la cola y archivos) sin marcarla fallida; el 404 de `complete` sigue como antes.
   Con la app cerrada o suspendida sube `expo-background-task` (tarea `rollo-upload`, BGProcessingTask de iOS: solo
   con red, cuándo corre lo decide el sistema, ~25 s por pasada con corte limpio entre ítems); los PUT usan sesión
   de URLSession en background. Si se mata la app a mano, iOS no la despierta hasta que se vuelva a abrir.
@@ -101,7 +102,7 @@ Decisiones de producto:
   pins (autor y hora; con la foto de perfil del autor si tiene, hecha en JS como `tab-avatar` y registrada con `Images`, y si no la inicial sobre su color), **feed** y la hoja de contacto del rollo. Se muestra solo el total del grupo.
 - **Rollo configurable al crearlo** (lo hace el admin, formulario nativo con `@expo/ui`): nombre, inicio y fin
   **con fecha y hora**, fotos por persona (por día o en todo el rollo), y **cuándo se revela** (al terminar o en otro
-  momento, siempre igual o posterior al fin). Las fechas las valida el server; la app muestra su mensaje inline (`src/features/trips/create-form.ts` solo chequea los nombres).
+  momento, siempre igual o posterior al fin; el rollo dura como mucho 31 días). Las fechas las valida el server; la app muestra su mensaje inline (`src/features/trips/create-form.ts` solo chequea los nombres).
 - **Privacidad de los rollos:** un rollo solo existe para sus miembros. Nadie más ve sus fotos, su nombre ni que existe
   (tampoco en el perfil de un amigo: "Rollos en común" son solo los rollos donde **los dos** son miembros activos). Si algún
   día hay rollos públicos, es una decisión del grupo, no de una persona.
@@ -110,14 +111,15 @@ Decisiones de producto:
   (`app/friends/[code].tsx`, fuera del grupo protegido) llama a `POST /friend-links/claim` **sin sesión** y: con cuenta lista
   canjea (`POST /friends/redeem`) y abre la tab Amigos; sin cuenta guarda el permiso de canje (24 h) en SecureStore
   (`rollo.pendingFriend`, nunca en el cache de Query) y lo canjea cuando el perfil queda completo (`use-pending-friend.ts`,
-  el único lugar donde se canjea). "Completá tu perfil" tiene el campo opcional "¿Te invitó un amigo? Código". La tab **Amigos**
+  el único lugar donde se canjea). Mientras abre dice "Abriendo el link…"; si el link no sirve (400/404 o código mal escrito) muestra "Este link ya no sirve" con "Ir a Rollo", y si no pudo abrirlo (sin red, 5xx, 429) "No pudimos abrir el link" con "Reintentar" e "Ir a Rollo" (`friend-link-failure.ts`). "Completá tu perfil" tiene el campo opcional "¿Te invitó un amigo? Código". La tab **Amigos**
   (`(tabs)/friends`, global: funciona sin rollos) tiene la lista (foto, nombre y @) e "Invitar a un amigo"; tocar uno abre su
   perfil (`/friends/user/<id>`) con su encabezado, sus destacadas ("Fotos | Mapa"), "Rollos en común" (`GET /friends/{userId}`),
   "Sumar a un rollo" y "Borrar amigo" (silencioso). Cualquier miembro suma a **sus** amigos al rollo
   desde "Sumar amigos" (sheet `add-friends`, respuesta por amigo: "Ya está" / "No disponible"); al crear un rollo, si tenés
-  amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el admin
-  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código). Sin la app, `/friends` del sitio muestra el código, "Abrir Rollo" y el link para bajarla.
+  amigos, se abre esa sheet encima del rollo nuevo (si no se pueden cargar, no pasa nada), y cualquiera menos el creador
+  puede "Salirme del rollo" (conserva sus fotos y puede volver con el código, pero solo antes del revelado; el creador no lo ve: él "Borra el rollo para todos", ver "Roles, archivar y eliminar rollos"). Sin la app, `/friends` del sitio muestra el código, "Abrir Rollo" y el link para bajarla.
   **Solicitudes de amistad** (`friend-request-button.tsx`, `friend-requests-row.tsx`, `friend-requests-screen.tsx`, `use-friend-request.ts`): en el perfil de otra persona, si no son amigos y no la bloqueaste, un botón debajo del encabezado según `friendRequest` (`none` → "Agregar amigo"; `sent` → "Solicitud enviada", su menú ofrece "Cancelar solicitud"; `received` → "Aceptar solicitud" y "Rechazar"). Es optimista (el perfil y la lista cambian al toque y vuelven si el server dice que no) y el error va inline. Las recibidas entran por una fila "Solicitudes" con la cantidad arriba en la tab Amigos (solo si hay), que abre la pantalla "Solicitudes" (`(tabs)/friends/requests`) con Aceptar / Rechazar por fila y "No tenés solicitudes pendientes." si no queda ninguna (`GET /me/friend-requests`). Rechazar es silencioso. Séptimo aviso push `friendRequest` ("Cami te mandó una solicitud de amistad", abre la tab Amigos) con su switch "Solicitudes de amistad" en Ajustes → Notificaciones.
+- **Buscar usuarios** (tab Amigos, `src/features/friends/use-search-bar.ts`, `friend-search-results.tsx`, `use-user-search.ts`, `search-request-button.tsx`): búsqueda nativa en el header: en iOS 26 una lupa redonda a la derecha del título (la tab Amigos usa título chico para que queden en la misma línea) que se abre hacia la izquierda en el campo ("Buscar por nombre o @usuario"; `headerSearchBarOptions` con `placement: "integratedButton"` y `allowToolbarIntegration: false` vía `navigation.setOptions`, el único archivo que toca la barra es `use-search-bar.ts`). Con texto la tab muestra solo resultados: "Amigos" (los tuyos que coinciden, filtrados en el celular desde 1 caracter, con `value="Amigos"`) y, desde **2 caracteres** (con pausa de 300 ms), "Personas" (`GET /users/search?q=`, hasta 20, sin cursor). Coincide el @usuario por prefijo o el comienzo de alguna palabra del nombre, sin tildes ni mayúsculas (mismas reglas en `search-text.ts` y en el server). **Nunca aparecen:** vos, tus amigos (en Personas), quien bloqueaste o te bloqueó, ni cuentas sin @usuario o sin nombre. Cada fila muestra foto, nombre, "@usuario · N en común" y el botón de solicitud según `friendRequest` ("Agregar" / "Enviada" (tocarla de nuevo la cancela, sin menú) / "Aceptar", optimista, error debajo del botón); tocar la fila abre el perfil. Vacío: "No encontramos a nadie con "{texto}"."; error con "Reintentar" sin perder la sección Amigos; con 20 resultados: "Si no está, escribí más de su nombre o su @.".
 - **Perfil de cualquier usuario** (`src/features/friends/user-profile-screen.tsx`, `GET /users/{userId}` →
   `{ user, isFriend, profileVisibility, canSee, friendCount, mutualCount }`): sin título en la barra (el nombre está en el
   encabezado); nombre, @, foto, **descripción** y cantidad de amigos se ven siempre ("12 amigos · 3 en común", texto
@@ -137,7 +139,7 @@ Decisiones de producto:
   insignia del autor si no es el dueño del perfil; tocar una abre `/featured/<userId>/<mediaId>`) y el mapa por zonas.
   **Adónde pueden ir tus fotos** (cuatro niveles, gana el más restrictivo; `featuring-section.tsx`, `use-featuring-levels.ts`, `use-privacy-settings.ts`):
   cuenta (Ajustes: "Permitir que agreguen mis fotos a su perfil", `PATCH /me/settings` `privacy.allowFeaturing`), rollo ("Tus fotos en otros perfiles" en el
-  tablero y en el segmento "Rollo", `PATCH /trips/{id}/members/me`), foto ("No dejar que la destaquen") y **rollo privado** (el admin lo elige al crear y lo cambia
+  tablero y en el segmento "Rollo", `PATCH /trips/{id}/members/me`), foto ("No dejar que la destaquen") y **rollo privado** (el creador lo elige al crear y lo cambia
   en el tablero con confirmación, `featuringDisabled`: ninguna foto sale, ni la del autor). Apagar un nivel saca las fotos de los perfiles ajenos; prender no devuelve nada. El feed
   trae `canFeature` por foto: sin él (o sin `featuredByMe`) no aparece "Agregar a tu perfil" en el visor ni en el menú de la grilla (`feature-action.ts`).
   **Visibilidad:** `profileVisibility` `"friends"` (por defecto) o `"public"`, con el switch "Perfil público" de Ajustes
@@ -145,11 +147,13 @@ Decisiones de producto:
   (la descripción y la cantidad de amigos son siempre públicas).
 - **Insignias** (`src/features/profile/badge.ts`): `badge` (`"founder"` | `"first_edition"` | null) viene del server en el usuario (`GET /me`, `GET /users/{id}`) y se asigna a mano en el backend. Se muestra solo en el encabezado del perfil (`ProfileHeader`, el tuyo y el de otros) bajo el nombre, con `Badge` neutral y las etiquetas en inglés **FOUNDER** / **FIRST EDITION**; valores desconocidos no muestran nada. No va en listas, Feed ni mapa.
 - **Límites para crear rollos** (los aplica el server en `POST /trips`, **409** con el mensaje): máximo 2 rollos sin revelar creados por vos a la vez y 4 creados en los últimos 30 días; los rollos a los que te sumaste no cuentan y hay usuarios exentos (flag a mano en la DB). La app no chequea nada antes: `create-screen.tsx` muestra el mensaje del server debajo del botón (`ErrorText`, como cualquier error del form) sin perder lo cargado.
+- **Roles, archivar y eliminar rollos** (`src/features/trips/roles.ts`, `row-actions.ts`, `use-archive-trip.ts`; `src/features/roll/roll-people.tsx`): el rol de la API sigue siendo `admin` | `member`; el **creador** es el miembro con `isCreator` (también en `TripSummary`; el trip trae `createdBy`) y se muestra como "Creador", los demás admins como "Admin" (`memberBadge`). Mantener apretado un miembro (`MenuView` + acciones de VoiceOver, `memberActions`) ofrece "Hacer admin" / "Quitar admin" / "Sacar del rollo" (con `Alert`; hooks `use-make-admin`, `use-remove-admin`, `use-remove-member`). Cualquier admin cambia el nombre del rollo con la fila "Nombre" (`Alert.prompt` "Nombre del rollo", `use-rename-trip`; más de 60 caracteres: `ErrorText`). **Archivar** es por miembro y solo de rollos revelados: menú de mantener apretado en "Tus rollos" y fila "Archivar rollo" / "Desarchivar rollo" en el rollo revelado (`useArchiveTrip`, optimista; si falla, `Burnt.alert` "No se pudo archivar" / "No se pudo desarchivar"). **Eliminar** (menú de la fila, no lo ve el creador) es salirse: `useLeaveTrip(tripId, name, { revealed, copy: "list" | "board" })`; en un rollo revelado avisa "…No vas a poder volver a entrar." (a un revelado no se entra de nuevo con el código) y en uno sin revelar "…Podés volver con el código."; si falla desde la lista, `Burnt.alert`. **"Borrar rollo"** (solo el creador, fila roja con `Alert` "¿Borrar "{rollo}" para todos?", `useDeleteTrip`, `DELETE /trips/{id}`) lo borra para todos; un 403 del server dice "Solo quien creó el rollo puede hacer esto".
+- **Editar rollo** (`/edit-trip?tripId=…`: `app/edit-trip.tsx` → `src/features/trips/edit-screen.tsx`; el formulario es el mismo de Crear, `trip-form.tsx`; la lógica pura vive en `edit-form.ts`: `editableFields`, `changedFields`, `lockedNote`; `use-update-trip.ts` hace `PATCH /trips/{id}`): fila "Editar rollo" en el tablero (`roll-people.tsx`), solo para admins y mientras el rollo no terminó. **Cualquier admin** cambia fechas, cupo y momento: antes del inicio, todo; en curso, no el inicio ni el tipo de cupo (nota `lockedNote`); terminado o revelado, solo el nombre (fila "Nombre"). **Solo el creador**: rollo privado, quitar admin, sacar a otro admin, borrar el rollo y **adelantar el revelado** (el server contesta "Solo quien creó el rollo puede adelantar el revelado"). Solo se manda lo que cambió; con el revelado en "Al terminar" sigue al fin. Si cambian fechas o momento, el hook corre `syncMoments()`. Los topes (30 / 200 / 31 días) los pone el server.
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
 - **Momento del día (modo viaje, estilo BeReal)** (`src/features/moments/`): un aviso por día a una hora random distinta para cada uno, dentro de una
-  franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Dos cámaras"). Hay **15 minutos** para sacar una foto extra, **aparte del
+  franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Dos cámaras"). Si un admin cambia el modo o la franja con el rollo en curso, **rige desde mañana** (`trips.moment_from_day` en el server): el de hoy conserva su hora y su modo (`trip_moments.mode`) y `GET /me/moments` trae el `mode` de cada momento, del que sale el param `selfie` (`plan.ts`); el banner de Rollo reenvía el `selfie` del aviso entregado (`currentMoment`), así la cámara respeta el modo de hoy aunque el rollo ya tenga otro. **Alargar el fin no vuelve a sortear nada**: el server solo borra los momentos sin sacar posteriores al nuevo último día (con inicio, modo o franja nuevos se sortea todo desde mañana); el formulario avisa "Los cambios valen desde mañana." en un rollo en curso. Caso borde conocido: quien estaba sin señal y ya tenía programado el aviso de mañana antes de la edición puede ver "No tenés un momento ese día" al subir esa foto. Hay **15 minutos** para sacar una foto extra, **aparte del
   cupo**; pasado ese tiempo se pierde ("Se pasó tu momento de hoy"; el último día del rollo dice "Era el último del rollo."); la imagen vinculada pendiente no cuenta aparte en las subidas. Son **notificaciones locales**: `syncMoments()` baja en una sola llamada `GET /me/moments` (el server decide qué rollos: miembro activo, momento prendido, desde 3 días antes del
   inicio hasta el fin, nunca uno revelado; si un rollo deja de venir, se cancelan sus avisos; si la llamada falla, no se toca nada) y programa hasta 40 con identificador `moment.<tripId>.<day>` (título "Es tu momento", `data.url` `/moment?trip=…&day=…&at=…&selfie=0|1`, con `momentMode` de `GET /me/trips`);
   `cancelMomentNotifications()` las borra, y descarta también las ya entregadas (al cerrar sesión, borrar la cuenta y apagar el switch). Tocar el aviso conserva `trip` en la ruta. La hora de un momento futuro nunca se muestra ni se guarda en Query ni en
@@ -183,7 +187,7 @@ Decisiones de producto:
   está en curso (una vez por rollo) un candado grande se sacude y se abre (SF Symbol `lock` → `lock.open` con `.symbolEffect(.replace.magic)`,
   módulo local `modules/rollo-symbol`; sin el módulo nativo cae a `expo-symbols`) con un "clac" y pasa a cámara. Texto "Arrancó el rollo.
   Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En "Tus rollos" el badge del rollo en curso dice LIVE.
-  "Tus rollos" se agrupa con `groupTrips` (`src/features/trips/group-trips.ts`): en curso, próximos y sin revelar arriba; "Revelados" (últimos 3 meses por fecha de revelado); y "Anteriores · N" colapsado (se abre solo si el rollo activo está ahí, sin recordar nada).
+  "Tus rollos" se agrupa con `groupTrips` (`src/features/trips/group-trips.ts`): en curso, próximos y sin revelar arriba; "Revelados" (últimos 3 meses por fecha de revelado); "Anteriores · N" colapsado (se abre solo si el rollo activo está ahí, sin recordar nada) y, al final, **"Archivados · N"** (`archived`, `archivedExpandedByDefault`: colapsado salvo que el rollo activo esté ahí; los archivados no entran en los otros grupos).
 - **Notificaciones push** (`src/features/notifications/`): las manda el backend con Expo Push Service. El token se registra con
   `PUT /me/push-tokens/{token}` atado a la sesión **solo si cambió el token o la sesión** desde el último registro exitoso (`rollo.pushTokenRegistered` en SecureStore: token + hash SHA-256 de la sesión, `src/storage/push-registered.ts`; no se renombra) y se borra al cerrar sesión y cuando un `401` la cierra (así un celular que cambia de
   cuenta no recibe avisos de la anterior). **Permiso con explicación propia** (`/push-primer`, `push-primer.tsx`): se ofrece una sola vez,
@@ -223,11 +227,11 @@ Decisiones de producto:
 - **Comentarios** (`src/features/comments/`): solo en fotos reveladas (no videos, no en las destacadas de un perfil: mostrarían nombres y charla del
   rollo a gente de afuera) y solo entre miembros activos del rollo. En el visor de la galería, la burbuja `bubble.left` (con la cantidad,
   `commentCount` del feed) abre la sheet `/comments/<mediaId>` (`comments-screen.tsx`): lista (avatar, nombre, texto, "hace 5 min") y campo abajo
-  (texto plano, hasta 500, `draft.ts`). **Borrar es deslizando la fila de derecha a izquierda** (`ReanimatedSwipeable`, botón rojo con tacho de 80 pt que borra al tocarlo; abrir una cierra la otra; acción de VoiceOver "Borrar") y solo en filas con `canDelete`, que decide el server: borrás lo tuyo; el dueño de la foto y el admin del rollo, cualquiera. El "…" de cada fila ofrece solo
+  (texto plano, hasta 500, `draft.ts`). **Borrar es deslizando la fila de derecha a izquierda** (`ReanimatedSwipeable`, botón rojo con tacho de 80 pt que borra al tocarlo; abrir una cierra la otra; acción de VoiceOver "Borrar") y solo en filas con `canDelete`, que decide el server: borrás lo tuyo; el dueño de la foto y cualquier admin del rollo, cualquiera. El "…" de cada fila ofrece solo
   "Denunciar" (ajeno; `useReport().reportComment`, mail a soporte como el resto de la moderación; en una fila tuya no hay "…"). Error al enviar: inline y no pierde lo escrito.
   El aviso `photoCommented` ("Cami comentó tu foto", "Cami también comentó una foto") abre `/photo/<id>?tripId=…&comments=1`: el visor abre la sheet
   una vez (`openComments`). Ajustes → Notificaciones: switch "Comentan tu foto".
-- **A futuro (no para enero):** feeds públicos de rollos y buscar perfiles públicos.
+- **A futuro (no para enero):** feeds públicos de rollos.
 
 ## Navegación y diseño
 
@@ -245,7 +249,7 @@ Decisiones de producto:
   vuelve al Mapa enfocando ese pin. El segmento Feed existe solo antes del revelado. "Solo hoy" va en el menú de filtros.
   La lógica vive en `src/features/map/roll-map.tsx`, `src/features/map/activity-screen.tsx` y `src/features/feed/feed-list.tsx`.
 - Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
-  miembros): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
+  miembros con sus roles, "Nombre" (solo para admins) y "Creado por {nombre}" en el pie de Fechas): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
   `gallery` por defecto o `roll`, como "Mapa | Feed"; la galería queda montada y su toolbar solo se ve en Galería). El
   segmento Rollo es una lista agrupada con el resumen ("64 fotos · 3 videos · 8 personas · 6 días"), Fechas (el mismo
   `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,
@@ -418,7 +422,8 @@ Si una skill contradice este archivo, **gana este archivo**.
     `@/features/*/actions`. En Testing Library 14 **`fireEvent` es async**: siempre `await fireEvent...`.
   - `jest.setup.ts` mockea SecureStore en memoria.
 - **Si el backend cambia la API:** `npm run api:generate` (o `API_SPEC=../backend/openapi.json npm run api:generate`)
-  y commiteá `schema.d.ts`. El job `contract` del CI falla si quedó atrás.
+  y commiteá `schema.d.ts`. El job `contract` del CI falla si quedó atrás: compara contra la rama del backend con el
+  mismo nombre que la de la app si tiene commits que `develop` no tiene (feature de los dos repos sin mergear), y si no contra `develop`.
 - **Ramas:** `develop` es la default. Features en `feature/*` desde `develop`, vuelven por PR con CI
   en verde. `main` es producción (PR + CI + 1 aprobación, el admin puede saltearla). Sin push directo.
 - Mensajes de commit y PR en español.
@@ -426,7 +431,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   rebuild con `npx expo run:ios --device`. `.npmrc` tiene `legacy-peer-deps=true` por un conflicto de peers del SDK 58.
 
 ```bash
-npm test                      # 1762 tests
+npm test                      # ~1800 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
@@ -456,24 +461,29 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 ## Sitio público
 
-`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** (8 secciones
-con maquetas de la app en HTML/CSS y el botón "Probar la beta en iPhone" a TestFlight), `/soporte` (preguntas frecuentes y contacto;
+`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** corta (hero con el video del
+celular + 2 secciones, mapa y revelado, con una captura de la app cada una + cierre; badge oficial "Descárgalo en el App Store"), `/soporte` (preguntas frecuentes y contacto;
 `/#soporte` cae en el link a esa página), `/privacidad`, `/terminos`, `/friends` (respaldo del link de amistad: código, "Abrir Rollo" y bajar la app, sin redirigir) y `/entrar` (el link mágico del mail; script inline, sin pedidos a
 ningún lado, con su CSP). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
 se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/` (la home vive en `scripts/site/home.mjs` y `mockups.mjs`, los
 tokens de color compartidos en `scripts/site/tokens.mjs`). `npm run site:build` para verlo, `npm run site:deploy` para publicarlo.
 Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y marketing de App Store Connect.
-- **Botón de la home:** constantes `STORE_MODE` (`"beta"` por defecto, o `SITE_STORE_MODE=appstore`) y `APP_STORE_URL` en
-  `build-site.mjs`. En modo `appstore` el botón pasa a ser el badge oficial de Apple, que hay que bajar a
-  `scripts/site/app-store-badge.svg` (no se dibuja a mano); sin ese archivo o sin `APP_STORE_URL` el build falla.
-  El deploy no setea `SITE_STORE_MODE`, así que lo que sale es el default del código. **Para cambiar cuando Apple apruebe:** cambiar
-  el default `"beta"` → `"appstore"` en `build-site.mjs`, completar `APP_STORE_URL` y agregar el badge oficial (la ruta del badge se
-  puede pisar con `SITE_APP_STORE_BADGE`, lo usa el test).
-- **Momento del día:** la sección `#momento` reproduce el Lottie una vez al entrar en pantalla (`lottie-web` light, `/lottie.js`, mismo JSON que la intro de la app en sus variantes `scripts/site/moment-intro-{light,dark}.json`); el SVG estático del HTML es el fallback.
-- **Animaciones:** Motion (`animate`, `scroll`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
+- **Botón de la home:** la app está en la App Store (noviembre 2026), así que `STORE_MODE` es `"appstore"` por defecto en
+  `build-site.mjs` (`SITE_STORE_MODE=beta` vuelve al botón de TestFlight). El botón es el badge oficial de Apple
+  (`scripts/site/app-store-badge.svg`, "Descárgalo en el App Store", negro, es-MX, bajado de
+  `toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/es-mx`; no se dibuja a mano) y apunta a
+  `APP_STORE_URL` (`https://apps.apple.com/app/id6825843502`, sin país: Apple abre la tienda de quien lo toca). Sin el badge o sin
+  `APP_STORE_URL` el build falla; la ruta del badge se puede pisar con `SITE_APP_STORE_BADGE` (lo usa el test). El deploy no setea
+  `SITE_STORE_MODE`, así que lo que sale es el default del código.
+- **Video del hero:** proyecto Remotion en `video/` (escenas que recrean la app con las fotos del viaje de Juani: cámara, mapa real, revelado, galería, perfil y momento); las fotos no entran al repo (`npm run photos -- <zip>` en `video/` las prepara en una carpeta ignorada), `npm run render` deja `hero.mp4`, `hero.webm` y `hero-poster.jpg` en `scripts/site/` (se commitean); con "Reducir movimiento" queda el póster.
+- **Imágenes de la home:** el video del hero (`hero.mp4`, `hero.webm`, `hero-poster.jpg`) y las capturas `map.jpg` / `reveal.jpg` salen de `video/` (Remotion) y se commitean en `scripts/site/`; `npm run render` en `video/` rehace todo y `npm run stills` solo las dos capturas, sin recodificar los videos. En el celular todo va sobre un solo margen de 20 px y una escala fija de espacios (variables `--s-*` de `home.mjs`).
+- **Animaciones:** Motion (`animate`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
   `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
   Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.
-- **Imagen para compartir:** `npm run og` regenera `scripts/site/og.png` (1200×630, `scripts/build-og.mjs`); se commitea.
+- **Analytics:** Cloudflare Web Analytics (sin cookies, solo vistas). El token (público) está en `CF_ANALYTICS_TOKEN` de `build-site.mjs`; `SITE_CF_ANALYTICS_TOKEN=""` arma sin beacon (lo usan los tests). Las vistas se ven en Cloudflare → Web Analytics → `rollo.juanifraga.com`. El beacon va en todas las páginas menos `/entrar`; en `/friends` el CSP suma `static.cloudflareinsights.com` solo cuando hay token.
+- **QR en desktop:** el hero lleva un QR inline (`qrcode`, generado en el build, del link de TestFlight o de la App Store según `STORE_MODE`) con "Escaneá con tu iPhone"; solo se ve en pantallas anchas con mouse (`hover:hover` + `pointer:fine`).
+- **Smart App Banner:** con `STORE_MODE === "appstore"` la home suma `apple-itunes-app` (app-id 6825843502); en beta no hay nada.
+- **Imagen para compartir:** `npm run og` regenera `scripts/site/og.png` (1200×630, `scripts/build-og.mjs`: título a la izquierda y el still del revelado en un marco de teléfono a la derecha); se commitea.
 Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Juani).
 
 ## Apple
