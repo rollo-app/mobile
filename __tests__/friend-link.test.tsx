@@ -59,19 +59,42 @@ describe("Opening a friend link", () => {
       friends.claimFriendLink.mockRejectedValue(new ApiError(400, "Código incorrecto o vencido"));
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
-      expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+      expect(await screen.findByText("Este link ya no sirve")).toBeVisible();
+      expect(screen.getByText("Los links de amistad valen una hora. Pedile a quien te lo mandó que te pase uno nuevo.")).toBeVisible();
       expect(screen).toHavePathname(`/friends/${CODE}`);
       expect(await getPendingFriend()).toEqual({ claimToken: "old", creatorName: "Tomi" });
 
-      await fireEvent.press(screen.getByRole("button", { name: "Seguir" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Ir a Rollo" }));
       await waitFor(() => expect(screen).toHavePathname("/email"));
     });
 
     it("a malformed code is rejected without asking the server", async () => {
       await renderRouter(routes, { initialUrl: "/friends/hola" });
 
-      expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+      expect(await screen.findByText("Este link ya no sirve")).toBeVisible();
       expect(friends.claimFriendLink).not.toHaveBeenCalled();
+    });
+
+    it("shows the opening text while the link is being claimed", async () => {
+      friends.claimFriendLink.mockReturnValue(new Promise(() => {}));
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
+
+      expect(await screen.findByText("Abriendo el link…")).toBeVisible();
+    });
+
+    it("a network failure offers to retry, and a second try that works continues", async () => {
+      friends.claimFriendLink.mockRejectedValueOnce(new ApiError(0, "Sin conexión. Probá de nuevo cuando tengas señal."));
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
+
+      expect(await screen.findByText("No pudimos abrir el link")).toBeVisible();
+      expect(screen.getByText("Revisá tu conexión y probá de nuevo.")).toBeVisible();
+      expect(screen.getByRole("button", { name: "Ir a Rollo" })).toBeVisible();
+
+      await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+
+      await waitFor(() => expect(screen).toHavePathname("/email"));
+      expect(friends.claimFriendLink).toHaveBeenCalledTimes(2);
+      expect(await getPendingFriend()).toEqual({ claimToken: "ct1", creatorName: "Cami" });
     });
   });
 
@@ -92,9 +115,9 @@ describe("Opening a friend link", () => {
       friends.claimFriendLink.mockRejectedValue(new ApiError(400, "Código incorrecto o vencido"));
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
-      expect(await screen.findByText("Código incorrecto o vencido")).toBeVisible();
+      expect(await screen.findByText("Este link ya no sirve")).toBeVisible();
       expect(friends.redeemFriend).not.toHaveBeenCalled();
-      await fireEvent.press(screen.getByRole("button", { name: "Seguir" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Ir a Rollo" }));
       await waitFor(() => expect(screen).toHavePathname("/roll"));
     });
 
