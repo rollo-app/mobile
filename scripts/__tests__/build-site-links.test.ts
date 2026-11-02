@@ -10,7 +10,7 @@ let html: string;
 
 beforeAll(() => {
   dist = mkdtempSync(join(tmpdir(), "rollo-site-links-"));
-  execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], { env: { ...process.env, SITE_DIST: dist } });
+  execFileSync(process.execPath, [join(__dirname, "..", "build-site.mjs")], { env: { ...process.env, SITE_DIST: dist, SITE_CF_ANALYTICS_TOKEN: "" } });
   html = readFileSync(join(dist, "friends", "index.html"), "utf8");
 });
 afterAll(() => rmSync(dist, { recursive: true, force: true }));
@@ -83,7 +83,7 @@ describe("the /friends page (friend link fallback)", () => {
     expect(html).toContain("Abr&iacute; el link en el iPhone donde ten&eacute;s Rollo.");
     expect(html).toContain("Este link no es v&aacute;lido. Pedile a tu amigo que te mande uno nuevo.");
     expect(html).toContain("&iquest;Te invit&oacute; un amigo?");
-    expect(html).toContain('href="https://testflight.apple.com/join/Q557gZkR"');
+    expect(html).toContain('href="https://apps.apple.com/app/id6825843502"');
     expect(html.match(/<noscript>[\s\S]*Pedile a tu amigo[\s\S]*<\/noscript>/)).not.toBeNull();
   });
 

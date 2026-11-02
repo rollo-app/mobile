@@ -4,21 +4,25 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import QRCode from "qrcode";
 import { marked } from "marked";
 import { homeCss, homeHtml } from "./site/home.mjs";
-import { mockups, mockupsCss } from "./site/mockups.mjs";
 import { tokensCss } from "./site/tokens.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
 
 const SITE_URL = "https://rollo.juanifraga.com";
-// Switch after Apple approves the app: change the default "beta" -> "appstore", set APP_STORE_URL and add the official badge file
-// (scripts/site/app-store-badge.svg). The deploy does not set SITE_STORE_MODE, so this default is what ships.
+// The app is on the App Store: the button is the official badge (scripts/site/app-store-badge.svg, from Apple's marketing
+// toolbox, es-MX). The deploy does not set SITE_STORE_MODE, so this default is what ships; "beta" brings back TestFlight.
 /** @type {"beta" | "appstore"} */
-const STORE_MODE = process.env.SITE_STORE_MODE ?? "beta";
+const STORE_MODE = process.env.SITE_STORE_MODE ?? "appstore";
 const TESTFLIGHT_URL = "https://testflight.apple.com/join/Q557gZkR";
-const APP_STORE_URL = null; // filled in when the app is approved
+// No country in the path: Apple opens the store of whoever taps it.
+const APP_STORE_URL = "https://apps.apple.com/app/id6825843502";
+// Cloudflare Web Analytics (cookieless, page views only); public token from the Web Analytics site. SITE_CF_ANALYTICS_TOKEN=""
+// builds without it (the tests do). Never added to /entrar (strict CSP, no third-party requests).
+const CF_ANALYTICS_TOKEN = (process.env.SITE_CF_ANALYTICS_TOKEN ?? "773f8a15b710464095838f919b7389d8") || null;
 const APP_STORE_BADGE = process.env.SITE_APP_STORE_BADGE ?? join(root, "scripts", "site", "app-store-badge.svg");
 
 if (STORE_MODE !== "beta" && STORE_MODE !== "appstore") throw new Error(`Unknown SITE_STORE_MODE: ${STORE_MODE}`);
@@ -72,7 +76,22 @@ code{font-family:ui-monospace,Menlo,monospace;font-size:15px}
 const footer = `<footer><p>&copy; 2026 Juan Ignacio Fraga &middot; Uruguay</p>
 <p><a href="/privacidad">Privacidad</a> &middot; <a href="/terminos">T&eacute;rminos</a> &middot; <a href="/soporte">Soporte</a></p></footer>`;
 
-const page = ({ title, description, body, header = true, head = "", css: styles = css, wide = false }) => `<!doctype html>
+const beacon = CF_ANALYTICS_TOKEN
+  ? `<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='${JSON.stringify({ token: CF_ANALYTICS_TOKEN })}'></script>\n`
+  : "";
+
+// Inline SVG QR for the store link: dark modules in currentColor (adapts to light/dark), 4-module quiet zone.
+const qrSvg = (url) => {
+  const { modules } = QRCode.create(url, { errorCorrectionLevel: "M" });
+  const n = modules.size;
+  const quiet = 4;
+  let d = "";
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (modules.get(x, y)) d += `M${x + quiet} ${y + quiet}h1v1h-1z`;
+  const size = n + quiet * 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="112" height="112" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="${d}"/></svg>`;
+};
+
+const page = ({ title, description, body, header = true, head = "", css: styles = css, wide = false, analytics = true }) => `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -91,7 +110,7 @@ ${body}
 </main>
 ${footer}
 </div>
-</body>
+${analytics ? beacon : ""}</body>
 </html>
 `;
 
@@ -112,14 +131,14 @@ const home = homeHtml({
   testflightUrl: TESTFLIGHT_URL,
   appStoreUrl: APP_STORE_URL,
   siteUrl: SITE_URL,
-  mockups,
+  qr: { svg: qrSvg(STORE_MODE === "appstore" ? APP_STORE_URL : TESTFLIGHT_URL), url: STORE_MODE === "appstore" ? APP_STORE_URL : TESTFLIGHT_URL },
 });
 write("index.html", page({
   title: "Rollo · Fotos en grupo para iPhone",
-  description: "Rollo: fotos y videos en grupo que nadie ve hasta el revelado. App para iPhone.",
+  description: "Un rollo de fotos compartido con tus amigos para el viaje, el casamiento o la última semana de facu. Nadie las ve hasta el revelado.",
   body: home.body,
   head: home.head,
-  css: homeCss + mockupsCss,
+  css: homeCss,
   wide: true,
 }));
 await build({
@@ -130,20 +149,10 @@ await build({
   globalName: "Motion",
   outfile: join(dist, "motion.js"),
 });
-await build({
-  stdin: { contents: `import lottie from "lottie-web/build/player/lottie_light"; window.lottie = lottie;`, resolveDir: root },
-  bundle: true,
-  minify: true,
-  format: "iife",
-  outfile: join(dist, "lottie.js"),
-});
-for (const scheme of ["light", "dark"]) {
-  copyFileSync(join(root, "scripts", "site", `moment-intro-${scheme}.json`), join(dist, `moment-intro-${scheme}.json`));
-}
 copyFileSync(join(root, "scripts", "site", "landing.js"), join(dist, "landing.js"));
 if (STORE_MODE === "appstore") copyFileSync(APP_STORE_BADGE, join(dist, "app-store-badge.svg"));
 const HERO_DIR = process.env.SITE_HERO_DIR ?? join(root, "scripts", "site");
-for (const name of ["hero.mp4", "hero.webm", "hero-poster.jpg"]) {
+for (const name of ["hero.mp4", "hero.webm", "hero-poster.jpg", "map.jpg", "reveal.jpg"]) {
   if (!existsSync(join(HERO_DIR, name))) {
     throw new Error(`Missing ${name} in ${HERO_DIR}: render the hero video with \`npm run render\` (in video/)`);
   }
@@ -210,6 +219,7 @@ write("entrar/index.html", page({
   title: "Entrar · Rollo",
   description: "Entrá a Rollo con el link del mail.",
   body: entrar,
+  analytics: false,
   head: [
     // Only this page's own script runs and nothing can be fetched or sent: the token never leaves the phone.
     `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${createHash("sha256").update(entrarScript).digest("base64")}'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">`,
@@ -253,7 +263,8 @@ write("friends/index.html", page({
   description: "Te invitaron a ser amigos en Rollo.",
   body: friends,
   head: [
-    `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${createHash("sha256").update(friendsScript).digest("base64")}'; style-src 'unsafe-inline'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">`,
+    // With the analytics beacon (this page only, not /entrar) the CSP also allows Cloudflare's script and its report endpoint.
+    `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${createHash("sha256").update(friendsScript).digest("base64")}'${CF_ANALYTICS_TOKEN ? " https://static.cloudflareinsights.com" : ""}; style-src 'unsafe-inline'; img-src 'self'; connect-src ${CF_ANALYTICS_TOKEN ? "https://cloudflareinsights.com" : "'none'"}; form-action 'none'; base-uri 'none'">`,
     `<meta name="referrer" content="no-referrer">`,
     `<meta name="robots" content="noindex">`,
     "",

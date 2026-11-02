@@ -1,7 +1,7 @@
 // Generates Rollo's Lottie files (`npm run lottie`). All of them: the "Revelado" mark assembles (the two outer circles
 // fade and grow in, the core pops). Transparent, 512x512, 60 fps, play once and hold.
-// - moment-intro*.json: plus a cobalt ring drawing around it (the daily moment's 15-minute window). The app's is dark
-//   (it always plays over black, like the camera); the light one is for the site.
+// - moment-intro.json: plus a cobalt ring drawing around it (the daily moment's 15-minute window), dark (it always plays
+//   over black, like the camera).
 // - logo-intro-{light,dark}.json: the mark alone, bigger and shorter (the app's first welcome).
 // - app-intro-{light,dark}.json: the mark alone at half speed (the full-screen intro for a new account).
 import { writeFileSync } from "node:fs";
@@ -161,8 +161,6 @@ function write(path, doc) {
 const moment = { name: "Rollo - Tu momento", ring: true, S: 2.6, OP: 96 };
 const logo = { name: "Rollo - Bienvenida", ring: false, S: 3.6, OP: 48 };
 write("../assets/lottie/moment-intro.json", build({ ...moment, color: COBALT.dark }));
-write("../scripts/site/moment-intro-light.json", build({ ...moment, color: COBALT.light }));
-write("../scripts/site/moment-intro-dark.json", build({ ...moment, color: COBALT.dark }));
 write("../assets/lottie/logo-intro-light.json", build({ ...logo, color: COBALT.light }));
 write("../assets/lottie/logo-intro-dark.json", build({ ...logo, color: COBALT.dark }));
 // The app's full-screen intro for a new account: the same mark, bigger and slower (~1.6 s).
