@@ -111,7 +111,7 @@ Decisiones de producto:
   (`app/friends/[code].tsx`, fuera del grupo protegido) llama a `POST /friend-links/claim` **sin sesión** y: con cuenta lista
   canjea (`POST /friends/redeem`) y abre la tab Amigos; sin cuenta guarda el permiso de canje (24 h) en SecureStore
   (`rollo.pendingFriend`, nunca en el cache de Query) y lo canjea cuando el perfil queda completo (`use-pending-friend.ts`,
-  el único lugar donde se canjea). "Completá tu perfil" tiene el campo opcional "¿Te invitó un amigo? Código". La tab **Amigos**
+  el único lugar donde se canjea). Mientras abre dice "Abriendo el link…"; si el link no sirve (400/404 o código mal escrito) muestra "Este link ya no sirve" con "Ir a Rollo", y si no pudo abrirlo (sin red, 5xx, 429) "No pudimos abrir el link" con "Reintentar" e "Ir a Rollo" (`friend-link-failure.ts`). "Completá tu perfil" tiene el campo opcional "¿Te invitó un amigo? Código". La tab **Amigos**
   (`(tabs)/friends`, global: funciona sin rollos) tiene la lista (foto, nombre y @) e "Invitar a un amigo"; tocar uno abre su
   perfil (`/friends/user/<id>`) con su encabezado, sus destacadas ("Fotos | Mapa"), "Rollos en común" (`GET /friends/{userId}`),
   "Sumar a un rollo" y "Borrar amigo" (silencioso). Cualquier miembro suma a **sus** amigos al rollo
