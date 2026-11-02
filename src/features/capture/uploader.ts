@@ -51,8 +51,9 @@ function classify(error: unknown, phase: Phase): Verdict | null {
   if (!(error instanceof ApiError)) return null;
   const { status } = error;
   if (status === 0) return { kind: "offline" };
-  // The session was rejected: the 401 handler is already signing out; keep the queue for the next login.
-  if (status === 401) return { kind: "offline" };
+  // The session was rejected (the 401 handler is already signing out; keep the queue for the next login)
+  // or the profile isn't complete yet (428): keep the queue until it is.
+  if (status === 401 || status === 428) return { kind: "offline" };
   if (status >= 500) return { kind: "retry" };
   // The rollo was deleted for everyone: its photos have nowhere to go.
   if (status === 410) return { kind: "gone" };

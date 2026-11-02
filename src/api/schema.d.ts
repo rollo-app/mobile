@@ -257,6 +257,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -318,6 +327,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -366,6 +384,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -405,6 +432,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -734,6 +770,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -880,6 +925,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -924,6 +978,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1105,6 +1168,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -1140,6 +1212,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1196,6 +1277,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1262,6 +1352,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -1305,6 +1404,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1373,6 +1481,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -1421,6 +1538,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1487,6 +1613,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -1515,6 +1650,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1560,6 +1704,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1634,6 +1787,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -1670,6 +1832,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1737,6 +1908,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1871,6 +2051,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -1936,6 +2125,15 @@ export interface paths {
                 };
                 /** @description Conflict with the current state */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2040,6 +2238,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -2097,6 +2304,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -2143,6 +2359,15 @@ export interface paths {
                 };
                 /** @description The rollo was deleted */
                 410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2218,6 +2443,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         trace?: never;
@@ -2266,6 +2500,15 @@ export interface paths {
                 };
                 /** @description Forbidden */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2354,6 +2597,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -2430,6 +2682,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         options?: never;
@@ -2491,6 +2752,15 @@ export interface paths {
                 };
                 /** @description Conflict with the current state */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2571,6 +2841,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         options?: never;
@@ -2639,6 +2918,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         /**
@@ -2695,6 +2983,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2800,6 +3097,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -2886,6 +3192,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -2945,6 +3260,15 @@ export interface paths {
                 };
                 /** @description Forbidden */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3016,6 +3340,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3119,6 +3452,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         options?: never;
@@ -3195,6 +3537,15 @@ export interface paths {
                 };
                 /** @description Conflict with the current state */
                 409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3286,6 +3637,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -3351,6 +3711,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         post?: never;
@@ -3396,6 +3765,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3476,6 +3854,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         post?: never;
@@ -3503,6 +3890,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3568,6 +3964,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3654,6 +4059,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -3718,6 +4132,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3792,6 +4215,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Daily limit or rate limit reached */
                 429: {
                     headers: {
@@ -3828,6 +4260,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3894,6 +4335,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -3953,6 +4403,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -4004,6 +4463,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4087,6 +4555,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         options?: never;
@@ -4139,6 +4616,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
