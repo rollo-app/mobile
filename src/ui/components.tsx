@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   buttonSmall: { minHeight: 30, paddingHorizontal: 12 },
-  smallLabel: { ...type.subheadline, fontWeight: "600" },
+  smallLabel: { ...type.subhead, fontWeight: "600" },
   field: { gap: spacing.sm },
   input: {
     minHeight: 50,

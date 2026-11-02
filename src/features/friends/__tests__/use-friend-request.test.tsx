@@ -20,7 +20,7 @@ function setup() {
   return { queryClient, wrapper };
 }
 
-const requestOf = (queryClient: ReturnType<typeof setup>["queryClient"]) => queryClient.getQueryData<(typeof cami)[]>(userSearchKey("cami"))?.[0].friendRequest;
+const requestOf = (queryClient: ReturnType<typeof setup>["queryClient"]) => queryClient.getQueryData<(typeof cami)[]>(userSearchKey("cami"))?.[0]?.friendRequest;
 
 describe("useFriendRequest on search results", () => {
   beforeEach(() => jest.resetAllMocks());

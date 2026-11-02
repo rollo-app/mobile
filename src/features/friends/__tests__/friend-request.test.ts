@@ -24,8 +24,8 @@ describe("afterSearchAction", () => {
   });
 
   it("cancel and reject put the row back to none", () => {
-    expect(afterSearchAction(rows, "b", "cancel")[1].friendRequest).toBe("none");
-    expect(afterSearchAction(rows, "c", "reject")[2].friendRequest).toBe("none");
+    expect(afterSearchAction(rows, "b", "cancel")[1]?.friendRequest).toBe("none");
+    expect(afterSearchAction(rows, "c", "reject")[2]?.friendRequest).toBe("none");
   });
 
   it("accept removes the person from the results", () => {
