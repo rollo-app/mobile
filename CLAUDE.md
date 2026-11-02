@@ -421,7 +421,8 @@ Si una skill contradice este archivo, **gana este archivo**.
     `@/features/*/actions`. En Testing Library 14 **`fireEvent` es async**: siempre `await fireEvent...`.
   - `jest.setup.ts` mockea SecureStore en memoria.
 - **Si el backend cambia la API:** `npm run api:generate` (o `API_SPEC=../backend/openapi.json npm run api:generate`)
-  y commiteá `schema.d.ts`. El job `contract` del CI falla si quedó atrás.
+  y commiteá `schema.d.ts`. El job `contract` del CI falla si quedó atrás: compara contra la rama del backend con el
+  mismo nombre que la de la app si existe (feature que cambia los dos repos), y si no contra `develop`.
 - **Ramas:** `develop` es la default. Features en `feature/*` desde `develop`, vuelven por PR con CI
   en verde. `main` es producción (PR + CI + 1 aprobación, el admin puede saltearla). Sin push directo.
 - Mensajes de commit y PR en español.
