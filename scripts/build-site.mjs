@@ -13,12 +13,13 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = process.env.SITE_DIST ?? join(root, "site", "dist");
 
 const SITE_URL = "https://rollo.juanifraga.com";
-// Switch after Apple approves the app: change the default "beta" -> "appstore", set APP_STORE_URL and add the official badge file
-// (scripts/site/app-store-badge.svg). The deploy does not set SITE_STORE_MODE, so this default is what ships.
+// The app is on the App Store: the button is the official badge (scripts/site/app-store-badge.svg, from Apple's marketing
+// toolbox, es-MX). The deploy does not set SITE_STORE_MODE, so this default is what ships; "beta" brings back TestFlight.
 /** @type {"beta" | "appstore"} */
-const STORE_MODE = process.env.SITE_STORE_MODE ?? "beta";
+const STORE_MODE = process.env.SITE_STORE_MODE ?? "appstore";
 const TESTFLIGHT_URL = "https://testflight.apple.com/join/Q557gZkR";
-const APP_STORE_URL = null; // filled in when the app is approved
+// No country in the path: Apple opens the store of whoever taps it.
+const APP_STORE_URL = "https://apps.apple.com/app/id6825843502";
 // Cloudflare Web Analytics (cookieless, page views only); public token from the Web Analytics site. SITE_CF_ANALYTICS_TOKEN=""
 // builds without it (the tests do). Never added to /entrar (strict CSP, no third-party requests).
 const CF_ANALYTICS_TOKEN = (process.env.SITE_CF_ANALYTICS_TOKEN ?? "773f8a15b710464095838f919b7389d8") || null;

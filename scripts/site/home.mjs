@@ -25,7 +25,7 @@ const cta = ({ storeMode, testflightUrl, appStoreUrl }, qr) =>
   `<div class="cta">
 ${
   storeMode === "appstore"
-    ? `<a class="store" href="${appStoreUrl}"><img src="/app-store-badge.svg" alt="Descargar en el App Store" width="156" height="52"></a>`
+    ? `<a class="store" href="${appStoreUrl}"><img src="/app-store-badge.svg" alt="Descárgalo en el App Store" width="156" height="52"></a>`
     : `<a class="btn" href="${testflightUrl}">Probar la beta en iPhone</a>`
 }
 <p class="note">${IPHONE_ONLY}</p>

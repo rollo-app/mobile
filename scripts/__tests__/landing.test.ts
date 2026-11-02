@@ -40,6 +40,7 @@ describe("the /soporte page", () => {
 });
 
 const TESTFLIGHT = "https://testflight.apple.com/join/Q557gZkR";
+const APP_STORE = "https://apps.apple.com/app/id6825843502";
 const SITE = "https://rollo.juanifraga.com";
 const visibleText = (html: string) =>
   html
@@ -110,12 +111,15 @@ describe("the home", () => {
     }
   });
 
-  it("has the TestFlight button in the hero and in the closing, with the iPhone-only line", () => {
-    const links = [...html.matchAll(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g)].filter((m) => m[1] === TESTFLIGHT);
+  it("has the App Store badge in the hero and in the closing, with the iPhone-only line and no beta", () => {
+    const links = [...html.matchAll(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g)].filter((m) => m[1] === APP_STORE);
     expect(links).toHaveLength(2);
-    for (const link of links) expect(link[2]).toContain("Probar la beta en iPhone");
+    for (const link of links) expect(link[2]).toContain('<img src="/app-store-badge.svg" alt="Descárgalo en el App Store"');
+    expect(html).not.toContain(TESTFLIGHT);
+    expect(visibleText(html)).not.toMatch(/\bbeta\b/i);
+    expect(existsSync(join(dist, "app-store-badge.svg"))).toBe(true);
     for (const id of ["inicio", "cierre"]) {
-      expect(section(id)).toContain(TESTFLIGHT);
+      expect(section(id)).toContain(APP_STORE);
       expect(section(id)).toContain("Solo para iPhone · Gratis");
     }
   });
@@ -145,12 +149,12 @@ describe("the home", () => {
     expect(head).toContain('<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0E0F14">');
   });
 
-  it("makes no requests to third parties and only links out to TestFlight", () => {
+  it("makes no requests to third parties and only links out to the App Store", () => {
     for (const [, url] of html.matchAll(/\bsrc="([^"]*)"/g)) expect(url).not.toMatch(/^(https?:)?\/\//);
     for (const [, url] of html.matchAll(/<link\b[^>]*href="([^"]*)"/g)) {
       if (/^(https?:)?\/\//.test(url!)) expect(url!.startsWith(`${SITE}/`)).toBe(true);
     }
-    for (const [, url] of html.matchAll(/<a\b[^>]*href="(https?:[^"]*)"/g)) expect(url).toBe(TESTFLIGHT);
+    for (const [, url] of html.matchAll(/<a\b[^>]*href="(https?:[^"]*)"/g)) expect(url).toBe(APP_STORE);
   });
 });
 
@@ -231,7 +235,7 @@ describe("the home in App Store mode", () => {
   it("swaps the button for the official badge, keeps the iPhone-only line and never says beta", () => {
     const { body } = render("appstore");
     const badges = body.match(
-      /<a\b[^>]*href="https:\/\/apps\.apple\.com\/app\/id6825843502"[^>]*>\s*<img src="\/app-store-badge\.svg" alt="Descargar en el App Store" width="156" height="52">\s*<\/a>/g,
+      /<a\b[^>]*href="https:\/\/apps\.apple\.com\/app\/id6825843502"[^>]*>\s*<img src="\/app-store-badge\.svg" alt="Descárgalo en el App Store" width="156" height="52">\s*<\/a>/g,
     );
     expect(badges).toHaveLength(2);
     expect(body).not.toContain(TESTFLIGHT);
@@ -414,11 +418,11 @@ describe("the home description", () => {
 });
 
 describe("the desktop QR", () => {
-  it("renders one QR for the TestFlight URL in the hero only, hidden unless wide and pointer-fine", () => {
+  it("renders one QR for the App Store URL in the hero only, hidden unless wide and pointer-fine", () => {
     const html = read("index.html");
     expect(html.match(/class="qr"/g)).toHaveLength(1);
     const block = html.match(/<div class="qr"[\s\S]*?<\/div>/)![0];
-    expect(block).toContain(`data-url="${TESTFLIGHT}"`);
+    expect(block).toContain(`data-url="${APP_STORE}"`);
     expect(block).toMatch(/<svg[^>]*aria-hidden="true"[\s\S]*currentColor/);
     expect(block).toContain("Escaneá con tu iPhone");
     expect(html.match(/<section[^>]*id="inicio"[\s\S]*?<\/section>/)![0]).toContain('class="qr"');
@@ -446,7 +450,7 @@ describe("the Smart App Banner", () => {
   it("is added in App Store mode only", () => {
     expect(head("appstore")).toContain('<meta name="apple-itunes-app" content="app-id=6825843502">');
     expect(head("beta")).not.toContain("apple-itunes-app");
-    expect(read("index.html")).not.toContain("apple-itunes-app");
+    expect(read("index.html")).toContain('<meta name="apple-itunes-app" content="app-id=6825843502">');
   });
 });
 
