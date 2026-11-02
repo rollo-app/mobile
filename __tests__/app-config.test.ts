@@ -40,8 +40,8 @@ describe("app config", () => {
     expect(configFor(undefined).ios?.associatedDomains).toBeUndefined();
   });
 
-  it("is version 1.1.0 (runtimeVersion follows it)", () => {
-    expect(appJson.expo.version).toBe("1.1.0");
+  it("is version 1.2.0 (runtimeVersion follows it)", () => {
+    expect(appJson.expo.version).toBe("1.2.0");
   });
 
   it("keeps the EAS project id push tokens need", () => {
