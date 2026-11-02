@@ -1,8 +1,14 @@
-import { friendLinkPath, friendLinkUrl, parseFriendCode } from "../friend-link";
+import { friendLinkPath, friendLinkUrl, friendShareMessage, parseFriendCode } from "../friend-link";
 
 describe("friendLinkUrl", () => {
   it("builds the app link for a code", () => {
     expect(friendLinkUrl("K7M2QX9A")).toBe("https://rollo.juanifraga.com/friends#K7M2QX9A");
+  });
+});
+
+describe("friendShareMessage", () => {
+  it("is one line with just the link", () => {
+    expect(friendShareMessage("K7M2QX9A")).toBe("Sumate como amigo en Rollo: https://rollo.juanifraga.com/friends#K7M2QX9A");
   });
 });
 

@@ -55,6 +55,15 @@ function open(hash: string) {
 }
 
 describe("the /friends page (friend link fallback)", () => {
+  it("has a link preview card (Open Graph and Twitter)", () => {
+    expect(html).toContain('<meta property="og:title" content="Te invitaron a Rollo">');
+    expect(html).toContain('<meta property="og:description" content="Sumate como amigo en Rollo.">');
+    expect(html).toContain('<meta property="og:image" content="https://rollo.juanifraga.com/og.png">');
+    expect(html).toContain('<meta property="og:url" content="https://rollo.juanifraga.com/friends">');
+    expect(html).toContain('<meta property="og:image:width" content="1200">');
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+  });
+
   it("shows the code and an Abrir Rollo button pointing at the deep link, without redirecting", () => {
     const { location, elements, history } = open("#K7M2QX9A");
     expect(elements.open.href).toBe("rollo://friends/K7M2QX9A");
