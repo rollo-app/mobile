@@ -395,6 +395,19 @@ describe("Profile and settings", () => {
     expect(screen.queryByRole("button", { name: "Viaje al sur, Admin" })).toBeNull();
   });
 
+  it("the profile step can sign out", async () => {
+    await signInAs({ user: { ...USER, name: null, username: null } });
+    const calls = mockApi({ "POST /auth/logout": json(204) });
+    await renderRouter(routes, { initialUrl: "/" });
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Cerrar sesión" }));
+
+    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(calls).toContain("POST /auth/logout");
+    expect(await getSessionToken()).toBeNull();
+  });
+
   it("log out tells the server, lands on the login and keeps the pending photos", async () => {
     const queue = await createQueue(memoryDb());
     getQueue.mockImplementation(() => Promise.resolve(queue));

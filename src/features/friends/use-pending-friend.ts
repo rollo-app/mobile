@@ -5,8 +5,8 @@ import { clearPendingFriend, getPendingFriend } from "@/storage/pending-friend";
 import { redeemFriend } from "./actions";
 import { friendsKey } from "./use-friends";
 
-/** Without signal, or a busy server, the permission is kept for the next try; a rejected one is useless. */
-const keepPending = (error: unknown) => error instanceof ApiError && (error.status === 0 || error.status === 429 || error.status >= 500);
+/** Without signal, a busy server or an incomplete profile (428), the permission is kept for the next try; a rejected one is useless. */
+const keepPending = (error: unknown) => error instanceof ApiError && (error.status === 0 || error.status === 428 || error.status === 429 || error.status >= 500);
 
 /** The only place where a pending friend link is redeemed. Failing never gets in the way of the sign-up. */
 export async function redeemPendingFriend(): Promise<void> {

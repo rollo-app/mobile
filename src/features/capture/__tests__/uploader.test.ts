@@ -517,6 +517,31 @@ describe("uploader", () => {
       expect(await queue.pending("u1")).toHaveLength(2);
     });
 
+    it("a 428 (profile incomplete) stops the pass and keeps the photos in the queue", async () => {
+      routes.push(() => json(428, { error: "Completá tu perfil" }));
+      await queue.enqueue(item({ id: "a", takenAt: 1 }));
+      await queue.enqueue(item({ id: "b", takenAt: 2 }));
+
+      await createUploader(deps).run();
+
+      expect(calls).toHaveLength(1);
+      expect(await queue.failed("u1")).toEqual([]);
+      expect(await queue.pending("u1")).toHaveLength(2);
+    });
+
+    it("a 428 on complete also keeps the photos in the queue", async () => {
+      happyServer();
+      routes.unshift((c) => (c.url.endsWith("/complete") ? json(428, { error: "Completá tu perfil" }) : undefined));
+      await queue.enqueue(item({ id: "a", takenAt: 1 }));
+      await queue.enqueue(item({ id: "b", takenAt: 2 }));
+
+      await createUploader(deps).run();
+
+      expect(calls.filter((c) => c.url.endsWith("/complete"))).toHaveLength(1);
+      expect(await queue.failed("u1")).toEqual([]);
+      expect(await queue.pending("u1")).toHaveLength(2);
+    });
+
     it("another 4xx on register (invalid data, expired token) is also permanent, with the server message as reason", async () => {
       routes.push(() => json(400, { error: "mal" }));
       await queue.enqueue(item());

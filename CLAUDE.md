@@ -21,7 +21,7 @@ Decisiones de producto:
   único token en SecureStore (`rollo.session`)** que usan todas las llamadas; un `401` en cualquiera cierra la
   sesión local y vuelve al login (`setUnauthorizedHandler` en `src/api/client.ts`). Los rollos salen de
   `GET /me/trips` (cache de TanStack Query); el rollo activo es el último que abriste y solo se guarda su id
-  (`rollo.activeTrip`). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
+  (`rollo.activeTrip`). "Completá tu perfil" tiene su propio "Cerrar sesión" (`complete-profile-screen.tsx`): el server contesta **428** "Completá tu perfil" a una cuenta sin nombre o sin @ (la cola de fotos y el código de amigo esperan, como con un 401). "Cerrar sesión" y "Borrar cuenta" están al final de Ajustes; cerrar sesión **no** borra la
   cola de fotos pendientes. **La cola es por cuenta:** cada foto guarda su dueño (`owner_user_id`, el id de la cuenta al encolarla; el id vive en SecureStore `rollo.sessionUserId`, se guarda en `signIn(token, userId)` y se borra en `signOut`; `getSessionUserId()` lo pide a `GET /me` si falta en una sesión vieja). Solo se suben y se ven (tablero de subidas, contadores, cupo, pins pendientes, nube) las de la cuenta con sesión; las de otra esperan sin marcarse fallidas ni borrarse y se suben solas cuando vuelve su dueña. Las filas sin dueño (de antes de este cambio, o encoladas por una sesión vieja que todavía no sabía su id) las reclama **solo esa misma sesión** cuando aprende su id por `GET /me` (`claimLegacyQueue`); una cuenta que entra después nunca se las queda. "Borrar cuenta" borra sus fotos pendientes (filas y archivos; `discardAccountQueue`). Si `POST /auth/logout` no llega al server, esa sesión queda en `rollo.pendingLogout`
   (SecureStore) y se reintenta en silencio al abrir la app, al volver a primer plano y al volver la red (`src/features/auth/pending-logout.ts`).
   **Link mágico:** el mail del código trae además un botón a `rollo.juanifraga.com/entrar#t=<token>&e=<email>` (fragmento:
@@ -422,7 +422,8 @@ Si una skill contradice este archivo, **gana este archivo**.
     `@/features/*/actions`. En Testing Library 14 **`fireEvent` es async**: siempre `await fireEvent...`.
   - `jest.setup.ts` mockea SecureStore en memoria.
 - **Si el backend cambia la API:** `npm run api:generate` (o `API_SPEC=../backend/openapi.json npm run api:generate`)
-  y commiteá `schema.d.ts`. El job `contract` del CI falla si quedó atrás.
+  y commiteá `schema.d.ts`. El job `contract` del CI falla si quedó atrás: compara contra la rama del backend con el
+  mismo nombre que la de la app si tiene commits que `develop` no tiene (feature de los dos repos sin mergear), y si no contra `develop`.
 - **Ramas:** `develop` es la default. Features en `feature/*` desde `develop`, vuelven por PR con CI
   en verde. `main` es producción (PR + CI + 1 aprobación, el admin puede saltearla). Sin push directo.
 - Mensajes de commit y PR en español.
