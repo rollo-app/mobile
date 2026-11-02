@@ -35,5 +35,7 @@ export function useUserSearch(raw: string) {
     error: result.isError ? errorMessage(result.error, "No se pudo buscar") : null,
     refetch: result.refetch,
     isRefetching: result.isRefetching,
+    /** True while `results` still belong to an older query (the next one is loading). */
+    isPlaceholderData: result.isPlaceholderData,
   };
 }

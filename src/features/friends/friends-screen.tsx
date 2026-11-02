@@ -2,13 +2,25 @@ import { router } from "expo-router";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
+import { FriendSearchResults } from "./friend-search-results";
 import { FriendRequestsRow } from "./friend-requests-row";
 import { InviteFriend } from "./invite-friend";
+import { normalizeSearch } from "./search-text";
 import { useFriends } from "./use-friends";
+import { useSearchBar } from "./use-search-bar";
 
 /** Your friends (photo, name, handle) and the way to invite more. Tapping one opens their profile. */
 export function FriendsScreen() {
   const { friends, error, refetch, isRefetching } = useFriends();
+  const text = useSearchBar();
+
+  if (normalizeSearch(text)) {
+    return (
+      <Screen grouped>
+        <FriendSearchResults text={text} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen grouped>
