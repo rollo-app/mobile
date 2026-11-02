@@ -71,6 +71,18 @@ describe("Friends search", () => {
     expect(mocked.sendFriendRequest).toHaveBeenCalledWith("u9");
   });
 
+  it("tapping Enviada cancels the request at once, without a menu", async () => {
+    typed("cami");
+    mocked.searchUsers.mockResolvedValue([camilo({ friendRequest: "sent" })]);
+    mocked.cancelFriendRequest.mockImplementation(async () => {
+      mocked.searchUsers.mockResolvedValue([camilo()]);
+    });
+    await renderRouter(routes, { initialUrl: "/friends" });
+    await fireEvent.press(await screen.findByLabelText("Solicitud enviada a Camilo Pérez, cancelar"));
+    expect(await screen.findByLabelText("Agregar a Camilo Pérez")).toBeVisible();
+    expect(mocked.cancelFriendRequest).toHaveBeenCalledWith("u9");
+  });
+
   it("tapping a row opens the profile", async () => {
     typed("cami");
     await renderRouter(routes, { initialUrl: "/friends" });

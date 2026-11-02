@@ -90,15 +90,6 @@ export function Button({
   );
 }
 
-/** The small secondary button's look without being pressable: the tap goes to the parent (a menu that opens on tap). */
-export function ButtonPill({ label, accessibilityLabel }: { label: string; accessibilityLabel?: string }) {
-  return (
-    <View accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} style={[styles.button, styles.buttonSmall, { backgroundColor: colors.fill }]}>
-      <Text style={[styles.smallLabel, { color: colors.label }]}>{label}</Text>
-    </View>
-  );
-}
-
 export function Field({ label, prefix, style, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
   return (
     <View style={styles.field}>
