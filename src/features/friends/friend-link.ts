@@ -11,6 +11,11 @@ export function friendLinkUrl(code: string): string {
   return `${SITE_URL}/friends#${code}`;
 }
 
+/** The text shared with the link: just the link (the /friends page already shows the code). */
+export function friendShareMessage(code: string): string {
+  return `Sumate como amigo en Rollo: ${friendLinkUrl(code)}`;
+}
+
 /** The raw code of an https friend link (fragment, may be empty); null if the URL isn't one. */
 function httpsFragment(input: string): string | null {
   const match = HTTPS_LINK.exec(input.trim());
