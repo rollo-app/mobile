@@ -1,4 +1,5 @@
 import type { UserProfile } from "@/features/profile/actions";
+import type { UserSearchResult } from "./actions";
 
 export type FriendRequestUi = "add" | "sent" | "received";
 
@@ -18,4 +19,11 @@ export function afterAction(profile: UserProfile, action: "send" | "cancel" | "a
     default:
       return { ...profile, friendRequest: "none" };
   }
+}
+
+/** The search results as they will be once the server accepts the action; accepting takes the person out (they move to Amigos). */
+export function afterSearchAction(results: UserSearchResult[], userId: string, action: "send" | "cancel" | "accept" | "reject"): UserSearchResult[] {
+  if (action === "accept") return results.filter((r) => r.id !== userId);
+  const friendRequest = action === "send" ? "sent" : "none";
+  return results.map((r) => (r.id === userId ? { ...r, friendRequest } : r));
 }

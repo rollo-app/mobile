@@ -49,36 +49,43 @@ export function ErrorText({ children }: { children: ReactNode }) {
 
 export function Button({
   label,
+  accessibilityLabel,
   onPress,
   disabled,
   loading,
   variant = "primary",
+  size = "regular",
   style,
 }: {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
   variant?: "primary" | "secondary";
+  /** "small" is a compact pill for inside a row. */
+  size?: "regular" | "small";
   style?: StyleProp<ViewStyle>;
 }) {
+  const small = size === "small";
   const isDisabled = disabled || loading;
   const primary = variant === "primary";
   const textColor = primary ? colors.onTint : colors.label;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        small && styles.buttonSmall,
         { backgroundColor: primary ? colors.tint : colors.fill, opacity: isDisabled ? 0.35 : pressed ? 0.7 : 1 },
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[type.headline, { color: textColor }]}>{label}</Text>}
+      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[small ? styles.smallLabel : type.headline, { color: textColor }]}>{label}</Text>}
     </Pressable>
   );
 }
@@ -288,6 +295,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: spacing.lg,
   },
+  buttonSmall: { minHeight: 30, paddingHorizontal: 12 },
+  smallLabel: { ...type.subheadline, fontWeight: "600" },
   field: { gap: spacing.sm },
   input: {
     minHeight: 50,
