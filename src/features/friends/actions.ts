@@ -83,3 +83,11 @@ export async function acceptFriendRequest(userId: string): Promise<Friend> {
 export async function rejectFriendRequest(userId: string): Promise<void> {
   await unwrap((await authedClient()).POST("/me/friend-requests/{userId}/reject", { params: { path: { userId } } }));
 }
+
+export type UserSearchResult = Schemas["UserSearchResult"];
+
+/** People matching a normalized query (2+ characters), at most 20. */
+export async function searchUsers(q: string): Promise<UserSearchResult[]> {
+  const { users } = await unwrap((await authedClient()).GET("/users/search", { params: { query: { q } } }));
+  return users;
+}
