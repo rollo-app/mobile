@@ -414,7 +414,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   (`flexShrink: 0`, `minWidth: 0`, `numberOfLines` + `ellipsizeMode`, `fontVariant: ["tabular-nums"]`, plurales sin "1 amigos"); en vez de zoom al 200 %
   y RTL se mira con **texto grande de iOS** (Dynamic Type) y en **modo oscuro**. Los límites salen de `src/api/schema.d.ts` y del backend.
 - **Lottie:** `text-to-lottie` arma un player web de preview (`npx degit diffusionstudio/lottie`): va **fuera del repo** (scratchpad),
-  nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio a `scripts/site/`) y salen de
+  nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio viven en rollo-app/web) y salen de
   `scripts/build-lottie.mjs`; en la app se reproducen con `lottie-react-native` (nativo: cambiarlo pide rebuild). El revelado (shader de Skia)
   se mantiene; Lottie es para piezas chicas e ilustrativas, nunca para estados de la UI.
   **Intro de una cuenta nueva** (`/intro`, `src/features/intro/`, fullScreenModal): al terminar "Completá tu perfil" se marca pendiente
@@ -456,7 +456,7 @@ npm test                      # ~1800 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
-npm run lottie                # regenera los Lottie (momento, bienvenida, intro; assets/lottie/ y scripts/site/)
+npm run lottie                # regenera los Lottie (momento, bienvenida, intro; assets/lottie/)
 npx expo run:ios --device     # compila e instala el dev build en el iPhone
 npm start                     # día a día, con el dev build ya instalado
 ```
@@ -482,30 +482,12 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 ## Sitio público
 
-`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** corta (hero con el video del
-celular + 2 secciones, mapa y revelado, con una captura de la app cada una + cierre; badge oficial "Descárgalo en el App Store"), `/soporte` (preguntas frecuentes y contacto;
-`/#soporte` cae en el link a esa página), `/privacidad`, `/terminos`, `/friends` (respaldo del link de amistad: código, "Abrir Rollo" y bajar la app, sin redirigir) y `/entrar` (el link mágico del mail; script inline, sin pedidos a
-ningún lado, con su CSP). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
-se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/` (la home vive en `scripts/site/home.mjs` y `mockups.mjs`, los
-tokens de color compartidos en `scripts/site/tokens.mjs`). `npm run site:build` para verlo, `npm run site:deploy` para publicarlo.
-Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y marketing de App Store Connect.
-- **Botón de la home:** la app está en la App Store (noviembre 2026), así que `STORE_MODE` es `"appstore"` por defecto en
-  `build-site.mjs` (`SITE_STORE_MODE=beta` vuelve al botón de TestFlight). El botón es el badge oficial de Apple
-  (`scripts/site/app-store-badge.svg`, "Descárgalo en el App Store", negro, es-MX, bajado de
-  `toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/es-mx`; no se dibuja a mano) y apunta a
-  `APP_STORE_URL` (`https://apps.apple.com/app/id6825843502`, sin país: Apple abre la tienda de quien lo toca). Sin el badge o sin
-  `APP_STORE_URL` el build falla; la ruta del badge se puede pisar con `SITE_APP_STORE_BADGE` (lo usa el test). El deploy no setea
-  `SITE_STORE_MODE`, así que lo que sale es el default del código.
-- **Video del hero:** proyecto Remotion en `video/` (escenas que recrean la app con las fotos del viaje de Juani: cámara, mapa real, revelado, galería, perfil y momento); las fotos no entran al repo (`npm run photos -- <zip>` en `video/` las prepara en una carpeta ignorada), `npm run render` deja `hero.mp4`, `hero.webm` y `hero-poster.jpg` en `scripts/site/` (se commitean); con "Reducir movimiento" queda el póster.
-- **Imágenes de la home:** el video del hero (`hero.mp4`, `hero.webm`, `hero-poster.jpg`) y las capturas `map.jpg` / `reveal.jpg` salen de `video/` (Remotion) y se commitean en `scripts/site/`; `npm run render` en `video/` rehace todo y `npm run stills` solo las dos capturas, sin recodificar los videos. En el celular todo va sobre un solo margen de 20 px y una escala fija de espacios (variables `--s-*` de `home.mjs`).
-- **Animaciones:** Motion (`animate`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
-  `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
-  Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.
-- **Analytics:** Cloudflare Web Analytics (sin cookies, solo vistas). El token (público) está en `CF_ANALYTICS_TOKEN` de `build-site.mjs`; `SITE_CF_ANALYTICS_TOKEN=""` arma sin beacon (lo usan los tests). Las vistas se ven en Cloudflare → Web Analytics → `rollo.juanifraga.com`. El beacon va en todas las páginas menos `/entrar`; en `/friends` el CSP suma `static.cloudflareinsights.com` solo cuando hay token.
-- **QR en desktop:** el hero lleva un QR inline (`qrcode`, generado en el build, del link de TestFlight o de la App Store según `STORE_MODE`) con "Escaneá con tu iPhone"; solo se ve en pantallas anchas con mouse (`hover:hover` + `pointer:fine`).
-- **Smart App Banner:** con `STORE_MODE === "appstore"` la home suma `apple-itunes-app` (app-id 6825843502); en beta no hay nada.
-- **Imagen para compartir:** `npm run og` regenera `scripts/site/og.png` (1200×630, `scripts/build-og.mjs`: título a la izquierda y el still del revelado en un marco de teléfono a la derecha); se commitea.
-Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Juani).
+Vive en su propio repo, [rollo-app/web](https://github.com/rollo-app/web) (se separó el 11/11/2026; la historia anterior
+quedó acá): landing, `/soporte`, `/privacidad`, `/terminos`, `/friends` y `/entrar` (las dos que usan los links de la app), el
+archivo de Universal Links y el video del hero (Remotion). Se sirve en `somosrollo.com` y sigue en `rollo.juanifraga.com`
+(los builds instalados declaran ese dominio para Universal Links). Los legales se editan allá (`docs/legal/`); acá queda
+`docs/legal/etiquetas-privacidad.md` (interna, para App Store Connect). El video del hero usa una copia del estilo del mapa
+de la app (`src/features/map/style.ts` + `positron.json`): si cambia la paleta, copiarlos también allá.
 
 ## Apple
 
