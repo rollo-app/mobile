@@ -51,7 +51,14 @@ Decisiones de producto:
   `ProfileForm` (`defaultPhotoUrl`), que al montar la baja (`sendFromUrl` de `useAvatarUpload`) y la sube con el flujo normal del avatar (spinner,
   error con "Reintentar"); "Cambiar foto" la reemplaza. Si no se puede bajar, no pasa nada. Si la app se cierra antes de ese paso, la cuenta
   queda sin foto. En Jest, `jest.setup.ts` mockea el paquete
-  (`signIn` resuelve "cancelled" salvo que el test diga otra cosa). **Pendiente antes de mandar a revisión:** Sign in with Apple (guideline 4.8).
+  (`signIn` resuelve "cancelled" salvo que el test diga otra cosa). **Continuar con Apple** (Sign in with Apple, `expo-apple-authentication`, nativo; lo pide la guideline 4.8 por ofrecer Google): el botón
+  oficial de Apple (negro en claro, blanco en oscuro, 50 pt y bordes redondos como `Button`) va entre "Continuar" y Google. `signInWithApple`
+  (`actions.ts`, `getAppleAccount` en `apple.ts`) pide nombre y email, manda el identity token a `POST /auth/apple` con el nombre (Apple lo da
+  **solo la primera vez**; el backend lo usa para precompletar "Completá tu perfil") y guarda la sesión. Cancelar no hace nada; otro error va
+  inline. Apple no da foto. **Solo en el build de producción:** la capability la firma la cuenta paga (`ios.usesAppleSignIn` en la variante de
+  producción de `app.config.ts`); el dev build (Personal Team) no puede, así que ahí el botón no aparece (`appleSignInEnabled` /
+  `useAppleSignInAvailable`, que además pregunta `isAvailableAsync`). Se prueba en TestFlight. En Jest, `jest.setup.ts` mockea el paquete
+  (el botón es un `Pressable` "Continuar con Apple"; `signInAsync` cancela salvo que el test diga otra cosa).
 - **Cámara propia** (**VisionCamera** `react-native-vision-camera` v5, módulo compartido `src/features/camera/`, la misma de la captura y del momento): la del sistema
   (`launchCameraAsync`) siempre muestra "Repetir / Usar foto" después de sacar y no se puede evitar, y sin videos ya no hace falta.
   **Calidad máxima en cada iPhone** (`device.ts`): atrás usa la cámara virtual con más lentes (quad > triple > dual-wide > dual > gran angular), así iOS

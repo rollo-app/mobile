@@ -1,4 +1,6 @@
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import * as AppleAuthentication from "expo-apple-authentication";
+import Constants from "expo-constants";
 import * as ImagePicker from "expo-image-picker";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -164,6 +166,80 @@ describe("Login", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Empezar" }, { timeout: 4000 }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(calls).toEqual(["POST /auth/email/start", "POST /auth/email/verify", "GET /usernames/juani", "PATCH /me"]);
+  });
+
+  describe("Continuar con Apple", () => {
+    // Only the production build carries the entitlement (app.config.ts): turn it on for these tests.
+    const config = Constants.expoConfig as { ios?: Record<string, unknown> };
+    const before = config.ios;
+    beforeEach(() => {
+      config.ios = { ...before, usesAppleSignIn: true };
+    });
+    afterEach(() => {
+      config.ios = before;
+    });
+
+    it("a new account goes to Completá tu perfil with the name Apple gave", async () => {
+      jest.mocked(AppleAuthentication.signInAsync).mockResolvedValueOnce({
+        user: "a1",
+        identityToken: "atok",
+        fullName: { givenName: "Lucía", familyName: "Pérez" },
+        email: null,
+        realUserStatus: 1,
+        state: null,
+        authorizationCode: null,
+      } as AppleAuthentication.AppleAuthenticationCredential);
+      const calls = mockApi({
+        "POST /auth/apple": async (req) => {
+          expect(await req.json()).toEqual({ identityToken: "atok", name: "Lucía Pérez" });
+          return json(200, { token: "tok", user: { ...USER, name: "Lucía Pérez", username: null }, isNew: true });
+        },
+      });
+      await renderRouter(routes, { initialUrl: "/" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
+
+      expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+      expect(screen.getByLabelText("Tu nombre").props.value).toBe("Lucía Pérez");
+      expect(await getSessionToken()).toBe("tok");
+      expect(calls).toEqual(["POST /auth/apple"]);
+    });
+
+    it("canceling Apple's sheet stays on the email step without calling the server", async () => {
+      const calls = mockApi({});
+      await renderRouter(routes, { initialUrl: "/" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
+
+      await waitFor(() => expect(AppleAuthentication.signInAsync).toHaveBeenCalled());
+      expect(screen.getByLabelText("Tu email")).toBeVisible();
+      expect(screen.queryByText(/No se pudo/)).toBeNull();
+      expect(calls).toEqual([]);
+    });
+
+    it("shows the server's error inline", async () => {
+      jest.mocked(AppleAuthentication.signInAsync).mockResolvedValueOnce({
+        user: "a1",
+        identityToken: "atok",
+        fullName: null,
+        email: null,
+        realUserStatus: 1,
+        state: null,
+        authorizationCode: null,
+      } as AppleAuthentication.AppleAuthenticationCredential);
+      mockApi({ "POST /auth/apple": json(409, { error: "Ya tenés una cuenta con este email. Entrá con el código que te mandamos por mail." }) });
+      await renderRouter(routes, { initialUrl: "/" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
+
+      expect(await screen.findByText("Ya tenés una cuenta con este email. Entrá con el código que te mandamos por mail.")).toBeVisible();
+    });
+  });
+
+  it("without the Sign in with Apple entitlement (the development build) there is no Apple button", async () => {
+    await renderRouter(routes, { initialUrl: "/" });
+    expect(await screen.findByRole("button", { name: "Continuar con Google" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Continuar con Apple" })).toBeNull();
   });
 
   it("Continuar con Google: a new account goes to Completá tu perfil with the session saved", async () => {
