@@ -53,6 +53,11 @@ describe("app config", () => {
     ]);
   });
 
+  it("only the production build asks for Sign in with Apple (the free Personal Team can't sign it)", () => {
+    expect(configFor("production").ios?.usesAppleSignIn).toBe(true);
+    expect(configFor(undefined).ios?.usesAppleSignIn).toBeUndefined();
+  });
+
   it("is version 1.3.0 (runtimeVersion follows it)", () => {
     expect(appJson.expo.version).toBe("1.3.0");
   });

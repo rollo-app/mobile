@@ -552,3 +552,20 @@ jest.mock("@react-native-google-signin/google-signin", () => ({
   isErrorWithCode: (e: unknown) => typeof e === "object" && e !== null && "code" in e,
   statusCodes: { SIGN_IN_CANCELLED: "SIGN_IN_CANCELLED", IN_PROGRESS: "IN_PROGRESS", PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE" },
 }));
+
+// Sign in with Apple is native: the sheet answers "canceled" unless a test sets what signInAsync resolves to. The native button
+// becomes a plain pressable with the label iOS reads on it.
+jest.mock("expo-apple-authentication", () => {
+  const { Pressable, Text } = require("react-native");
+  return {
+    isAvailableAsync: jest.fn(async () => true),
+    signInAsync: jest.fn(async () => {
+      throw Object.assign(new Error("canceled"), { code: "ERR_REQUEST_CANCELED" });
+    }),
+    AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
+    AppleAuthenticationButtonType: { SIGN_IN: 0, CONTINUE: 1 },
+    AppleAuthenticationButtonStyle: { WHITE: 0, WHITE_OUTLINE: 1, BLACK: 2 },
+    AppleAuthenticationButton: ({ onPress }: { onPress: () => void }) =>
+      require("react").createElement(Pressable, { accessibilityRole: "button", accessibilityLabel: "Continuar con Apple", onPress }, require("react").createElement(Text, null, "Continuar con Apple")),
+  };
+});

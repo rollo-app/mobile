@@ -246,6 +246,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/apple": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with a Sign in with Apple identity token
+         * @description Same result as `/auth/email/verify` and the same rules as `/auth/google`. The token must be signed by Apple, issued for one of our bundle ids (`APPLE_CLIENT_IDS`) and not expired; if it carries an email, Apple must have verified it. Any failure is the same 400. The Apple account id finds the user it was linked to before (later tokens may come without an email); otherwise the email signs into that email's account or creates it, and links it. An existing account is only linked when Apple owns the address (iCloud, or the Hide My Email relay); any other address with an account answers 409 (sign in with the emailed code). A first sign-in without an email is a 400. `name`, which Apple gives only on the first sign-in, prefills an account without a name. 503 when Apple sign-in is not configured, or in degraded mode for an email without an account.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AppleSignInRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthSession"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Storage limit reached; new uploads are paused */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/logout": {
         parameters: {
             query?: never;
@@ -4874,6 +4944,18 @@ export interface components {
              * @example eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCIuLi4iOiIuLi4ifQ.c2ln
              */
             idToken: string;
+        };
+        AppleSignInRequest: {
+            /**
+             * @description Identity token from Sign in with Apple on the phone (a JWT signed by Apple)
+             * @example eyJraWQiOiIuLi4iLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwcGxlaWQuYXBwbGUuY29tIiwiLi4uIjoiLi4uIn0.c2ln
+             */
+            identityToken: string;
+            /**
+             * @description Full name Apple gave the app (only on the first sign-in). Suggested as the profile name if the account has none; trimmed, single spaces, cut to 30 characters
+             * @example Lucía Pérez
+             */
+            name?: string;
         };
         ReceivedFriendRequests: {
             /** @description Pending requests to you, most recent first */
