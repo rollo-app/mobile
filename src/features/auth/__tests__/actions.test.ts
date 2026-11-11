@@ -81,6 +81,17 @@ describe("fetchMe", () => {
 });
 
 describe("logout", () => {
+  it("also signs out of Google, so the next Google sign-in can pick another account", async () => {
+    const { GoogleSignin } = jest.requireMock("@react-native-google-signin/google-signin") as { GoogleSignin: { signOut: jest.Mock } };
+    GoogleSignin.signOut.mockClear();
+    await setSessionToken("tok");
+    mockFetch(204);
+
+    await logout();
+
+    expect(GoogleSignin.signOut).toHaveBeenCalled();
+  });
+
   it("tells the server and clears the local session", async () => {
     await setSessionToken("tok");
     const fetchMock = mockFetch(204);

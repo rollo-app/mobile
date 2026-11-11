@@ -176,6 +176,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with a Google ID token
+         * @description Same result as `/auth/email/verify`. The token must be signed by Google, issued for one of our OAuth clients (`GOOGLE_CLIENT_IDS`), not expired, and carry an email Google verified; any failure is the same 400. The Google account id finds the user it was linked to before (even if its email changed); otherwise the verified email signs into that email's account or creates it, and links it. An existing account is only linked when Google owns the address (Gmail, or a Workspace domain matching `hd`); for any other address with an account the answer is 409 (sign in with the emailed code instead). An account without a name gets the Google profile name (single spaces, up to 30 characters) as a suggestion: it stays incomplete (`isNew`) until it has a username, so the profile step shows it prefilled. 503 when Google sign-in is not configured, or in degraded mode for an email without an account.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GoogleSignInRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthSession"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Storage limit reached; new uploads are paused */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/logout": {
         parameters: {
             query?: never;
@@ -4797,6 +4867,13 @@ export interface components {
              * @example dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
              */
             verifier?: string;
+        };
+        GoogleSignInRequest: {
+            /**
+             * @description Google ID token from Google Sign-In on the phone (a JWT signed by Google)
+             * @example eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCIuLi4iOiIuLi4ifQ.c2ln
+             */
+            idToken: string;
         };
         ReceivedFriendRequests: {
             /** @description Pending requests to you, most recent first */

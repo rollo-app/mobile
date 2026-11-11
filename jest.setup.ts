@@ -541,3 +541,14 @@ jest.mock("expo-crypto", () => {
     },
   };
 });
+
+// Google Sign-In is native: the account picker answers "cancelled" unless a test sets what signIn resolves to.
+jest.mock("@react-native-google-signin/google-signin", () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    signIn: jest.fn(async () => ({ type: "cancelled", data: null })),
+    signOut: jest.fn(async () => null),
+  },
+  isErrorWithCode: (e: unknown) => typeof e === "object" && e !== null && "code" in e,
+  statusCodes: { SIGN_IN_CANCELLED: "SIGN_IN_CANCELLED", IN_PROGRESS: "IN_PROGRESS", PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE" },
+}));

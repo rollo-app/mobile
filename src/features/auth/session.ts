@@ -7,6 +7,8 @@ import { forgetPushToken } from "@/features/notifications/push-token";
 import { clearActiveTripId } from "@/storage/active-trip";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@/storage/session";
 import { clearSessionUserId, getSessionUserIdStored, setSessionUserId } from "@/storage/session-user";
+import { forgetGoogleAccount } from "./google";
+import { setPendingGooglePhoto } from "./google-photo";
 
 /**
  * The account's session: the token lives in the keychain and this module tells whoever is
@@ -54,6 +56,9 @@ export async function signOut(): Promise<void> {
   await clearActiveTripId();
   // The next account must not get this one's moments (covers logout, delete account and a 401).
   await cancelMomentNotifications();
+  // Same for Google: the next Google sign-in shows the account picker instead of reusing this account.
+  await forgetGoogleAccount();
+  setPendingGooglePhoto(null);
   queryClient.clear();
   known = null;
   notify(null);
