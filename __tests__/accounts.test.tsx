@@ -1,3 +1,4 @@
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import * as ImagePicker from "expo-image-picker";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -163,6 +164,91 @@ describe("Login", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Empezar" }, { timeout: 4000 }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(calls).toEqual(["POST /auth/email/start", "POST /auth/email/verify", "GET /usernames/juani", "PATCH /me"]);
+  });
+
+  it("Continuar con Google: a new account goes to Completá tu perfil with the session saved", async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: "Juani", email: "juani@gmail.com", photo: null, familyName: null, givenName: null } },
+    });
+    const calls = mockApi({
+      "POST /auth/google": async (req) => {
+        expect(await req.json()).toEqual({ idToken: "gtok" });
+        return json(200, { token: "tok", user: { ...USER, name: null, username: null }, isNew: true });
+      },
+    });
+    await renderRouter(routes, { initialUrl: "/" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    expect(await getSessionToken()).toBe("tok");
+    expect(calls).toEqual(["POST /auth/google"]);
+  });
+
+  it("Continuar con Google with a Google photo: the profile step uploads it as the default photo", async () => {
+    const photoUrl = "https://lh3.googleusercontent.com/a/xyz=s512";
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: "Juani", email: "juani@gmail.com", photo: photoUrl, familyName: null, givenName: null } },
+    });
+    mockApi({ "POST /auth/google": json(200, { token: "tok", user: { ...USER, name: "Juani", username: null }, isNew: true }) });
+    const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue({ ...USER, username: null, avatarUrl: "/avatars/u1/a.jpg" });
+    upload.mockClear();
+    const { File } = jest.requireMock("expo-file-system") as { File: { downloadFileAsync: jest.Mock } };
+    File.downloadFileAsync.mockClear();
+    await renderRouter(routes, { initialUrl: "/" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    await waitFor(() => expect(upload).toHaveBeenCalledWith({ uri: "file:///cache/tmp", width: 512, height: 512 }));
+    expect(File.downloadFileAsync.mock.calls[0]![0]).toBe(photoUrl);
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Cambiar foto")).toBeVisible();
+  });
+
+  it("Continuar con Google without a Google photo leaves the photo empty", async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: "Juani", email: "juani@gmail.com", photo: null, familyName: null, givenName: null } },
+    });
+    mockApi({ "POST /auth/google": json(200, { token: "tok", user: { ...USER, name: "Juani", username: null }, isNew: true }) });
+    const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue(USER);
+    upload.mockClear();
+    await renderRouter(routes, { initialUrl: "/" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    expect(screen.getByText("Agregar foto")).toBeVisible();
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it("closing Google's picker stays on the email step without calling the server", async () => {
+    const calls = mockApi({});
+    await renderRouter(routes, { initialUrl: "/" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    await waitFor(() => expect(GoogleSignin.signIn).toHaveBeenCalled());
+    expect(screen.getByLabelText("Tu email")).toBeVisible();
+    expect(screen.queryByText(/No se pudo/)).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  it("shows the server's error inline when Google sign-in fails", async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: null, email: "x@gmail.com", photo: null, familyName: null, givenName: null } },
+    });
+    mockApi({ "POST /auth/google": json(400, { error: "No pudimos verificar tu cuenta de Google. Probá de nuevo." }) });
+    await renderRouter(routes, { initialUrl: "/" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    expect(await screen.findByText("No pudimos verificar tu cuenta de Google. Probá de nuevo.")).toBeVisible();
+    expect(await getSessionToken()).toBeNull();
   });
 
   it("a returning user with a name goes straight into the app", async () => {

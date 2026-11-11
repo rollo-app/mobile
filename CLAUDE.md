@@ -38,6 +38,20 @@ Decisiones de producto:
   `associatedDomains` en `app.config.ts`; la cuenta gratis no los firma): `https://…/entrar#…` y `https://…/friends#CODE` abren la app directo y
   `app/+native-intent.tsx` los traduce a `/login?token=…&email=…` y `/friends/<CODE>` (`magicLinkPath`, `friendLinkPath`); sin la app, o con un build
   viejo, quedan las páginas del sitio. El sitio publica `/.well-known/apple-app-site-association` (`application/json` vía `_headers`).
+  **Continuar con Google** (botón secundario debajo de "Continuar" en el paso del email; `@react-native-google-signin/google-signin` v17, nativo):
+  `signInWithGoogle` (`actions.ts`) abre el selector de cuentas de Google (`getGoogleIdToken` en `google.ts`), manda el ID token a
+  `POST /auth/google` y guarda la sesión igual que el código (el gate lleva a "Completá tu perfil" si hace falta). Cerrar el selector no hace
+  nada (devuelve `null`); cualquier otra falla es un error inline. El token se pide para el client **web** (`GOOGLE_WEB_CLIENT_ID`, la audiencia
+  que chequea el backend) y cada build usa su client de iOS (`googleIosClientId` según el bundle id; IDs en `src/config.ts`, proyecto de Google
+  Cloud `rollo-514415`). El URL scheme de vuelta lo pone el plugin en `app.config.ts`, uno por variante. `signOut` (cerrar sesión, borrar
+  cuenta, 401) también hace `GoogleSignin.signOut()`, así el próximo login muestra el selector. **Nombre y foto por defecto:** el backend le pone a
+  la cuenta nueva el nombre de Google (lo trae `GET /me` y "Completá tu perfil" lo muestra editable). La foto la pone la app: se pide a Google en
+  512 px (`profileImageSize`; con el avatar de letra de Google el SDK da `photo: null` y no se usa nada), `signInWithGoogle` la deja en memoria
+  (`google-photo.ts`, solo si la cuenta es nueva y sin foto; `signOut` la borra) y "Completá tu perfil" la toma una vez y se la pasa a
+  `ProfileForm` (`defaultPhotoUrl`), que al montar la baja (`sendFromUrl` de `useAvatarUpload`) y la sube con el flujo normal del avatar (spinner,
+  error con "Reintentar"); "Cambiar foto" la reemplaza. Si no se puede bajar, no pasa nada. Si la app se cierra antes de ese paso, la cuenta
+  queda sin foto. En Jest, `jest.setup.ts` mockea el paquete
+  (`signIn` resuelve "cancelled" salvo que el test diga otra cosa). **Pendiente antes de mandar a revisión:** Sign in with Apple (guideline 4.8).
 - **Cámara propia** (**VisionCamera** `react-native-vision-camera` v5, módulo compartido `src/features/camera/`, la misma de la captura y del momento): la del sistema
   (`launchCameraAsync`) siempre muestra "Repetir / Usar foto" después de sacar y no se puede evitar, y sin videos ya no hace falta.
   **Calidad máxima en cada iPhone** (`device.ts`): atrás usa la cámara virtual con más lentes (quad > triple > dual-wide > dual > gran angular), así iOS

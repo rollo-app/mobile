@@ -40,6 +40,19 @@ describe("app config", () => {
     expect(configFor(undefined).ios?.associatedDomains).toBeUndefined();
   });
 
+  it("registers each build's Google Sign-In URL scheme", () => {
+    const googlePlugin = (variant: string | undefined) =>
+      configFor(variant).plugins?.find((p) => Array.isArray(p) && p[0] === "@react-native-google-signin/google-signin");
+    expect(googlePlugin("production")).toEqual([
+      "@react-native-google-signin/google-signin",
+      { iosUrlScheme: "com.googleusercontent.apps.331161321522-eg16sji80rga1jor4b5k8ebhs4tc750f" },
+    ]);
+    expect(googlePlugin(undefined)).toEqual([
+      "@react-native-google-signin/google-signin",
+      { iosUrlScheme: "com.googleusercontent.apps.331161321522-22bg1d28fj30lnliseebuit2v7bc5lcm" },
+    ]);
+  });
+
   it("is version 1.2.0 (runtimeVersion follows it)", () => {
     expect(appJson.expo.version).toBe("1.2.0");
   });
