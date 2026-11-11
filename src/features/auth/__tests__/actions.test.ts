@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { createHash } from "crypto";
 import { getLoginLinkVerifier, setLoginLinkVerifier } from "@/storage/login-link-verifier";
 import { createQueue, type QueuedMedia } from "@/features/capture/queue";

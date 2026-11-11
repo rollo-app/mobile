@@ -40,14 +40,8 @@ yarn-error.*
 /ios
 /android
 
-# static site build
-/site/dist/
 
 # local research notes and reports (not versioned)
 /reports/
 /research_notes/
 
-# Landing video (Remotion): photos never enter git
-video/public/photos/
-video/src/data/photos.json
-video/out/
