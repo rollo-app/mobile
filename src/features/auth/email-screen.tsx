@@ -5,6 +5,7 @@ import { useColorScheme, View } from "react-native";
 import { errorMessage } from "@/api/client";
 import { Button, ErrorText, Field } from "@/ui/components";
 import { AuthScreen } from "./auth-screen";
+import { GoogleSignInButton } from "./google-button";
 import { isValidEmail } from "./email";
 import { TermsNotice } from "./terms-notice";
 import { useAppleSignIn, useAppleSignInAvailable } from "./use-apple-sign-in";
@@ -74,9 +75,7 @@ export function EmailScreen({ initialEmail = "" }: { initialEmail?: string }) {
           />
         </View>
       )}
-      <Button
-        label="Continuar con Google"
-        variant="secondary"
+      <GoogleSignInButton
         onPress={() => {
           resetAll();
           google.mutate();
