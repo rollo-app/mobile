@@ -201,3 +201,23 @@ describe("errorMessage", () => {
     expect(errorMessage(null, "No se pudo")).toBeNull();
   });
 });
+
+describe("unwrap error code", () => {
+  it("keeps the server's machine-readable `code` on the ApiError", async () => {
+    mockFetch(403, { error: "Cerrado", code: "REGISTRATIONS_CLOSED" });
+    const api = createApiClient({ baseUrl: BASE });
+    const error = await unwrap(api.POST("/auth/google", { body: { idToken: "x" } })).catch((e) => e);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.status).toBe(403);
+    expect(error.code).toBe("REGISTRATIONS_CLOSED");
+  });
+
+  it("has no code when the server sends none", async () => {
+    mockFetch(400, { error: "Mal" });
+    const api = createApiClient({ baseUrl: BASE });
+    const error = await unwrap(api.POST("/auth/google", { body: { idToken: "x" } })).catch((e) => e);
+
+    expect(error.code).toBeUndefined();
+  });
+});

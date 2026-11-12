@@ -9,7 +9,8 @@ export default function AuthLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: "minimal" }}>
       <Stack.Protected guard={gate === "login"}>
-        <Stack.Screen name="email" />
+        <Stack.Screen name="welcome" />
+        <Stack.Screen name="email" options={{ headerShown: true, title: "", headerTransparent: true }} />
         <Stack.Screen name="code" options={{ headerShown: true, title: "", headerTransparent: true }} />
       </Stack.Protected>
       <Stack.Protected guard={gate === "profile"}>

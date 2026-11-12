@@ -10,7 +10,7 @@ Notifications.setNotificationHandler({
 });
 
 /** Where the app still is on its way in ("/" redirects home, the rest is the login): a push waits until it lands. */
-const LANDING = new Set(["/", "/email", "/code", "/profile"]);
+const LANDING = new Set(["/", "/welcome", "/email", "/code", "/profile"]);
 
 /** Ids already opened, so the same tap (cold start + listener, or a remount) never navigates twice. */
 const handled = new Set<string>();

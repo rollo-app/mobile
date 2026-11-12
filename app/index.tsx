@@ -6,7 +6,7 @@ import { useActiveTrip } from "@/features/trips/use-active-trip";
 export default function IndexScreen() {
   const { session, me, failed } = useMe();
   const gate = gateFor({ session, me, meFailed: failed });
-  if (gate === "login") return <Redirect href="/email" />;
+  if (gate === "login") return <Redirect href="/welcome" />;
   if (gate === "profile") return <Redirect href="/profile" />;
   if (gate !== "app") return null;
   return <Home />;

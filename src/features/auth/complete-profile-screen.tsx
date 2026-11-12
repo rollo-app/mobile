@@ -35,7 +35,7 @@ export function CompleteProfileScreen() {
         <ProfileForm user={me} submitLabel="Listo" askFriendCode defaultPhotoUrl={googlePhoto} beforeApply={() => markAppIntroPending().catch(() => {})} onSaved={() => {}} />
         {/* The way out of this step without killing the app: the server blocks everything else (428) until the profile is complete. */}
         <View style={styles.signOut}>
-          <Button label="Cerrar sesión" variant="secondary" disabled={logOut.isPending} onPress={() => logOut.mutate(undefined, { onSuccess: () => router.replace("/email") })} />
+          <Button label="Cerrar sesión" variant="secondary" disabled={logOut.isPending} onPress={() => logOut.mutate(undefined, { onSuccess: () => router.replace("/welcome") })} />
           {logOut.error && <ErrorText>{errorMessage(logOut.error, "No se pudo cerrar sesión")}</ErrorText>}
         </View>
       </ScrollView>
