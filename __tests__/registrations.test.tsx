@@ -3,7 +3,7 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
-import { Linking } from "react-native";
+import { Keyboard, Linking } from "react-native";
 import "@/test/reanimated";
 import { forgetMagicLinks } from "@/features/auth/magic-link";
 import { setLoginLinkVerifier } from "@/storage/login-link-verifier";
@@ -48,6 +48,16 @@ describe("Welcome screen", () => {
     await act(() => router.back());
     await fireEvent.press(await screen.findByRole("button", { name: "Ya tengo cuenta" }));
     await waitFor(() => expect(screen).toHavePathname("/email"));
+  });
+
+  it("tapping the screen outside the field hides the keyboard", async () => {
+    mockApi({ "GET /config": CLOSED });
+    const dismiss = jest.spyOn(Keyboard, "dismiss");
+    await renderRouter(routes, { initialUrl: "/welcome" });
+
+    await fireEvent.press(await screen.findByText("Rollo"));
+    expect(dismiss).toHaveBeenCalled();
+    dismiss.mockRestore();
   });
 
   it("a logged-out user opening the app lands on it", async () => {
