@@ -71,7 +71,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   trips.fetchTrip.mockImplementation(async (id: string) => (id === OTRO ? detail(OTRO, "Bariloche") : detail()));
   trips.joinTrip.mockResolvedValue(detail().trip);
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [] } as never);
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [], nextCursor: null } as never);
   push.registerPushToken.mockResolvedValue();
   trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(OTRO, "Bariloche")] });
   friends.fetchFriends.mockResolvedValue([]);
@@ -241,7 +241,7 @@ describe("tapping a push", () => {
   });
 
   it("the 'momentPosted' push opens the viewer on that moment of a roll that is not revealed yet, and leaves its roll active", async () => {
-    trips.fetchFeed.mockImplementation(async (id: string) => ({
+    trips.fetchFeedPage.mockImplementation(async (id: string) => ({
       revealed: false,
       revealAt: Date.now() + 4 * DAY,
       items:

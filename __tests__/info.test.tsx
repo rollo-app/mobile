@@ -56,7 +56,7 @@ beforeEach(async () => {
   jest.mocked(featuredActions).fetchPrivacySettings.mockResolvedValue({ allowFeaturing: true } as never);
   mocked.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
   mocked.fetchTrip.mockResolvedValue(detail());
-  mocked.fetchFeed.mockReturnValue(new Promise(() => {}));
+  mocked.fetchFeedPage.mockReturnValue(new Promise(() => {}));
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
 });
 

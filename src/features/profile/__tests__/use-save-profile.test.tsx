@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { createQueryClient } from "@/api/query-client";
 import { meKey } from "@/features/auth/actions";
+import { feedKey } from "@/features/trips/use-feed";
 import * as friendLink from "@/features/friends/handle-friend-link";
 import * as actions from "../actions";
 import { useSaveProfile } from "../use-save-profile";
@@ -17,7 +18,7 @@ function setup() {
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   queryClient.setQueryData(meKey, me);
   queryClient.setQueryData(["trip", "t1"], {});
-  queryClient.setQueryData(["feed", "t1"], {});
+  queryClient.setQueryData(feedKey("t1"), {});
   return { queryClient, wrapper };
 }
 
@@ -39,7 +40,7 @@ describe("useSaveProfile", () => {
     expect(nameInBeforeApply).toBe("Old");
     expect(queryClient.getQueryData(meKey)).toMatchObject({ name: "New", username: "new", bio: "hi" });
     expect(queryClient.getQueryState(["trip", "t1"])?.isInvalidated).toBe(true);
-    expect(queryClient.getQueryState(["feed", "t1"])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(feedKey("t1"))?.isInvalidated).toBe(true);
   });
 
   it("claims a typed friend code before saving, and a bad code stops the save", async () => {

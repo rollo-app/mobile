@@ -3226,7 +3226,7 @@ export interface paths {
         put?: never;
         /**
          * Register a photo or video
-         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries).
+         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries). 429 comes in two kinds: too fast (carries `Retry-After`, retry later) or photo quota used up (no `Retry-After`, do not retry).
          */
         post: {
             parameters: {
@@ -3352,7 +3352,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm the files were uploaded
-         * @description Checks that the original and the thumbnail are in R2 and that their sizes match what was registered. Only then does the photo show up in the feed. On a size mismatch both files are deleted and the media stays pending (register again for new URLs).
+         * @description Checks that the original and the thumbnail are in R2 and that their sizes match what was registered. Only then does the photo show up in the feed. On a size mismatch both files are deleted and the media stays pending (register again for new URLs). 429 comes in two kinds: too fast (carries `Retry-After`, retry later) or a quota error (no `Retry-After`, do not retry).
          */
         post: {
             parameters: {
@@ -3436,11 +3436,18 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`; before the reveal only a daily moment's photo has `commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`; before the reveal only a daily moment's photo has `commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out. Oldest first by default (`order=asc`; `order=desc` for newest first), ordered by `takenAt` with ties by id, paginated with a keyset cursor: send `limit` and then each page's `nextCursor` as `cursor`. A cursor is only valid with the `order` it came from: keep `order` the same across pages. Without cursor or limit returns the whole feed (in the requested order), for older app builds; new clients should always send limit.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description `asc` (default): oldest first. `desc`: newest first. A cursor is only valid with the order it was produced with: keep the same `order` on every page. */
+                    order?: "asc" | "desc";
+                    /** @description `nextCursor` of the previous page */
+                    cursor?: string;
+                    /** @description Page size (1-100; default 30 when only `cursor` is sent) */
+                    limit?: number;
+                };
                 header?: never;
                 path: {
                     tripId: string;
@@ -3449,13 +3456,22 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Feed ordered by the time the shot was taken */
+                /** @description A page of the feed ordered by the time the shot was taken */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["Feed"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Missing or invalid session token */
@@ -5622,6 +5638,8 @@ export interface components {
             revealed: boolean;
             revealAt: number;
             items: components["schemas"]["FeedItem"][];
+            /** @description Pass it as `cursor` to get the next page; null when there are no more items (always null without cursor or limit) */
+            nextCursor: string | null;
         };
         FeedItem: {
             /** Format: uuid */

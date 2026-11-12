@@ -46,11 +46,14 @@ export function StoryPlayer({
   token,
   timeZone,
   onClose,
+  onGallery = onClose,
 }: {
   photos: RevealedPhoto[];
   token: string;
   timeZone: string;
   onClose: () => void;
+  /** Leaves the stories for the roll's gallery; defaults to just closing. */
+  onGallery?: () => void;
 }) {
   // A refetch hands over a new array with the same photos: rebuild the story only when the photos really change,
   // otherwise the story would start over under the viewer.
@@ -243,7 +246,7 @@ export function StoryPlayer({
             {step.kind === "outro" && (
               <Outro
                 stats={step.stats}
-                onGallery={onClose}
+                onGallery={onGallery}
                 onReplay={() => dispatch({ type: "restart" })}
               />
             )}

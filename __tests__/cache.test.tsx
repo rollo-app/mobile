@@ -53,7 +53,7 @@ const detail = (): actions.TripDetail => ({
 beforeEach(() => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   mocked.fetchTrip.mockReset();
-  mocked.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 9 * 24 * 60 * 60 * 1000, items: [] });
+  mocked.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + 9 * 24 * 60 * 60 * 1000, items: [], nextCursor: null });
   return signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
 });
 

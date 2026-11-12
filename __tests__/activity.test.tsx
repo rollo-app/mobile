@@ -55,7 +55,7 @@ beforeEach(async () => {
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   jest.mocked(actions).fetchTrip.mockReturnValue(new Promise(() => {}));
-  jest.mocked(actions).fetchFeed.mockReturnValue(new Promise(() => {}));
+  jest.mocked(actions).fetchFeedPage.mockReturnValue(new Promise(() => {}));
   featured.fetchFeatured.mockReset().mockResolvedValue([]);
   likes.unlikeMedia.mockReset().mockResolvedValue(undefined);
   activity.fetchMyLikes.mockReset().mockResolvedValue(page([liked("p1"), liked("p2", { author: CAMI, authorUserId: CAMI.id })]));

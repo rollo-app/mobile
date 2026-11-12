@@ -2,7 +2,7 @@ import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-q
 import * as Burnt from "burnt";
 import { useCallback } from "react";
 import { featuredByKey } from "@/features/activity/use-featured-by";
-import type { Feed } from "@/features/trips/actions";
+import { mapFeedItem, restoreFeed, snapshotFeed } from "@/features/trips/feed-cache";
 import { feedKey } from "@/features/trips/use-feed";
 import { archiveMedia, unarchiveMedia } from "./actions";
 
@@ -10,16 +10,7 @@ type Vars = { mediaId: string; tripId: string; archived: boolean };
 
 /** Archiving also takes it off every profile (the server deletes those rows), so it is no longer featured by you either. */
 function setArchivedInFeed(client: QueryClient, tripId: string, mediaId: string, archived: boolean) {
-  client.setQueryData<Feed>(feedKey(tripId), (feed) =>
-    feed
-      ? {
-          ...feed,
-          items: feed.items.map((item) =>
-            item.id === mediaId ? { ...item, archived, ...(archived && { featuredByMe: false }) } : item,
-          ),
-        }
-      : feed,
-  );
+  mapFeedItem(client, tripId, mediaId, (item) => ({ ...item, archived, ...(archived && { featuredByMe: false }) }));
 }
 
 /**
@@ -33,12 +24,12 @@ export function useArchivePhoto() {
     onMutate: async ({ mediaId, tripId, archived }) => {
       // A refetch landing mid-request would overwrite the optimistic value.
       await client.cancelQueries({ queryKey: feedKey(tripId) });
-      const previous = client.getQueryData<Feed>(feedKey(tripId));
+      const previous = snapshotFeed(client, tripId);
       setArchivedInFeed(client, tripId, mediaId, archived);
       return { previous };
     },
     onError: (_error, { tripId, archived }, context) => {
-      if (context?.previous) client.setQueryData(feedKey(tripId), context.previous);
+      restoreFeed(client, tripId, context?.previous);
       Burnt.alert({
         preset: "error",
         title: archived ? "No se pudo archivar" : "No se pudo desarchivar",

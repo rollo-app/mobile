@@ -2,7 +2,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { createQueryClient } from "@/api/query-client";
+import type { FeedPages } from "@/features/trips/actions";
 import { feedKey } from "@/features/trips/use-feed";
+import { feedPagesOf } from "@/test/feed";
 import { setSessionToken } from "@/storage/session";
 import { useAddComment } from "../use-add-comment";
 import { useDeleteComment } from "../use-delete-comment";
@@ -14,7 +16,7 @@ const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider 
 
 const item = (id: string, commentCount?: number) => ({ id, type: "photo", commentCount });
 const countOf = (tripId: string, id: string) =>
-  (client.getQueryData<{ items: { id: string; commentCount?: number }[] }>(feedKey(tripId)))!.items.find((i) => i.id === id)!.commentCount;
+  (client.getQueryData<FeedPages>(feedKey(tripId)))!.pages.flatMap((p) => p.items as { id: string; commentCount?: number }[]).find((i) => i.id === id)!.commentCount;
 
 let calls: string[];
 beforeEach(async () => {
@@ -29,8 +31,8 @@ beforeEach(async () => {
       headers: { "content-type": "application/json" },
     });
   }) as unknown as typeof fetch;
-  client.setQueryData(feedKey("t1"), { revealed: true, items: [item("a", 2), item("b", 5)] });
-  client.setQueryData(feedKey("t2"), { revealed: true, items: [item("z", 1)] });
+  client.setQueryData(feedKey("t1"), feedPagesOf([item("a", 2)], [item("b", 5)]));
+  client.setQueryData(feedKey("t2"), feedPagesOf([item("z", 1)]));
 });
 
 describe("comment counts in the feed", () => {
@@ -47,7 +49,7 @@ describe("comment counts in the feed", () => {
   });
 
   it("counts from zero when the item has no count yet (moments before the reveal)", async () => {
-    client.setQueryData(feedKey("t1"), { revealed: false, items: [item("a")] });
+    client.setQueryData(feedKey("t1"), feedPagesOf([item("a")]));
     const { result } = await renderHook(() => useAddComment("a"), { wrapper });
     await act(async () => result.current.mutate("hola"));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));

@@ -8,6 +8,7 @@ import { mediaSource } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { colors, radius, spacing, type } from "@/ui/theme";
+import { useImageRetry } from "@/ui/use-image-retry";
 
 const THUMB = 56;
 
@@ -41,6 +42,7 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
   const located = item.lat !== null && item.lng !== null;
   // A moment is visible right away: its real photo replaces the ThumbHash and tapping it opens the viewer.
   const momentSource = item.momentDay && item.thumbPath && token ? mediaSource(item.thumbPath, token) : undefined;
+  const retry = useImageRetry(item.thumbPath ?? undefined);
   const open = momentSource && onOpenPhoto ? () => onOpenPhoto(item) : located && onPress ? () => onPress(item) : undefined;
   const canDelete = !!onDelete && !item.pending;
   const canReport = !!onReport && !item.pending;
@@ -83,6 +85,9 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
       {item.momentDay && momentSource ? (
         <View>
           <Image
+            key={retry.retryKey}
+            onError={retry.onError}
+            onLoad={retry.onLoad}
             testID="feed-thumb"
             source={momentSource}
             placeholder={item.thumbhash ? { thumbhash: item.thumbhash } : undefined}

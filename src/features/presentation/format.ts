@@ -16,3 +16,9 @@ export function statCounts(stats: StoryStats): { value: number; label: string }[
 export function topLine(stats: StoryStats): string | null {
   return stats.top ? `${stats.top.name} sacó más fotos: ${plural(stats.top.count, "foto", "fotos")}` : null;
 }
+
+/** 2000 → "2.000" (es-AR thousands separator; Hermes' Intl skips it on four digits). */
+export const formatCount = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+/** The outro's gallery action when the stories were a selection: every photo and video of the roll. */
+export const galleryLabel = (stats: StoryStats) => `Ver las ${formatCount(stats.photos + stats.videos)} fotos en la galería`;

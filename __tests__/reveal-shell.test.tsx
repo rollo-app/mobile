@@ -63,7 +63,7 @@ const testRoutes = { ...routes, "photo/[id]": () => <Text>Foto</Text> };
 
 beforeEach(async () => {
   jest.clearAllMocks();
-  mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [] });
+  mocked.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [], nextCursor: null });
   await session();
 });
 
@@ -123,7 +123,7 @@ describe("revealed roll", () => {
       height: 3000,
       files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
     });
-    mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [photo("a"), photo("b")] });
+    mocked.fetchFeedPage.mockResolvedValue({ nextCursor: null, revealed: true, revealAt: Date.now() - DAY, items: [photo("a"), photo("b")] });
     await markPresentationSeen(SUR);
     await renderRouter(testRoutes, { initialUrl: "/roll" });
     await screen.findByRole("button", { name: "Seleccionar" });
@@ -144,7 +144,8 @@ describe("revealed roll", () => {
 
   it("opens the reveal automatically the first time, and only once", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
       revealed: true,
       revealAt: Date.now() - DAY,
       items: [
@@ -190,7 +191,7 @@ const item = (id: string, type: "photo" | "video") => ({
 describe("revealed roll: Galería | Rollo", () => {
   const revealedWithMedia = async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [item("a", "photo"), item("b", "video")] });
+    mocked.fetchFeedPage.mockResolvedValue({ nextCursor: null, revealed: true, revealAt: Date.now() - DAY, items: [item("a", "photo"), item("b", "video")] });
     await markPresentationSeen(SUR);
   };
 

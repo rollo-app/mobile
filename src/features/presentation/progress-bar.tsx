@@ -2,10 +2,27 @@ import { useMemo } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import { spacing } from "@/ui/theme";
 
+/** Above this many photos in a day the segments would be slivers: one continuous bar instead. */
+export const MAX_SEGMENTS = 30;
+
 /** Instagram-style segments for the current day: done ones full, the current one fills with `progress`. */
 export function ProgressBar({ count, current, progress }: { count: number; current: number; progress: Animated.Value }) {
   // One animated position drives every segment, (scaleX on the native thread), so none is ever a static value React could fail to update.
   const position = useMemo(() => Animated.add(new Animated.Value(current), progress), [current, progress]);
+  if (count > MAX_SEGMENTS) {
+    return (
+      <View style={styles.row} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <View style={styles.track}>
+          <Animated.View
+            style={[
+              styles.fill,
+              { transform: [{ scaleX: position.interpolate({ inputRange: [0, count], outputRange: [0, 1], extrapolate: "clamp" }) }] },
+            ]}
+          />
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={styles.row} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {Array.from({ length: count }, (_, i) => (

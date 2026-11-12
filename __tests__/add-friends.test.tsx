@@ -57,7 +57,7 @@ beforeEach(async () => {
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   trips.fetchTrip.mockResolvedValue(detail());
   trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [], nextCursor: null });
   friends.fetchFriends.mockResolvedValue([cami, tomi, fede]);
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
 });

@@ -240,7 +240,7 @@ describe("Moment", () => {
 
   it("once the moment is sent the banner in Rollo goes away", async () => {
     trips.fetchTrip.mockResolvedValue(tripDetail("photo"));
-    trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [] } as never);
+    trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [], nextCursor: null } as never);
     const at = Date.now() - 10_000;
     let delivered = [
       { date: at, request: { identifier: `moment.${SUR}.${MOMENT_DAY}`, content: { data: { url: `/moment?trip=${SUR}&day=${MOMENT_DAY}&at=${at}` } } } },

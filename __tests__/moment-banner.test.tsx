@@ -55,7 +55,7 @@ const deliveredAt = (at: number, extra = "") => [
 beforeEach(async () => {
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
   trips.fetchTrip.mockResolvedValue(tripDetail());
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [] } as never);
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [], nextCursor: null } as never);
   presented.mockResolvedValue([]);
 });
 

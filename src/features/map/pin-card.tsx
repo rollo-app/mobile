@@ -4,6 +4,7 @@ import { MomentBadge, momentBadgeCorner } from "@/features/media/moment-badge";
 import { mediaSource } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
 import { colors, radius, spacing, type } from "@/ui/theme";
+import { useImageRetry } from "@/ui/use-image-retry";
 import type { MapItem } from "./features";
 import { formatPinTime } from "./pin-time";
 
@@ -30,11 +31,15 @@ export function PinCard({
   const when = formatPinTime(item.takenAt, timeZone, now);
   const meta = item.type === "video" ? `Video · ${Math.round(item.durationS ?? 0)} s` : null;
 
+  const retry = useImageRetry(item.thumbPath ?? undefined);
   const source = item.thumbPath && token ? mediaSource(item.thumbPath, token) : undefined;
 
   const image =
     item.thumbhash || source ? (
       <Image
+        key={retry.retryKey}
+        onError={retry.onError}
+        onLoad={retry.onLoad}
         testID="pin-thumb"
         source={source}
         placeholder={item.thumbhash ? { thumbhash: item.thumbhash } : undefined}

@@ -35,7 +35,7 @@ beforeEach(async () => {
   jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
   jest.mocked(tripActions).fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
   jest.mocked(tripActions).fetchTrip.mockReturnValue(new Promise(() => {}));
-  jest.mocked(tripActions).fetchFeed.mockReturnValue(new Promise(() => {}));
+  jest.mocked(tripActions).fetchFeedPage.mockReturnValue(new Promise(() => {}));
   jest.mocked(moderation).unblockUser.mockReset().mockResolvedValue(undefined);
 });
 

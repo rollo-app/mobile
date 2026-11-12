@@ -2,14 +2,16 @@ import { OfflineManager } from "@maplibre/maplibre-react-native";
 import * as Location from "expo-location";
 import * as Network from "expo-network";
 import { queryClient } from "@/api/query-client";
-import { fetchFeed, fetchTrip } from "@/features/trips/actions";
+import { fetchTrip, fetchWholeFeed } from "@/features/trips/actions";
+import { feedKey } from "@/features/trips/use-feed";
+import { feedPagesOf } from "@/test/feed";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import type { TripSummary } from "@/features/trips/active";
 import { signInAs, tripSummary } from "@/test/account";
 import { buildMapStyle } from "../style";
 import { getOfflineSyncState, scheduleOfflineSync, syncOfflineMaps } from "../offline-sync";
 
-jest.mock("@/features/trips/actions", () => ({ fetchTrip: jest.fn(), fetchFeed: jest.fn() }));
+jest.mock("@/features/trips/actions", () => ({ fetchTrip: jest.fn(), fetchWholeFeed: jest.fn() }));
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2027, 0, 12, 15);
@@ -63,7 +65,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
 
   await signInAs({ trips: [tripSummary("t1", "Viaje al sur", { role: "admin", startsAt: START, endsAt: END })] });
-  jest.mocked(fetchFeed).mockResolvedValue({ items: [] } as never);
+  jest.mocked(fetchWholeFeed).mockResolvedValue(feedPagesOf([]));
   network("WIFI");
   jest.mocked(Location.getForegroundPermissionsAsync).mockResolvedValue({ granted: true } as never);
   jest.mocked(Location.getLastKnownPositionAsync).mockResolvedValue({ coords: { ...CHALTEN, accuracy: 20 } } as never);
@@ -110,7 +112,21 @@ describe("syncOfflineMaps", () => {
   });
 
   it("downloads the places where the group took photos", async () => {
-    jest.mocked(fetchFeed).mockResolvedValue({ items: [{ lat: -50.34, lng: -72.28, takenAt: NOW - 1000 }, { lat: null, lng: null, takenAt: 1 }] } as never);
+    jest.mocked(fetchWholeFeed).mockResolvedValue(feedPagesOf([{ id: "a", lat: -50.34, lng: -72.28, takenAt: NOW - 1000 }], [{ id: "b", lat: null, lng: null, takenAt: 1 }]));
+    await syncOfflineMaps();
+    expect(created().map(([o]) => o.metadata!.name)).toContain("rollo:t1:detail:-50.34,-72.28");
+  });
+
+  it("loads the whole feed (every page) and caches it in the paged shape", async () => {
+    const whole = feedPagesOf([{ id: "a", lat: -50.34, lng: -72.28, takenAt: NOW - 1000 }], [{ id: "b", lat: -50.4, lng: -72.3, takenAt: NOW - 500 }]);
+    jest.mocked(fetchWholeFeed).mockResolvedValue(whole);
+    await syncOfflineMaps();
+    expect(queryClient.getQueryData(feedKey("t1"))).toEqual(whole);
+  });
+
+  it("falls back to the cached pages when the feed can't be fetched", async () => {
+    queryClient.setQueryData(feedKey("t1"), feedPagesOf([{ id: "a", lat: -50.34, lng: -72.28, takenAt: NOW - 1000 }]));
+    jest.mocked(fetchWholeFeed).mockRejectedValue(new Error("sin señal"));
     await syncOfflineMaps();
     expect(created().map(([o]) => o.metadata!.name)).toContain("rollo:t1:detail:-50.34,-72.28");
   });
@@ -207,8 +223,8 @@ describe("syncOfflineMaps", () => {
       ],
     });
     await syncOfflineMaps();
-    expect(fetchFeed).toHaveBeenCalledTimes(1);
-    expect(fetchFeed).toHaveBeenCalledWith("t1");
+    expect(fetchWholeFeed).toHaveBeenCalledTimes(1);
+    expect(fetchWholeFeed).toHaveBeenCalledWith("t1");
     expect(fetchTrip).not.toHaveBeenCalled();
   });
 
@@ -217,7 +233,7 @@ describe("syncOfflineMaps", () => {
     packs = [{ id: "old", metadata: meta("t1", "detail", { expiresAt: NOW + 30 * DAY }), state: "complete", size: 1 }];
     await syncOfflineMaps();
     expect(OfflineManager.deletePack).toHaveBeenCalledWith("old");
-    expect(fetchFeed).not.toHaveBeenCalled();
+    expect(fetchWholeFeed).not.toHaveBeenCalled();
   });
 
   it("does not download for revealed rolls or rolls far in the future", async () => {

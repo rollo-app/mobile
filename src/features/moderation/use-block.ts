@@ -5,6 +5,7 @@ import { featuredByKey } from "@/features/activity/use-featured-by";
 import { friendsKey } from "@/features/friends/use-friends";
 import { userKey } from "@/features/profile/use-user";
 import { myTripsKey } from "@/features/trips/use-active-trip";
+import { feedRootKey } from "@/features/trips/use-feed";
 import { blockUser, unblockUser } from "./actions";
 import { blockedKey } from "./use-blocked";
 
@@ -13,7 +14,7 @@ export function useBlock(userId: string, name: string) {
   const queryClient = useQueryClient();
   const refresh = () =>
     Promise.all(
-      [userKey(userId), friendsKey, blockedKey, myTripsKey, ["userFriends"], ["feed"], ["featured"], featuredByKey, ["trip"]].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      [userKey(userId), friendsKey, blockedKey, myTripsKey, ["userFriends"], feedRootKey, ["featured"], featuredByKey, ["trip"]].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
     );
   const block = useMutation({
     mutationFn: () => blockUser(userId),

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Schemas } from "@/api/client";
 import { API_URL } from "@/config";
 import { getSession } from "@/features/auth/session";
-import { useFeed } from "@/features/trips/use-feed";
+import { useFeed, type FeedMode } from "@/features/trips/use-feed";
 
 /** A photo or video of a revealed roll, with the paths to download it. */
 export type RevealedPhoto = {
@@ -124,13 +124,20 @@ export function useMediaToken(key: string | undefined) {
 /**
  * Revealed photos of a roll plus the token needed to load them (`mediaSource`).
  * Before the reveal `photos` holds only the daily moments (the one kind of photo the feed gives files for).
+ * `mode` is `useFeed`'s: "all" (default) keeps loading pages until every photo is here; "lazy" loads more only on `fetchMore`
+ * (`hasMore`, `loadingMore`, `complete` tell where it stands). `loadAll` loads the rest and resolves with every photo (null if it failed).
  */
-export function useRevealedPhotos(tripId: string | undefined) {
-  const { feed, error, loading, refetch, isRefetching } = useFeed(tripId);
+export function useRevealedPhotos(tripId: string | undefined, mode: FeedMode = "all") {
+  const { feed, error, loading, refetch, isRefetching, hasMore, fetchMore, loadingMore, loadMoreError, complete, loadAll: loadAllFeed } = useFeed(tripId, { mode });
   const token = useMediaToken(tripId);
 
   // Memoized on the feed so screens' derived lists (and memoized grid cells) don't rebuild on every render.
   const photos = useMemo(() => (feed ? toRevealedPhotos(feed.items) : []), [feed]);
+
+  const loadAll = useCallback(async () => {
+    const whole = await loadAllFeed();
+    return whole.complete && whole.feed ? toRevealedPhotos(whole.feed.items) : null;
+  }, [loadAllFeed]);
 
   return {
     photos,
@@ -139,5 +146,11 @@ export function useRevealedPhotos(tripId: string | undefined) {
     loading,
     refetch,
     isRefetching,
+    hasMore,
+    fetchMore,
+    loadingMore,
+    loadMoreError,
+    complete,
+    loadAll,
   };
 }

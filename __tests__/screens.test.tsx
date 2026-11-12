@@ -155,7 +155,8 @@ describe("Roll", () => {
 
   it("the contact sheet shows each photo's ThumbHash, newest to oldest", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 2 }));
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
       revealed: false,
       revealAt: Date.now() + 9 * DAY,
       items: [
@@ -370,7 +371,7 @@ describe("Me", () => {
   it("in development, 'Ver revelado' in Ajustes opens the reveal screen", async () => {
     await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { revealed: true })] });
     mocked.fetchTrip.mockResolvedValue(detail());
-    mocked.fetchFeed.mockReturnValue(new Promise(() => {})); // stays on the reveal while it loads
+    mocked.fetchFeedPage.mockReturnValue(new Promise(() => {})); // stays on the reveal while it loads
     await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Ver revelado" }));

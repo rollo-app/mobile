@@ -93,7 +93,7 @@ describe("Friends", () => {
 
   it("after the reveal the Amigos tab is still there", async () => {
     trips.fetchTrip.mockResolvedValue(revealedDetail());
-    trips.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [] });
+    trips.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [], nextCursor: null });
     await markPresentationSeen("t1");
     await renderRouter(routes, { initialUrl: "/friends" });
 

@@ -1,6 +1,6 @@
 import { getActiveTripId } from "@/storage/active-trip";
 import { setSessionToken } from "@/storage/session";
-import { createTrip, deleteMedia, fetchFeed, fetchMyTrips, fetchTrip, joinTrip } from "../actions";
+import { createTrip, deleteMedia, fetchFeedPage, fetchMyTrips, fetchTrip, fetchWholeFeed, joinTrip } from "../actions";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2027, 0, 5, 12, 0);
@@ -149,14 +149,70 @@ describe("fetchTrip", () => {
   });
 });
 
-describe("fetchFeed", () => {
-  it("requests the trip feed and returns it", async () => {
-    const feed = { revealed: false, revealAt: NOW, items: [] };
-    const fetchMock = mockFetch(200, feed);
+const feedItem = (id: string) => ({ id, type: "photo", takenAt: 1 });
+const queryOf = (req: Request) => Object.fromEntries(new URL(req.url).searchParams);
 
-    expect(await fetchFeed(trip.id)).toEqual(feed);
+describe("fetchFeedPage", () => {
+  it("requests the trip feed with the limit and returns the page", async () => {
+    const page = { revealed: false, revealAt: NOW, items: [], nextCursor: null };
+    const fetchMock = mockFetch(200, page);
+
+    expect(await fetchFeedPage(trip.id, { limit: 30 })).toEqual(page);
     expect(new URL(lastReq(fetchMock).url).pathname).toBe(`/trips/${trip.id}/feed`);
+    expect(queryOf(lastReq(fetchMock))).toEqual({ limit: "30" });
     expect(lastReq(fetchMock).headers.get("authorization")).toBe("Bearer session-tok");
+  });
+
+  it("sends the cursor when asking for a next page", async () => {
+    const fetchMock = mockFetch(200, { revealed: false, revealAt: NOW, items: [], nextCursor: null });
+
+    await fetchFeedPage(trip.id, { cursor: "abc", limit: 30 });
+
+    expect(queryOf(lastReq(fetchMock))).toEqual({ cursor: "abc", limit: "30" });
+  });
+});
+
+describe("fetchFeedPage order", () => {
+  it("sends the order when given, with the cursor", async () => {
+    const fetchMock = mockFetch(200, { revealed: false, revealAt: NOW, items: [], nextCursor: null });
+
+    await fetchFeedPage(trip.id, { cursor: "abc", limit: 30, order: "desc" });
+
+    expect(queryOf(lastReq(fetchMock))).toEqual({ cursor: "abc", limit: "30", order: "desc" });
+  });
+
+  it("does not send an order by default", async () => {
+    const fetchMock = mockFetch(200, { revealed: false, revealAt: NOW, items: [], nextCursor: null });
+
+    await fetchFeedPage(trip.id, { limit: 30 });
+
+    expect(queryOf(lastReq(fetchMock))).not.toHaveProperty("order");
+  });
+});
+
+describe("fetchWholeFeed", () => {
+  it("walks the pages until the cursor is null and returns them in the infinite-query shape", async () => {
+    const pages = [
+      { revealed: true, revealAt: NOW, items: [feedItem("a"), feedItem("b")], nextCursor: "c1" },
+      { revealed: true, revealAt: NOW, items: [feedItem("c")], nextCursor: "c2" },
+      { revealed: true, revealAt: NOW, items: [feedItem("d")], nextCursor: null },
+    ];
+    let call = 0;
+    const fetchMock = jest.fn(
+      async (_req: Request) => new Response(JSON.stringify(pages[call++]), { status: 200, headers: { "content-type": "application/json" } }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const whole = await fetchWholeFeed(trip.id);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.map(([req]) => queryOf(req as Request))).toEqual([
+      { limit: "100" },
+      { cursor: "c1", limit: "100" },
+      { cursor: "c2", limit: "100" },
+    ]);
+    expect(whole.pages).toEqual(pages);
+    expect(whole.pageParams).toEqual([undefined, "c1", "c2"]);
   });
 });
 

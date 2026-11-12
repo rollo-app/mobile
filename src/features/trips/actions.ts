@@ -1,3 +1,4 @@
+import type { InfiniteData } from "@tanstack/react-query";
 import { unwrap, type Schemas } from "@/api/client";
 import { authedClient } from "@/features/auth/session";
 import { setActiveTripId } from "@/storage/active-trip";
@@ -56,9 +57,41 @@ export async function fetchTrip(tripId: string): Promise<TripDetail> {
   return unwrap((await authedClient()).GET("/trips/{tripId}", { params: { path: { tripId } } }));
 }
 
-/** Everything uploaded to the trip. Before the reveal it only has metadata (author, time, place, thumbhash). */
-export async function fetchFeed(tripId: string): Promise<Schemas["Feed"]> {
-  return unwrap((await authedClient()).GET("/trips/{tripId}/feed", { params: { path: { tripId } } }));
+/** The feed as the paged cache holds it: one entry per loaded page; `pageParams` are the cursors (the first is undefined). */
+export type FeedPages = InfiniteData<Feed, string | undefined>;
+
+/** How many feed items a request asks for when a screen scrolls (and for the first page of any screen: fast first paint). */
+export const FEED_PAGE_SIZE = 30;
+/** How many feed items a request asks for when the whole feed is needed anyway (the backend accepts up to 100): fewer requests per session. */
+export const FEED_BULK_PAGE_SIZE = 100;
+
+/** `asc`: oldest first (the default). `desc`: newest first. */
+export type FeedOrder = "asc" | "desc";
+
+/**
+ * One page of what's been uploaded to the trip, oldest first unless `order` says "desc" (newest first; keep the same `order` across the pages of one walk). Before the reveal it only has metadata (author, time,
+ * place, thumbhash). `nextCursor` is null on the last page. Always sends a `limit`: without one the server returns everything.
+ */
+export async function fetchFeedPage(
+  tripId: string, { cursor, limit, order }: { cursor?: string; limit: number; order?: FeedOrder },
+): Promise<Feed> {
+  return unwrap(
+    (await authedClient()).GET("/trips/{tripId}/feed", { params: { path: { tripId }, query: { limit, ...(cursor && { cursor }), ...(order && { order }) } } }),
+  );
+}
+
+/** Every page of the feed, one after the other, in the shape the paged cache stores (for what needs it all, like the offline maps). */
+export async function fetchWholeFeed(tripId: string): Promise<FeedPages> {
+  const pages: Feed[] = [];
+  const pageParams: (string | undefined)[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await fetchFeedPage(tripId, { cursor, limit: FEED_BULK_PAGE_SIZE });
+    pages.push(page);
+    pageParams.push(cursor);
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+  return { pages, pageParams };
 }
 
 /** Deletes a photo or video from the trip (admin only, before the reveal). */

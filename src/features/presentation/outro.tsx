@@ -1,9 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { tintHex, radius, spacing, type } from "@/ui/theme";
-import { statCounts, topLine } from "./format";
+import { formatCount, galleryLabel, statCounts, topLine } from "./format";
 import type { StoryStats } from "./story";
 
-/** The closing numbers, then "Ver la galería" (closes the modal) or "Ver de nuevo". */
+/** The closing numbers, then "Ver la galería" (or, when days were trimmed, "Ver las N fotos en la galería"; both close the modal and open it) or "Ver de nuevo". */
 export function Outro({
   stats,
   onGallery,
@@ -14,6 +14,7 @@ export function Outro({
   onReplay: () => void;
 }) {
   const top = topLine(stats);
+  const galleryText = stats.trimmed ? galleryLabel(stats) : "Ver la galería";
   return (
     <View style={styles.fill}>
       <View style={styles.body}>
@@ -22,8 +23,8 @@ export function Outro({
         </Text>
         <View style={styles.grid}>
           {statCounts(stats).map((s) => (
-            <View key={s.label} style={styles.stat} accessible accessibilityLabel={`${s.value} ${s.label}`}>
-              <Text style={styles.value}>{s.value}</Text>
+            <View key={s.label} style={styles.stat} accessible accessibilityLabel={`${formatCount(s.value)} ${s.label}`}>
+              <Text style={styles.value}>{formatCount(s.value)}</Text>
               <Text style={styles.label}>{s.label}</Text>
             </View>
           ))}
@@ -33,11 +34,11 @@ export function Outro({
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Ver la galería"
+          accessibilityLabel={galleryText}
           onPress={onGallery}
           style={({ pressed }) => [styles.button, { backgroundColor: tintHex.dark, opacity: pressed ? 0.7 : 1 }]}
         >
-          <Text style={styles.buttonText}>Ver la galería</Text>
+          <Text style={styles.buttonText}>{galleryText}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"

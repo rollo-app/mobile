@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from "react-native";
 import { insetFrame } from "@/ui/inset-frame";
+import { useImageRetry } from "@/ui/use-image-retry";
 import { mediaSource, type RevealedPhoto } from "./revealed";
 
 /**
@@ -21,8 +22,9 @@ export function SelfieInset({
   onToggle: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
-  if (!photo.selfie) return null;
-  const path = selfieBig ? photo.thumbPath : photo.selfie.thumbPath;
+  const path = selfieBig ? photo.thumbPath : photo.selfie?.thumbPath;
+  const retry = useImageRetry(path);
+  if (!photo.selfie || !path) return null;
   return (
     <Pressable
       accessibilityRole="button"
@@ -32,7 +34,12 @@ export function SelfieInset({
       onLongPress={() => {}}
       style={({ pressed }) => [insetFrame.frame, style, pressed && styles.pressed]}
     >
-      <Image source={mediaSource(path, token)} contentFit="cover" style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors />
+      <Image
+        key={retry.retryKey}
+        onError={retry.onError}
+        onLoad={retry.onLoad}
+        source={mediaSource(path, token)}
+        contentFit="cover" style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors />
     </Pressable>
   );
 }

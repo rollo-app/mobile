@@ -5,7 +5,9 @@ import type { ReactNode } from "react";
 import type { Schemas } from "@/api/client";
 import { createQueryClient } from "@/api/query-client";
 import { meKey } from "@/features/auth/actions";
+import type { FeedPages } from "@/features/trips/actions";
 import { feedKey } from "@/features/trips/use-feed";
+import { feedPagesOf } from "@/test/feed";
 import { setSessionToken } from "@/storage/session";
 import { USER } from "@/test/account";
 import { featuredKey } from "../use-featured";
@@ -40,10 +42,11 @@ function wrapper({ children }: { children: ReactNode }) {
 
 function seed(items: Feed["items"]) {
   client.setQueryData(meKey, USER);
-  client.setQueryData(feedKey("t1"), { items } as unknown as Feed);
+  // Spread over two pages: the optimistic edit must reach any of them.
+  client.setQueryData(feedKey("t1"), feedPagesOf(items.slice(0, 1), items.slice(1)));
 }
 const featuredInCache = (id: string) =>
-  client.getQueryData<Feed>(feedKey("t1"))!.items.find((i) => i.id === id)!.featuredByMe;
+  client.getQueryData<FeedPages>(feedKey("t1"))!.pages.flatMap((p) => p.items).find((i) => i.id === id)!.featuredByMe;
 
 /** fetch that waits until `release(status, body)` is called. */
 function deferredFetch() {

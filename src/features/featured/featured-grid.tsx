@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { mediaSource } from "@/features/media/revealed";
 import { colors, spacing } from "@/ui/theme";
+import { useImageRetry } from "@/ui/use-image-retry";
 import type { FeaturedPhoto } from "./actions";
 import { AuthorBadge } from "./author-badge";
 
@@ -11,6 +12,24 @@ const GAP = 2;
 /** What a featured photo is called on screen and for VoiceOver. */
 export function featuredLabel(photo: FeaturedPhoto) {
   return photo.author ? `Foto de ${photo.author.name}` : "Foto destacada";
+}
+
+/** One grid thumbnail; it retries by itself when the server refuses it (429). */
+function FeaturedThumb({ photo, token }: { photo: FeaturedPhoto; token: string }) {
+  const retry = useImageRetry(photo.mediaId);
+  return (
+    <Image
+      key={retry.retryKey}
+      onError={retry.onError}
+      onLoad={retry.onLoad}
+      source={mediaSource(photo.thumbPath, token)}
+      placeholder={photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined}
+      transition={120}
+      contentFit="cover"
+      recyclingKey={photo.mediaId}
+      style={StyleSheet.absoluteFill}
+    />
+  );
 }
 
 /**
@@ -43,16 +62,7 @@ export function FeaturedGrid({
               onPress={() => onOpen(photo)}
               style={{ width: size, height: size, backgroundColor: colors.latent }}
             >
-              {token && (
-                <Image
-                  source={mediaSource(photo.thumbPath, token)}
-                  placeholder={photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined}
-                  transition={120}
-                  contentFit="cover"
-                  recyclingKey={photo.mediaId}
-                  style={StyleSheet.absoluteFill}
-                />
-              )}
+              {token && <FeaturedThumb photo={photo} token={token} />}
               {photo.author && <AuthorBadge author={photo.author} />}
             </Pressable>
           ))}
