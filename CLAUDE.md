@@ -484,7 +484,7 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 Vive en su propio repo, [rollo-app/web](https://github.com/rollo-app/web) (se separó el 11/11/2026; la historia anterior
 quedó acá): landing, `/soporte`, `/privacidad`, `/terminos`, `/friends` y `/entrar` (las dos que usan los links de la app), el
-archivo de Universal Links y el video del hero (Remotion). Se sirve en `somosrollo.com` y sigue en `rollo.juanifraga.com`
+archivo de Universal Links y el video del hero (Remotion). Se sirve en `rolloproject.com` y sigue en `rollo.juanifraga.com`
 (los builds instalados declaran ese dominio para Universal Links). Los legales se editan allá (`docs/legal/`); acá queda
 `docs/legal/etiquetas-privacidad.md` (interna, para App Store Connect). El video del hero usa una copia del estilo del mapa
 de la app (`src/features/map/style.ts` + `positron.json`): si cambia la paleta, copiarlos también allá.
