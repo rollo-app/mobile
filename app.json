@@ -93,7 +93,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "https://rollo-api.juanifraga.com",
+      "apiUrl": "https://api.rolloproject.com",
       "eas": {
         "projectId": "124fc671-d309-4a16-9606-e4e900286752"
       }

@@ -1,7 +1,8 @@
 import { SITE_URL } from "@/config";
 
 const SCHEME_PREFIX = /^rollo:\/\/friends\//i;
-const HTTPS_LINK = /^https:\/\/rollo\.juanifraga\.com(?::443)?\/friends\/?(?:\?[^#]*)?(?:#(.*))?$/i;
+// rollo.juanifraga.com: links already shared by builds up to 1.3.0 (that host now redirects to rolloproject.com).
+const HTTPS_LINK = /^https:\/\/(?:rolloproject\.com|rollo\.juanifraga\.com)(?::443)?\/friends\/?(?:\?[^#]*)?(?:#(.*))?$/i;
 
 /** What a route gets when an https friend link has no usable code: the screen reports it as a dead link. */
 const INVALID_CODE_SEGMENT = "invalid";

@@ -12,7 +12,7 @@ import { useMe } from "./use-me";
 const INVALID = "Este link no es válido. Pedí un código nuevo desde la app.";
 
 /**
- * `rollo://login?token=…&email=…` or the Universal Link `https://rollo.juanifraga.com/entrar#t=…&e=…`, from the email's button
+ * `rollo://login?token=…&email=…` or the Universal Link `https://rolloproject.com/login#t=…&e=…`, from the email's button
  * (opens the app directly, or through the web page). Without a
  * session it signs in like the code does (only if this phone asked for that email's code) and the gate
  * takes over; with one it never switches accounts.

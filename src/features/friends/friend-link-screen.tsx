@@ -23,7 +23,7 @@ const COPY = {
 } as const;
 
 /**
- * `rollo://friends/<code>` or `https://rollo.juanifraga.com/friends#<CODE>`: opens a friend link. With a ready account the friendship is made and the list
+ * `rollo://friends/<code>` or `https://rolloproject.com/friends#<CODE>`: opens a friend link. With a ready account the friendship is made and the list
  * opens; without one the permission is kept and the sign-up goes on. A dead link, or one we couldn't open, is explained here.
  */
 export function FriendLinkScreen({ code }: { code: string }) {

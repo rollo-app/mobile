@@ -18,8 +18,8 @@ function TermsLink({ path, children }: { path: string; children: string }) {
 export function TermsNotice() {
   return (
     <Footnote>
-      Al continuar aceptás los <TermsLink path="/terminos">Términos</TermsLink> y la{" "}
-      <TermsLink path="/privacidad">Política de privacidad</TermsLink>.
+      Al continuar aceptás los <TermsLink path="/terms">Términos</TermsLink> y la{" "}
+      <TermsLink path="/privacy">Política de privacidad</TermsLink>.
     </Footnote>
   );
 }

@@ -33,7 +33,9 @@ export const forgetMagicLinks = () => attempts.clear();
 
 export const sameEmail = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-const MAGIC_LINK_URL = /^https:\/\/rollo\.juanifraga\.com(?::443)?\/entrar\/?(?:\?[^#]*)?(?:#(.*))?$/i;
+// rolloproject.com/login is the link the backend sends now; rollo.juanifraga.com/entrar (and /entrar on the new host) is
+// the one of emails already sent.
+const MAGIC_LINK_URL = /^https:\/\/(?:rolloproject\.com|rollo\.juanifraga\.com)(?::443)?\/(?:login|entrar)\/?(?:\?[^#]*)?(?:#(.*))?$/i;
 
 /** application/x-www-form-urlencoded decoding, as URLSearchParams does it (`+` is a space). */
 function formDecode(value: string): string {
@@ -55,7 +57,7 @@ function fragmentParam(fragment: string, name: string): string {
 }
 
 /**
- * The in-app route for the email's Universal Link `https://rollo.juanifraga.com/entrar#t=<token>&e=<email>`
+ * The in-app route for the email's Universal Link `https://rolloproject.com/login#t=<token>&e=<email>`
  * (the same fragment the web page forwards to `rollo://login`); null if the URL isn't that link.
  * Without a token or an email it is plain `/login`, which shows its invalid state.
  */

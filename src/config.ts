@@ -7,7 +7,7 @@ import Constants from "expo-constants";
 export const API_URL: string =
   process.env.EXPO_PUBLIC_API_URL ??
   (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
-  "https://rollo-api.juanifraga.com";
+  "https://api.rolloproject.com";
 
 /** EAS project, needed to get an Expo push token. */
 export const EAS_PROJECT_ID: string =
@@ -30,4 +30,4 @@ export function googleIosClientId(bundleId: string | undefined): string {
 }
 
 /** Public site with the terms and the privacy policy. */
-export const SITE_URL = "https://rollo.juanifraga.com";
+export const SITE_URL = "https://rolloproject.com";
