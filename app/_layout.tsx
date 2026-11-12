@@ -103,6 +103,8 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
+          {/* "Ver todos" in a roll's "En el rollo": the full members list, with search. */}
+          <Stack.Screen name="roll-members" options={{ title: "Integrantes" }} />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
           <Stack.Screen name="notifications" options={{ title: "Notificaciones" }} />
           {/* "¿Te avisamos…?", once, after creating or joining a roll. */}
