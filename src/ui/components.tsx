@@ -90,10 +90,10 @@ export function Button({
   );
 }
 
-export function Field({ label, prefix, style, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
+export function Field({ label, hideLabel, prefix, style, ...props }: { label: string; /** Keep `label` for accessibility only (the placeholder says it on screen). */ hideLabel?: boolean; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
   return (
     <View style={styles.field}>
-      <Text style={[type.footnote, styles.footnote]}>{label}</Text>
+      {!hideLabel && <Text style={[type.footnote, styles.footnote]}>{label}</Text>}
       {prefix ? (
         <View style={[styles.input, styles.prefixed]}>
           <Text style={[type.body, { color: colors.secondaryLabel }]}>{prefix}</Text>

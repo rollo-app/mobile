@@ -4,6 +4,7 @@ import Constants from "expo-constants";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { Linking } from "react-native";
+import "@/test/reanimated";
 import { forgetMagicLinks } from "@/features/auth/magic-link";
 import { setLoginLinkVerifier } from "@/storage/login-link-verifier";
 import { getSessionToken } from "@/storage/session";
@@ -82,8 +83,8 @@ describe("Welcome screen", () => {
 
       expect(await screen.findByText("Estamos abriendo Rollo de a poco. Dejanos tu email y te avisamos cuando puedas entrar.")).toBeVisible();
       expect(screen.queryByRole("button", { name: "Crear cuenta" })).toBeNull();
-      expect(screen.getByLabelText("Tu email")).toBeVisible();
-      expect(screen.getByRole("switch", { name: "Acepto que me escriban para avisarme cuando Rollo abra." })).toBeVisible();
+      expect(screen.getByLabelText("Email")).toBeVisible();
+      expect(screen.getByRole("checkbox", { name: "Acepto que me escriban para avisarme cuando Rollo abra." })).toBeVisible();
 
       await fireEvent.press(screen.getByRole("button", { name: "Ya tengo cuenta" }));
       await waitFor(() => expect(screen).toHavePathname("/email"));
@@ -95,11 +96,11 @@ describe("Welcome screen", () => {
 
       const button = await screen.findByRole("button", { name: "Avisarme" });
       expect(button).toBeDisabled();
-      await fireEvent.changeText(screen.getByLabelText("Tu email"), "lucia@rollo.test");
+      await fireEvent.changeText(screen.getByLabelText("Email"), "lucia@rollo.test");
       expect(screen.getByRole("button", { name: "Avisarme" })).toBeDisabled();
-      await fireEvent(screen.getByRole("switch", { name: /Acepto que me escriban/ }), "valueChange", true);
+      await fireEvent(screen.getByRole("checkbox", { name: /Acepto que me escriban/ }), "press");
       expect(screen.getByRole("button", { name: "Avisarme" })).toBeEnabled();
-      await fireEvent(screen.getByRole("switch", { name: /Acepto que me escriban/ }), "valueChange", false);
+      await fireEvent(screen.getByRole("checkbox", { name: /Acepto que me escriban/ }), "press");
       expect(screen.getByRole("button", { name: "Avisarme" })).toBeDisabled();
       expect(calls.some((c) => c.key === "POST /waitlist")).toBe(false);
     });
@@ -108,13 +109,13 @@ describe("Welcome screen", () => {
       const calls = mockApi({ "GET /config": CLOSED, "POST /waitlist": () => json(204) });
       await renderRouter(routes, { initialUrl: "/welcome" });
 
-      await fireEvent.changeText(await screen.findByLabelText("Tu email"), " Lucia@Rollo.test ");
-      await fireEvent(screen.getByRole("switch", { name: /Acepto que me escriban/ }), "valueChange", true);
+      await fireEvent.changeText(await screen.findByLabelText("Email"), " Lucia@Rollo.test ");
+      await fireEvent(screen.getByRole("checkbox", { name: /Acepto que me escriban/ }), "press");
       await fireEvent.press(screen.getByRole("button", { name: "Avisarme" }));
 
       expect(await screen.findByText("¡Listo! Te mandamos un mail para confirmar.")).toBeVisible();
       expect(calls.find((c) => c.key === "POST /waitlist")?.body).toEqual({ email: "lucia@rollo.test", source: "app", consent: true });
-      expect(screen.queryByLabelText("Tu email")).toBeNull();
+      expect(screen.queryByLabelText("Email")).toBeNull();
       expect(screen.queryByRole("button", { name: "Avisarme" })).toBeNull();
       expect(screen.getByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     });
@@ -123,12 +124,12 @@ describe("Welcome screen", () => {
       mockApi({ "GET /config": CLOSED, "POST /waitlist": () => json(400, { error: "Ese email no parece válido." }) });
       await renderRouter(routes, { initialUrl: "/welcome" });
 
-      await fireEvent.changeText(await screen.findByLabelText("Tu email"), "lucia@rollo.test");
-      await fireEvent(screen.getByRole("switch", { name: /Acepto que me escriban/ }), "valueChange", true);
+      await fireEvent.changeText(await screen.findByLabelText("Email"), "lucia@rollo.test");
+      await fireEvent(screen.getByRole("checkbox", { name: /Acepto que me escriban/ }), "press");
       await fireEvent.press(screen.getByRole("button", { name: "Avisarme" }));
 
       expect(await screen.findByText("Ese email no parece válido.")).toBeVisible();
-      expect(screen.getByLabelText("Tu email").props.value).toBe("lucia@rollo.test");
+      expect(screen.getByLabelText("Email").props.value).toBe("lucia@rollo.test");
       expect(screen.queryByText("¡Listo! Te mandamos un mail para confirmar.")).toBeNull();
     });
 
@@ -137,7 +138,7 @@ describe("Welcome screen", () => {
       mockApi({ "GET /config": CLOSED });
       await renderRouter(routes, { initialUrl: "/welcome" });
 
-      await fireEvent.press(await screen.findByText("Política de privacidad"));
+      await fireEvent.press(await screen.findByText("Ver política de privacidad"));
       expect(open).toHaveBeenLastCalledWith("https://rolloproject.com/privacy");
       open.mockRestore();
     });
