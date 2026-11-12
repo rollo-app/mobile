@@ -3226,7 +3226,7 @@ export interface paths {
         put?: never;
         /**
          * Register a photo or video
-         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries).
+         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries). 429 comes in two kinds: too fast (carries `Retry-After`, retry later) or photo quota used up (no `Retry-After`, do not retry).
          */
         post: {
             parameters: {
@@ -3352,7 +3352,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm the files were uploaded
-         * @description Checks that the original and the thumbnail are in R2 and that their sizes match what was registered. Only then does the photo show up in the feed. On a size mismatch both files are deleted and the media stays pending (register again for new URLs).
+         * @description Checks that the original and the thumbnail are in R2 and that their sizes match what was registered. Only then does the photo show up in the feed. On a size mismatch both files are deleted and the media stays pending (register again for new URLs). 429 comes in two kinds: too fast (carries `Retry-After`, retry later) or a quota error (no `Retry-After`, do not retry).
          */
         post: {
             parameters: {
