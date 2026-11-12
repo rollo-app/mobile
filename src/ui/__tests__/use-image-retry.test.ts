@@ -21,7 +21,7 @@ const advance = (ms: number) => act(async () => void jest.advanceTimersByTime(ms
 describe("useImageRetry", () => {
   it("starts on attempt 0 with no timer", async () => {
     const { result } = await mount(() => useImageRetry());
-    expect(result.current.retryKey).toBe(0);
+    expect(result.current.attempt).toBe(0);
     expect(retryTimers(setSpy)).toBe(0);
   });
 
@@ -29,25 +29,25 @@ describe("useImageRetry", () => {
     const { result } = await mount(() => useImageRetry());
     await act(async () => void result.current.onError());
     await advance(1999);
-    expect(result.current.retryKey).toBe(0);
+    expect(result.current.attempt).toBe(0);
     await advance(1);
-    expect(result.current.retryKey).toBe(1);
+    expect(result.current.attempt).toBe(1);
 
     await act(async () => void result.current.onError());
     await advance(4999);
-    expect(result.current.retryKey).toBe(1);
+    expect(result.current.attempt).toBe(1);
     await advance(1);
-    expect(result.current.retryKey).toBe(2);
+    expect(result.current.attempt).toBe(2);
 
     await act(async () => void result.current.onError());
     await advance(14999);
-    expect(result.current.retryKey).toBe(2);
+    expect(result.current.attempt).toBe(2);
     await advance(1);
-    expect(result.current.retryKey).toBe(3);
+    expect(result.current.attempt).toBe(3);
 
     await act(async () => void result.current.onError());
     await advance(60000);
-    expect(result.current.retryKey).toBe(3);
+    expect(result.current.attempt).toBe(3);
     expect(retryTimers(setSpy)).toBe(3); // the 4th failure scheduled nothing
   });
 
@@ -59,7 +59,7 @@ describe("useImageRetry", () => {
     });
     expect(retryTimers(setSpy)).toBe(1);
     await advance(2000);
-    expect(result.current.retryKey).toBe(1);
+    expect(result.current.attempt).toBe(1);
   });
 
   it("starts over from 2 s after a successful load", async () => {
@@ -68,11 +68,11 @@ describe("useImageRetry", () => {
     await advance(2000);
     await act(async () => void result.current.onError());
     await advance(5000);
-    expect(result.current.retryKey).toBe(2);
+    expect(result.current.attempt).toBe(2);
     await act(async () => void result.current.onLoad());
     await act(async () => void result.current.onError());
     await advance(2000);
-    expect(result.current.retryKey).toBe(3);
+    expect(result.current.attempt).toBe(3);
   });
 
   it("onLoad cancels a pending retry", async () => {
@@ -80,7 +80,7 @@ describe("useImageRetry", () => {
     await act(async () => void result.current.onError());
     await act(async () => void result.current.onLoad());
     await advance(10000);
-    expect(result.current.retryKey).toBe(0);
+    expect(result.current.attempt).toBe(0);
   });
 
   it("cancels the pending retry on unmount", async () => {
@@ -99,10 +99,24 @@ describe("useImageRetry", () => {
     await advance(5000);
     await act(async () => void result.current.onError());
     await advance(15000);
-    expect(result.current.retryKey).toBe(3);
+    expect(result.current.attempt).toBe(3);
     await rerender({ id: "b" });
     await act(async () => void result.current.onError());
     await advance(2000);
-    expect(result.current.retryKey).toBe(4);
+    expect(result.current.attempt).toBe(4);
+  });
+
+  it("gives every image its own key, so sibling images never share one", async () => {
+    const { result } = await mount(() => [useImageRetry("a"), useImageRetry("b")]);
+    const [first, second] = result.current;
+    expect(first!.retryKey).not.toBe(second!.retryKey);
+  });
+
+  it("changes the key on each retry", async () => {
+    const { result } = await mount(() => useImageRetry("a"));
+    const before = result.current.retryKey;
+    await act(async () => void result.current.onError());
+    await advance(2000);
+    expect(result.current.retryKey).not.toBe(before);
   });
 });

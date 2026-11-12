@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 /** Wait before each retry; after the last one we give up (the image stays blank until the screen remounts). */
 export const IMAGE_RETRY_DELAYS_MS = [2000, 5000, 15000] as const;
@@ -16,9 +16,13 @@ export const IMAGE_RETRY_DELAYS_MS = [2000, 5000, 15000] as const;
  * Nothing is scheduled until an image errors, so it costs nothing in long lists. The timer dies with
  * the component. `resetKey` (the image shown, e.g. its id) forgets the failures when the cell is
  * recycled for another image.
+ *
+ * `retryKey` is unique per hook (`useId` + the attempt): two images side by side (a blurred backdrop
+ * and the photo on top) would otherwise both start at key 0 and React would warn about duplicate keys.
  */
 export function useImageRetry(resetKey?: string) {
-  const [retryKey, setRetryKey] = useState(0);
+  const id = useId();
+  const [attempt, setAttempt] = useState(0);
   const failures = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -34,7 +38,7 @@ export function useImageRetry(resetKey?: string) {
     failures.current += 1;
     timer.current = setTimeout(() => {
       timer.current = null;
-      setRetryKey((k) => k + 1);
+      setAttempt((k) => k + 1);
     }, delay);
   }, []);
 
@@ -50,5 +54,5 @@ export function useImageRetry(resetKey?: string) {
 
   useEffect(() => cancel, [cancel]);
 
-  return { retryKey, onError, onLoad };
+  return { retryKey: `${id}-${attempt}`, attempt, onError, onLoad };
 }
