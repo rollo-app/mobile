@@ -37,7 +37,7 @@ describe("app config", () => {
   });
 
   it("only the production build declares the Universal Links domain", () => {
-    expect(configFor("production").ios?.associatedDomains).toEqual(["applinks:rollo.juanifraga.com"]);
+    expect(configFor("production").ios?.associatedDomains).toEqual(["applinks:rolloproject.com"]);
     expect(configFor(undefined).ios?.associatedDomains).toBeUndefined();
   });
 
@@ -61,6 +61,12 @@ describe("app config", () => {
 
   it("is version 1.3.0 (runtimeVersion follows it)", () => {
     expect(appJson.expo.version).toBe("1.3.0");
+  });
+
+  it("talks to the API on rolloproject.com (the build profile and the fallback agree)", () => {
+    const eas = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "eas.json"), "utf8"));
+    expect(eas.build.production.env.EXPO_PUBLIC_API_URL).toBe("https://api.rolloproject.com");
+    expect(appJson.expo.extra.apiUrl).toBe("https://api.rolloproject.com");
   });
 
   it("keeps the EAS project id push tokens need", () => {

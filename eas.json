@@ -9,7 +9,7 @@
       "autoIncrement": true,
       "env": {
         "APP_VARIANT": "production",
-        "EXPO_PUBLIC_API_URL": "https://rollo-api.juanifraga.com"
+        "EXPO_PUBLIC_API_URL": "https://api.rolloproject.com"
       },
       "channel": "production"
     }

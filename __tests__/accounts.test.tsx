@@ -123,9 +123,9 @@ describe("Login", () => {
     await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.press(await screen.findByText("Términos"));
-    expect(open).toHaveBeenLastCalledWith("https://rollo.juanifraga.com/terminos");
+    expect(open).toHaveBeenLastCalledWith("https://rolloproject.com/terms");
     await fireEvent.press(screen.getByText("Política de privacidad"));
-    expect(open).toHaveBeenLastCalledWith("https://rollo.juanifraga.com/privacidad");
+    expect(open).toHaveBeenLastCalledWith("https://rolloproject.com/privacy");
     open.mockRestore();
   });
 

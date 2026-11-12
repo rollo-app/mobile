@@ -2,7 +2,7 @@ import { magicLinkPath } from "@/features/auth/magic-link";
 import { friendLinkPath } from "@/features/friends/friend-link";
 
 /**
- * Universal Links (`https://rollo.juanifraga.com/entrar#…` and `/friends#CODE`) arrive here as the full
+ * Universal Links (`https://rolloproject.com/login#…` and `/friends#CODE`) arrive here as the full
  * URL; they are mapped to the routes that already handle the `rollo://` forms. Anything else is left as is
  * (returning null would drop the navigation). It must never throw: that would crash the app.
  */

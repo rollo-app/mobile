@@ -26,7 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.ios,
       // Universal Links (the email's magic link and friend links). The free Personal Team can't sign
       // Associated Domains, so only the production build asks for it.
-      ...(isProduction ? { associatedDomains: ["applinks:rollo.juanifraga.com"] } : {}),
+      ...(isProduction ? { associatedDomains: ["applinks:rolloproject.com"] } : {}),
       // Sign in with Apple: same story, the free Personal Team can't sign the capability (the dev build hides the button).
       ...(isProduction ? { usesAppleSignIn: true } : {}),
       bundleIdentifier: isProduction ? "com.juanifraga.rollo.app" : "com.juanifraga.rollo",
