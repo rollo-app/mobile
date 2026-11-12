@@ -47,9 +47,10 @@ export function ViewerPage({
   onDoubleTap: (photo: RevealedPhoto) => void;
 }) {
   const taps = useDoubleTap(onTap, () => onDoubleTap(photo));
-  const original = selfieBig && photo.selfie ? photo.selfie.originalPath : photo.originalPath;
-  // The original and its thumb placeholder are requested together: a 429 on either blanks the page.
-  const retry = useImageRetry(original);
+  // Full-size viewing loads the 2048 px display (the original if the upload has none).
+  const full = selfieBig && photo.selfie ? photo.selfie.displayPath : photo.displayPath;
+  // The photo and its thumb placeholder are requested together: a 429 on either blanks the page.
+  const retry = useImageRetry(full);
   if (photo.type === "video") {
     return (
       <View style={{ width, height }}>
@@ -72,7 +73,8 @@ export function ViewerPage({
           key={retry.retryKey}
           onError={retry.onError}
           onLoad={retry.onLoad}
-          source={mediaSource(original, token)}
+          testID="viewer-image"
+          source={mediaSource(full, token)}
           placeholder={mediaSource(selfieBig && photo.selfie ? photo.selfie.thumbPath : photo.thumbPath, token)}
           transition={150}
           contentFit="contain"

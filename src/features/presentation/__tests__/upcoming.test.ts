@@ -17,6 +17,8 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   author: { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null },
   thumbPath: "/t",
   originalPath: "/o",
+  displayPath: "/o",
+  originalAvailable: true,
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,

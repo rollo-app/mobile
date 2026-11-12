@@ -16,6 +16,8 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   author: { id: authorId, userId: `u-${authorId}`, name: authorId, username: null, avatarUrl: null },
   thumbPath: `/t/${id}`,
   originalPath: `/o/${id}`,
+  displayPath: `/o/${id}`,
+  originalAvailable: true,
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,

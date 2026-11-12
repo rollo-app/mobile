@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { Alert, Share } from "react-native";
 import * as actions from "@/features/friends/actions";
@@ -39,6 +40,7 @@ const revealedDetail = (): tripActions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },

@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { Alert } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -50,6 +51,7 @@ const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; 
       momentMode: "off",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      originals: keepOriginals,
       createdBy: null,
     },
     me,

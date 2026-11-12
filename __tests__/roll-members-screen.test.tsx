@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { Alert } from "react-native";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -53,6 +54,7 @@ const detail = (me: Member, members: Member[]): tripActions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: { userId: "u1", name: "Juani" },
   },
   me,

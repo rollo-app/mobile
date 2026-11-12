@@ -1,3 +1,4 @@
+import { OriginalsNotice } from "@/features/trips/originals-notice-text";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -165,19 +166,22 @@ export function GalleryScreen({
           <LoadMoreFooter loading={loadingMore} error={loadMoreError} onRetry={() => void fetchMore()} testID="gallery-loading-more" />
         }
         ListHeaderComponent={
-          author ? (
-            <View style={styles.filter}>
-              <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${author.name}`}</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Quitar filtro"
-                hitSlop={10}
-                onPress={() => setAuthorId(null)}
-              >
-                <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
-              </Pressable>
-            </View>
-          ) : undefined
+          <>
+            {detail && <OriginalsNotice originals={detail.trip.originals} timeZone={detail.trip.timezone} style={styles.notice} />}
+            {author && (
+              <View style={styles.filter}>
+                <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${author.name}`}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Quitar filtro"
+                  hitSlop={10}
+                  onPress={() => setAuthorId(null)}
+                >
+                  <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
+                </Pressable>
+              </View>
+            )}
+          </>
         }
         renderSectionHeader={({ section }) => (
           <Text accessibilityRole="header" style={[type.headline, styles.header]}>
@@ -250,6 +254,7 @@ export function GalleryScreen({
 }
 
 const styles = StyleSheet.create({
+  notice: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   filter: {
     flexDirection: "row",
     alignItems: "center",

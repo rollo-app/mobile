@@ -3226,7 +3226,7 @@ export interface paths {
         put?: never;
         /**
          * Register a photo or video
-         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries). 429 comes in two kinds: too fast (carries `Retry-After`, retry later) or photo quota used up (no `Retry-After`, do not retry).
+         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Photos can also declare `displaySizeBytes` (2048px JPEG, kept forever): the response then adds `upload.display`. Photos registered without it keep their original forever. Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries). 429 comes in two kinds: too fast (carries `Retry-After`, retry later) or photo quota used up (no `Retry-After`, do not retry).
          */
         post: {
             parameters: {
@@ -3520,7 +3520,7 @@ export interface paths {
         };
         /**
          * Download a file (only after the reveal, except daily moment photos)
-         * @description Streamed from R2 with the same Bearer token. Before the reveal only the two images of a daily moment (main and linked) can be fetched, by active members; anything else is 403.
+         * @description Streamed from R2 with the same Bearer token. `display` is the 2048px version (the original for uploads that have none); `original` serves the display once the original was purged 30 days after the reveal. Before the reveal only the two images of a daily moment (main and linked) can be fetched, by active members; anything else is 403.
          */
         get: {
             parameters: {
@@ -3529,7 +3529,7 @@ export interface paths {
                 path: {
                     tripId: string;
                     mediaId: string;
-                    variant: "thumb" | "original";
+                    variant: "thumb" | "original" | "display";
                 };
                 cookie?: never;
             };
@@ -4233,7 +4233,7 @@ export interface paths {
                 path: {
                     userId: string;
                     mediaId: string;
-                    variant: "thumb" | "original";
+                    variant: "thumb" | "original" | "display";
                 };
                 cookie?: never;
             };
@@ -5125,6 +5125,8 @@ export interface components {
             dailyMoment: boolean;
             /** @description Someone in a rollo you are in uploaded their daily moment */
             momentPosted: boolean;
+            /** @description The full-quality originals of a rollo you are in will be deleted in 5 days (the display versions stay) */
+            originalsExpiring: boolean;
         };
         PrivacySettings: {
             /** @description Others may feature any of your photos on their profile (on by default) */
@@ -5152,6 +5154,8 @@ export interface components {
                 dailyMoment?: boolean;
                 /** @description Someone in a rollo you are in uploaded their daily moment */
                 momentPosted?: boolean;
+                /** @description The full-quality originals of a rollo you are in will be deleted in 5 days (the display versions stay) */
+                originalsExpiring?: boolean;
             };
             privacy?: {
                 /** @description Others may feature any of your photos on their profile (on by default) */
@@ -5402,6 +5406,15 @@ export interface components {
             momentWindowEnd: number;
             /** @description Maximum number of active participants (15 for free rollos); joining or adding past it is refused */
             maxMembers: number;
+            /** @description Retention of the full-quality originals; the 2048px display version of every photo is kept forever */
+            originals: {
+                /** @description The rollo keeps its full-quality originals forever (rollos that existed before the policy, and later the paid pass) */
+                keep: boolean;
+                /** @description When the originals are deleted: 30 days after the reveal; null when `keep` */
+                expiresAt: number | null;
+                /** @description The cron already deleted every purgeable original (the display versions stay) */
+                purged: boolean;
+            };
             /** @description Who created the rollo (always an admin). Only filled in by GET /trips/{tripId}, create, join and the edit routes; null if unknown */
             createdBy: {
                 /** Format: uuid */
@@ -5585,6 +5598,11 @@ export interface components {
                  * @description PUT of the JPEG thumbnail (~800px); send exactly `thumbSizeBytes` bytes as Content-Length
                  */
                 thumb: string;
+                /**
+                 * Format: uri
+                 * @description Only when `displaySizeBytes` was sent: PUT of the display JPEG (2048px); send exactly `displaySizeBytes` bytes as Content-Length
+                 */
+                display?: string;
             };
             /** @description Seconds the URLs stay valid */
             expiresIn: number;
@@ -5623,6 +5641,8 @@ export interface components {
             sizeBytes: number;
             /** @description Exact byte size of the thumbnail JPEG; the upload URL is signed for exactly this Content-Length */
             thumbSizeBytes: number;
+            /** @description Photos only. Exact byte size of the display JPEG (2048 px, compressed, up to 4 MB); when present the response's `upload` also has a signed `display` URL for exactly this Content-Length. Omit it (older builds) and the photo keeps its original forever. */
+            displaySizeBytes?: number;
             /**
              * @description Trip-local date (YYYY-MM-DD) of the daily moment this photo answers. The member must have a moment for that day (409 otherwise, or if it already has a photo). Moment photos don't use the photo quota. Photos only.
              * @example 2027-01-12
@@ -5676,8 +5696,13 @@ export interface components {
             /** @description Download paths; only after the reveal, except for the photos of a daily moment (main and linked image), which any active member gets as soon as they are uploaded */
             files?: {
                 thumb: string;
+                /** @description Always present. Once the original was purged (30 days after the reveal) the same path serves the display file instead; see `originalAvailable` */
                 original: string;
+                /** @description 2048px version, kept forever; absent for uploads from builds that predate it (they keep their original) */
+                display?: string;
             };
+            /** @description Comes with `files`: false once the full-quality original was deleted (the `original` path then serves the display file). Always true for videos and for uploads without a display */
+            originalAvailable?: boolean;
             /** @description Only after the reveal: you featured it on your profile */
             featuredByMe?: boolean;
             /** @description Only after the reveal: the author does not let others feature it (they still can) */
@@ -5705,7 +5730,10 @@ export interface components {
                 files: {
                     thumb: string;
                     original: string;
+                    display?: string;
                 } | null;
+                /** @description false once the linked image's original was deleted (the `original` path then serves the display file) */
+                originalAvailable?: boolean;
             } | null;
         };
         FeaturedPhotos: {

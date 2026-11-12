@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act } from "@testing-library/react-native";
 import * as Burnt from "burnt";
 import { Alert } from "react-native";
@@ -49,6 +50,7 @@ const detail = (revealed = true): actions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me: { ...MINE, role: "member", isCreator: false, blockedByMe: false },

@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
 import { Alert } from "react-native";
@@ -39,6 +40,7 @@ const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" =
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
     ...over,
   },

@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
 import { ApiError } from "@/api/client";
@@ -51,6 +52,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
       momentMode: "off",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      originals: keepOriginals,
       createdBy: { userId: "u1", name: "Juani" },
       ...over,
     },

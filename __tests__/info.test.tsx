@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
 import "@/test/reanimated";
 import * as featuredActions from "@/features/featured/actions";
@@ -21,6 +22,7 @@ const detail = (): actions.TripDetail => ({
     startsAt: Date.now() - DAY, endsAt: Date.now() + 9 * DAY, revealAt: Date.now() + 9 * DAY, revealed: false,
     dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, maxMembers: 15, photoLimitMode: "daily", totalPhotoLimit: null,
     momentMode: "off", momentWindowStart: 540, momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me,

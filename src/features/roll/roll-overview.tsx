@@ -2,6 +2,7 @@ import { StyleSheet, Text } from "react-native";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
+import { OriginalsNotice } from "@/features/trips/originals-notice-text";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Screen } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
@@ -35,6 +36,7 @@ export function RollOverview({ tripId }: { tripId: string }) {
               timeZone: detail.trip.timezone,
             })}
           </Text>
+          <OriginalsNotice originals={detail.trip.originals} timeZone={detail.trip.timezone} style={styles.notice} />
           <RollDates detail={detail} phase={phase} />
           <UploadStatusSection tripId={tripId} timeZone={detail.trip.timezone} />
           <BelowUploads>
@@ -47,5 +49,6 @@ export function RollOverview({ tripId }: { tripId: string }) {
 }
 
 const styles = StyleSheet.create({
+  notice: { paddingHorizontal: spacing.xs },
   summary: { color: colors.secondaryLabel, paddingHorizontal: spacing.xs, fontVariant: ["tabular-nums"] },
 });

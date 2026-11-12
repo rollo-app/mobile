@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act } from "@testing-library/react-native";
 import { ActionSheetIOS, Alert, Linking, Text } from "react-native";
 import { router } from "expo-router";
@@ -79,6 +80,7 @@ const detail = (): actions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
@@ -580,6 +582,26 @@ describe("Photo viewer", () => {
     expect(info.getByRole("button", { name: "Ver en el mapa" })).toBeVisible();
     expect(info.getByRole("button", { name: "Guardar en Fotos" })).toBeVisible();
     for (const text of ["Guardar en Fotos", "Ver en el mapa", "Agregar a tu perfil", "Me gusta"]) expect(screen.queryByText(text)).toBeNull();
+  });
+
+  const viewerUri = () => (screen.getByTestId("viewer-image").props.source as Array<{ uri: string }>)[0]!.uri;
+
+  it("loads the display version in the viewer when the feed has it", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(
+      feed([item("a", { files: { thumb: "/m/a/thumb", original: "/m/a/original", display: "/m/a/display" } })]),
+    );
+    await renderRouter(routes, { initialUrl: `/photo/a?tripId=${SUR}` });
+    await screen.findByText("Fede");
+
+    expect(viewerUri()).toMatch(/\/m\/a\/display$/);
+  });
+
+  it("falls back to the original in the viewer for a photo without a display", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("c")]));
+    await renderRouter(routes, { initialUrl: `/photo/c?tripId=${SUR}` });
+    await screen.findByText("Fede");
+
+    expect(viewerUri()).toMatch(/\/m\/c\/original$/);
   });
 
   it("puts Más opciones at the top, out of the bottom panel", async () => {
