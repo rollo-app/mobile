@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { useColorScheme, View } from "react-native";
 import { errorMessage } from "@/api/client";
+import { isRegistrationsClosed, RegistrationsClosedNotice } from "@/features/waitlist/registrations-closed";
 import { Button, ErrorText, Field } from "@/ui/components";
 import { AuthScreen } from "./auth-screen";
 import { GoogleSignInButton } from "./google-button";
@@ -29,6 +30,7 @@ export function EmailScreen({ initialEmail = "" }: { initialEmail?: string }) {
     errorMessage(start.error, "No se pudo enviar el código") ??
     errorMessage(google.error, "No se pudo entrar con Google") ??
     errorMessage(apple.error, "No se pudo entrar con Apple");
+  const closed = isRegistrationsClosed(google.error) || isRegistrationsClosed(apple.error);
   const resetAll = () => {
     start.reset();
     google.reset();
@@ -57,7 +59,7 @@ export function EmailScreen({ initialEmail = "" }: { initialEmail?: string }) {
         onSubmitEditing={isValidEmail(email) ? submit : undefined}
         placeholder="nombre@email.com"
       />
-      {error && <ErrorText>{error}</ErrorText>}
+      {error && (closed ? <RegistrationsClosedNotice message={error} /> : <ErrorText>{error}</ErrorText>)}
       <Button label="Continuar" onPress={submit} disabled={!isValidEmail(email)} loading={start.isPending} />
       {/* Apple's own button (its guidelines: at least as prominent as any other sign-in option), so it goes before Google. */}
       {appleAvailable && (

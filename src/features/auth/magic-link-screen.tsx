@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { ApiError } from "@/api/client";
+import { isRegistrationsClosed, RegistrationsClosedNotice } from "@/features/waitlist/registrations-closed";
 import { Button, ErrorText, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { LinkFromOtherRequestError, verifyMagicLink } from "./actions";
@@ -21,6 +22,8 @@ export function MagicLinkScreen({ token, email }: { token: string; email: string
   const { session, me, failed } = useMe();
   const gate = gateFor({ session, me, meFailed: failed });
   const [error, setError] = useState<string | null>(token && email ? null : INVALID);
+  // The server refused to create the account (registrations closed): the way out is the waitlist, not another code.
+  const [closed, setClosed] = useState(false);
   const goIn = () => router.replace("/");
 
   const signedOut = session === "out";
@@ -29,6 +32,7 @@ export function MagicLinkScreen({ token, email }: { token: string; email: string
     let active = true;
     verifyMagicLinkOnce(email, token, verifyMagicLink).catch((e) => {
       if (!active) return;
+      setClosed(isRegistrationsClosed(e));
       const known = e instanceof ApiError || e instanceof LinkFromOtherRequestError;
       setError(known ? e.message : "No pudimos entrar. Revisá tu conexión y volvé a abrir el link.");
     });
@@ -56,12 +60,18 @@ export function MagicLinkScreen({ token, email }: { token: string; email: string
   if (error && session !== "in") {
     return (
       <View style={styles.screen}>
-        <ErrorText>{error}</ErrorText>
-        <Button
-          label="Volver a pedir un código"
-          variant="secondary"
-          onPress={() => router.replace(email ? { pathname: "/email", params: { email: email.trim().toLowerCase() } } : "/email")}
-        />
+        {closed ? (
+          <RegistrationsClosedNotice message={error} />
+        ) : (
+          <>
+            <ErrorText>{error}</ErrorText>
+            <Button
+              label="Volver a pedir un código"
+              variant="secondary"
+              onPress={() => router.replace(email ? { pathname: "/email", params: { email: email.trim().toLowerCase() } } : "/email")}
+            />
+          </>
+        )}
       </View>
     );
   }

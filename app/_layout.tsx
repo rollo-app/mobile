@@ -3,7 +3,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { StyleSheet, Text, useColorScheme, View } from "react-native";
-import { CACHE_MAX_AGE, connectAppState, persister, queryClient } from "@/api/query-client";
+import { CACHE_MAX_AGE, connectAppState, persister, queryClient, shouldDehydrateQuery } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
 import { REVEAL_BACKGROUND } from "@/features/reveal/reveal-screen";
 import { CROP_BACKGROUND } from "@/features/profile/avatar-crop";
@@ -31,7 +31,7 @@ export default function RootLayout() {
   useEffect(() => void cancelLegacyRevealNotifications(), []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE }}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE, dehydrateOptions: { shouldDehydrateQuery } }}>
         <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
           <StatusBar style="auto" />
           <RootStack />

@@ -114,10 +114,11 @@ beforeEach(() => {
 afterEach(() => alert.mockRestore());
 
 describe("Login", () => {
-  it("without a session the app shows the email step and nothing else", async () => {
+  it("without a session the app shows the welcome screen and nothing else", async () => {
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
+    expect(screen).toHavePathname("/welcome");
     expect(screen.queryByText("Fechas")).toBeNull();
   });
 
@@ -139,7 +140,7 @@ describe("Login", () => {
       "GET /usernames/juani": json(200, { available: true, username: "juani" }),
       "PATCH /me": json(200, USER),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     const email = await screen.findByLabelText("Tu email");
     expect(email.props.textContentType).toBe("emailAddress");
@@ -198,7 +199,7 @@ describe("Login", () => {
           return json(200, { token: "tok", user: { ...USER, name: "Lucía Pérez", username: null }, isNew: true });
         },
       });
-      await renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/email" });
 
       await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
 
@@ -210,7 +211,7 @@ describe("Login", () => {
 
     it("canceling Apple's sheet stays on the email step without calling the server", async () => {
       const calls = mockApi({});
-      await renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/email" });
 
       await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
 
@@ -231,7 +232,7 @@ describe("Login", () => {
         authorizationCode: null,
       } as AppleAuthentication.AppleAuthenticationCredential);
       mockApi({ "POST /auth/apple": json(409, { error: "Ya tenés una cuenta con este email. Entrá con el código que te mandamos por mail." }) });
-      await renderRouter(routes, { initialUrl: "/" });
+      await renderRouter(routes, { initialUrl: "/email" });
 
       await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
 
@@ -240,7 +241,7 @@ describe("Login", () => {
   });
 
   it("without the Sign in with Apple entitlement (the development build) there is no Apple button", async () => {
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     expect(await screen.findByRole("button", { name: "Continuar con Google" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Continuar con Apple" })).toBeNull();
   });
@@ -256,7 +257,7 @@ describe("Login", () => {
         return json(200, { token: "tok", user: { ...USER, name: null, username: null }, isNew: true });
       },
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
 
@@ -276,7 +277,7 @@ describe("Login", () => {
     upload.mockClear();
     const { File } = jest.requireMock("expo-file-system") as { File: { downloadFileAsync: jest.Mock } };
     File.downloadFileAsync.mockClear();
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
 
@@ -295,7 +296,7 @@ describe("Login", () => {
     mockApi({ "POST /auth/google": json(200, { token: "tok", user: { ...USER, name: "Juani", username: null }, isNew: true }) });
     const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue(USER);
     upload.mockClear();
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
 
@@ -306,7 +307,7 @@ describe("Login", () => {
 
   it("closing Google's picker stays on the email step without calling the server", async () => {
     const calls = mockApi({});
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
 
@@ -322,7 +323,7 @@ describe("Login", () => {
       data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: null, email: "x@gmail.com", photo: null, familyName: null, givenName: null } },
     });
     mockApi({ "POST /auth/google": json(400, { error: "No pudimos verificar tu cuenta de Google. Probá de nuevo." }) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
 
@@ -335,7 +336,7 @@ describe("Login", () => {
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(200, { token: "tok", user: USER, isNew: false }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
@@ -346,7 +347,7 @@ describe("Login", () => {
 
   it("the login code field shows the generic placeholder", async () => {
     mockApi({ "POST /auth/email/start": json(204) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
@@ -359,7 +360,7 @@ describe("Login", () => {
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(200, { token: "tok", user: { ...USER, username: null }, isNew: true }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
@@ -371,7 +372,7 @@ describe("Login", () => {
 
   it("shows the server's error inline on the email step and keeps what was typed", async () => {
     mockApi({ "POST /auth/email/start": json(429, { error: "Pediste demasiados códigos, esperá un rato" }) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
@@ -385,7 +386,7 @@ describe("Login", () => {
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(400, { error: "Código incorrecto o vencido" }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -397,7 +398,7 @@ describe("Login", () => {
 
   it("types the code in uppercase and ignores characters it can't have", async () => {
     mockApi({ "POST /auth/email/start": json(204) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -408,7 +409,7 @@ describe("Login", () => {
 
   it("the code field has no native length limit, so iOS AutoFill can insert it", async () => {
     mockApi({ "POST /auth/email/start": json(204) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -427,7 +428,7 @@ describe("Login", () => {
         return json(400, { error: "Código incorrecto o vencido" });
       },
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -449,7 +450,7 @@ describe("Login", () => {
         return json(400, { error: "Código incorrecto o vencido" });
       },
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
@@ -467,7 +468,7 @@ describe("Login", () => {
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(400, { error: "Código incorrecto o vencido" }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
@@ -492,7 +493,7 @@ describe("Login", () => {
         return () => (++n === 1 ? json(204) : json(429, { error: "Pediste demasiados códigos, esperá un rato" }));
       })(),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     await screen.findByLabelText("Código");
@@ -511,7 +512,7 @@ describe("Login", () => {
 
   it("doesn't suggest asking for another code before anything failed", async () => {
     mockApi({ "POST /auth/email/start": json(204) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -525,7 +526,7 @@ describe("Login", () => {
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(400, { error: "El código venció, pedí uno nuevo" }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
@@ -553,7 +554,7 @@ describe("Login", () => {
       await jest.requireActual("@/api/query-client").queryClient.invalidateQueries({ queryKey: ["myTrips"] });
     });
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     expect(await getSessionToken()).toBeNull();
   });
 });
@@ -578,7 +579,7 @@ describe("Profile and settings", () => {
     expect(await screen.findByText("Completá tu perfil")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Cerrar sesión" }));
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     expect(calls).toContain("POST /auth/logout");
     expect(await getSessionToken()).toBeNull();
   });
@@ -596,7 +597,7 @@ describe("Profile and settings", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     expect(calls).toContain("POST /auth/logout");
     expect(await getSessionToken()).toBeNull();
     expect(await queue.pending("u1")).toHaveLength(1);
@@ -622,7 +623,7 @@ describe("Profile and settings", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: "Cerrar sesión" })).toBeNull());
     expect(calls.filter((c) => c === "POST /auth/logout")).toHaveLength(1);
     await act(async () => release());
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     expect(calls.filter((c) => c === "POST /auth/logout")).toHaveLength(1);
   });
 
@@ -645,7 +646,7 @@ describe("Profile and settings", () => {
     await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
-    await screen.findByLabelText("Tu email");
+    await screen.findByRole("button", { name: "Ya tengo cuenta" });
 
     expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("moment.t1.2027-01-12");
     expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith("other");
@@ -674,8 +675,8 @@ describe("Profile and settings", () => {
     const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
     await act(async () => buttons.find((b) => b.text === "Borrar cuenta")!.onPress!());
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
-    expect(calls).toEqual(["DELETE /me"]);
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
+    expect(calls).toEqual(["DELETE /me", "GET /config"]);
     expect(await getSessionToken()).toBeNull();
   });
 

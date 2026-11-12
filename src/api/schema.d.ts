@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Request a login code by email
-         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts) and, only when `linkChallenge` is sent, a magic link for the same attempt (`<LOGIN_LINK_URL>#t=<token>&e=<email>`, see `/auth/email/verify-link`), bound to that challenge. Using either one consumes both. A new request invalidates the previous codes. Rate limited per email and per IP, and capped globally per day (429). Works for new and existing users alike.
+         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts) and, only when `linkChallenge` is sent, a magic link for the same attempt (`<LOGIN_LINK_URL>#t=<token>&e=<email>`, see `/auth/email/verify-link`), bound to that challenge. Using either one consumes both. A new request invalidates the previous codes. Rate limited per email and per IP, and capped globally per day (429). Works for new and existing users alike, and answers the same while new registrations are closed (the rejection comes when verifying).
          */
         post: {
             parameters: {
@@ -83,7 +83,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange the emailed code for a session token
-         * @description Creates the user on the first successful verification. `isNew` is true while the user has no name. The code is case-insensitive and spaces or dashes are ignored; a malformed code is answered like a wrong one.
+         * @description Creates the user on the first successful verification. `isNew` is true while the user has no name. The code is case-insensitive and spaces or dashes are ignored; a malformed code is answered like a wrong one. While new registrations are closed (`GET /config` → `registrationsOpen: false`), an email with no account gets 403 `{ error, code: "REGISTRATIONS_CLOSED" }` here (after the code or link checks out), and existing accounts sign in as always.
          */
         post: {
             parameters: {
@@ -116,6 +116,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -135,7 +144,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange the emailed magic-link token for a session token
-         * @description Same result as `/auth/email/verify`, with the token from the link's fragment instead of the code. Needs the `verifier` whose SHA-256 was sent as `linkChallenge` to `/auth/email/start`: the link only signs in the phone that asked for it. Shares the code's expiry, attempts and single use: a wrong or missing token or verifier uses up an attempt, and after the link or the code is used neither works again. Attempts started without a challenge have no link, so this always fails for them. Every failure answers the same 400. Only POST: the token is never accepted in a URL.
+         * @description Same result as `/auth/email/verify`, with the token from the link's fragment instead of the code. Needs the `verifier` whose SHA-256 was sent as `linkChallenge` to `/auth/email/start`: the link only signs in the phone that asked for it. Shares the code's expiry, attempts and single use: a wrong or missing token or verifier uses up an attempt, and after the link or the code is used neither works again. Attempts started without a challenge have no link, so this always fails for them. Every failure answers the same 400. Only POST: the token is never accepted in a URL. While new registrations are closed (`GET /config` → `registrationsOpen: false`), an email with no account gets 403 `{ error, code: "REGISTRATIONS_CLOSED" }` here (after the code or link checks out), and existing accounts sign in as always.
          */
         post: {
             parameters: {
@@ -168,6 +177,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -187,7 +205,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with a Google ID token
-         * @description Same result as `/auth/email/verify`. The token must be signed by Google, issued for one of our OAuth clients (`GOOGLE_CLIENT_IDS`), not expired, and carry an email Google verified; any failure is the same 400. The Google account id finds the user it was linked to before (even if its email changed); otherwise the verified email signs into that email's account or creates it, and links it. An existing account is only linked when Google owns the address (Gmail, or a Workspace domain matching `hd`); for any other address with an account the answer is 409 (sign in with the emailed code instead). An account without a name gets the Google profile name (single spaces, up to 30 characters) as a suggestion: it stays incomplete (`isNew`) until it has a username, so the profile step shows it prefilled. 503 when Google sign-in is not configured, or in degraded mode for an email without an account.
+         * @description Same result as `/auth/email/verify`. The token must be signed by Google, issued for one of our OAuth clients (`GOOGLE_CLIENT_IDS`), not expired, and carry an email Google verified; any failure is the same 400. The Google account id finds the user it was linked to before (even if its email changed); otherwise the verified email signs into that email's account or creates it, and links it. An existing account is only linked when Google owns the address (Gmail, or a Workspace domain matching `hd`); for any other address with an account the answer is 409 (sign in with the emailed code instead). An account without a name gets the Google profile name (single spaces, up to 30 characters) as a suggestion: it stays incomplete (`isNew`) until it has a username, so the profile step shows it prefilled. 503 when Google sign-in is not configured, or in degraded mode for an email without an account. While new registrations are closed, a Google account with no Rollo account (no linked identity, no account with that email) gets 403 `{ error, code: "REGISTRATIONS_CLOSED" }`.
          */
         post: {
             parameters: {
@@ -213,6 +231,15 @@ export interface paths {
                 };
                 /** @description Invalid data */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -257,7 +284,7 @@ export interface paths {
         put?: never;
         /**
          * Sign in with a Sign in with Apple identity token
-         * @description Same result as `/auth/email/verify` and the same rules as `/auth/google`. The token must be signed by Apple, issued for one of our bundle ids (`APPLE_CLIENT_IDS`) and not expired; if it carries an email, Apple must have verified it. Any failure is the same 400. The Apple account id finds the user it was linked to before (later tokens may come without an email); otherwise the email signs into that email's account or creates it, and links it. An existing account is only linked when Apple owns the address (iCloud, or the Hide My Email relay); any other address with an account answers 409 (sign in with the emailed code). A first sign-in without an email is a 400. `name`, which Apple gives only on the first sign-in, prefills an account without a name. 503 when Apple sign-in is not configured, or in degraded mode for an email without an account.
+         * @description Same result as `/auth/email/verify` and the same rules as `/auth/google`. The token must be signed by Apple, issued for one of our bundle ids (`APPLE_CLIENT_IDS`) and not expired; if it carries an email, Apple must have verified it. Any failure is the same 400. The Apple account id finds the user it was linked to before (later tokens may come without an email); otherwise the email signs into that email's account or creates it, and links it. An existing account is only linked when Apple owns the address (iCloud, or the Hide My Email relay); any other address with an account answers 409 (sign in with the emailed code). A first sign-in without an email is a 400. `name`, which Apple gives only on the first sign-in, prefills an account without a name. 503 when Apple sign-in is not configured, or in degraded mode for an email without an account. While new registrations are closed, an Apple account with no Rollo account gets 403 `{ error, code: "REGISTRATIONS_CLOSED" }`.
          */
         post: {
             parameters: {
@@ -283,6 +310,15 @@ export interface paths {
                 };
                 /** @description Invalid data */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -344,6 +380,104 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public app configuration
+         * @description No token. `registrationsOpen` is false while a superadmin has closed new registrations: the app then shows its waitlist instead of sign-up (existing accounts still sign in). The value can lag up to a minute after a change.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Configuration */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AppConfig"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/waitlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join the waitlist (double opt-in)
+         * @description No token. For people who cannot sign up yet (registrations closed). Always 204 for valid input, whether or not the email was already listed, confirmed, throttled or over a daily cap: nothing about the list is revealed. 400 for an invalid email or `consent` other than `true`. Sends one confirmation email (a confirm and an unsubscribe link) at most once per address per 24 h; someone who unsubscribed and posts again gets a new one. Already confirmed addresses get nothing. Capped per IP and globally per day (still 204, nothing sent). 502 only if the email provider fails.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["WaitlistJoinRequest"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Upstream service failed */
+                502: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4874,6 +5008,11 @@ export interface components {
         Error: {
             /** @example Código inválido */
             error: string;
+            /**
+             * @description Machine-readable reason, only on the errors the app has to tell apart.
+             * @example REGISTRATIONS_CLOSED
+             */
+            code?: string;
         };
         EmailStartRequest: {
             /**
@@ -4972,6 +5111,28 @@ export interface components {
              * @example Lucía Pérez
              */
             name?: string;
+        };
+        AppConfig: {
+            /** @description false while new accounts cannot be created (the app shows the waitlist instead of sign-up). */
+            registrationsOpen: boolean;
+        };
+        WaitlistJoinRequest: {
+            /**
+             * @description Trimmed and lowercased
+             * @example juani@example.com
+             */
+            email: string;
+            /**
+             * @description Where the person signed up. Defaults to `app`.
+             * @default app
+             * @enum {string}
+             */
+            source?: "app" | "web";
+            /**
+             * @description Must be `true`: the person agreed to get an email when Rollo opens.
+             * @enum {boolean}
+             */
+            consent: true;
         };
         ReceivedFriendRequests: {
             /** @description Pending requests to you, most recent first */
