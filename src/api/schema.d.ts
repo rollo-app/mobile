@@ -2369,7 +2369,7 @@ export interface paths {
         put?: never;
         /**
          * Join a trip
-         * @description With the invite code. The profile must have a name and a username. Idempotent: 201 when newly joined (or back after leaving), 200 when already an active member. Someone removed by the admin gets 403. Revealed rollos 409.
+         * @description With the invite code. The profile must have a name and a username. Idempotent: 201 when newly joined (or back after leaving), 200 when already an active member. Someone removed by the admin gets 403. Revealed rollos 409. A rollo that reached its member cap (`maxMembers`) also gets 409 with the numbers in the message (an active member still gets 200).
          */
         post: {
             parameters: {
@@ -2744,7 +2744,7 @@ export interface paths {
         put?: never;
         /**
          * Add your friends to the trip
-         * @description Any member adds their own friends directly. The answer is per friend (never all-or-nothing): `added` (also when they had left and come back), `already_member`, or `unavailable` (not your friend, removed by the admin, or unknown). The rollo's admin can add back someone who was removed (they become active again with their old photos); for a regular member a removed person stays `unavailable`. A revealed rollo gets 409 for the whole request.
+         * @description Any member adds their own friends directly. The answer is per friend (never all-or-nothing): `added` (also when they had left and come back), `already_member`, `unavailable` (not your friend, removed by the admin, or unknown) or `full` (no room left: the rollo has a cap on active members and friends are processed in request order). The rollo's admin can add back someone who was removed (they become active again with their old photos); for a regular member a removed person stays `unavailable`. A revealed rollo gets 409 for the whole request.
          */
         post: {
             parameters: {
@@ -5400,6 +5400,8 @@ export interface components {
             momentWindowStart: number;
             /** @description Moment window end, minutes from midnight in the rollo's time zone */
             momentWindowEnd: number;
+            /** @description Maximum number of active participants (15 for free rollos); joining or adding past it is refused */
+            maxMembers: number;
             /** @description Who created the rollo (always an admin). Only filled in by GET /trips/{tripId}, create, join and the edit routes; null if unknown */
             createdBy: {
                 /** Format: uuid */
@@ -5547,10 +5549,10 @@ export interface components {
             results: {
                 userId: string;
                 /**
-                 * @description added: now a member (also if they had left); already_member; unavailable: not your friend, removed by the admin (unless the caller is the admin), or unknown
+                 * @description added: now a member (also if they had left); already_member; unavailable: not your friend, removed by the admin (unless the caller is the admin), or unknown; full: the rollo reached its member cap before this friend (friends are processed in request order)
                  * @enum {string}
                  */
-                status: "added" | "already_member" | "unavailable";
+                status: "added" | "already_member" | "unavailable" | "full";
             }[];
         };
         AddMembersRequest: {
