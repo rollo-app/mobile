@@ -3436,11 +3436,16 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`; before the reveal only a daily moment's photo has `commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`; before the reveal only a daily moment's photo has `commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out. Oldest first (`takenAt`, ties by id), paginated with a keyset cursor: send `limit` and then each page's `nextCursor` as `cursor`. Without cursor or limit returns the whole feed, for older app builds; new clients should always send limit.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description `nextCursor` of the previous page */
+                    cursor?: string;
+                    /** @description Page size (1-100; default 30 when only `cursor` is sent) */
+                    limit?: number;
+                };
                 header?: never;
                 path: {
                     tripId: string;
@@ -3449,13 +3454,22 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Feed ordered by the time the shot was taken */
+                /** @description A page of the feed ordered by the time the shot was taken */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["Feed"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Missing or invalid session token */
@@ -5622,6 +5636,8 @@ export interface components {
             revealed: boolean;
             revealAt: number;
             items: components["schemas"]["FeedItem"][];
+            /** @description Pass it as `cursor` to get the next page; null when there are no more items (always null without cursor or limit) */
+            nextCursor: string | null;
         };
         FeedItem: {
             /** Format: uuid */
