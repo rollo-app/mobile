@@ -173,7 +173,7 @@ export function ProfileForm({
           label="¿Te invitó un amigo? Código"
           value={friendCode}
           onChangeText={(value) => {
-            setFriendCode(value);
+            setFriendCode(value.toUpperCase());
             clearError();
           }}
           autoCapitalize="characters"

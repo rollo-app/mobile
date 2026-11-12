@@ -46,7 +46,7 @@ export function JoinScreen() {
       <Field
         label="Código del rollo"
         value={code}
-        onChangeText={setCode}
+        onChangeText={(value) => setCode(value.toUpperCase())}
         autoCapitalize="characters"
         autoCorrect={false}
         maxLength={6}

@@ -206,6 +206,15 @@ describe("Opening a friend link", () => {
       await settle();
     });
 
+    it("the friend code field shows what is typed in uppercase", async () => {
+      await signInAs({ user: newcomer });
+      await renderRouter(routes, { initialUrl: "/profile" });
+
+      await fireEvent.changeText(await screen.findByLabelText("¿Te invitó un amigo? Código"), "k7m2qx9a");
+
+      expect(screen.getByLabelText("¿Te invitó un amigo? Código").props.value).toBe("K7M2QX9A");
+    });
+
     it("a wrong friend code shows the error inline and doesn't save the profile", async () => {
       await signInAs({ user: newcomer });
       friends.claimFriendLink.mockRejectedValue(new ApiError(400, "Código incorrecto o vencido"));

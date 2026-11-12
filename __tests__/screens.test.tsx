@@ -518,7 +518,19 @@ describe("Join", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "hub5ft" });
+    expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" });
+  });
+
+  it("shows the typed code in uppercase and joins with it", async () => {
+    mocked.joinTrip.mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    const field = await screen.findByLabelText("Código del rollo");
+    await fireEvent.changeText(field, "ft7zad");
+
+    expect(screen.getByLabelText("Código del rollo").props.value).toBe("FT7ZAD");
+    await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
+    await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "FT7ZAD" }));
   });
 
   it("shows the server error", async () => {
