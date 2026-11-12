@@ -99,9 +99,10 @@ describe("useFeed", () => {
     await act(async () => void (await lazy.result.current.fetchMore()));
     expect(fetchFeedPage).toHaveBeenCalledTimes(2);
 
+    // The all screen starts from the cached pages (it may already be fetching page 3, so the intermediate state isn't asserted).
     const all = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
-    expect(ids(all.result.current.feed)).toEqual(["a", "b", "c", "d"]);
     await waitFor(() => expect(all.result.current.complete).toBe(true));
+    expect(ids(all.result.current.feed)).toEqual(["a", "b", "c", "d", "e"]);
     expect(fetchFeedPage).toHaveBeenCalledTimes(3);
     expect(fetchFeedPage).toHaveBeenLastCalledWith("t1", { cursor: "c2", limit: 30 });
   });
