@@ -8,6 +8,8 @@ import { embedMetadata } from "@/features/exif/embed";
 /** Photos at print resolution; the thumb is what shows in the gallery. */
 const ORIGINAL_MAX = 4000;
 const THUMB_MAX = 800;
+/** What the app shows full screen and what stays forever once the original is purged (the server caps it at 4 MB). */
+const DISPLAY_MAX = 2048;
 
 export type PreparedMedia = {
   originalUri: string;
@@ -17,10 +19,13 @@ export type PreparedMedia = {
   sizeBytes: number;
   durationS: number | null;
   thumbhash: string | null;
+  /** 2048 px JPEG with the same metadata as the original (photos only). */
+  displayUri: string | null;
+  displaySizeBytes: number | null;
 };
 
 /**
- * Prepares a photo for the queue: original (≤4000 px JPEG 88 %), 800 px thumb and its ThumbHash.
+ * Prepares a photo for the queue: original (≤4000 px JPEG 88 %), 2048 px display (JPEG 82 %, same metadata) for viewing, 800 px thumb and its ThumbHash.
  * `options.maxDimension` lowers the photo's long side (the front camera of a moment is 1080 px).
  * Resizing re-encodes the JPEG and drops its EXIF, so photos get theirs written back from `metadata`
  * (time in the roll's zone, GPS, caption, author).
@@ -38,10 +43,25 @@ export async function prepareMedia(
 
   const original = new File(dir, "original.jpg");
   const thumb = new File(dir, "thumb.jpg");
+  const display = new File(dir, "display.jpg");
 
   const saved = await saveResized(photo.uri, photo.width, photo.height, options.maxDimension ?? ORIGINAL_MAX, 0.88, original);
   // Best effort: a photo without metadata is still worth sending.
   await embedMetadata(original, metadata).catch(() => {});
+  // The display comes from the finished original. A photo already within 2048 px (the front camera of a
+  // moment, 1080 px) is not re-encoded: the original's bytes, metadata included, are the display.
+  // Best effort: without a display the photo uploads as before and the server keeps its original forever.
+  let displayReady = true;
+  try {
+    if (Math.max(saved.width, saved.height) <= DISPLAY_MAX) {
+      original.copy(display);
+    } else {
+      await saveResized(original.uri, saved.width, saved.height, DISPLAY_MAX, 0.82, display);
+      await embedMetadata(display, metadata).catch(() => {});
+    }
+  } catch {
+    displayReady = false;
+  }
   await saveResized(original.uri, saved.width, saved.height, THUMB_MAX, 0.8, thumb);
   await deleteQuietly(photo.uri);
 
@@ -52,6 +72,8 @@ export async function prepareMedia(
     height: saved.height,
     sizeBytes: original.size ?? 0,
     durationS: null,
+    displayUri: displayReady ? display.uri : null,
+    displaySizeBytes: displayReady ? display.size ?? 0 : null,
     thumbhash: await Image.generateThumbhashAsync(thumb.uri).catch(() => null),
   };
 }

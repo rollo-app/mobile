@@ -30,6 +30,9 @@ export type QueuedMedia = {
   pairedWith?: string | null;
   /** The account that took it (user id); null only if it was taken before the phone knew its account: the first account claims it. */
   ownerUserId?: string | null;
+  /** The 2048 px display JPEG next to the original; null for rows queued before it existed (they upload without it). */
+  displayUri?: string | null;
+  displaySizeBytes?: number | null;
 };
 
 export type PendingMedia = QueuedMedia & {
@@ -79,6 +82,8 @@ const ADDED_COLUMNS = [
   ["moment_day", "TEXT"],
   ["paired_with", "TEXT"],
   ["owner_user_id", "TEXT"],
+  ["display_uri", "TEXT"],
+  ["display_size_bytes", "INTEGER"],
 ] as const;
 
 type Row = {
@@ -104,6 +109,8 @@ type Row = {
   moment_day: string | null;
   paired_with: string | null;
   owner_user_id: string | null;
+  display_uri: string | null;
+  display_size_bytes: number | null;
 };
 
 const fromRow = (r: Row): PendingMedia => ({
@@ -126,6 +133,8 @@ const fromRow = (r: Row): PendingMedia => ({
   momentDay: r.moment_day ?? null,
   pairedWith: r.paired_with ?? null,
   ownerUserId: r.owner_user_id ?? null,
+  displayUri: r.display_uri ?? null,
+  displaySizeBytes: r.display_size_bytes ?? null,
   attempts: r.attempts,
   retryAt: r.retry_at,
 });
@@ -142,11 +151,11 @@ export async function createQueue(db: QueueDb) {
       await db.runAsync(
         `INSERT OR IGNORE INTO pending_media
           (id, trip_id, type, taken_at, day, lat, lng, accuracy_m, caption, duration_s, width, height,
-           size_bytes, original_uri, thumb_uri, thumbhash, moment_day, paired_with, owner_user_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           size_bytes, original_uri, thumb_uri, thumbhash, moment_day, paired_with, owner_user_id, display_uri, display_size_bytes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         m.id, m.tripId, m.type, m.takenAt, m.day, m.lat, m.lng, m.accuracyM, m.caption, m.durationS,
         m.width, m.height, m.sizeBytes, m.originalUri, m.thumbUri, m.thumbhash,
-        m.momentDay ?? null, m.pairedWith ?? null, m.ownerUserId ?? null,
+        m.momentDay ?? null, m.pairedWith ?? null, m.ownerUserId ?? null, m.displayUri ?? null, m.displaySizeBytes ?? null,
       );
     },
 

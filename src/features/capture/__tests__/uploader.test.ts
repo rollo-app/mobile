@@ -120,6 +120,18 @@ beforeEach(async () => {
   };
 });
 
+const withDisplay = (id: string) =>
+  json(201, {
+    id,
+    status: "pending",
+    upload: {
+      original: `https://r2.test/${id}/original?v=1`,
+      thumb: `https://r2.test/${id}/thumb?v=1`,
+      display: `https://r2.test/${id}/display?v=1`,
+    },
+    expiresIn: 900,
+  });
+
 /** Happy server: registers with URLs and confirms. */
 function happyServer() {
   routes.push((c) => {
@@ -156,6 +168,47 @@ describe("uploader", () => {
     ]);
     expect(await queue.pending("u1")).toEqual([]);
     expect(removed).toEqual([item().id]);
+  });
+
+  it("declares displaySizeBytes (the file's size on disk) and PUTs the display after original and thumb", async () => {
+    routes.push((c) => {
+      if (c.method === "POST" && c.url.endsWith(`/trips/${TRIP}/media`)) return withDisplay((c.body as { id: string }).id);
+      if (c.method === "POST" && c.url.endsWith("/complete")) return json(200, { id: item().id, status: "uploaded" });
+    });
+    sizes.set("file:///docs/pending/a/display.jpg", 812_345);
+    await queue.enqueue(item({ displayUri: "file:///docs/pending/a/display.jpg", displaySizeBytes: 1 }));
+
+    await createUploader(deps).run();
+
+    expect(calls[0]!.body).toMatchObject({ sizeBytes: 2_500_000, thumbSizeBytes: 61_234, displaySizeBytes: 812_345 });
+    expect(puts.map((p) => [p.uri, p.url, p.contentType])).toEqual([
+      [item().originalUri, `https://r2.test/${item().id}/original?v=1`, "image/jpeg"],
+      [item().thumbUri, `https://r2.test/${item().id}/thumb?v=1`, "image/jpeg"],
+      ["file:///docs/pending/a/display.jpg", `https://r2.test/${item().id}/display?v=1`, "image/jpeg"],
+    ]);
+    expect(await queue.pending("u1")).toEqual([]);
+  });
+
+  it("an old queued row without display uploads exactly as before: no displaySizeBytes, two PUTs", async () => {
+    happyServer();
+    await queue.enqueue(item());
+
+    await createUploader(deps).run();
+
+    expect(calls[0]!.body).not.toHaveProperty("displaySizeBytes");
+    expect(puts).toHaveLength(2);
+  });
+
+  it("a row whose display file vanished still uploads without it", async () => {
+    happyServer();
+    missing.add("file:///docs/pending/a/display.jpg");
+    await queue.enqueue(item({ displayUri: "file:///docs/pending/a/display.jpg", displaySizeBytes: 1 }));
+
+    await createUploader(deps).run();
+
+    expect(calls[0]!.body).not.toHaveProperty("displaySizeBytes");
+    expect(puts).toHaveLength(2);
+    expect(await queue.pending("u1")).toEqual([]);
   });
 
   it("notifies on every confirmed upload, with the trip, after cleaning the queue", async () => {
