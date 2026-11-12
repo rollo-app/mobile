@@ -2,6 +2,7 @@
 import AuthLayout from "../../app/(auth)/_layout";
 import CodeScreen from "../../app/(auth)/code";
 import EmailScreen from "../../app/(auth)/email";
+import WelcomeScreen from "../../app/(auth)/welcome";
 import CompleteProfileScreen from "../../app/(auth)/profile";
 import TabsLayout from "../../app/(tabs)/_layout";
 import CameraTab from "../../app/(tabs)/camera";
@@ -85,6 +86,7 @@ export const routes = {
   "user/[id]": UserProfileRoute,
   "user/[id]/friends": UserFriendsRoute,
   "(auth)/_layout": AuthLayout,
+  "(auth)/welcome": WelcomeScreen,
   "(auth)/email": EmailScreen,
   "(auth)/code": CodeScreen,
   "(auth)/profile": CompleteProfileScreen,

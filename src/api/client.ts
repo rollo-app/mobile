@@ -14,6 +14,8 @@ export class ApiError extends Error {
     message: string,
     /** From the `Retry-After` header (delta-seconds), in ms. Undefined if absent or not a valid number of seconds. */
     public readonly retryAfterMs?: number,
+    /** The server's machine-readable `code` (e.g. REGISTRATIONS_CLOSED), when it sends one. */
+    public readonly code?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -87,13 +89,13 @@ export async function unwrap<T>(request: Promise<FetchResult<T>>): Promise<T> {
     throw new ApiError(0, OFFLINE_MESSAGE);
   }
   if (!result.response.ok) {
-    const message =
-      (result.error as { error?: string } | undefined)?.error ??
-      `Error ${result.response.status}`;
+    const body = result.error as { error?: string; code?: string } | undefined;
+    const message = body?.error ?? `Error ${result.response.status}`;
     throw new ApiError(
       result.response.status,
       message,
       parseRetryAfter(result.response.headers?.get?.("retry-after")),
+      typeof body?.code === "string" ? body.code : undefined,
     );
   }
   return result.data as T;

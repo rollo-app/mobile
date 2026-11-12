@@ -39,7 +39,7 @@ describe("Opening a friend link", () => {
     it("claims the link, keeps the permission and goes to sign in", async () => {
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
-      await waitFor(() => expect(screen).toHavePathname("/email"));
+      await waitFor(() => expect(screen).toHavePathname("/welcome"));
       expect(friends.claimFriendLink).toHaveBeenCalledWith(CODE);
       expect(friends.redeemFriend).not.toHaveBeenCalled();
       expect(await getPendingFriend()).toEqual({ claimToken: "ct1", creatorName: "Cami" });
@@ -50,7 +50,7 @@ describe("Opening a friend link", () => {
       friends.claimFriendLink.mockResolvedValue(claimed("ct2"));
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
-      await waitFor(() => expect(screen).toHavePathname("/email"));
+      await waitFor(() => expect(screen).toHavePathname("/welcome"));
       expect(await getPendingFriend()).toEqual({ claimToken: "ct2", creatorName: "Cami" });
     });
 
@@ -65,7 +65,7 @@ describe("Opening a friend link", () => {
       expect(await getPendingFriend()).toEqual({ claimToken: "old", creatorName: "Tomi" });
 
       await fireEvent.press(screen.getByRole("button", { name: "Ir a Rollo" }));
-      await waitFor(() => expect(screen).toHavePathname("/email"));
+      await waitFor(() => expect(screen).toHavePathname("/welcome"));
     });
 
     it("a malformed code is rejected without asking the server", async () => {
@@ -92,7 +92,7 @@ describe("Opening a friend link", () => {
 
       await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
 
-      await waitFor(() => expect(screen).toHavePathname("/email"));
+      await waitFor(() => expect(screen).toHavePathname("/welcome"));
       expect(friends.claimFriendLink).toHaveBeenCalledTimes(2);
       expect(await getPendingFriend()).toEqual({ claimToken: "ct1", creatorName: "Cami" });
     });

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { errorMessage } from "@/api/client";
 import { Button, ErrorText, Field, Footnote } from "@/ui/components";
 import { AuthScreen } from "./auth-screen";
+import { isRegistrationsClosed, RegistrationsClosedNotice } from "@/features/waitlist/registrations-closed";
 import { LOGIN_CODE_LENGTH, normalizeLoginCode } from "./login-code";
 import { resendSecondsLeft } from "./resend";
 import { useStartEmailLogin } from "./use-start-email-login";
@@ -24,6 +25,7 @@ export function CodeScreen({ email }: { email: string }) {
   const error = errorMessage(verify.error, "No se pudo verificar el código") ?? errorMessage(resend.error, "No se pudo reenviar el código");
   // Only a failed verify suggests asking for another code (not a failed resend).
   const verifyFailed = verify.isError;
+  const closed = isRegistrationsClosed(verify.error);
 
   function submit(value: string) {
     resend.reset();
@@ -65,7 +67,8 @@ export function CodeScreen({ email }: { email: string }) {
         autoFocus
         placeholder="Ingresar código"
       />
-      {error && (
+      {error && closed && <RegistrationsClosedNotice message={error} />}
+      {error && !closed && (
         <>
           <ErrorText>{error}</ErrorText>
           {/* iOS can delete the mail after autofilling the code ("Delete after use"). */}

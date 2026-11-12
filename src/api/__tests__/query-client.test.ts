@@ -1,4 +1,4 @@
-import { createQueryClient } from "../query-client";
+import { createQueryClient, shouldDehydrateQuery } from "../query-client";
 import { ApiError } from "../client";
 
 describe("createQueryClient", () => {
@@ -20,5 +20,18 @@ describe("query retry", () => {
 
   it("never retries a 4xx: the same request would fail the same way", () => {
     for (const status of [400, 401, 403, 404, 409, 429]) expect(retry(0, new ApiError(status, "no"))).toBe(false);
+  });
+});
+
+describe("shouldDehydrateQuery", () => {
+  const client = createQueryClient();
+  const query = (key: string[]) => {
+    client.setQueryData(key, { ok: true });
+    return client.getQueryCache().find({ queryKey: key })!;
+  };
+
+  it("saves ordinary queries but never the server's public config", () => {
+    expect(shouldDehydrateQuery(query(["me"]))).toBe(true);
+    expect(shouldDehydrateQuery(query(["config"]))).toBe(false);
   });
 });
