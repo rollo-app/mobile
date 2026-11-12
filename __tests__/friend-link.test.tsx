@@ -154,6 +154,14 @@ describe("Opening a friend link", () => {
       await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
     }
 
+    it("the friend code field shows the generic placeholder", async () => {
+      await signInAs({ user: newcomer });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
+      await waitFor(() => expect(screen).toHavePathname("/profile"));
+
+      expect(screen.getByPlaceholderText("Ingresar código")).toBe(screen.getByLabelText("¿Te invitó un amigo? Código"));
+    });
+
     it("a signed-in account with no profile still keeps the link, and redeems it once the profile is done", async () => {
       await signInAs({ user: newcomer });
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });

@@ -506,6 +506,12 @@ describe("Join", () => {
     expect(button).toBeEnabled();
   });
 
+  it("the code field shows the generic placeholder", async () => {
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    expect(await screen.findByPlaceholderText("Ingresar código")).toBe(await screen.findByLabelText("Código del rollo"));
+  });
+
   it("joining goes to the roll", async () => {
     mocked.joinTrip.mockImplementation(async () => {
       await saveTrip(SUR, "Viaje al sur");

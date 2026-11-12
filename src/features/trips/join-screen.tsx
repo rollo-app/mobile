@@ -50,7 +50,7 @@ export function JoinScreen() {
         autoCapitalize="characters"
         autoCorrect={false}
         maxLength={6}
-        placeholder="HUB5FT"
+        placeholder="Ingresar código"
       />
 
       {error && <ErrorText>{error}</ErrorText>}

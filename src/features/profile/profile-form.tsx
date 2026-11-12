@@ -179,7 +179,7 @@ export function ProfileForm({
           autoCapitalize="characters"
           autoCorrect={false}
           maxLength={12}
-          placeholder="Opcional"
+          placeholder="Ingresar código"
         />
       )}
 
