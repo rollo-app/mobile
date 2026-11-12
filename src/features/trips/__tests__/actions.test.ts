@@ -207,9 +207,9 @@ describe("fetchWholeFeed", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls.map(([req]) => queryOf(req as Request))).toEqual([
-      { limit: "30" },
-      { cursor: "c1", limit: "30" },
-      { cursor: "c2", limit: "30" },
+      { limit: "100" },
+      { cursor: "c1", limit: "100" },
+      { cursor: "c2", limit: "100" },
     ]);
     expect(whole.pages).toEqual(pages);
     expect(whole.pageParams).toEqual([undefined, "c1", "c2"]);

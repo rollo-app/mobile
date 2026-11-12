@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo } from "react";
-import { FEED_PAGE_SIZE, fetchFeedPage, type Feed, type FeedOrder, type FeedPages } from "./actions";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { FEED_BULK_PAGE_SIZE, FEED_PAGE_SIZE, fetchFeedPage, type Feed, type FeedOrder, type FeedPages } from "./actions";
 
 /**
  * Root of every trip's feed cache. It's "feed-pages" and not "feed" on purpose: the cache is persisted on the phone, and
@@ -21,6 +21,9 @@ export function feedKey(tripId: string, order: FeedOrder = "asc") {
 /** `lazy`: only loads more when asked (`fetchMore`). `all`: keeps loading by itself until the last page, for screens that need everything. */
 export type FeedMode = "lazy" | "all";
 
+/** What a page request needs: where it starts and how many items it asks for (the size is decided per call, see `useFeed`). */
+type PageParam = { cursor?: string; limit: number };
+
 /** The pages as one feed: the first page's header, every page's items in order. */
 function flatten(data: FeedPages): Feed {
   const first = data.pages[0]!;
@@ -31,17 +34,24 @@ function flatten(data: FeedPages): Feed {
 }
 
 /**
- * What's been uploaded to the trip (before the reveal, metadata only), loaded in pages of 30. One shared, persisted cache per
- * trip and order whatever the mode, so changing screens doesn't start over. `feed` is everything loaded so far, even if stale;
+ * What's been uploaded to the trip (before the reveal, metadata only). One shared, persisted cache per trip and order whatever
+ * the mode, so changing screens doesn't start over. Page sizes: the first page is always 30 (fast first paint); scrolling
+ * (`fetchMore`) asks for 30 more; everything that needs the whole feed (the "all" auto-loader, `loadAll`, refetches) asks for 100
+ * per page, to spend fewer requests. The server paginates by keyset (the cursor is the last item), so pages of mixed sizes
+ * in one cache neither overlap nor leave gaps. `feed` is everything loaded so far, even if stale;
  * `error` appears only if there's no data at all.
  */
 export function useFeed(tripId: string | undefined, { mode = "all", order = "asc" }: { mode?: FeedMode; order?: FeedOrder } = {}) {
-  const query = useInfiniteQuery<Feed, Error, FeedPages, readonly unknown[], string | undefined>({
+  // Size of the *next* page request. `getNextPageParam` reads it when a page is about to be fetched (also while a refetch walks the
+  // cached pages: those use bulk size, so a refetch makes at most as many requests as pages are cached, and the first page stays 30).
+  // Only `fetchMore` lowers it, around its own call.
+  const nextLimit = useRef(FEED_BULK_PAGE_SIZE);
+  const query = useInfiniteQuery<Feed, Error, FeedPages, readonly unknown[], PageParam>({
     queryKey: feedKey(tripId ?? "", order),
     // `order` goes on every page (first and cursor ones): the server wants the same one all along. Asc is the default: not sent.
-    queryFn: ({ pageParam }) => fetchFeedPage(tripId!, { cursor: pageParam, limit: FEED_PAGE_SIZE, ...(order === "desc" && { order }) }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => last?.nextCursor ?? undefined,
+    queryFn: ({ pageParam }) => fetchFeedPage(tripId!, { cursor: pageParam.cursor, limit: pageParam.limit, ...(order === "desc" && { order }) }),
+    initialPageParam: { limit: FEED_PAGE_SIZE },
+    getNextPageParam: (last) => (last?.nextCursor ? { cursor: last.nextCursor, limit: nextLimit.current } : undefined),
     enabled: !!tripId,
   });
   const { data, hasNextPage, isFetching, isFetchNextPageError, fetchNextPage } = query;
@@ -55,7 +65,14 @@ export function useFeed(tripId: string | undefined, { mode = "all", order = "asc
   }, [mode, data, hasNextPage, isFetching, isFetchNextPageError, fetchNextPage]);
 
   // Not cancelling: asking again while a page is on its way joins it instead of restarting it.
-  const fetchMore = useCallback(() => fetchNextPage({ cancelRefetch: false }), [fetchNextPage]);
+  const fetchMore = useCallback(async () => {
+    nextLimit.current = FEED_PAGE_SIZE;
+    try {
+      return await fetchNextPage({ cancelRefetch: false });
+    } finally {
+      nextLimit.current = FEED_BULK_PAGE_SIZE;
+    }
+  }, [fetchNextPage]);
 
   /** Loads every remaining page (whatever the mode) and resolves with the whole feed; `complete` is false if a page failed. */
   const loadAll = useCallback(async (): Promise<{ feed: Feed | null; complete: boolean }> => {

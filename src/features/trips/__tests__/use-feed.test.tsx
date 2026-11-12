@@ -131,7 +131,79 @@ describe("useFeed", () => {
     await waitFor(() => expect(all.result.current.complete).toBe(true));
     expect(ids(all.result.current.feed)).toEqual(["a", "b", "c", "d", "e"]);
     expect(fetchFeedPage).toHaveBeenCalledTimes(3);
-    expect(fetchFeedPage).toHaveBeenLastCalledWith("t1", { cursor: "c2", limit: 30 });
+    expect(fetchFeedPage).toHaveBeenLastCalledWith("t1", { cursor: "c2", limit: 100 });
+  });
+
+  it("all: the first page is small (fast first paint), every following page is bulk-sized", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(result.current.complete).toBe(true));
+    expect(jest.mocked(fetchFeedPage).mock.calls.map(([, o]) => [o.cursor, o.limit])).toEqual([
+      [undefined, 30],
+      ["c1", 100],
+      ["c2", 100],
+    ]);
+  });
+
+  it("lazy: scrolling (fetchMore) keeps asking for 30 per page, however many times", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.fetchMore()));
+    await act(async () => void (await result.current.fetchMore()));
+    expect(jest.mocked(fetchFeedPage).mock.calls.map(([, o]) => o.limit)).toEqual([30, 30, 30]);
+  });
+
+  it("loadAll from a lazy screen asks for bulk pages for what remains", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.loadAll()));
+    expect(jest.mocked(fetchFeedPage).mock.calls.map(([, o]) => [o.cursor, o.limit])).toEqual([
+      [undefined, 30],
+      ["c1", 100],
+      ["c2", 100],
+    ]);
+  });
+
+  it("a scroll right after a bulk load goes back to 30 (the size is per call, not sticky)", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.loadAll()));
+    jest.mocked(fetchFeedPage).mockClear();
+    jest.mocked(fetchFeedPage).mockImplementation(async (_t, { cursor }) => (cursor ? (page(["z"], null) as never) : (page(["a"], "c9") as never)));
+    const other = await renderHook(() => useFeed("t2", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(other.result.current.feed).not.toBeNull());
+    await act(async () => void (await other.result.current.fetchMore()));
+    expect(fetchFeedPage).toHaveBeenLastCalledWith("t2", { cursor: "c9", limit: 30 });
+  });
+
+  it("mixed page sizes in one cache neither duplicate nor skip items", async () => {
+    // Keyset server: the cursor is the last item's id; `limit` decides how many come back.
+    const all = Array.from({ length: 250 }, (_, i) => `i${i}`);
+    jest.mocked(fetchFeedPage).mockImplementation(async (_t, { cursor, limit }) => {
+      const start = cursor ? all.indexOf(cursor) + 1 : 0;
+      const slice = all.slice(start, start + limit);
+      return page(slice, start + limit < all.length ? slice[slice.length - 1]! : null) as never;
+    });
+    const lazy = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(lazy.result.current.feed).not.toBeNull());
+    await act(async () => void (await lazy.result.current.fetchMore())); // 30 + 30, then the all screen continues with 100s
+    await waitFor(() => expect(ids(lazy.result.current.feed)).toEqual(all.slice(0, 60)));
+    const allScreen = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(allScreen.result.current.complete).toBe(true));
+    expect(ids(allScreen.result.current.feed)).toEqual(all);
+    expect(ids(lazy.result.current.feed)).toEqual(all);
+  });
+
+  it("refetch re-walks the cached pages without making more requests than pages: first page 30, the rest bulk", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(result.current.complete).toBe(true));
+    jest.mocked(fetchFeedPage).mockClear();
+    await act(async () => void (await result.current.refetch()));
+    expect(jest.mocked(fetchFeedPage).mock.calls.map(([, o]) => [o.cursor, o.limit])).toEqual([
+      [undefined, 30],
+      ["c1", 100],
+      ["c2", 100],
+    ]);
+    expect(ids(result.current.feed)).toEqual(["a", "b", "c", "d", "e"]);
   });
 
   it("keeps the flattened feed's identity while nothing changes", async () => {

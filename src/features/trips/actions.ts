@@ -60,8 +60,10 @@ export async function fetchTrip(tripId: string): Promise<TripDetail> {
 /** The feed as the paged cache holds it: one entry per loaded page; `pageParams` are the cursors (the first is undefined). */
 export type FeedPages = InfiniteData<Feed, string | undefined>;
 
-/** How many feed items each request asks for. */
+/** How many feed items a request asks for when a screen scrolls (and for the first page of any screen: fast first paint). */
 export const FEED_PAGE_SIZE = 30;
+/** How many feed items a request asks for when the whole feed is needed anyway (the backend accepts up to 100): fewer requests per session. */
+export const FEED_BULK_PAGE_SIZE = 100;
 
 /** `asc`: oldest first (the default). `desc`: newest first. */
 export type FeedOrder = "asc" | "desc";
@@ -84,7 +86,7 @@ export async function fetchWholeFeed(tripId: string): Promise<FeedPages> {
   const pageParams: (string | undefined)[] = [];
   let cursor: string | undefined;
   do {
-    const page = await fetchFeedPage(tripId, { cursor, limit: FEED_PAGE_SIZE });
+    const page = await fetchFeedPage(tripId, { cursor, limit: FEED_BULK_PAGE_SIZE });
     pages.push(page);
     pageParams.push(cursor);
     cursor = page.nextCursor ?? undefined;
