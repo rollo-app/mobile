@@ -3,6 +3,8 @@ import { Stack } from "expo-router";
 type Props = {
   selecting: boolean;
   allSelected: boolean;
+  /** Every photo is loaded, so "select all" really is all (deselecting is always possible). */
+  canSelectAll: boolean;
   busy: boolean;
   hasPhotos: boolean;
   canSaveAll: boolean;
@@ -19,6 +21,7 @@ type Props = {
 export function GalleryToolbar({
   selecting,
   allSelected,
+  canSelectAll,
   busy,
   hasPhotos,
   canSaveAll,
@@ -34,7 +37,7 @@ export function GalleryToolbar({
     <>
       {selecting && (
         <Stack.Toolbar placement="left">
-          <Stack.Toolbar.Button onPress={onToggleAll}>
+          <Stack.Toolbar.Button disabled={!allSelected && !canSelectAll} onPress={onToggleAll}>
             {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
           </Stack.Toolbar.Button>
         </Stack.Toolbar>

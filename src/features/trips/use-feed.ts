@@ -15,7 +15,10 @@ export type FeedMode = "lazy" | "all";
 /** The pages as one feed: the first page's header, every page's items in order. */
 function flatten(data: FeedPages): Feed {
   const first = data.pages[0]!;
-  return { revealed: first.revealed, revealAt: first.revealAt, items: data.pages.flatMap((p) => p.items), nextCursor: null };
+  // Keep the first occurrence of an id: a refetch racing a page load can overlap pages, and a photo must never show twice.
+  const seen = new Set<string>();
+  const items = data.pages.flatMap((p) => p.items).filter((i) => !seen.has(i.id) && !!seen.add(i.id));
+  return { revealed: first.revealed, revealAt: first.revealAt, items, nextCursor: null };
 }
 
 /**
@@ -60,6 +63,8 @@ export function useFeed(tripId: string | undefined, { mode = "all" }: { mode?: F
     hasMore: !!hasNextPage,
     fetchMore,
     loadingMore: query.isFetchingNextPage,
+    /** The last attempt to load the next page failed (what's loaded stays); `fetchMore` tries again. */
+    loadMoreError: isFetchNextPageError,
     /** Every page is loaded. */
     complete: !!feed && !hasNextPage,
     loadAll,

@@ -140,6 +140,33 @@ describe("useFeed", () => {
     expect(whole!.complete).toBe(false);
   });
 
+  it("never lists the same item twice when pages overlap, keeping the first occurrence", async () => {
+    client.setQueryData(feedKey("t1"), feedPagesOf([feedItem("a"), feedItem("b")], [feedItem("b", { takenAt: 9 }), feedItem("c")]));
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    expect(ids(result.current.feed)).toEqual(["a", "b", "c"]);
+    expect(result.current.feed!.items[1]).toMatchObject({ takenAt: 1 });
+  });
+
+  it("lazy: exposes loadMoreError when the next page fails, keeps the data, and fetchMore retries", async () => {
+    let fail = true;
+    jest.mocked(fetchFeedPage).mockImplementation(async (_trip, { cursor }) => {
+      if (!cursor) return page(["a"], "c1") as never;
+      if (fail) throw new Error("sin señal");
+      return page(["b"], null) as never;
+    });
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    expect(result.current.loadMoreError).toBe(false);
+    await act(async () => void (await result.current.fetchMore()));
+    await waitFor(() => expect(result.current.loadMoreError).toBe(true));
+    expect(ids(result.current.feed)).toEqual(["a"]);
+    expect(result.current.error).toBeNull();
+    fail = false;
+    await act(async () => void (await result.current.fetchMore()));
+    await waitFor(() => expect(ids(result.current.feed)).toEqual(["a", "b"]));
+    expect(result.current.loadMoreError).toBe(false);
+  });
+
   it("shows the error only when there is no data at all", async () => {
     jest.mocked(fetchFeedPage).mockRejectedValue(new Error("sin señal"));
     const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });

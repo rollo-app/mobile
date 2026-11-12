@@ -34,8 +34,7 @@ const GAP = 2;
  * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
  * its header buttons while it stays mounted behind another view.
  */
-// "all" until the grid asks for more pages on scroll (then "lazy"): with "lazy" and nothing calling `fetchMore` only the first page would show.
-const GALLERY_FEED_MODE = "all" as const;
+const ENDING_THRESHOLD = 1.5;
 
 export function GalleryScreen({
   tripId,
@@ -50,7 +49,8 @@ export function GalleryScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { photos, token, error, loading, refetch, loadAll } = useRevealedPhotos(tripId, GALLERY_FEED_MODE);
+  const { photos, token, error, loading, refetch, loadAll, hasMore, loadingMore, loadMoreError, complete, fetchMore } =
+    useRevealedPhotos(tripId, "lazy");
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
   const { toggle: toggleFeatured, error: featureError } = useToggleFeatured();
@@ -64,7 +64,14 @@ export function GalleryScreen({
   const [authorId, setAuthorId] = useState<string | null>(null);
 
   const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
-  const authors = useMemo(() => authorsOf(photos), [photos]);
+  // Until every page is in, a member's photos may all be on a page not loaded yet: offer every member so they can still be picked.
+  const members = detail?.members;
+  const authors = useMemo(() => {
+    const loaded = authorsOf(photos);
+    if (complete || !members) return loaded;
+    const known = new Set(loaded.map((a) => a.id));
+    return [...loaded, ...members.filter((m) => !known.has(m.id)).map((m) => ({ id: m.id, name: m.name }))];
+  }, [photos, members, complete]);
   const shown = useMemo(() => filterByAuthor(photos, authorId), [photos, authorId]);
   const sections = useMemo(
     () =>
@@ -78,6 +85,15 @@ export function GalleryScreen({
 
   const { selecting, selected, allSelected, toggle, toggleAll, start: startSelecting, stop: stopSelecting } =
     useGallerySelection(shown);
+  // The grid loads on scroll, but whatever works on "everyone's photos" needs them all: selecting, filtering by person, and a first page with no photos in it.
+  const needsAll = selecting || authorId !== null || (!loading && photos.length === 0);
+  useEffect(() => {
+    if (needsAll && hasMore && !loadingMore && !loadMoreError) void fetchMore();
+  }, [needsAll, hasMore, loadingMore, loadMoreError, fetchMore, photos]);
+  const onEndReached = useCallback(() => {
+    if (hasMore && !loadingMore && !loadMoreError) void fetchMore();
+  }, [hasMore, loadingMore, loadMoreError, fetchMore]);
+
   const selectedCount = selecting ? selected.size : null;
   useEffect(() => onSelectionChange?.(selectedCount), [onSelectionChange, selectedCount]);
   useEffect(() => () => onSelectionChange?.(null), [onSelectionChange]);
@@ -124,6 +140,8 @@ export function GalleryScreen({
         <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
       </View>
     );
+  else if (photos.length === 0 && (hasMore || loadingMore) && !loadMoreError)
+    body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
   else if (photos.length === 0)
     body = (
       <View style={styles.center}>
@@ -140,6 +158,20 @@ export function GalleryScreen({
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
         extraData={[selecting, selected, token, revealed, me?.id]}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={ENDING_THRESHOLD}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator testID="gallery-loading-more" style={styles.footer} />
+          ) : loadMoreError ? (
+            <View style={styles.footer}>
+              <Text style={[type.subhead, { color: colors.secondaryLabel }]}>No se pudieron cargar más fotos.</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Reintentar" hitSlop={10} onPress={() => void fetchMore()}>
+                <Text style={[type.headline, { color: colors.tint }]}>Reintentar</Text>
+              </Pressable>
+            </View>
+          ) : undefined
+        }
         ListHeaderComponent={
           author ? (
             <View style={styles.filter}>
@@ -195,6 +227,7 @@ export function GalleryScreen({
         <GalleryToolbar
           selecting={selecting}
           allSelected={allSelected}
+          canSelectAll={complete}
           busy={busy}
           hasPhotos={photos.length > 0}
           canSaveAll={canSaveAll}
@@ -246,6 +279,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
+  footer: { alignItems: "center", gap: spacing.sm, padding: spacing.lg },
   empty: {
     color: colors.secondaryLabel,
     textAlign: "center",

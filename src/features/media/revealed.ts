@@ -128,7 +128,7 @@ export function useMediaToken(key: string | undefined) {
  * (`hasMore`, `loadingMore`, `complete` tell where it stands). `loadAll` loads the rest and resolves with every photo (null if it failed).
  */
 export function useRevealedPhotos(tripId: string | undefined, mode: FeedMode = "all") {
-  const { feed, error, loading, refetch, isRefetching, hasMore, fetchMore, loadingMore, complete, loadAll: loadAllFeed } = useFeed(tripId, { mode });
+  const { feed, error, loading, refetch, isRefetching, hasMore, fetchMore, loadingMore, loadMoreError, complete, loadAll: loadAllFeed } = useFeed(tripId, { mode });
   const token = useMediaToken(tripId);
 
   // Memoized on the feed so screens' derived lists (and memoized grid cells) don't rebuild on every render.
@@ -149,6 +149,7 @@ export function useRevealedPhotos(tripId: string | undefined, mode: FeedMode = "
     hasMore,
     fetchMore,
     loadingMore,
+    loadMoreError,
     complete,
     loadAll,
   };

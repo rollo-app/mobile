@@ -414,6 +414,135 @@ describe("Gallery: featuring from the grid", () => {
   });
 });
 
+describe("Gallery: loading page by page", () => {
+  const JUANI = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null };
+  const page = (ids: string[], nextCursor: string | null, over: Partial<actions.Feed["items"][number]> = {}): actions.Feed => ({
+    ...feed(ids.map((id, n) => item(id, { takenAt: Date.parse("2027-01-12T15:00:00Z") + n * 60_000, ...over }))),
+    nextCursor,
+  });
+  /** Two pages: a,b | c,d. */
+  const serve = (second?: () => Promise<actions.Feed>) =>
+    mocked.fetchFeedPage.mockImplementation(async (_trip, { cursor }) => (cursor ? (second ? second() : page(["c", "d"], null)) : page(["a", "b"], "c1")));
+  beforeEach(() => mocked.fetchFeedPage.mockClear());
+  const cells = () => screen.queryAllByRole("button", { name: /^(Foto|Video) de / });
+  // The host does not expose the list props: walk up to the SectionList.
+  const endReached = () => {
+    let node: { props: Record<string, any>; parent: any } | null = screen.getByTestId("gallery-list");
+    while (node && !node.props.onEndReached) node = node.parent;
+    return act(async () => node!.props.onEndReached());
+  };
+
+  it("shows only the first page and asks for the next one when the end is reached", async () => {
+    serve();
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(1);
+    await endReached();
+    await waitFor(() => expect(cells()).toHaveLength(4));
+    expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(2);
+    expect(mocked.fetchFeedPage).toHaveBeenLastCalledWith(SUR, { cursor: "c1", limit: 30 });
+  });
+
+  it("does not ask for more once everything is loaded", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(page(["a", "b"], null));
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    await endReached();
+    expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a spinner at the end of the list while the next page loads, and not otherwise", async () => {
+    let finish!: (f: actions.Feed) => void;
+    serve(() => new Promise((resolve) => (finish = resolve)));
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    expect(screen.queryByTestId("gallery-loading-more")).toBeNull();
+    await endReached();
+    expect(await screen.findByTestId("gallery-loading-more")).toBeVisible();
+    await act(async () => finish(page(["c", "d"], null)));
+    await waitFor(() => expect(cells()).toHaveLength(4));
+    expect(screen.queryByTestId("gallery-loading-more")).toBeNull();
+  });
+
+  it("does not fire a second request while one page is loading", async () => {
+    serve(() => new Promise(() => {}));
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    await endReached();
+    await screen.findByTestId("gallery-loading-more");
+    await endReached();
+    expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(2);
+  });
+
+  it("says the next page failed, keeps the photos, and Reintentar loads it", async () => {
+    serve(() => Promise.reject(new Error("sin señal")));
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    await endReached();
+    expect(await screen.findByText("No se pudieron cargar más fotos.")).toBeVisible();
+    expect(cells()).toHaveLength(2);
+    expect(screen.queryByText("Este rollo no tiene fotos")).toBeNull();
+    serve();
+    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+    await waitFor(() => expect(cells()).toHaveLength(4));
+    expect(screen.queryByText("No se pudieron cargar más fotos.")).toBeNull();
+  });
+
+  it("never shows the empty state while there are more pages: the first page can hold no photos yet", async () => {
+    mocked.fetchFeedPage.mockImplementation(async (_trip, { cursor }) => (cursor ? page(["c"], null) : { ...page([], "c1") }));
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(1));
+    expect(screen.queryByText("Este rollo no tiene fotos")).toBeNull();
+  });
+
+  it("shows the empty state for a feed that is truly empty", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(page([], null));
+    await open();
+    expect(await screen.findByText("Este rollo no tiene fotos")).toBeVisible();
+  });
+
+  it("shows each photo once even if the server repeats it across pages", async () => {
+    mocked.fetchFeedPage.mockImplementation(async (_trip, { cursor }) => (cursor ? page(["b", "c"], null) : page(["a", "b"], "c1")));
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    await endReached();
+    await waitFor(() => expect(cells()).toHaveLength(3));
+  });
+
+  it("selecting loads the remaining pages, so Seleccionar todo picks every photo", async () => {
+    serve();
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    await waitFor(() => expect(cells()).toHaveLength(4));
+    await fireEvent.press(await screen.findByRole("button", { name: "Seleccionar todo" }));
+    expect(screen.getByRole("button", { name: "Guardar (4)" })).toBeVisible();
+  });
+
+  it("offers every member in the person filter before all pages are in, and picking one loads the rest", async () => {
+    mocked.fetchFeedPage.mockImplementation(async (_trip, { cursor }) =>
+      cursor ? page(["c"], null, { author: JUANI }) : page(["a", "b"], "c1"),
+    );
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Juani" }));
+    await waitFor(() => expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(cells()).toHaveLength(1));
+    expect(screen.getByText("Solo Juani")).toBeVisible();
+  });
+
+  it("opens the viewer on a photo from a page loaded later", async () => {
+    serve();
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    await endReached();
+    await waitFor(() => expect(cells()).toHaveLength(4));
+    await fireEvent.press(cells()[3]!);
+    await waitFor(() => expect(screen).toHavePathname("/photo/d"));
+    expect(await screen.findByTestId("viewer-info")).toBeVisible();
+  });
+});
+
 describe("Photo viewer", () => {
   const openViewer = async (id = "b") => {
     mocked.fetchFeedPage.mockResolvedValue(two());

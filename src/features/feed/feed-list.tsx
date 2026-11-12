@@ -38,7 +38,7 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
   const { trip } = useActiveTrip();
   const tripId = trip?.id;
   const { detail } = useTripDetail(tripId);
-  const { feed, error, loading, refetch } = useFeed(tripId, { mode: "all" }); // "lazy" once the list loads more on scroll
+  const { feed, error, loading, refetch } = useFeed(tripId, { mode: "all" }); // Not "lazy": the server pages oldest first and this list is newest first, so the first page would be the oldest photos
   const pending = usePendingItems(tripId);
   const token = useMediaToken(tripId);
   const router = useRouter();
