@@ -1,3 +1,4 @@
+import { featuredDisplayPath } from "./display-path";
 import { MenuView } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
@@ -39,7 +40,8 @@ function Page({
   onDoubleTap: (photo: FeaturedPhoto) => void;
 }) {
   const taps = useDoubleTap(onTap, () => onDoubleTap(photo));
-  const retry = useImageRetry(photo.originalPath);
+  const fullPath = featuredDisplayPath(photo.originalPath);
+  const retry = useImageRetry(fullPath);
   return (
     <ScrollView
       style={{ width, height }}
@@ -55,7 +57,7 @@ function Page({
           key={retry.retryKey}
           onError={retry.onError}
           onLoad={retry.onLoad}
-          source={mediaSource(photo.originalPath, token)}
+          source={mediaSource(fullPath, token)}
           placeholder={mediaSource(photo.thumbPath, token)}
           transition={150}
           contentFit="contain"

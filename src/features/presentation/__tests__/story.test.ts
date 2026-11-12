@@ -19,6 +19,8 @@ const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto =>
   author: { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null },
   thumbPath: "/t",
   originalPath: "/o",
+  displayPath: "/o",
+  originalAvailable: true,
   momentDay: null,
   archived: false,
   selfie: null,

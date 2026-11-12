@@ -47,10 +47,10 @@ export function Slide({
   // The moment's selfie can take the big picture (the slide is remounted per photo, so this resets).
   const [selfieBig, setSelfieBig] = useState(false);
   const bigThumb = selfieBig && photo.selfie ? photo.selfie.thumbPath : photo.thumbPath;
-  const bigOriginal = selfieBig && photo.selfie ? photo.selfie.originalPath : photo.originalPath;
+  const bigFull = selfieBig && photo.selfie ? photo.selfie.displayPath : photo.displayPath;
   // Two images (the blurred backdrop and the big one) retry on their own when the server refuses them.
   const backdropRetry = useImageRetry(bigThumb);
-  const bigRetry = useImageRetry(bigOriginal);
+  const bigRetry = useImageRetry(bigFull);
   const placeholder = !selfieBig && photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined;
   return (
     <View style={styles.fill}>
@@ -72,11 +72,12 @@ export function Slide({
           <VideoSlide photo={photo} token={token} paused={paused} muted={muted} />
         ) : (
           <Image
+            testID="slide-image"
             key={bigRetry.retryKey}
             onError={bigRetry.onError}
             onLoad={bigRetry.onLoad}
             style={StyleSheet.absoluteFill}
-            source={mediaSource(bigOriginal, token)}
+            source={mediaSource(bigFull, token)}
             placeholder={mediaSource(bigThumb, token)}
             placeholderContentFit="contain"
             contentFit="contain"

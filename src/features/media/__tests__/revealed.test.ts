@@ -37,6 +37,36 @@ describe("revealed photos", () => {
     expect(photo).toMatchObject({ thumbPath: "/trips/t/media/a/thumb", originalPath: "/trips/t/media/a/original" });
   });
 
+  it("shows the display path when the feed has it and falls back to the original (uploads from before the display)", () => {
+    const [withDisplay, without] = toRevealedPhotos([
+      item({ files: { thumb: "/t", original: "/o", display: "/d" } }),
+      item({ id: "b" }),
+    ]);
+
+    expect(withDisplay).toMatchObject({ displayPath: "/d", originalPath: "/o" });
+    expect(without).toMatchObject({ displayPath: "/trips/t/media/a/original", originalPath: "/trips/t/media/a/original" });
+  });
+
+  it("carries originalAvailable, true unless the server says the original was purged", () => {
+    const [gone, unset, there] = toRevealedPhotos([
+      item({ id: "a", originalAvailable: false }),
+      item({ id: "b" }),
+      item({ id: "c", originalAvailable: true }),
+    ]);
+
+    expect([gone!.originalAvailable, unset!.originalAvailable, there!.originalAvailable]).toEqual([false, true, true]);
+  });
+
+  it("does the same for the linked image of a moment", () => {
+    const [photo] = toRevealedPhotos([
+      item({
+        selfie: { id: "s", width: 1080, height: 1440, thumbhash: null, files: { thumb: "/st", original: "/so", display: "/sd" }, originalAvailable: false },
+      }),
+    ]);
+
+    expect(photo!.selfie).toMatchObject({ displayPath: "/sd", originalPath: "/so", originalAvailable: false });
+  });
+
   it("carries whether I featured it, whether its author blocks featuring, and the author's user id", () => {
     const [photo] = toRevealedPhotos([item({ featuredByMe: true, featureBlocked: true })]);
 

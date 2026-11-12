@@ -9,7 +9,7 @@ export function useStoryPrefetch(steps: StoryStep[], index: number, token: strin
   useEffect(() => {
     const urls = upcomingPhotos(steps, index, index === 0 ? 3 : 2).flatMap((p) => [
       `${mediaSource(p.thumbPath, token).uri}`,
-      ...(p.type === "photo" ? [mediaSource(p.originalPath, token).uri] : []),
+      ...(p.type === "photo" ? [mediaSource(p.displayPath, token).uri] : []),
     ]);
     const headers = { Authorization: `Bearer ${token}` };
     let active = true;

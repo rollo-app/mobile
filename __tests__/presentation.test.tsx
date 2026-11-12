@@ -120,6 +120,26 @@ describe("Presentation", () => {
     expect(screen.getByText("Fede sacó más fotos: 2 fotos")).toBeTruthy();
   });
 
+  it("shows the display version of a photo, or its original when the upload has no display", async () => {
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
+      revealed: true,
+      revealAt: Date.parse("2027-01-14T12:00:00Z"),
+      items: [
+        { ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), files: { thumb: "/m/a/thumb", original: "/m/a/original", display: "/m/a/display" } },
+        item("b", "2027-01-12T16:00:00Z", { id: "m1", name: "Juani", avatarUrl: null }, null),
+      ],
+    });
+    const uri = () => (screen.getByTestId("slide-image").props.source as Array<{ uri: string }>)[0]!.uri;
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap(); // day card -> a
+    await screen.findByTestId("slide-image");
+    expect(uri()).toMatch(/\/m\/a\/display$/);
+
+    await tap(); // b
+    await waitFor(() => expect(uri()).toMatch(/\/m\/b\/original$/));
+  });
+
   it("tapping the left side goes back to the previous photo", async () => {
     await renderRouter(routes, { initialUrl: "/presentation" });
     await tap();

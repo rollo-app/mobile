@@ -41,6 +41,8 @@ export function linkedImage(main: RevealedPhoto): RevealedPhoto {
     thumbhash: linked.thumbhash,
     thumbPath: linked.thumbPath,
     originalPath: linked.originalPath,
+    displayPath: linked.displayPath,
+    originalAvailable: linked.originalAvailable,
     selfie: null,
   };
 }
@@ -73,7 +75,7 @@ export async function requestAlbumAccess(): Promise<boolean> {
 }
 
 /**
- * Saves originals to Photos. By default they go to Recents (add-only permission, no album);
+ * Saves originals to Photos (the display once the original was purged). By default they go to Recents (add-only permission, no album);
  * with `{ album: true }` they go into the roll's album, which needs `requestAlbumAccess()` first.
  * Downloads run in parallel; creating the album (or finding it) is serialized so concurrent saves
  * don't create it twice.
@@ -107,7 +109,9 @@ export function createSaver({
     const extension = photo.type === "video" ? "mp4" : "jpg";
     const target = new File(Paths.cache, `save-${photo.id}-${Math.random().toString(36).slice(2, 8)}.${extension}`);
     try {
-      const file = await File.downloadFileAsync(`${baseUrl}${photo.originalPath}`, target, {
+      // The full-quality original while it exists; after the purge, the 2048 px display (same metadata rules).
+      const path = photo.originalAvailable === false ? photo.displayPath : photo.originalPath;
+      const file = await File.downloadFileAsync(`${baseUrl}${path}`, target, {
         headers: { Authorization: `Bearer ${token}` },
       });
       // Photos uploaded before Rollo wrote EXIF (and the seed) arrive without a date: without it

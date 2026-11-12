@@ -39,13 +39,20 @@ export type RevealedPhoto = {
   /** The selfie taken with a moment photo (null if none). Never likeable, commentable or featurable: those act on the main photo. */
   selfie: RevealedSelfie | null;
   thumbPath: string;
+  /** Full-quality file. Once purged (30 days after the reveal) the server serves the display file at this same path. */
   originalPath: string;
+  /** What to load for full-size viewing: the 2048 px display, or the original for uploads that have none. */
+  displayPath: string;
+  /** false once the full-quality original was deleted: saving to Photos then takes the display. */
+  originalAvailable: boolean;
 };
 
 export type RevealedSelfie = {
   id: string;
   thumbPath: string;
   originalPath: string;
+  displayPath: string;
+  originalAvailable: boolean;
   thumbhash: string | null;
   width: number | null;
   height: number | null;
@@ -84,6 +91,8 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
                     id: item.selfie.id,
                     thumbPath: item.selfie.files.thumb,
                     originalPath: item.selfie.files.original,
+                    displayPath: item.selfie.files.display ?? item.selfie.files.original,
+                    originalAvailable: item.selfie.originalAvailable ?? true,
                     thumbhash: item.selfie.thumbhash,
                     width: item.selfie.width,
                     height: item.selfie.height,
@@ -91,6 +100,8 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
                 : null,
               thumbPath: item.files.thumb,
               originalPath: item.files.original,
+              displayPath: item.files.display ?? item.files.original,
+              originalAvailable: item.originalAvailable ?? true,
             },
           ]
         : [],

@@ -584,6 +584,26 @@ describe("Photo viewer", () => {
     for (const text of ["Guardar en Fotos", "Ver en el mapa", "Agregar a tu perfil", "Me gusta"]) expect(screen.queryByText(text)).toBeNull();
   });
 
+  const viewerUri = () => (screen.getByTestId("viewer-image").props.source as Array<{ uri: string }>)[0]!.uri;
+
+  it("loads the display version in the viewer when the feed has it", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(
+      feed([item("a", { files: { thumb: "/m/a/thumb", original: "/m/a/original", display: "/m/a/display" } })]),
+    );
+    await renderRouter(routes, { initialUrl: `/photo/a?tripId=${SUR}` });
+    await screen.findByText("Fede");
+
+    expect(viewerUri()).toMatch(/\/m\/a\/display$/);
+  });
+
+  it("falls back to the original in the viewer for a photo without a display", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("c")]));
+    await renderRouter(routes, { initialUrl: `/photo/c?tripId=${SUR}` });
+    await screen.findByText("Fede");
+
+    expect(viewerUri()).toMatch(/\/m\/c\/original$/);
+  });
+
   it("puts Más opciones at the top, out of the bottom panel", async () => {
     await openViewer("a");
     await screen.findByText("Fede");
