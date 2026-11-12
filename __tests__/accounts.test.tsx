@@ -62,6 +62,7 @@ const tripDetail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
@@ -339,6 +340,16 @@ describe("Login", () => {
     await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("the login code field shows the generic placeholder", async () => {
+    mockApi({ "POST /auth/email/start": json(204) });
+    await renderRouter(routes, { initialUrl: "/" });
+
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByPlaceholderText("Ingresar código")).toBe(screen.getByLabelText("Código"));
   });
 
   it("a user with a name but no username still has to pick one", async () => {

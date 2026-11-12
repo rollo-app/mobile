@@ -157,6 +157,7 @@ export function Row({
   note,
   onPress,
   loading,
+  disabled,
   tone,
   leading,
   detail,
@@ -185,6 +186,8 @@ export function Row({
   chevron?: boolean;
   /** Spinner in place of the chevron (an action running). */
   loading?: boolean;
+  /** Dimmed and not pressable (the same 0.35 as a disabled Button). */
+  disabled?: boolean;
   /** "danger" colors the label red, for destructive actions; "tint" makes it an action in the brand color. */
   tone?: "danger" | "tint";
 }) {
@@ -216,7 +219,10 @@ export function Row({
   );
   if (!onPress)
     return (
-      <View style={styles.row} accessibilityState={loading ? { busy: true } : undefined}>
+      <View
+        style={[styles.row, disabled && styles.rowDisabled]}
+        accessibilityState={loading || disabled ? { busy: loading || undefined, disabled: disabled || undefined } : undefined}
+      >
         {content}
         {accessory}
       </View>
@@ -228,7 +234,9 @@ export function Row({
       accessibilityActions={accessibilityActions?.length ? accessibilityActions : undefined}
       onAccessibilityAction={onAccessibilityAction ? ({ nativeEvent }) => onAccessibilityAction(nativeEvent.actionName) : undefined}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, accessory ? styles.rowGrow : null, pressed && { backgroundColor: colors.fill }]}
+      disabled={disabled}
+      accessibilityState={disabled ? { disabled: true } : undefined}
+      style={({ pressed }) => [styles.row, accessory ? styles.rowGrow : null, disabled && styles.rowDisabled, pressed && !disabled && { backgroundColor: colors.fill }]}
     >
       {content}
     </Pressable>
@@ -316,6 +324,7 @@ const styles = StyleSheet.create({
   group: { backgroundColor: colors.cell, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden" },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 50, paddingHorizontal: spacing.md },
+  rowDisabled: { opacity: 0.35 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   rowGrow: { flex: 1 },
   rowWithAccessory: { flexDirection: "row", alignItems: "center", paddingRight: spacing.md },

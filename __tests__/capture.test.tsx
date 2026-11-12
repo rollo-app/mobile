@@ -76,6 +76,7 @@ function tripDetail(photosLeft: number, mode: "daily" | "total" = "daily"): acti
       dailyPhotoLimit: 10,
       dailyVideoLimit: 0,
       featuringDisabled: false,
+      maxMembers: 15,
       photoLimitMode: mode,
       totalPhotoLimit: mode === "total" ? 20 : null,
       momentMode: "off",

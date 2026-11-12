@@ -154,6 +154,14 @@ describe("Opening a friend link", () => {
       await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
     }
 
+    it("the friend code field shows the generic placeholder", async () => {
+      await signInAs({ user: newcomer });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
+      await waitFor(() => expect(screen).toHavePathname("/profile"));
+
+      expect(screen.getByPlaceholderText("Ingresar código")).toBe(screen.getByLabelText("¿Te invitó un amigo? Código"));
+    });
+
     it("a signed-in account with no profile still keeps the link, and redeems it once the profile is done", async () => {
       await signInAs({ user: newcomer });
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
@@ -204,6 +212,15 @@ describe("Opening a friend link", () => {
       expect(friends.claimFriendLink).toHaveBeenCalledWith(CODE);
       await waitFor(() => expect(friends.redeemFriend).toHaveBeenCalledWith({ claimToken: "ct1" }));
       await settle();
+    });
+
+    it("the friend code field shows what is typed in uppercase", async () => {
+      await signInAs({ user: newcomer });
+      await renderRouter(routes, { initialUrl: "/profile" });
+
+      await fireEvent.changeText(await screen.findByLabelText("¿Te invitó un amigo? Código"), "k7m2qx9a");
+
+      expect(screen.getByLabelText("¿Te invitó un amigo? Código").props.value).toBe("K7M2QX9A");
     });
 
     it("a wrong friend code shows the error inline and doesn't save the profile", async () => {

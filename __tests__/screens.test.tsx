@@ -38,6 +38,7 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   dailyPhotoLimit: 10,
   dailyVideoLimit: 3,
   featuringDisabled: false,
+  maxMembers: 15,
   photoLimitMode: "daily",
   totalPhotoLimit: null,
   momentMode: "off",
@@ -245,7 +246,7 @@ describe("Roll board · people and settings", () => {
 
     expect(await screen.findByText("Invitar")).toBeVisible();
     expect(screen.getByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("En el rollo · 2")).toBeVisible();
+    expect(screen.getByText("En el rollo · 2 de 15")).toBeVisible();
     expect(screen.getAllByText("Fede")[0]).toBeVisible();
     expect(screen.getByText("Admin")).toBeVisible();
   });
@@ -276,7 +277,7 @@ describe("Roll board · people and settings", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await screen.findByText("En el rollo · 2");
+    await screen.findByText("En el rollo · 2 de 15");
     expect(screen.queryByRole("button", { name: /^Juani/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
 
@@ -505,6 +506,12 @@ describe("Join", () => {
     expect(button).toBeEnabled();
   });
 
+  it("the code field shows the generic placeholder", async () => {
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    expect(await screen.findByPlaceholderText("Ingresar código")).toBe(await screen.findByLabelText("Código del rollo"));
+  });
+
   it("joining goes to the roll", async () => {
     mocked.joinTrip.mockImplementation(async () => {
       await saveTrip(SUR, "Viaje al sur");
@@ -517,7 +524,19 @@ describe("Join", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "hub5ft" });
+    expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" });
+  });
+
+  it("shows the typed code in uppercase and joins with it", async () => {
+    mocked.joinTrip.mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    const field = await screen.findByLabelText("Código del rollo");
+    await fireEvent.changeText(field, "ft7zad");
+
+    expect(screen.getByLabelText("Código del rollo").props.value).toBe("FT7ZAD");
+    await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
+    await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "FT7ZAD" }));
   });
 
   it("shows the server error", async () => {
@@ -528,6 +547,18 @@ describe("Join", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     expect(await screen.findByText("Código inválido")).toBeVisible();
+    expect(screen).toHavePathname("/join");
+  });
+
+  it("shows the server's 'roll is full' message inline as is", async () => {
+    const full = "Este rollo está lleno (15 de 15). Pedile a quien lo creó que haga lugar.";
+    mocked.joinTrip.mockRejectedValue(new Error(full));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "HUB5FT");
+    await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
+
+    expect(await screen.findByText(full)).toBeVisible();
     expect(screen).toHavePathname("/join");
   });
 });

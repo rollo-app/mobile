@@ -47,6 +47,7 @@ const detail = (me: Member, members: Member[]): tripActions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
@@ -97,7 +98,7 @@ afterEach(() => alert.mockRestore());
 describe("En el rollo with many members", () => {
   it("shows 10 members and a Ver todos row with the total, the title keeps the total", async () => {
     await openBoard(detail(creator, big));
-    expect(screen.getByText("En el rollo · 101")).toBeVisible();
+    expect(screen.getByText("En el rollo · 101 de 15")).toBeVisible();
     expect(screen.getByRole("button", { name: "Ver todos, 101" })).toBeVisible();
     // creator + admin first, then the rest in order: 10 member rows in total.
     expect(screen.getByRole("button", { name: "Cami, Admin" })).toBeVisible();
@@ -115,7 +116,7 @@ describe("En el rollo with many members", () => {
   it("with 8 members shows all of them and no Ver todos row", async () => {
     const eight = [creator, adminCami, jose, ...others.slice(0, 5)];
     await openBoard(detail(creator, eight));
-    expect(screen.getByText("En el rollo · 8")).toBeVisible();
+    expect(screen.getByText("En el rollo · 8 de 15")).toBeVisible();
     expect(screen.getAllByRole("button", { name: /^Persona \d+/ })).toHaveLength(5);
     expect(screen.queryByText("Ver todos")).toBeNull();
   });

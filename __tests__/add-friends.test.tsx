@@ -33,6 +33,7 @@ const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" =
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
@@ -130,6 +131,39 @@ describe("Add friends to a roll", () => {
     expect(await screen.findByText("No disponible")).toBeVisible();
     expect(screen).toHavePathname("/add-friends");
     expect(screen.getByRole("checkbox", { name: /^Tomi/ })).toBeDisabled();
+  });
+
+  it("a friend the roll had no room for shows 'Rollo lleno' and the sheet stays open", async () => {
+    friends.addFriendsToTrip.mockResolvedValue([
+      { userId: "u2", status: "added" },
+      { userId: "u3", status: "full" },
+    ]);
+    await openSheet();
+    await fireEvent.press(await screen.findByRole("checkbox", { name: /^Cami/ }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: /^Tomi/ }));
+
+    await fireEvent.press(screen.getByRole("button", { name: "Sumar" }));
+
+    expect(await screen.findByText("Rollo lleno")).toBeVisible();
+    expect(screen).toHavePathname("/add-friends");
+    expect(screen.getByRole("checkbox", { name: /^Tomi/ })).toBeDisabled();
+    expect(screen.queryByText("No disponible")).toBeNull();
+  });
+
+  it("when the roll is already full it says so and no friend can be picked", async () => {
+    trips.fetchTrip.mockResolvedValue(detail({ maxMembers: 2 }));
+    await openSheet();
+
+    expect(await screen.findByText("El rollo está lleno (2 de 2).")).toBeVisible();
+    expect(screen.getByRole("checkbox", { name: /^Cami/ })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /^Tomi/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Sumar" })).toBeDisabled();
+  });
+
+  it("with room left there is no full footnote", async () => {
+    await openSheet();
+    await screen.findByText("Cami");
+    expect(screen.queryByText(/El rollo está lleno/)).toBeNull();
   });
 
   it("shows the server's message inline if the roll was already revealed", async () => {

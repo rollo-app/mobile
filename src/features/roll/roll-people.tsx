@@ -17,6 +17,8 @@ import { previewMembers } from "./members-order";
 import { useMemberActions } from "./use-member-actions";
 import { MAX_TRIP_NAME, nextTripName, useRenameTrip } from "./use-rename-trip";
 
+const FULL_NOTE = "El rollo está lleno. Para sumar a alguien, primero tiene que salir otra persona.";
+
 /**
  * The invite (code and share) and the members of a roll. Tapping a member (not you) opens their profile.
  */
@@ -36,6 +38,7 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
     members.start(rename);
     setNameTooLong(false);
   };
+  const full = detail.members.length >= detail.trip.maxMembers;
   const preview = previewMembers(detail.members, detail.me.id);
 
   const editName = () =>
@@ -83,14 +86,14 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
         </Section>
       )}
 
-      <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer="Con este código se suman al rollo.">
-        <Row label="Código" value={detail.trip.joinCode} />
-        <Row label="Compartir invitación" chevron={false} onPress={() => void share()} />
+      <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : "Con este código se suman al rollo."}>
+        <Row label="Código" value={detail.trip.joinCode} disabled={full} />
+        <Row label="Compartir invitación" chevron={false} disabled={full} onPress={() => void share()} />
       </Section>
 
       <FeaturingSection detail={detail} />
 
-      <Section title={`En el rollo · ${detail.members.length}`}>
+      <Section title={`En el rollo · ${detail.members.length} de ${detail.trip.maxMembers}`}>
         {preview.shown.map((m) => (
           <MemberRow key={m.id} me={detail.me} member={m} onAction={members.run} />
         ))}

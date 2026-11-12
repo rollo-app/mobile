@@ -42,6 +42,7 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
@@ -292,7 +293,7 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(jest.mocked(UploadStatusSection)).toHaveBeenCalledWith(expect.objectContaining({ tripId: SUR }), undefined);
     expect(screen.getByText("Invitar")).toBeVisible();
     expect(screen.getByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("En el rollo · 1")).toBeVisible();
+    expect(screen.getByText("En el rollo · 1 de 15")).toBeVisible();
     expect(screen.queryByText("Hoy")).toBeNull();
     expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
     expect(screen.queryByRole("menuitem", { name: "Guardar todo en Fotos" })).toBeNull();

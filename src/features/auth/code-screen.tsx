@@ -63,7 +63,7 @@ export function CodeScreen({ email }: { email: string }) {
         autoComplete="one-time-code"
         // No native maxLength: iOS AutoFill can drop an insertion that goes over it. normalizeLoginCode trims instead.
         autoFocus
-        placeholder="K7M4QX"
+        placeholder="Ingresar código"
       />
       {error && (
         <>

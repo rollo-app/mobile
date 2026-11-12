@@ -45,6 +45,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
       dailyPhotoLimit: 10,
       dailyVideoLimit: 3,
       featuringDisabled: false,
+      maxMembers: 15,
       photoLimitMode: "daily",
       totalPhotoLimit: null,
       momentMode: "off",
