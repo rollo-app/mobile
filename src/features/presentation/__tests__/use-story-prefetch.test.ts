@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react-native";
 import { Image } from "expo-image";
 import type { RevealedPhoto } from "@/features/media/revealed";
-import type { StoryStep } from "../story";
+import { buildStory, type StoryStep } from "../story";
 import { useStoryPrefetch } from "../use-story-prefetch";
 
 jest.mock("expo-image", () => ({
@@ -33,5 +33,19 @@ describe("useStoryPrefetch", () => {
     await flush();
     expect(Image.clearMemoryCache).not.toHaveBeenCalled();
     expect(Image.prefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("only prefetches photos that made the selection", async () => {
+    const big = Array.from({ length: 100 }, (_, i) => ({
+      id: `p${i}`, type: "photo", takenAt: Date.parse("2027-01-12T15:00:00Z") + i * 60_000, likeCount: 0,
+      author: { id: "m1" }, thumbPath: `/t/p${i}`, originalPath: `/o/p${i}`,
+    })) as unknown as RevealedPhoto[];
+    const steps = buildStory(big, "America/Argentina/Buenos_Aires");
+    const selected = new Set(steps.flatMap((s) => (s.kind === "photo" ? [s.photo.id] : [])));
+    expect(selected.size).toBe(30);
+    await renderHook(() => useStoryPrefetch(steps, 0, "tok"));
+    await flush();
+    const urls = jest.mocked(Image.prefetch).mock.calls[0]![0] as string[];
+    for (const u of urls) expect(selected.has(u.split("/").at(-1)!)).toBe(true);
   });
 });

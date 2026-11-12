@@ -1,5 +1,5 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
-import { buildStory, daySegments, elapsedProgress, stepDuration } from "../story";
+import { MAX_STORY_PER_DAY, buildStory, daySegments, elapsedProgress, pickDayHighlights, stepDuration } from "../story";
 
 const TZ = "America/Argentina/Buenos_Aires";
 
@@ -163,5 +163,113 @@ describe("elapsedProgress", () => {
   });
   it("treats an empty step as done", () => {
     expect(elapsedProgress(0, 0, 0)).toBe(1);
+  });
+});
+
+const at = (second: number) => Date.parse("2027-01-12T12:00:00Z") + second * 1000;
+const author = (id: string) => ({ id, userId: `u-${id}`, name: id, username: null, avatarUrl: null });
+/** `n` photos one second apart on the same day, ids sortable. */
+const dayOf = (n: number, over: (i: number) => Partial<RevealedPhoto> = () => ({})) =>
+  Array.from({ length: n }, (_, i) =>
+    photo("2027-01-12T12:00:00Z", { id: `x${String(i).padStart(4, "0")}`, takenAt: at(i), ...over(i) }),
+  );
+
+describe("pickDayHighlights", () => {
+  it("caps a day at 30 stories", () => {
+    expect(MAX_STORY_PER_DAY).toBe(30);
+  });
+
+  it("keeps every photo, in order, when the day fits", () => {
+    const list = dayOf(30);
+    expect(pickDayHighlights(list, 30)).toEqual(list);
+    expect(pickDayHighlights([], 30)).toEqual([]);
+  });
+
+  it("returns exactly the cap for a huge day, in chronological order, without repeats", () => {
+    const list = dayOf(2000);
+    const out = pickDayHighlights([...list].reverse(), 30);
+    expect(out).toHaveLength(30);
+    expect(new Set(out.map((p) => p.id)).size).toBe(30);
+    expect(out.map((p) => p.takenAt)).toEqual([...out.map((p) => p.takenAt)].sort((a, b) => a - b));
+  });
+
+  it("spreads the pick across the whole span of the day", () => {
+    const list = dayOf(2000);
+    const out = pickDayHighlights(list, 30);
+    // one per bucket of ~66 photos: early, middle and late are all there
+    expect(out[0]!.takenAt).toBeLessThan(at(67));
+    expect(out.some((p) => p.takenAt > at(900) && p.takenAt < at(1100))).toBe(true);
+    expect(out.at(-1)!.takenAt).toBeGreaterThanOrEqual(at(1933));
+    out.forEach((p, i) => {
+      expect(p.takenAt).toBeGreaterThanOrEqual(at(Math.floor((i * 2000) / 30)));
+      expect(p.takenAt).toBeLessThan(at(Math.floor(((i + 1) * 2000) / 30)));
+    });
+  });
+
+  it("prefers the most liked photo inside its bucket", () => {
+    const list = dayOf(60, (i) => ({ likeCount: i === 1 ? 5 : i === 58 ? 9 : 0 }));
+    const out = pickDayHighlights(list, 2);
+    expect(out.map((p) => p.id)).toEqual(["x0001", "x0058"]);
+  });
+
+  it("breaks a likes tie with an author not picked yet, then earliest, then id", () => {
+    // bucket 0 = [0..2]: only Cami's first photo is picked (earliest). Bucket 1 = [3..5]: all tied on likes,
+    // Fede hasn't been picked yet so his later photo wins over Cami's earlier ones.
+    const authors = ["m1", "m1", "m1", "m1", "m1", "m2"];
+    const list = dayOf(6, (i) => ({ author: author(authors[i]!) }));
+    expect(pickDayHighlights(list, 2).map((p) => p.id)).toEqual(["x0000", "x0005"]);
+
+    const same = dayOf(6, () => ({}));
+    expect(pickDayHighlights(same, 2).map((p) => p.id)).toEqual(["x0000", "x0003"]);
+
+    const twins = [
+      photo("2027-01-12T12:00:00Z", { id: "b", takenAt: at(0) }),
+      photo("2027-01-12T12:00:00Z", { id: "a", takenAt: at(0) }),
+    ];
+    expect(pickDayHighlights(twins, 1).map((p) => p.id)).toEqual(["a"]);
+  });
+
+  it("is deterministic whatever the input order", () => {
+    const list = dayOf(500, (i) => ({ likeCount: i % 7, author: author(`m${i % 5}`) }));
+    const a = pickDayHighlights(list, 30).map((p) => p.id);
+    const b = pickDayHighlights([...list].reverse(), 30).map((p) => p.id);
+    expect(b).toEqual(a);
+    expect(pickDayHighlights(list, 30).map((p) => p.id)).toEqual(a);
+  });
+});
+
+describe("buildStory with a huge day", () => {
+  const big = dayOf(2000, (i) => ({ author: author(i % 2 ? "m2" : "m1"), type: i % 10 === 0 ? "video" : "photo" }));
+
+  it("has one day card and 30 photos for the day, with the real total on the card", () => {
+    const steps = buildStory(big, TZ);
+    expect(steps.map((s) => s.kind).filter((k) => k !== "photo")).toEqual(["day", "outro"]);
+    expect(steps.filter((s) => s.kind === "photo")).toHaveLength(30);
+    expect(steps[0]).toMatchObject({ kind: "day", count: 2000, shown: 30, trimmed: true });
+  });
+
+  it("leaves a day that fits untouched and untrimmed", () => {
+    const steps = buildStory(dayOf(3), TZ);
+    expect(steps[0]).toMatchObject({ kind: "day", count: 3, shown: 3, trimmed: false });
+    expect(steps.at(-1)).toMatchObject({ stats: { trimmed: false } });
+  });
+
+  it("counts every photo and video in the stats, not just the selection", () => {
+    const outro = buildStory(big, TZ).at(-1);
+    expect(outro).toMatchObject({
+      kind: "outro",
+      stats: { photos: 1800, videos: 200, people: 2, days: 1, trimmed: true },
+    });
+  });
+
+  it("marks the outro as trimmed when any day was cut", () => {
+    const small = [photo("2027-01-13T15:00:00Z")];
+    expect(buildStory([...big, ...small], TZ).at(-1)).toMatchObject({ stats: { trimmed: true, days: 2 } });
+  });
+
+  it("sizes the day's bar by the selection, on the card and on its photos", () => {
+    const steps = buildStory(big, TZ);
+    expect(daySegments(steps, 0)).toEqual({ count: 30, current: -1 });
+    expect(daySegments(steps, 30)).toEqual({ count: 30, current: 29 });
   });
 });
