@@ -74,6 +74,33 @@ describe("useFeed", () => {
     expect(fetchFeedPage).toHaveBeenCalledTimes(3);
   });
 
+  it("desc: is its own query under the trip's prefix and asks for desc on every page", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy", order: "desc" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.fetchMore()));
+    await waitFor(() => expect(ids(result.current.feed)).toEqual(["a", "b", "c", "d"]));
+
+    expect(fetchFeedPage).toHaveBeenNthCalledWith(1, "t1", { cursor: undefined, limit: 30, order: "desc" });
+    expect(fetchFeedPage).toHaveBeenNthCalledWith(2, "t1", { cursor: "c1", limit: 30, order: "desc" });
+    expect(client.getQueryData(feedKey("t1", "desc"))).toBeDefined();
+    expect(client.getQueryData(feedKey("t1"))).toBeUndefined();
+    expect(feedKey("t1", "desc").slice(0, 2)).toEqual(feedKey("t1"));
+  });
+
+  it("asc keeps the persisted key and does not send an order", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    expect(feedKey("t1")).toEqual(["feed-pages", "t1"]);
+    expect(feedKey("t1", "asc")).toEqual(["feed-pages", "t1"]);
+    expect(fetchFeedPage).toHaveBeenCalledWith("t1", { cursor: undefined, limit: 30 });
+  });
+
+  it("desc and asc do not share pages", async () => {
+    client.setQueryData(feedKey("t1"), feedPagesOf([feedItem("old")]));
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy", order: "desc" }), { wrapper });
+    await waitFor(() => expect(ids(result.current.feed)).toEqual(["a", "b"]));
+  });
+
   it("defaults to loading everything", async () => {
     const { result } = await renderHook(() => useFeed("t1"), { wrapper });
     await waitFor(() => expect(result.current.complete).toBe(true));

@@ -63,13 +63,18 @@ export type FeedPages = InfiniteData<Feed, string | undefined>;
 /** How many feed items each request asks for. */
 export const FEED_PAGE_SIZE = 30;
 
+/** `asc`: oldest first (the default). `desc`: newest first. */
+export type FeedOrder = "asc" | "desc";
+
 /**
- * One page of what's been uploaded to the trip, oldest first. Before the reveal it only has metadata (author, time,
+ * One page of what's been uploaded to the trip, oldest first unless `order` says "desc" (newest first; keep the same `order` across the pages of one walk). Before the reveal it only has metadata (author, time,
  * place, thumbhash). `nextCursor` is null on the last page. Always sends a `limit`: without one the server returns everything.
  */
-export async function fetchFeedPage(tripId: string, { cursor, limit }: { cursor?: string; limit: number }): Promise<Feed> {
+export async function fetchFeedPage(
+  tripId: string, { cursor, limit, order }: { cursor?: string; limit: number; order?: FeedOrder },
+): Promise<Feed> {
   return unwrap(
-    (await authedClient()).GET("/trips/{tripId}/feed", { params: { path: { tripId }, query: { limit, ...(cursor && { cursor }) } } }),
+    (await authedClient()).GET("/trips/{tripId}/feed", { params: { path: { tripId }, query: { limit, ...(cursor && { cursor }), ...(order && { order }) } } }),
   );
 }
 

@@ -13,6 +13,58 @@ beforeEach(() => {
 const data = (tripId = "t1") => client.getQueryData<FeedPages>(feedKey(tripId));
 const itemOf = (id: string) => data()!.pages.flatMap((p) => p.items).find((i) => i.id === id) as unknown as Record<string, unknown>;
 
+const descData = (tripId = "t1") => client.getQueryData<FeedPages>(feedKey(tripId, "desc"));
+
+describe("feed cache helpers in both orders", () => {
+  beforeEach(() => {
+    client.setQueryData(feedKey("t1", "desc"), feedPagesOf([feedItem("d"), feedItem("c")], [feedItem("b"), feedItem("a")]));
+  });
+
+  it("updateFeedItems and removeFeedItem reach the asc and the desc cache of the trip", () => {
+    removeFeedItem(client, "t1", "c");
+    expect(feedIds(data())).toEqual(["a", "b", "d"]);
+    expect(feedIds(descData())).toEqual(["d", "b", "a"]);
+  });
+
+  it("mapFeedItem edits the item in both caches and leaves other trips alone", () => {
+    mapFeedItem(client, "t1", "a", (i) => ({ ...i, caption: "hola" }));
+    expect((descData()!.pages[1]!.items[1] as unknown as { caption: string }).caption).toBe("hola");
+    expect(itemOf("a").caption).toBe("hola");
+    expect(data("t2")!.pages[0]!.items[0]).toEqual(feedItem("z"));
+  });
+
+  it("mapFeedItemsEverywhere reaches desc caches too", () => {
+    mapFeedItemsEverywhere(client, "d", (i) => ({ ...i, caption: "x" }));
+    expect((descData()!.pages[0]!.items[0] as unknown as { caption: string }).caption).toBe("x");
+    expect(itemOf("d").caption).toBe("x");
+  });
+
+  it("snapshot and restore roll back every cache of the trip", () => {
+    const snapshot = snapshotFeed(client, "t1");
+    removeFeedItem(client, "t1", "a");
+    mapFeedItem(client, "t1", "b", (i) => ({ ...i, featuredByMe: true }));
+    expect(feedIds(descData())).toEqual(["d", "c", "b"]);
+
+    restoreFeed(client, "t1", snapshot);
+
+    expect(feedIds(data())).toEqual(["a", "b", "c", "d"]);
+    expect(feedIds(descData())).toEqual(["d", "c", "b", "a"]);
+    expect((descData()!.pages[1]!.items[0] as unknown as { featuredByMe?: boolean }).featuredByMe).toBeUndefined();
+  });
+
+  it("restoring a snapshot with no cache does nothing", () => {
+    restoreFeed(client, "t1", snapshotFeed(client, "nope"));
+    expect(feedIds(descData())).toEqual(["d", "c", "b", "a"]);
+  });
+
+  it("invalidating the trip's prefix marks both caches", async () => {
+    await client.invalidateQueries({ queryKey: feedKey("t1") });
+    expect(client.getQueryState(feedKey("t1"))!.isInvalidated).toBe(true);
+    expect(client.getQueryState(feedKey("t1", "desc"))!.isInvalidated).toBe(true);
+    expect(client.getQueryState(feedKey("t2"))!.isInvalidated).toBe(false);
+  });
+});
+
 describe("feed cache helpers", () => {
   it("keys the feed under its own root, apart from the old unpaged cache", () => {
     expect(feedKey("t1")[0]).not.toBe("feed");

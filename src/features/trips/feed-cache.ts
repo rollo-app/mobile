@@ -1,4 +1,4 @@
-import type { QueryClient } from "@tanstack/react-query";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type { Feed, FeedPages } from "./actions";
 import { feedKey, feedRootKey } from "./use-feed";
 
@@ -16,9 +16,12 @@ function mapPages(data: FeedPages, fn: (items: FeedItem[]) => FeedItem[]): FeedP
   return changed ? { ...data, pages } : data;
 }
 
-/** Applies `fn` to the items of every loaded page of a trip's feed (it returns the new list: map, filter...). No cache, no change. */
+/**
+ * Applies `fn` to the items of every loaded page of a trip's feed, in every cache of it (oldest first and newest first: the
+ * trip's key is a prefix of both). `fn` returns the new list: map, filter... No cache, no change.
+ */
 export function updateFeedItems(client: QueryClient, tripId: string, fn: (items: FeedItem[]) => FeedItem[]) {
-  client.setQueryData<FeedPages>(feedKey(tripId), (data) => data && mapPages(data, fn));
+  client.setQueriesData<FeedPages>({ queryKey: feedKey(tripId) }, (data) => data && mapPages(data, fn));
 }
 
 /** Replaces one item (wherever its page is) with `fn(item)`; the other items and pages stay as they were. */
@@ -42,10 +45,13 @@ export function mapFeedItemsEverywhere(client: QueryClient, mediaId: string, fn:
   }
 }
 
-/** What an optimistic edit saves to undo itself (undefined if the trip's feed isn't cached). */
-export const snapshotFeed = (client: QueryClient, tripId: string) => client.getQueryData<FeedPages>(feedKey(tripId));
+/** What an optimistic edit saves to undo itself: every cached feed of the trip, by key (empty if none is cached). */
+export type FeedSnapshot = [QueryKey, FeedPages | undefined][];
 
-/** Puts a snapshot back: the rollback of an optimistic edit. */
-export function restoreFeed(client: QueryClient, tripId: string, snapshot: FeedPages | undefined) {
-  if (snapshot) client.setQueryData<FeedPages>(feedKey(tripId), snapshot);
+export const snapshotFeed = (client: QueryClient, tripId: string): FeedSnapshot =>
+  client.getQueriesData<FeedPages>({ queryKey: feedKey(tripId) });
+
+/** Puts a snapshot back in every cache it holds: the rollback of an optimistic edit. */
+export function restoreFeed(client: QueryClient, tripId: string, snapshot: FeedSnapshot | undefined) {
+  for (const [key, data] of snapshot ?? []) if (data) client.setQueryData<FeedPages>(key, data);
 }

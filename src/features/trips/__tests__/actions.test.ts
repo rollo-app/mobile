@@ -172,6 +172,24 @@ describe("fetchFeedPage", () => {
   });
 });
 
+describe("fetchFeedPage order", () => {
+  it("sends the order when given, with the cursor", async () => {
+    const fetchMock = mockFetch(200, { revealed: false, revealAt: NOW, items: [], nextCursor: null });
+
+    await fetchFeedPage(trip.id, { cursor: "abc", limit: 30, order: "desc" });
+
+    expect(queryOf(lastReq(fetchMock))).toEqual({ cursor: "abc", limit: "30", order: "desc" });
+  });
+
+  it("does not send an order by default", async () => {
+    const fetchMock = mockFetch(200, { revealed: false, revealAt: NOW, items: [], nextCursor: null });
+
+    await fetchFeedPage(trip.id, { limit: 30 });
+
+    expect(queryOf(lastReq(fetchMock))).not.toHaveProperty("order");
+  });
+});
+
 describe("fetchWholeFeed", () => {
   it("walks the pages until the cursor is null and returns them in the infinite-query shape", async () => {
     const pages = [

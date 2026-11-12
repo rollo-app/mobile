@@ -16,6 +16,7 @@ import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
+import { LoadMoreFooter } from "@/ui/load-more-footer";
 import { colors, spacing, type } from "@/ui/theme";
 import { Cell } from "./gallery-cell";
 import { GalleryToolbar } from "./gallery-toolbar";
@@ -161,16 +162,7 @@ export function GalleryScreen({
         onEndReached={onEndReached}
         onEndReachedThreshold={ENDING_THRESHOLD}
         ListFooterComponent={
-          loadingMore ? (
-            <ActivityIndicator testID="gallery-loading-more" style={styles.footer} />
-          ) : loadMoreError ? (
-            <View style={styles.footer}>
-              <Text style={[type.subhead, { color: colors.secondaryLabel }]}>No se pudieron cargar más fotos.</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Reintentar" hitSlop={10} onPress={() => void fetchMore()}>
-                <Text style={[type.headline, { color: colors.tint }]}>Reintentar</Text>
-              </Pressable>
-            </View>
-          ) : undefined
+          <LoadMoreFooter loading={loadingMore} error={loadMoreError} onRetry={() => void fetchMore()} testID="gallery-loading-more" />
         }
         ListHeaderComponent={
           author ? (
@@ -279,7 +271,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.lg,
   },
-  footer: { alignItems: "center", gap: spacing.sm, padding: spacing.lg },
   empty: {
     color: colors.secondaryLabel,
     textAlign: "center",

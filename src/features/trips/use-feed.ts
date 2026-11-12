@@ -1,13 +1,22 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo } from "react";
-import { FEED_PAGE_SIZE, fetchFeedPage, type Feed, type FeedPages } from "./actions";
+import { FEED_PAGE_SIZE, fetchFeedPage, type Feed, type FeedOrder, type FeedPages } from "./actions";
 
 /**
  * Root of every trip's feed cache. It's "feed-pages" and not "feed" on purpose: the cache is persisted on the phone, and
  * the old `["feed", tripId]` entries hold a whole feed (not pages), so nothing paged may ever read them. They just expire.
  */
 export const feedRootKey = ["feed-pages"] as const;
-export const feedKey = (tripId: string) => [...feedRootKey, tripId] as const;
+/**
+ * The key of a trip's feed. It's also the prefix of all of that trip's feed caches (cache edits and invalidations use it to reach
+ * both orders). Oldest first (`asc`) is exactly `["feed-pages", tripId]`, as already persisted on phones, so it must never change;
+ * newest first is its own query, `[..., "desc"]`, because pages of one order can't continue the other.
+ */
+export function feedKey(tripId: string): readonly ["feed-pages", string];
+export function feedKey(tripId: string, order: FeedOrder): readonly ["feed-pages", string] | readonly ["feed-pages", string, "desc"];
+export function feedKey(tripId: string, order: FeedOrder = "asc") {
+  return order === "desc" ? ([...feedRootKey, tripId, "desc"] as const) : ([...feedRootKey, tripId] as const);
+}
 
 /** `lazy`: only loads more when asked (`fetchMore`). `all`: keeps loading by itself until the last page, for screens that need everything. */
 export type FeedMode = "lazy" | "all";
@@ -23,13 +32,14 @@ function flatten(data: FeedPages): Feed {
 
 /**
  * What's been uploaded to the trip (before the reveal, metadata only), loaded in pages of 30. One shared, persisted cache per
- * trip whatever the mode, so changing screens doesn't start over. `feed` is everything loaded so far, even if stale;
+ * trip and order whatever the mode, so changing screens doesn't start over. `feed` is everything loaded so far, even if stale;
  * `error` appears only if there's no data at all.
  */
-export function useFeed(tripId: string | undefined, { mode = "all" }: { mode?: FeedMode } = {}) {
-  const query = useInfiniteQuery<Feed, Error, FeedPages, ReturnType<typeof feedKey>, string | undefined>({
-    queryKey: feedKey(tripId ?? ""),
-    queryFn: ({ pageParam }) => fetchFeedPage(tripId!, { cursor: pageParam, limit: FEED_PAGE_SIZE }),
+export function useFeed(tripId: string | undefined, { mode = "all", order = "asc" }: { mode?: FeedMode; order?: FeedOrder } = {}) {
+  const query = useInfiniteQuery<Feed, Error, FeedPages, readonly unknown[], string | undefined>({
+    queryKey: feedKey(tripId ?? "", order),
+    // `order` goes on every page (first and cursor ones): the server wants the same one all along. Asc is the default: not sent.
+    queryFn: ({ pageParam }) => fetchFeedPage(tripId!, { cursor: pageParam, limit: FEED_PAGE_SIZE, ...(order === "desc" && { order }) }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last?.nextCursor ?? undefined,
     enabled: !!tripId,
