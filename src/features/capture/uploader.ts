@@ -43,11 +43,17 @@ class PutFailed extends Error {
 }
 
 type Phase = "register" | "complete";
-type Verdict = { kind: "offline" } | { kind: "retry" } | { kind: "gone" } | { kind: "failed"; reason: string };
+type Verdict =
+  | { kind: "offline" }
+  | { kind: "rateLimited"; retryAfterMs: number }
+  | { kind: "retry" }
+  | { kind: "gone" }
+  | { kind: "failed"; reason: string };
 
 /** What to do with an error: retry later, stop (no network) or give the item up as lost. */
 function classify(error: unknown, phase: Phase): Verdict | null {
-  if (error instanceof PutFailed) return error.status === 0 ? { kind: "offline" } : { kind: "retry" };
+  if (error instanceof PutFailed)
+    return error.status === 0 ? { kind: "offline" } : { kind: "retry" };
   if (!(error instanceof ApiError)) return null;
   const { status } = error;
   if (status === 0) return { kind: "offline" };
@@ -57,11 +63,17 @@ function classify(error: unknown, phase: Phase): Verdict | null {
   if (status >= 500) return { kind: "retry" };
   // The rollo was deleted for everyone: its photos have nowhere to go.
   if (status === 410) return { kind: "gone" };
-  if (status === 429) return { kind: "failed", reason: "quota" };
+  // 429 with Retry-After is rate limiting (transient); without it, the daily quota (final).
+  if (status === 429) {
+    return error.retryAfterMs !== undefined
+      ? { kind: "rateLimited", retryAfterMs: error.retryAfterMs }
+      : { kind: "failed", reason: "quota" };
+  }
   // The reason is the server's message ("El rollo ya se reveló", "Este rollo ya terminó"…).
   if (status === 409) return { kind: "failed", reason: error.message };
   // Confirming a photo the admin deleted returns 404: nothing to retry.
-  if (phase === "complete" && status === 404) return { kind: "failed", reason: "deleted" };
+  if (phase === "complete" && status === 404)
+    return { kind: "failed", reason: "deleted" };
   // On confirm, a 4xx may be a file that has not fully arrived: retry.
   if (phase === "complete") return { kind: "retry" };
   return { kind: "failed", reason: error.message || `http_${status}` };
@@ -86,10 +98,21 @@ export function createUploader(deps: UploaderDeps) {
   let again = false;
   let deadline: number | undefined;
   let ignoreBackoff = false;
+  // Rate-limit waits per item. ignoreBackoff (network back) skips the retryAt of an item, but the
+  // server's Retry-After isn't about the network, so it is still respected. In memory: after an app
+  // restart the worst case is one extra try that gets another 429 + Retry-After.
+  const rateLimitedUntil = new Map<string, number>();
 
-  async function putAll(m: PendingMedia, urls: { original: string; thumb: string }) {
+  async function putAll(
+    m: PendingMedia,
+    urls: { original: string; thumb: string },
+  ) {
     const files = [
-      { uri: m.originalUri, url: urls.original, contentType: m.type === "video" ? "video/mp4" : "image/jpeg" },
+      {
+        uri: m.originalUri,
+        url: urls.original,
+        contentType: m.type === "video" ? "video/mp4" : "image/jpeg",
+      },
       { uri: m.thumbUri, url: urls.thumb, contentType: "image/jpeg" },
     ];
     for (const f of files) {
@@ -107,7 +130,11 @@ export function createUploader(deps: UploaderDeps) {
    * Uploads an item end to end. Throws if anything fails. The sizes are the files' on disk: the URLs
    * are signed for that exact Content-Length and the PUT sends the whole file.
    */
-  async function send(m: PendingMedia, token: string, sizes: { original: number; thumb: number }) {
+  async function send(
+    m: PendingMedia,
+    token: string,
+    sizes: { original: number; thumb: number },
+  ) {
     const api = createApiClient({ baseUrl: deps.apiUrl, token });
     const register = () =>
       unwrap(
@@ -145,7 +172,11 @@ export function createUploader(deps: UploaderDeps) {
       }
       if ("upload" in registered) {
         try {
-          await unwrap(api.POST("/media/{mediaId}/complete", { params: { path: { mediaId: m.id } } }));
+          await unwrap(
+            api.POST("/media/{mediaId}/complete", {
+              params: { path: { mediaId: m.id } },
+            }),
+          );
         } catch (e) {
           throw e instanceof ApiError ? new CompleteFailed(e) : e;
         }
@@ -174,7 +205,10 @@ export function createUploader(deps: UploaderDeps) {
     // A selfie goes after its main (the server validates the pairing at register time).
     const unresolved = new Set(all.map((m) => m.id));
     const due = all
-      .filter((m) => skipBackoff || m.retryAt === null || m.retryAt <= now())
+      .filter((m) => {
+        if ((rateLimitedUntil.get(m.id) ?? 0) > now()) return false;
+        return skipBackoff || m.retryAt === null || m.retryAt <= now();
+      })
       .sort((a, b) => Number(!!a.pairedWith) - Number(!!b.pairedWith));
     for (const m of due) {
       if (m.pairedWith && unresolved.has(m.pairedWith)) continue;
@@ -193,9 +227,13 @@ export function createUploader(deps: UploaderDeps) {
         }
         await send(m, token, { original, thumb });
       } catch (e) {
-        const phase: Phase = e instanceof CompleteFailed ? "complete" : "register";
+        const phase: Phase =
+          e instanceof CompleteFailed ? "complete" : "register";
         // An error we can't classify is retried: it never aborts the pass or blocks the queue.
-        const verdict = classify(e instanceof CompleteFailed ? e.cause : e, phase) ?? { kind: "retry" };
+        const verdict = classify(
+          e instanceof CompleteFailed ? e.cause : e,
+          phase,
+        ) ?? { kind: "retry" };
         if (verdict.kind === "failed") {
           await discard(m, verdict.reason);
           continue;
@@ -208,13 +246,27 @@ export function createUploader(deps: UploaderDeps) {
           await deps.onDiscarded?.(m.tripId);
           continue;
         }
-        if (!(e instanceof PutFailed || e instanceof ApiError || e instanceof CompleteFailed)) {
+        if (!(
+          e instanceof PutFailed ||
+          e instanceof ApiError ||
+          e instanceof CompleteFailed
+        )) {
           console.warn("Error inesperado al subir", m.id, e);
         }
-        await deps.queue.markAttempt(m.id, now() + retryDelay(m.attempts + 1));
-        if (verdict.kind === "offline") return;
+        const backoff = retryDelay(m.attempts + 1);
+        const wait =
+          verdict.kind === "rateLimited"
+            ? Math.max(backoff, verdict.retryAfterMs)
+            : backoff;
+        if (verdict.kind === "rateLimited")
+          rateLimitedUntil.set(m.id, now() + wait);
+        await deps.queue.markAttempt(m.id, now() + wait);
+        // The rest would hit the same limit (or there's no network): end the pass, they stay pending.
+        if (verdict.kind === "offline" || verdict.kind === "rateLimited")
+          return;
         continue;
       }
+      rateLimitedUntil.delete(m.id);
       await deps.queue.remove(m.id);
       unresolved.delete(m.id);
       await deps.removeFiles(m.id);
