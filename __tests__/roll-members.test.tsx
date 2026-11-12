@@ -49,6 +49,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
@@ -93,6 +94,29 @@ beforeEach(async () => {
 afterEach(() => {
   alert.mockRestore();
   prompt.mockRestore();
+});
+
+describe("Roll cap", () => {
+  const FULL = "El rollo está lleno. Para sumar a alguien, primero tiene que salir otra persona.";
+
+  it("shows the cap in the people title", async () => {
+    await openBoard(detail(creator, { maxMembers: 15 }));
+    expect(screen.getByText("En el rollo · 4 de 15")).toBeVisible();
+  });
+
+  it("notes that the roll is full next to the invite and keeps the code visible", async () => {
+    await openBoard(detail(creator, { maxMembers: 4 }));
+    expect(screen.getByText("En el rollo · 4 de 4")).toBeVisible();
+    expect(screen.getByText(FULL)).toBeVisible();
+    expect(screen.getByText("HUB5FT")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sumar amigos" })).toBeVisible();
+  });
+
+  it("shows no full note while there is room", async () => {
+    await openBoard(detail(creator, { maxMembers: 5 }));
+    expect(screen.queryByText(FULL)).toBeNull();
+    expect(screen.getByText("Con este código se suman al rollo.")).toBeVisible();
+  });
 });
 
 describe("Members list: badges and actions", () => {

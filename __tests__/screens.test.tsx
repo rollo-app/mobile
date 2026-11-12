@@ -38,6 +38,7 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   dailyPhotoLimit: 10,
   dailyVideoLimit: 3,
   featuringDisabled: false,
+  maxMembers: 15,
   photoLimitMode: "daily",
   totalPhotoLimit: null,
   momentMode: "off",
@@ -245,7 +246,7 @@ describe("Roll board · people and settings", () => {
 
     expect(await screen.findByText("Invitar")).toBeVisible();
     expect(screen.getByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("En el rollo · 2")).toBeVisible();
+    expect(screen.getByText("En el rollo · 2 de 15")).toBeVisible();
     expect(screen.getAllByText("Fede")[0]).toBeVisible();
     expect(screen.getByText("Admin")).toBeVisible();
   });
@@ -276,7 +277,7 @@ describe("Roll board · people and settings", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await screen.findByText("En el rollo · 2");
+    await screen.findByText("En el rollo · 2 de 15");
     expect(screen.queryByRole("button", { name: /^Juani/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
 
@@ -528,6 +529,18 @@ describe("Join", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     expect(await screen.findByText("Código inválido")).toBeVisible();
+    expect(screen).toHavePathname("/join");
+  });
+
+  it("shows the server's 'roll is full' message inline as is", async () => {
+    const full = "Este rollo está lleno (15 de 15). Pedile a quien lo creó que haga lugar.";
+    mocked.joinTrip.mockRejectedValue(new Error(full));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "HUB5FT");
+    await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
+
+    expect(await screen.findByText(full)).toBeVisible();
     expect(screen).toHavePathname("/join");
   });
 });

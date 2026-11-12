@@ -28,6 +28,7 @@ function tripDetail(): actions.TripDetail {
       dailyPhotoLimit: 10,
       dailyVideoLimit: 0,
       featuringDisabled: false,
+      maxMembers: 15,
       photoLimitMode: "daily",
       totalPhotoLimit: null,
       momentMode: "photo",

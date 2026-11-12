@@ -20,10 +20,12 @@ export function AddFriendsSheet() {
   const { friends, error: loadError, refetch, isRefetching } = useFriends();
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [unavailable, setUnavailable] = useState<Set<string>>(new Set());
+  const [full, setFull] = useState<Set<string>>(new Set());
   const { add, adding: saving, error: addFailure, reset } = useAddFriendsToTrip();
   const error = errorMessage(addFailure, "No se pudo sumar a tus amigos");
 
   const members = new Set(detail?.members.map((m) => m.userId));
+  const rollFull = !!detail && detail.members.length >= detail.trip.maxMembers;
 
   function toggle(id: string) {
     reset();
@@ -38,12 +40,15 @@ export function AddFriendsSheet() {
     if (!trip) return;
     reset();
     add({ tripId: trip.id, friendIds: [...picked] }, (results) => {
-      const failed = results.filter((r) => r.status === "unavailable").map((r) => r.userId);
-      if (failed.length === 0) {
+      const ids = (status: string) => results.filter((r) => r.status === status).map((r) => r.userId);
+      const unavailableIds = ids("unavailable");
+      const fullIds = ids("full");
+      if (unavailableIds.length === 0 && fullIds.length === 0) {
         router.back();
         return;
       }
-      setUnavailable((current) => new Set([...current, ...failed]));
+      setUnavailable((current) => new Set([...current, ...unavailableIds]));
+      setFull((current) => new Set([...current, ...fullIds]));
       setPicked(new Set());
     });
   }
@@ -78,6 +83,9 @@ export function AddFriendsSheet() {
           <Button label="Ir a Amigos" variant="secondary" onPress={() => router.replace("/friends")} />
         </View>
       )}
+      {friends && friends.length > 0 && rollFull && (
+        <Footnote>{`El rollo está lleno (${detail.members.length} de ${detail.trip.maxMembers}).`}</Footnote>
+      )}
       {friends && friends.length > 0 && (
         <View style={styles.group}>
           {friends.map((f, i) => (
@@ -85,7 +93,17 @@ export function AddFriendsSheet() {
               {i > 0 && <View style={styles.separator} />}
               <PickRow
                 friend={f}
-                state={members.has(f.id) ? "member" : unavailable.has(f.id) ? "unavailable" : "free"}
+                state={
+                  members.has(f.id)
+                    ? "member"
+                    : full.has(f.id)
+                      ? "full"
+                      : unavailable.has(f.id)
+                        ? "unavailable"
+                        : rollFull
+                          ? "closed"
+                          : "free"
+                }
                 checked={picked.has(f.id)}
                 onPress={() => toggle(f.id)}
               />
@@ -105,12 +123,12 @@ function PickRow({
   onPress,
 }: {
   friend: Friend;
-  state: "free" | "member" | "unavailable";
+  state: "free" | "member" | "unavailable" | "full" | "closed";
   checked: boolean;
   onPress: () => void;
 }) {
   const disabled = state !== "free";
-  const note = state === "member" ? "Ya está" : state === "unavailable" ? "No disponible" : undefined;
+  const note = { member: "Ya está", unavailable: "No disponible", full: "Rollo lleno", closed: undefined, free: undefined }[state];
   return (
     <Pressable
       accessibilityRole="checkbox"

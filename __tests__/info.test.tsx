@@ -19,7 +19,7 @@ const detail = (): actions.TripDetail => ({
   trip: {
     id: SUR, name: "Viaje al sur", joinCode: "HUB5FT", timezone: "America/Argentina/Buenos_Aires",
     startsAt: Date.now() - DAY, endsAt: Date.now() + 9 * DAY, revealAt: Date.now() + 9 * DAY, revealed: false,
-    dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, photoLimitMode: "daily", totalPhotoLimit: null,
+    dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, maxMembers: 15, photoLimitMode: "daily", totalPhotoLimit: null,
     momentMode: "off", momentWindowStart: 540, momentWindowEnd: 1380,
     createdBy: null,
   },

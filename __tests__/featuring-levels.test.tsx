@@ -44,6 +44,7 @@ const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; 
       dailyPhotoLimit: 10,
       dailyVideoLimit: 3,
       featuringDisabled,
+      maxMembers: 15,
       photoLimitMode: "daily",
       totalPhotoLimit: null,
       momentMode: "off",
