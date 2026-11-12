@@ -87,8 +87,8 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
       )}
 
       <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : "Con este código se suman al rollo."}>
-        <Row label="Código" value={detail.trip.joinCode} />
-        <Row label="Compartir invitación" chevron={false} onPress={() => void share()} />
+        <Row label="Código" value={detail.trip.joinCode} disabled={full} />
+        <Row label="Compartir invitación" chevron={false} disabled={full} onPress={() => void share()} />
       </Section>
 
       <FeaturingSection detail={detail} />

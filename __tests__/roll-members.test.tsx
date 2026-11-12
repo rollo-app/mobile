@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { Alert, Share } from "react-native";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -110,6 +110,27 @@ describe("Roll cap", () => {
     expect(screen.getByText(FULL)).toBeVisible();
     expect(screen.getByText("HUB5FT")).toBeVisible();
     expect(screen.getByRole("button", { name: "Sumar amigos" })).toBeVisible();
+  });
+
+  it("dims the invite and does not share while the roll is full", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
+    await openBoard(detail(creator, { maxMembers: 4 }));
+    const row = screen.getByRole("button", { name: "Compartir invitación" });
+    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(row);
+    expect(share).not.toHaveBeenCalled();
+    expect(screen.getByText("HUB5FT")).toBeVisible();
+    share.mockRestore();
+  });
+
+  it("still shares the invite while there is room", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
+    await openBoard(detail(creator, { maxMembers: 5 }));
+    const row = screen.getByRole("button", { name: "Compartir invitación" });
+    expect(row.props.accessibilityState?.disabled).toBeFalsy();
+    fireEvent.press(row);
+    expect(share).toHaveBeenCalledTimes(1);
+    share.mockRestore();
   });
 
   it("shows no full note while there is room", async () => {
