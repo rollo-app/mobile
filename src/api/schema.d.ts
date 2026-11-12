@@ -1591,7 +1591,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a friend link
-         * @description Returns an 8-character code (the link is https://rollo.juanifraga.com/friends#<code>; rollo://friends/<code> is still accepted) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
+         * @description Returns an 8-character code (the link is https://rolloproject.com/friends#<code>; rollo://friends/<code> is still accepted) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
          */
         post: {
             parameters: {
@@ -5253,7 +5253,7 @@ export interface components {
         };
         FriendLink: {
             /**
-             * @description 8-character code; the link is https://rollo.juanifraga.com/friends#<code> (rollo://friends/<code> is also accepted)
+             * @description 8-character code; the link is https://rolloproject.com/friends#<code> (rollo://friends/<code> is also accepted)
              * @example K7M2QX9A
              */
             code: string;
