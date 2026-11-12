@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -34,6 +35,7 @@ function tripDetail(): actions.TripDetail {
       momentMode: "photo",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      originals: keepOriginals,
       createdBy: null,
     },
     me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },

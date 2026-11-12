@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
@@ -68,6 +69,7 @@ const tripDetail = (): actions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },

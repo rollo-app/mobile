@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
@@ -44,6 +45,7 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   momentMode: "off",
   momentWindowStart: 540,
   momentWindowEnd: 1380,
+  originals: keepOriginals,
   createdBy: null,
   ...overrides,
 });

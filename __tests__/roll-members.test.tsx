@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { Alert, Share } from "react-native";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
@@ -55,6 +56,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: { userId: "u1", name: "Juani" },
     ...over,
   },

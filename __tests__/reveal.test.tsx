@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import { router } from "expo-router";
@@ -45,6 +46,7 @@ const detail = (): actions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },

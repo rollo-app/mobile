@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act } from "@testing-library/react-native";
 import { ActionSheetIOS, Alert, Text } from "react-native";
 import * as sections from "@/features/feed/sections";
@@ -47,6 +48,7 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, isCreator: false, blockedByMe: false },

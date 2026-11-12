@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
 import { Dimensions, StyleSheet, Text } from "react-native";
@@ -48,6 +49,7 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
     ...over,
   },

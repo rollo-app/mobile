@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { ActionSheetIOS, Alert } from "react-native";
 import * as moderation from "@/features/moderation/actions";
@@ -55,6 +56,7 @@ const detail = (id: string, name: string, revealed: boolean): tripActions.TripDe
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },

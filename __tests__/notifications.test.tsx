@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -52,6 +53,7 @@ const detail = (id = SUR, name = "Viaje al sur"): actions.TripDetail => ({
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
     createdBy: null,
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
@@ -309,7 +311,7 @@ describe("tapping a push", () => {
 });
 
 describe("Ajustes: Notificaciones", () => {
-  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true, momentPosted: true };
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true, momentPosted: true, originalsExpiring: true };
   const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad", "Momento del día", "Momentos del grupo"];
 
   beforeEach(() => {
