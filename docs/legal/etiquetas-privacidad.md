@@ -2,7 +2,7 @@
 
 Para Juani. Ruta: App Store Connect → tu app → **Privacidad de la app** (App Privacy) → **Empezar**. Todo esto sale del código real (mobile + backend en origin/main). Si algo cambia (analytics, crash reporting, push), hay que actualizarlo.
 
-Además, en la misma pantalla pide la **URL de la Política de privacidad**: `https://somosrollo.com/privacidad` (la escribe y publica `rollo-app/web`, `docs/legal/privacidad.md`; `rollo.juanifraga.com/privacidad` también anda). Los términos están en `https://somosrollo.com/terminos`.
+Además, en la misma pantalla pide la **URL de la Política de privacidad**: `https://rolloproject.com/privacidad` (la escribe y publica `rollo-app/web`, `docs/legal/privacidad.md`; `rollo.juanifraga.com/privacidad` también anda). Los términos están en `https://rolloproject.com/terminos`.
 
 **Actualizado para la 1.3.0** (login con Apple y Google, noviembre 2026): suma **ID del dispositivo** por el token de push. Apple y Google no suman tipos nuevos (email, nombre, foto e ID de usuario ya estaban).
 
@@ -54,7 +54,7 @@ Respuesta general: **No usamos datos para rastrear.** No hay publicidad, ni se c
 - **Dirección IP**: se guarda para limitar intentos (login y links de amistad). Apple la considera dentro de "Identificadores"/"Diagnósticos" solo si se usa para eso de forma vinculada. Recomendación: **no marcar nada extra** (se usa solo para seguridad y antiabuso, y está dicho en la política). Si querés ser ultra conservador, podés sumar "Datos de uso → Otros datos de uso" vinculado, solo funcionalidad; no es obligatorio.
 - **Eliminar la cuenta en la app**: ya existe (Perfil → Ajustes → Borrar cuenta). Apple lo exige y lo vas a poder indicar al revisar la app.
 - **Cuenta para App Review**: `REVIEW_EMAIL`/`REVIEW_CODE` ya están cargados como secrets del backend. Ponelos en "Información de revisión de la app" (usuario y contraseña) y aclará en las notas que el código es de 6 caracteres y que también se puede entrar con Apple o Google. Conviene que esa cuenta tenga un rollo revelado con fotos.
-- **Contenido generado por usuarios (guideline 1.2)**: denunciar (fotos, comentarios y personas) y bloquear ya andan; el contacto de soporte de la ficha es `https://somosrollo.com/soporte`.
+- **Contenido generado por usuarios (guideline 1.2)**: denunciar (fotos, comentarios y personas) y bloquear ya andan; el contacto de soporte de la ficha es `https://rolloproject.com/soporte`.
 - **Login con terceros (guideline 4.8)**: como hay "Continuar con Google", también está "Continuar con Apple".
 - **Clasificación por edades**: respondé el cuestionario con "contenido generado por usuarios: sí"; probablemente da 12+ o 17+ según cómo respondas sobre contenido no filtrado. Edad mínima de la política: 13.
 - **Push desde el servidor**: ya existe (Expo); por eso va "ID del dispositivo".
