@@ -94,7 +94,11 @@ El casamiento del 12/12 es la prueba real. Si sale bien, es la base de los event
 4. **Privacidad entre grupos.**
    - En la lista de integrantes, un invitado ve solo a los de sus grupos. Los organizadores ven a todos.
    - En el feed, los me gusta y los comentarios, solo cuenta lo de las fotos que puede ver.
-   - Destacar fotos en el perfil queda **apagado** en los eventos (`featuringDisabled`): son fotos de un casamiento, con gente que no se conoce.
+   - Destacar fotos en el perfil **sigue prendido** en los eventos, como en cualquier rollo (lo decidió Juani). Las reglas que ya existen alcanzan:
+     - solo se destacan fotos propias o de amigos;
+     - el autor puede bloquearlo en cada foto;
+     - una destacada nunca muestra el rollo ni el caption;
+     - los organizadores pueden hacer el evento privado (`featuringDisabled`).
 5. **Sumarse a más grupos después.** El invitado puede sumarse a otro grupo desde el tablero del evento. No puede salirse de su último grupo; para irse, se sale del evento.
 6. **Feed antes del revelado.** Hoy vive dentro de la tab Mapa. En un evento esa tab se vuelve **Feed**, sin mapa: cambian el ícono y el título.
 7. **Galería revelada.** Un filtro arriba, "Todos" más un chip por grupo, para cualquiera que vea más de un grupo. Los organizadores ven todos; un invitado con un solo grupo no ve el filtro. "Todos" es el orden cronológico de lo que cada uno puede ver.
