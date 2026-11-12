@@ -79,7 +79,8 @@ beforeEach(async () => {
   likes.likeMedia.mockReset().mockResolvedValue(undefined);
   likes.unlikeMedia.mockReset().mockResolvedValue(undefined);
   mocked.fetchTrip.mockResolvedValue(detail());
-  mocked.fetchFeed.mockResolvedValue({
+  mocked.fetchFeedPage.mockResolvedValue({
+    nextCursor: null,
     revealed: true,
     revealAt: Date.parse("2027-01-14T12:00:00Z"),
     items: [
@@ -210,7 +211,7 @@ describe("Presentation", () => {
   });
 
   it("explains when there are no photos to show", async () => {
-    mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: 0, items: [] });
+    mocked.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: 0, items: [], nextCursor: null });
     await renderRouter(routes, { initialUrl: "/presentation" });
     await screen.findByText("Todavía no hay fotos para mostrar.");
   });
@@ -265,8 +266,8 @@ describe("Presentation: likes", () => {
   });
 
   it("on a video, taps move right away and never like", async () => {
-    const base = await mocked.fetchFeed("x");
-    mocked.fetchFeed.mockResolvedValue({
+    const base = await mocked.fetchFeedPage("x", { limit: 30 });
+    mocked.fetchFeedPage.mockResolvedValue({
       ...base,
       items: [{ ...base.items[0]!, type: "video", durationS: 10, caption: "un video" }, ...base.items.slice(1)],
     });
@@ -304,7 +305,8 @@ describe("Presentation: daily moment", () => {
   const selfie = { id: "s", width: 1080, height: 1440, thumbhash: null, files: { thumb: "/m/s/thumb", original: "/m/s/original" } };
 
   it("shows the other-image inset on a moment photo and tapping it swaps, without advancing the story", async () => {
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
       revealed: true,
       revealAt: Date.parse("2027-01-14T12:00:00Z"),
       items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, "el viento"), momentDay: "2027-01-12", selfie }],
@@ -317,7 +319,8 @@ describe("Presentation: daily moment", () => {
   });
 
   it("shows the badge on a moment photo without selfie", async () => {
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
       revealed: true,
       revealAt: Date.parse("2027-01-14T12:00:00Z"),
       items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, "el viento"), momentDay: "2027-01-12" }],

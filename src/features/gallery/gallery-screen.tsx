@@ -34,6 +34,9 @@ const GAP = 2;
  * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
  * its header buttons while it stays mounted behind another view.
  */
+// "all" until the grid asks for more pages on scroll (then "lazy"): with "lazy" and nothing calling `fetchMore` only the first page would show.
+const GALLERY_FEED_MODE = "all" as const;
+
 export function GalleryScreen({
   tripId,
   toolbar: showToolbar = true,
@@ -47,7 +50,7 @@ export function GalleryScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { photos, token, error, loading, refetch } = useRevealedPhotos(tripId);
+  const { photos, token, error, loading, refetch, loadAll } = useRevealedPhotos(tripId, GALLERY_FEED_MODE);
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
   const { toggle: toggleFeatured, error: featureError } = useToggleFeatured();
@@ -82,6 +85,7 @@ export function GalleryScreen({
     saver,
     tripName: detail?.trip.name,
     photos,
+    loadAll,
     onSaved: stopSelecting,
   });
 

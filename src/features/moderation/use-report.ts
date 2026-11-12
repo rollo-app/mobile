@@ -3,8 +3,8 @@ import * as Burnt from "burnt";
 import * as Haptics from "expo-haptics";
 import { useCallback } from "react";
 import { userKey } from "@/features/profile/use-user";
-import { feedKey } from "@/features/trips/use-feed";
-import type { Feed } from "@/features/trips/actions";
+import { removeFeedItem } from "@/features/trips/feed-cache";
+import { feedRootKey } from "@/features/trips/use-feed";
 import {
   reportComment as reportCommentAction,
   reportMedia as reportMediaAction,
@@ -21,7 +21,7 @@ export function useReport() {
     onSuccess: (_data, { onDone }) => {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onDone();
-      void queryClient.invalidateQueries({ queryKey: ["feed"] });
+      void queryClient.invalidateQueries({ queryKey: feedRootKey });
       void queryClient.invalidateQueries({ queryKey: ["featured"] });
     },
     onError: () =>
@@ -53,16 +53,7 @@ export function useReport() {
         "¿Por qué denunciás esta foto?",
         (reason) => reportMediaAction(mediaId, reason),
         () => {
-          if (tripId) {
-            queryClient.setQueryData<Feed>(
-              feedKey(tripId),
-              (feed) =>
-                feed && {
-                  ...feed,
-                  items: feed.items.filter((i) => i.id !== mediaId),
-                },
-            );
-          }
+          if (tripId) removeFeedItem(queryClient, tripId, mediaId);
         },
       ),
     [run, queryClient],

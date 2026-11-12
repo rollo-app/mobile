@@ -2,6 +2,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
 import { getSession, getSessionUserId } from "@/features/auth/session";
+import { feedKey } from "@/features/trips/use-feed";
 import { getQueue } from "./store";
 import { pendingItemsKey } from "./use-pending-items";
 import { pendingKey } from "./use-pending-count";
@@ -36,7 +37,7 @@ function getUploader() {
       onUploaded: async (tripId) => {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["trip", tripId] }),
-          queryClient.invalidateQueries({ queryKey: ["feed", tripId] }),
+          queryClient.invalidateQueries({ queryKey: feedKey(tripId) }),
           queryClient.invalidateQueries({ queryKey: pendingKey(tripId) }),
           queryClient.invalidateQueries({ queryKey: pendingItemsKey(tripId) }),
         ]);

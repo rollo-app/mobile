@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { meKey, type User } from "@/features/auth/actions";
 import { stashFriendCode } from "@/features/friends/handle-friend-link";
+import { feedRootKey } from "@/features/trips/use-feed";
 import { updateProfile } from "./actions";
 
 type Vars = {
@@ -33,7 +34,7 @@ export function useSaveProfile() {
         bio: updated.bio,
       }));
       void queryClient.invalidateQueries({ queryKey: ["trip"] });
-      void queryClient.invalidateQueries({ queryKey: ["feed"] });
+      void queryClient.invalidateQueries({ queryKey: feedRootKey });
     },
   });
 }

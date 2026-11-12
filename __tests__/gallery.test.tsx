@@ -15,6 +15,7 @@ import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 import { queryClient } from "@/api/query-client";
 import { feedKey } from "@/features/trips/use-feed";
+import { pagedFeed } from "@/test/feed";
 
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/featured/actions");
@@ -94,6 +95,7 @@ const feed = (items: actions.Feed["items"]): actions.Feed => ({
   revealed: true,
   revealAt: Date.now() - DAY,
   items,
+  nextCursor: null,
 });
 
 const galleryRoutes = {
@@ -107,7 +109,7 @@ beforeEach(async () => {
   jest.mocked(requestPermissionsAsync).mockClear();
   mockSaveOne.mockReset().mockResolvedValue(undefined);
   mocked.fetchTrip.mockResolvedValue(detail());
-  mocked.fetchFeed.mockResolvedValue(feed([]));
+  mocked.fetchFeedPage.mockResolvedValue(feed([]));
   featured.featureMedia.mockReset().mockResolvedValue(undefined);
   featured.unfeatureMedia.mockReset().mockResolvedValue(undefined);
   featured.blockFeature.mockReset().mockResolvedValue(undefined);
@@ -143,7 +145,7 @@ const two = () =>
 
 describe("Gallery", () => {
   it("groups by day with a header", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     expect(await screen.findByText("Martes 12 de enero")).toBeVisible();
     expect(screen.getByText("Miércoles 13 de enero")).toBeVisible();
@@ -152,7 +154,7 @@ describe("Gallery", () => {
   });
 
   it("filters by person", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     expect(screen.queryByText("Solo Juani")).toBeNull();
@@ -167,7 +169,7 @@ describe("Gallery", () => {
   });
 
   it("the ✕ on the active filter goes back to everyone", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
@@ -178,7 +180,7 @@ describe("Gallery", () => {
   });
 
   it("the header title is Galería, not the route name", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     expect(screen.queryByText("index")).toBeNull();
@@ -187,7 +189,7 @@ describe("Gallery", () => {
   });
 
   it("the ⋯ menu offers the filter and saving everything", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     expect(screen.getByLabelText("Filtrar por persona")).toBeTruthy();
@@ -197,7 +199,7 @@ describe("Gallery", () => {
   });
 
   it("has Seleccionar and the ⋯ menu together in the header toolbar", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     expect(screen.getByRole("button", { name: "Seleccionar" })).toBeVisible();
@@ -205,7 +207,7 @@ describe("Gallery", () => {
   });
 
   it("Seleccionar todo selects every visible photo and toggles to Deseleccionar todo", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     expect(screen.queryByRole("button", { name: "Seleccionar todo" })).toBeNull();
@@ -219,7 +221,7 @@ describe("Gallery", () => {
   });
 
   it("Seleccionar todo respects the person filter", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
@@ -229,7 +231,7 @@ describe("Gallery", () => {
   });
 
   it("Seleccionar becomes Cancelar while selecting", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
@@ -244,16 +246,16 @@ describe("Gallery", () => {
   });
 
   it("shows an error with Reintentar", async () => {
-    mocked.fetchFeed.mockRejectedValueOnce(new Error("Sin conexión"));
+    mocked.fetchFeedPage.mockRejectedValueOnce(new Error("Sin conexión"));
     await open();
     expect(await screen.findByText("Sin conexión")).toBeVisible();
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
     expect(await screen.findByText("Martes 12 de enero")).toBeVisible();
   });
 
   it("tapping a photo opens the viewer on it", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await fireEvent.press((await screen.findAllByRole("button", { name: "Foto de Juani" }))[0]!);
     await waitFor(() => expect(screen).toHavePathname("/photo/b"));
@@ -261,7 +263,7 @@ describe("Gallery", () => {
   });
 
   it("selects several and saves them", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
@@ -276,7 +278,7 @@ describe("Gallery", () => {
   });
 
   it("Guardar todo asks for confirmation with the estimated size and then saves everything", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
@@ -295,7 +297,7 @@ describe("Gallery", () => {
   });
 
   it("Guardar todo asks for full access and saves into the album when granted", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
@@ -307,7 +309,7 @@ describe("Gallery", () => {
   });
 
   it("Guardar todo without full access saves to Recientes and says so", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     jest.mocked(requestPermissionsAsync).mockResolvedValueOnce({
       granted: true,
       canAskAgain: true,
@@ -323,7 +325,7 @@ describe("Gallery", () => {
   });
 
   it("saving a selection never uses the album", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
@@ -335,7 +337,7 @@ describe("Gallery", () => {
   });
 
   it("reports how many could not be saved", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     mockSaveOne.mockImplementation(async (p: { id: string }) => {
       if (p.id === "a") throw new Error("red");
     });
@@ -348,7 +350,7 @@ describe("Gallery", () => {
   });
 
   it("offers Abrir Ajustes when the permission was denied", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     mockSaveOne.mockRejectedValue(new PermissionDeniedError(false));
     const settings = jest.spyOn(Linking, "openSettings").mockResolvedValue();
     await open();
@@ -362,7 +364,7 @@ describe("Gallery", () => {
 
 describe("Gallery: featuring from the grid", () => {
   it("long-press menu on a photo features it and then offers to take it off", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
     // One menu per photo; videos can't be featured.
@@ -375,20 +377,20 @@ describe("Gallery: featuring from the grid", () => {
   });
 
   it("a photo you can't feature has no Agregar a tu perfil in the menu", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([item("a", { canFeature: false }), item("b")]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("a", { canFeature: false }), item("b")]));
     await open();
     await screen.findByText("Martes 12 de enero");
     expect(screen.getAllByRole("menuitem", { name: "Agregar a tu perfil" })).toHaveLength(1);
   });
 
   it("a featured photo keeps Sacar de tu perfil even if you can't add it anymore", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([item("a", { featuredByMe: true, canFeature: false })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("a", { featuredByMe: true, canFeature: false })]));
     await open();
     expect(await screen.findByRole("menuitem", { name: "Sacar de tu perfil" })).toBeTruthy();
   });
 
   it("a photo already featured offers Sacar de tu perfil", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([item("a", { featuredByMe: true })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("a", { featuredByMe: true })]));
     await open();
     expect(await screen.findByRole("menuitem", { name: "Sacar de tu perfil" })).toBeTruthy();
     expect(screen.queryByRole("menuitem", { name: "Agregar a tu perfil" })).toBeNull();
@@ -396,7 +398,7 @@ describe("Gallery: featuring from the grid", () => {
 
   it("shows the server's error when featuring fails", async () => {
     featured.featureMedia.mockRejectedValue(new Error("Podés destacar hasta 60 fotos"));
-    mocked.fetchFeed.mockResolvedValue(feed([item("a")]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("a")]));
     await open();
     await fireEvent.press(await screen.findByRole("menuitem", { name: "Agregar a tu perfil" }));
     expect(await screen.findByText("Podés destacar hasta 60 fotos")).toBeVisible();
@@ -404,7 +406,7 @@ describe("Gallery: featuring from the grid", () => {
   });
 
   it("there is no feature menu while selecting", async () => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findAllByRole("menuitem", { name: "Agregar a tu perfil" });
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
@@ -414,7 +416,7 @@ describe("Gallery: featuring from the grid", () => {
 
 describe("Photo viewer", () => {
   const openViewer = async (id = "b") => {
-    mocked.fetchFeed.mockResolvedValue(two());
+    mocked.fetchFeedPage.mockResolvedValue(two());
     await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: `/photo/${id}?tripId=${SUR}` });
   };
 
@@ -480,7 +482,7 @@ describe("Photo viewer", () => {
   });
 
   it("hides Ver en el mapa for a photo without location", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([item("n", { lat: null, lng: null })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("n", { lat: null, lng: null })]));
     await renderRouter(routes, { initialUrl: `/photo/n?tripId=${SUR}` });
     await screen.findByRole("button", { name: "Guardar en Fotos" });
     expect(screen.queryByRole("button", { name: "Ver en el mapa" })).toBeNull();
@@ -502,7 +504,7 @@ describe("Photo viewer", () => {
   });
 
   it("hides Agregar a tu perfil on a photo you can't feature, but shows Sacar de tu perfil on one already featured", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([item("a", { canFeature: false }), item("b", { canFeature: false, featuredByMe: true })]),
     );
     await renderRouter({ ...routes }, { initialUrl: `/photo/a?tripId=${SUR}` });
@@ -512,7 +514,7 @@ describe("Photo viewer", () => {
   });
 
   it("keeps Sacar de tu perfil on a featured photo that can't be added anymore", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([item("a", { canFeature: false, featuredByMe: true })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("a", { canFeature: false, featuredByMe: true })]));
     await renderRouter({ ...routes }, { initialUrl: `/photo/a?tripId=${SUR}` });
     expect(await screen.findByRole("button", { name: "Sacar de tu perfil" })).toBeVisible();
   });
@@ -555,7 +557,7 @@ describe("Photo viewer", () => {
   it("reports someone else's photo and moves on to the next one", async () => {
     // Like the server: once reported, the photo is gone from the refetched feed too.
     moderation.reportMedia.mockReset().mockImplementation(async () => {
-      mocked.fetchFeed.mockResolvedValue(feed(two().items.filter((i) => i.id !== "a")));
+      mocked.fetchFeedPage.mockResolvedValue(feed(two().items.filter((i) => i.id !== "a")));
     });
     const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_o, cb) => cb(0));
     await openViewer("a");
@@ -572,7 +574,7 @@ describe("Photo viewer", () => {
   it("reporting the last photo closes the viewer", async () => {
     moderation.reportMedia.mockReset().mockResolvedValue(undefined);
     const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_o, cb) => cb(0));
-    mocked.fetchFeed.mockResolvedValue(feed([item("only")]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("only")]));
     await renderRouter(routes, { initialUrl: "/map" });
     await act(async () => router.push(`/photo/only?tripId=${SUR}`));
 
@@ -584,7 +586,7 @@ describe("Photo viewer", () => {
 
   it("your own photo has no Denunciar", async () => {
     const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
-    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("p", { author: mine })]));
     await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
     await screen.findByRole("menuitem", { name: "No dejar que la destaquen" });
     expect(screen.queryByRole("menuitem", { name: "Denunciar" })).toBeNull();
@@ -592,7 +594,7 @@ describe("Photo viewer", () => {
 
   it("your own moment photo has no feature-block option", async () => {
     const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
-    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine, momentDay: "2027-01-12" })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("p", { author: mine, momentDay: "2027-01-12" })]));
     await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
     await screen.findByRole("button", { name: /Me gusta|Sacar el me gusta/ }).catch(() => null);
     expect(screen.queryByRole("menuitem", { name: "No dejar que la destaquen" })).toBeNull();
@@ -607,12 +609,12 @@ describe("Photo viewer", () => {
 
   it("the author can stop others from featuring it, and allow it again", async () => {
     const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
-    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("p", { author: mine })]));
     await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
-    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine, featureBlocked: true })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("p", { author: mine, featureBlocked: true })]));
     await fireEvent.press(await screen.findByRole("menuitem", { name: "No dejar que la destaquen" }));
     expect(featured.blockFeature).toHaveBeenCalledWith("p");
-    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("p", { author: mine })]));
     await fireEvent.press(await screen.findByRole("menuitem", { name: "Dejar que la destaquen" }));
     expect(featured.unblockFeature).toHaveBeenCalledWith("p");
     expect(await screen.findByRole("menuitem", { name: "No dejar que la destaquen" })).toBeTruthy();
@@ -621,7 +623,7 @@ describe("Photo viewer", () => {
   it("shows the error inline if blocking fails", async () => {
     featured.blockFeature.mockRejectedValue(new Error("No se pudo cambiar"));
     const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
-    mocked.fetchFeed.mockResolvedValue(feed([item("p", { author: mine })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("p", { author: mine })]));
     await renderRouter(routes, { initialUrl: `/photo/p?tripId=${SUR}` });
     await fireEvent.press(await screen.findByRole("menuitem", { name: "No dejar que la destaquen" }));
     expect(await screen.findByText("No se pudo cambiar")).toBeVisible();
@@ -630,7 +632,7 @@ describe("Photo viewer", () => {
 
 describe("Photo viewer: likes", () => {
   const openOn = async (items: actions.Feed["items"], id: string) => {
-    mocked.fetchFeed.mockResolvedValue(feed(items));
+    mocked.fetchFeedPage.mockResolvedValue(feed(items));
     await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
   };
   const heart = () => screen.findByRole("button", { name: "Me gusta" });
@@ -707,7 +709,7 @@ describe("Daily moment in the gallery", () => {
     ]);
 
   it("marks the moment photos in the grid and no other", async () => {
-    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    mocked.fetchFeedPage.mockResolvedValue(momentFeed());
     await open();
     await screen.findAllByRole("button", { name: /Foto de Fede/ });
     expect(screen.getAllByTestId("moment-badge")).toHaveLength(2);
@@ -715,7 +717,7 @@ describe("Daily moment in the gallery", () => {
 
   describe("viewer", () => {
     const openMoment = async (id = "mom") => {
-      mocked.fetchFeed.mockResolvedValue(momentFeed());
+      mocked.fetchFeedPage.mockResolvedValue(momentFeed());
       await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
     };
 
@@ -768,7 +770,7 @@ describe("Daily moment in the gallery", () => {
   });
 
   it("the grid menu offers no Agregar a tu perfil on moment photos", async () => {
-    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    mocked.fetchFeedPage.mockResolvedValue(momentFeed());
     await open();
     await screen.findAllByRole("button", { name: /Foto de Fede/ });
     // Only the ordinary photo has a menu.
@@ -776,7 +778,7 @@ describe("Daily moment in the gallery", () => {
   });
 
   it("Guardar todo includes the linked image of each moment", async () => {
-    mocked.fetchFeed.mockResolvedValue(momentFeed());
+    mocked.fetchFeedPage.mockResolvedValue(momentFeed());
     await open();
     await screen.findAllByRole("button", { name: /Foto de Fede/ });
     await fireEvent.press(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" }));
@@ -795,11 +797,11 @@ describe("Daily moment in the viewer before the reveal", () => {
     thumbhash: null,
     files: { thumb: "/m/self/thumb", original: "/m/self/original" },
   };
-  const unrevealed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items });
+  const unrevealed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items, nextCursor: null });
   const mine = { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null };
   const openMoment = async (items: actions.Feed["items"], id: string) => {
     mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: false, revealAt: Date.now() + DAY, endsAt: Date.now() + DAY } });
-    mocked.fetchFeed.mockResolvedValue(unrevealed(items));
+    mocked.fetchFeedPage.mockResolvedValue(unrevealed(items));
     await renderRouter(routes, { initialUrl: `/photo/${id}?tripId=${SUR}` });
     await screen.findByTestId("viewer-info");
   };
@@ -816,9 +818,9 @@ describe("Daily moment in the viewer before the reveal", () => {
   it("opens the pushed moment when the cached feed was missing it, once the refetch brings it", async () => {
     const other = moment("other", { caption: "otro momento" });
     const target = moment("target", { caption: "el objetivo", takenAt: Date.parse("2027-01-12T17:00:00Z") });
-    queryClient.setQueryData(feedKey(SUR), unrevealed([other]), { updatedAt: Date.now() });
+    queryClient.setQueryData(feedKey(SUR), pagedFeed(unrevealed([other])), { updatedAt: Date.now() });
     mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: false, revealAt: Date.now() + DAY, endsAt: Date.now() + DAY } });
-    mocked.fetchFeed.mockResolvedValue(unrevealed([other, target]));
+    mocked.fetchFeedPage.mockResolvedValue(unrevealed([other, target]));
     await renderRouter(routes, { initialUrl: `/photo/target?tripId=${SUR}` });
 
     expect(await screen.findByText("el objetivo")).toBeVisible();
@@ -827,7 +829,7 @@ describe("Daily moment in the viewer before the reveal", () => {
 
   it("says it could not find the photo when the fresh feed does not have it either", async () => {
     mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: false, revealAt: Date.now() + DAY, endsAt: Date.now() + DAY } });
-    mocked.fetchFeed.mockResolvedValue(unrevealed([moment("other")]));
+    mocked.fetchFeedPage.mockResolvedValue(unrevealed([moment("other")]));
     await renderRouter(routes, { initialUrl: `/photo/ghost?tripId=${SUR}` });
 
     expect(await screen.findByText("No encontramos esta foto.")).toBeVisible();
@@ -852,7 +854,7 @@ describe("Daily moment in the viewer before the reveal", () => {
 
   it("opens the comments sheet by itself when it comes from a comment push", async () => {
     mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: false, revealAt: Date.now() + DAY, endsAt: Date.now() + DAY } });
-    mocked.fetchFeed.mockResolvedValue(unrevealed([moment("mom")]));
+    mocked.fetchFeedPage.mockResolvedValue(unrevealed([moment("mom")]));
     await renderRouter(routes, { initialUrl: `/photo/mom?tripId=${SUR}&comments=1` });
     await waitFor(() => expect(screen).toHavePathname("/comments/mom"));
   });

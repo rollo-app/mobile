@@ -79,7 +79,7 @@ beforeEach(async () => {
   for (const mock of [...Object.values(friends), ...Object.values(trips)]) (mock as Partial<jest.Mock>).mockReset?.();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [], nextCursor: null });
   friends.fetchFriends.mockResolvedValue([]);
   friends.fetchFriendRequests.mockResolvedValue([]);
 });

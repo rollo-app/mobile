@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { errorMessage } from "@/api/client";
 import { meKey } from "@/features/auth/actions";
+import { feedRootKey } from "@/features/trips/use-feed";
 import { uploadAvatar } from "./actions";
 import { openCropRequest, type Photo } from "./crop-request";
 
@@ -42,7 +43,7 @@ export function useAvatarUpload() {
     onSuccess: (user) => {
       queryClient.setQueryData(meKey, user);
       void queryClient.invalidateQueries({ queryKey: ["trip"] });
-      void queryClient.invalidateQueries({ queryKey: ["feed"] });
+      void queryClient.invalidateQueries({ queryKey: feedRootKey });
       last.current = null;
       setLocalUri(null);
     },

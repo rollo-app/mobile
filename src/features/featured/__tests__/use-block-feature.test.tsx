@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { createQueryClient } from "@/api/query-client";
 import { feedKey } from "@/features/trips/use-feed";
+import { feedPagesOf } from "@/test/feed";
 import { setSessionToken } from "@/storage/session";
 import { useBlockFeature } from "../use-block-feature";
 
@@ -19,7 +20,7 @@ describe("useBlockFeature", () => {
   it("blocks with PUT and invalidates the roll's feed", async () => {
     const fetchMock = jest.fn(async () => json(204));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
-    client.setQueryData(feedKey("t1"), { items: [] });
+    client.setQueryData(feedKey("t1"), feedPagesOf([]));
     const { result } = await renderHook(() => useBlockFeature(), { wrapper });
     await act(async () => result.current.setBlocked("m1", "t1", true));
     const req = (fetchMock.mock.calls[0] as unknown as [Request])[0];

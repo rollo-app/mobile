@@ -4,12 +4,17 @@ import type { ReactNode } from "react";
 import { Alert } from "react-native";
 import { createQueryClient } from "@/api/query-client";
 import { myTripsKey } from "@/features/trips/use-active-trip";
+import { feedKey } from "@/features/trips/use-feed";
+import { feedIds, feedItem, feedPagesOf } from "@/test/feed";
+import type { FeedPages } from "@/features/trips/actions";
+import { pickReportReason } from "../report-sheet";
 import { userFriendsKey } from "@/features/profile/use-user-friends";
 import * as actions from "../actions";
 import { useBlock } from "../use-block";
 import { useReport } from "../use-report";
 
 jest.mock("../actions");
+jest.mock("../report-sheet", () => ({ pickReportReason: jest.fn() }));
 
 function setup() {
   const queryClient = createQueryClient();
@@ -28,16 +33,33 @@ describe("useReport", () => {
   });
 });
 
+describe("useReport (paged feed)", () => {
+  it("takes a reported photo out of whichever page holds it and refetches the feed", async () => {
+    jest.mocked(actions).reportMedia.mockResolvedValue(undefined);
+    jest.mocked(pickReportReason).mockResolvedValue("spam" as never);
+    const { queryClient, wrapper } = setup();
+    queryClient.setQueryData(feedKey("t1"), feedPagesOf([feedItem("a")], [feedItem("b"), feedItem("c")]));
+    const { result } = await renderHook(() => useReport(), { wrapper });
+    await act(async () => {
+      expect(await result.current.reportMedia({ mediaId: "b", tripId: "t1" })).toBe(true);
+    });
+    expect(feedIds(queryClient.getQueryData<FeedPages>(feedKey("t1")))).toEqual(["a", "c"]);
+    expect(queryClient.getQueryState(feedKey("t1"))?.isInvalidated).toBe(true);
+  });
+});
+
 describe("useBlock", () => {
   it("refreshes my rollos and the profile friend lists after unblocking", async () => {
     jest.mocked(actions).unblockUser.mockResolvedValue(undefined);
     const { queryClient, wrapper } = setup();
     queryClient.setQueryData(myTripsKey, { trips: [] });
     queryClient.setQueryData(userFriendsKey("u2"), { scope: "all", friends: [] });
+    queryClient.setQueryData(feedKey("t1"), feedPagesOf([]));
     const { result } = await renderHook(() => useBlock("u2", "Cami"), { wrapper });
     await act(async () => {
       await result.current.unblock();
     });
+    expect(queryClient.getQueryState(feedKey("t1"))?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(myTripsKey)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(userFriendsKey("u2"))?.isInvalidated).toBe(true);
   });

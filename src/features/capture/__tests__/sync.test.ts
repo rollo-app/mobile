@@ -1,6 +1,7 @@
 import { File } from "expo-file-system";
 import { signInAs, tripSummary } from "@/test/account";
 import { queryClient } from "@/api/query-client";
+import { feedKey } from "@/features/trips/use-feed";
 import { memoryDb } from "@/test/sqlite-memory";
 import { createQueue } from "../queue";
 import { getQueue } from "../store";
@@ -52,7 +53,7 @@ describe("syncQueue", () => {
     expect(upload).toHaveBeenCalledWith("https://r2.test/original", expect.objectContaining({ httpMethod: "PUT" }));
     expect((await (await getQueue()).pending("u1"))).toHaveLength(0);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["trip", TRIP] });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["feed", TRIP] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: feedKey(TRIP) });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["pending-items", TRIP] });
   });
 });

@@ -16,9 +16,9 @@ jest.mock("../save", () => ({
 
 const photos = ["a", "b"].map((id) => ({ id, type: "photo", selfie: null }) as unknown as RevealedPhoto);
 const saver = jest.fn();
-const setup = async (onSaved = jest.fn()) => ({
+const setup = async (onSaved = jest.fn(), loadAll?: () => Promise<RevealedPhoto[] | null>) => ({
   onSaved,
-  ...(await renderHook(() => useBulkSave({ saver, tripName: "Sur", photos, onSaved }))),
+  ...(await renderHook(() => useBulkSave({ saver, tripName: "Sur", photos, loadAll, onSaved }))),
 });
 
 beforeEach(() => jest.resetAllMocks());
@@ -71,5 +71,28 @@ describe("useBulkSave", () => {
     const buttons = alert.mock.calls[0]![2]!;
     await act(async () => buttons[1]!.onPress!());
     expect(result.current.bar).toMatchObject({ kind: "result", album: true, recents: false });
+  });
+
+  it("confirmSaveAll loads the pages the gallery had not loaded yet and saves every photo", async () => {
+    const everything = ["a", "b", "c", "d"].map((id) => ({ id, type: "photo", selfie: null }) as unknown as RevealedPhoto);
+    const loadAll = jest.fn(async () => everything);
+    jest.mocked(requestAlbumAccess).mockResolvedValue(true);
+    jest.mocked(downloadAll).mockResolvedValue({ saved: 4, failed: [], cancelled: false } as never);
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const { result } = await setup(jest.fn(), loadAll);
+    await act(async () => result.current.confirmSaveAll());
+    expect(loadAll).toHaveBeenCalledTimes(1);
+    expect(alert).toHaveBeenCalledWith(expect.stringContaining("4 fotos"), expect.any(String), expect.any(Array));
+    await act(async () => alert.mock.calls[0]![2]![1]!.onPress!());
+    expect(jest.mocked(downloadAll).mock.calls[0]![0].map((p) => p.id)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("does not save a partial gallery when the rest could not be loaded", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const { result } = await setup(jest.fn(), async () => null);
+    await act(async () => result.current.confirmSaveAll());
+    expect(alert).toHaveBeenCalledWith(expect.stringContaining("No se pudieron cargar"), expect.any(String));
+    expect(downloadAll).not.toHaveBeenCalled();
+    expect(result.current.busy).toBe(false);
   });
 });

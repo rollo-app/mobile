@@ -84,7 +84,7 @@ beforeEach(async () => {
   for (const mock of [...Object.values(friends), ...Object.values(trips)]) (mock as Partial<jest.Mock>).mockReset?.();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [], nextCursor: null });
   friends.fetchFriends.mockResolvedValue([]);
   friends.fetchFriendRequests.mockResolvedValue([]);
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
@@ -267,7 +267,7 @@ describe("Archiving from the rollo", () => {
     trips.fetchMyTrips.mockResolvedValue(list);
     queryClient.setQueryData(myTripsKey, list);
     trips.fetchTrip.mockResolvedValue(d);
-    trips.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [] });
+    trips.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [], nextCursor: null });
     await setActiveTripId(SUR);
     await markPresentationSeen(SUR);
     await renderRouter(routes, { initialUrl: "/roll?view=roll" });

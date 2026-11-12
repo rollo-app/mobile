@@ -24,14 +24,19 @@ export function useBulkSave({
   saver,
   tripName,
   photos,
+  loadAll,
   onSaved,
 }: {
   saver: Saver | null;
   tripName: string | undefined;
+  /** The photos loaded so far (the gallery may have only some pages). */
   photos: RevealedPhoto[];
+  /** Loads every remaining page and resolves with all the photos; null if some page couldn't be loaded. Without it, `photos` is all there is. */
+  loadAll?: () => Promise<RevealedPhoto[] | null>;
   onSaved: () => void;
 }) {
   const [bar, setBar] = useState<Bar | null>(null);
+  const [preparing, setPreparing] = useState(false);
   const abort = useRef<AbortController | null>(null);
 
   /** `album`: put them in the roll's album; `recents`: the album was wanted but iOS access was limited. */
@@ -66,25 +71,40 @@ export function useBulkSave({
     }
   }
 
-  async function saveAll() {
+  async function saveAll(everything: RevealedPhoto[]) {
     // Only "Guardar todo" uses the album, and iOS wants full library access to create it.
     const album = await requestAlbumAccess();
-    await run(photos, { album, recents: !album });
+    await run(everything, { album, recents: !album });
   }
 
-  function confirmSaveAll() {
-    const all = withLinkedImages(photos);
+  /** Every photo of the roll, even the pages the gallery hasn't scrolled to; null (and an alert) if they couldn't be loaded. */
+  async function everyPhoto(): Promise<RevealedPhoto[] | null> {
+    if (!loadAll) return photos;
+    setPreparing(true);
+    try {
+      const everything = await loadAll();
+      if (!everything) Alert.alert("No se pudieron cargar todas las fotos", "Probá de nuevo cuando tengas señal.");
+      return everything;
+    } finally {
+      setPreparing(false);
+    }
+  }
+
+  async function confirmSaveAll() {
+    const everything = await everyPhoto();
+    if (!everything) return;
+    const all = withLinkedImages(everything);
     Alert.alert(
       `Guardar ${all.length} ${all.length === 1 ? "foto" : "fotos"} en Fotos`,
       `Ocupa ~${formatMegabytes(estimateBytes(all))}. Conviene Wi-Fi.\n\nPara crear el álbum «${albumTitle(tripName ?? "")}» iOS pide acceso a tus fotos.`,
       [
         { text: "Cancelar", style: "cancel" },
-        { text: "Guardar", onPress: () => void saveAll() },
+        { text: "Guardar", onPress: () => void saveAll(everything) },
       ],
     );
   }
 
-  const busy = bar?.kind === "progress";
+  const busy = bar?.kind === "progress" || preparing;
   return {
     bar,
     busy,

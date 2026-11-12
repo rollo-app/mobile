@@ -95,7 +95,7 @@ beforeEach(async () => {
   mocked.fetchFriends.mockResolvedValue([cami, tomi]);
   trips.fetchTrip.mockReturnValue(new Promise(() => {}));
   // The Mapa tab mounts too: keep its feed loading so its own "Reintentar" stays out of the way.
-  trips.fetchFeed.mockReturnValue(new Promise(() => {}));
+  trips.fetchFeedPage.mockReturnValue(new Promise(() => {}));
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   fetchUser = jest
     .spyOn(profileActions, "fetchUser")

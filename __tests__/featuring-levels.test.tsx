@@ -66,7 +66,7 @@ let alert: jest.SpyInstance;
 beforeEach(async () => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   mocked.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
-  mocked.fetchFeed.mockReturnValue(new Promise(() => {}));
+  mocked.fetchFeedPage.mockReturnValue(new Promise(() => {}));
   mocked.createTrip.mockReset();
   featured.setMyFeaturing.mockReset().mockResolvedValue(undefined);
   featured.setTripPrivate.mockReset().mockResolvedValue(undefined);
@@ -118,7 +118,7 @@ describe("Rollo: Tus fotos en otros perfiles", () => {
 
   it("is also in the Rollo segment once revealed", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: true }));
-    mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [] });
+    mocked.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [], nextCursor: null });
     await renderRouter(routes, { initialUrl: "/roll?view=roll" });
 
     expect(await screen.findByRole("switch", { name: MINE })).toBeTruthy();

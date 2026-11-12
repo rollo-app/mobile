@@ -18,7 +18,7 @@ export function RollBoard() {
   const { trip } = useActiveTrip();
   const { detail, error, refetch, isRefetching } = useTripDetail(trip?.id);
   const pending = usePendingCount(trip?.id);
-  const { feed } = useFeed(trip?.id);
+  const { feed } = useFeed(trip?.id, { mode: "all" });
   const pendingItems = usePendingItems(trip?.id);
   const phase = useRollPhase(detail);
   // Your queued photos are already in the roll, even if they haven't been uploaded yet.

@@ -88,7 +88,7 @@ const mapSegment = () => {
   return screen.getAllByRole("button", { name: "Mapa" }).find((b) => b !== profile)!;
 };
 
-const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items });
+const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items, nextCursor: null });
 
 const queued = (over: Partial<QueuedMedia> = {}): QueuedMedia => ({
   id: "q1",
@@ -115,7 +115,7 @@ let queue: Queue;
 
 beforeEach(async () => {
   mocked.fetchTrip.mockResolvedValue(detail());
-  mocked.fetchFeed.mockResolvedValue(feed([]));
+  mocked.fetchFeedPage.mockResolvedValue(feed([]));
   await markPresentationSeen(SUR); // the first-open presentation would cover the revealed map
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
   queue = await createQueue(memoryDb());
@@ -138,7 +138,7 @@ describe("Map", () => {
 
     it("with pins, starts framing them", async () => {
       mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, startsAt: Date.now() + DAY, endsAt: Date.now() + 9 * DAY } });
-      mocked.fetchFeed.mockResolvedValue(feed([feedItem({ id: "a", lat: -34.9, lng: -56.2 }), feedItem({ id: "b", lat: -34.5, lng: -58.4 })]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem({ id: "a", lat: -34.9, lng: -56.2 }), feedItem({ id: "b", lat: -34.5, lng: -58.4 })]));
       await renderRouter(routes, { initialUrl: "/map" });
 
       await screen.findByLabelText("mapa");
@@ -163,7 +163,7 @@ describe("Map", () => {
     it("with the trip in progress and location permission, starts where you are", async () => {
       location.getForegroundPermissionsAsync.mockResolvedValue({ granted: true });
       location.getLastKnownPositionAsync.mockResolvedValue({ coords: { latitude: -34.9, longitude: -56.16 } });
-      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
       try {
         await renderRouter(routes, { initialUrl: "/map" });
 
@@ -184,7 +184,7 @@ describe("Map", () => {
   });
 
   it("tapping a pin opens the card with author, time and caption; tapping the empty map closes it", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     await renderRouter(routes, { initialUrl: "/map" });
 
     await fireEvent.press(await screen.findByLabelText("pin f1"));
@@ -197,7 +197,7 @@ describe("Map", () => {
   });
 
   it("registers the author's photo as a map image and tells the pin to use it once it is ready", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([feedItem({ author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: "/avatars/m2-v1.jpg" } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
@@ -207,7 +207,7 @@ describe("Map", () => {
   });
 
   it("registers no map images for authors without a photo", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     await renderRouter(routes, { initialUrl: "/map" });
 
     expect(await screen.findByLabelText("pin f1")).toBeVisible();
@@ -224,7 +224,7 @@ describe("Map", () => {
   });
 
   it("Solo hoy in the filter menu keeps only the photos from the trip day and turns the pill cobalt", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([feedItem({ id: "hoy" }), feedItem({ id: "ayer", day: "2027-01-11" })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
@@ -245,7 +245,7 @@ describe("Map", () => {
   });
 
   it("Momentos in the filter menu keeps only the daily moments and turns the pill cobalt", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([feedItem({ id: "normal" }), feedItem({ id: "mo1", momentDay: "2027-01-12", files: { thumb: "/media/mo1/thumb", original: "/media/mo1/original" } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
@@ -265,7 +265,7 @@ describe("Map", () => {
   });
 
   it("before the reveal a moment's card shows the real photo and opens the viewer; an ordinary card stays blurry and closed", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([
         feedItem({ id: "mo1", momentDay: "2027-01-12", files: { thumb: "/media/mo1/thumb", original: "/media/mo1/original" } }),
         feedItem({ id: "normal", lat: -40, lng: -70 }),
@@ -306,7 +306,7 @@ describe("Map", () => {
   });
 
   it("the people filter names the person on the pill and goes back to everyone", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([feedItem({ id: "de-fede" }), feedItem({ id: "mia", author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]),
     );
     await renderRouter(routes, { initialUrl: "/map" });
@@ -331,7 +331,7 @@ describe("Map", () => {
     });
 
     it("shows the segmented control on the map and Feed draws the list over it", async () => {
-      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
       await renderRouter(routes, { initialUrl: "/map" });
 
       await screen.findByRole("button", { name: "Feed" });
@@ -366,13 +366,13 @@ describe("Map", () => {
   });
 
   it("if the request fails with no cache, it shows a small notice and allows retrying without removing the map", async () => {
-    mocked.fetchFeed.mockRejectedValueOnce(new Error("Sin conexión"));
+    mocked.fetchFeedPage.mockRejectedValueOnce(new Error("Sin conexión"));
     await renderRouter(routes, { initialUrl: "/map" });
 
     expect(await screen.findByText("Sin conexión")).toBeVisible();
     expect(screen.getByLabelText("mapa")).toBeVisible();
 
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
 
     expect(await screen.findByLabelText("pin f1")).toBeVisible();
@@ -385,7 +385,7 @@ describe("Map", () => {
   });
 
   it("tapping a pin with other photos at the same place opens a carousel with all of them, by time", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([
         feedItem({ id: "tarde", takenAt: Date.parse("2027-01-12T20:00:00Z"), author: { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null } }),
         feedItem({ id: "temprano", takenAt: Date.parse("2027-01-12T15:00:00Z"), author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null }, caption: "primera" }),
@@ -416,7 +416,7 @@ describe("Map", () => {
       ]);
 
     it("opens the carousel with all its photos instead of zooming", async () => {
-      mocked.fetchFeed.mockResolvedValue(clusterFeed());
+      mocked.fetchFeedPage.mockResolvedValue(clusterFeed());
       await renderRouter(routes, { initialUrl: "/map" });
 
       await fireEvent.press(await screen.findByLabelText("cluster"));
@@ -429,7 +429,7 @@ describe("Map", () => {
     });
 
     it("only recenters the camera, keeping the zoom and leaving room for the carousel", async () => {
-      mocked.fetchFeed.mockResolvedValue(clusterFeed());
+      mocked.fetchFeedPage.mockResolvedValue(clusterFeed());
       await renderRouter(routes, { initialUrl: "/map" });
       camera.easeTo.mockClear();
 
@@ -444,7 +444,7 @@ describe("Map", () => {
     });
 
     it("tapping the empty map closes the carousel and gives the padding back", async () => {
-      mocked.fetchFeed.mockResolvedValue(clusterFeed());
+      mocked.fetchFeedPage.mockResolvedValue(clusterFeed());
       await renderRouter(routes, { initialUrl: "/map" });
       await fireEvent.press(await screen.findByLabelText("cluster"));
       await screen.findByTestId("pin-carousel");
@@ -472,7 +472,7 @@ describe("Map", () => {
   });
 
   it("if focus arrives (from the Feed) it opens that photo's card, even if the filter hides it", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([feedItem({ id: "otra", caption: "otra cosa", lat: -48.5, lng: -72.0 }), feedItem({ id: "ayer", day: "2027-01-11", caption: "la de ayer" })]),
     );
     await renderRouter(routes, { initialUrl: "/map?focus=ayer" });
@@ -483,7 +483,7 @@ describe("Map", () => {
   });
 
   it("consumes the focus: after opening it, the param is cleared", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     await renderRouter(routes, { initialUrl: "/map?focus=f1" });
 
     await screen.findByText("el viento no perdona");
@@ -492,7 +492,7 @@ describe("Map", () => {
 
   it("after the reveal the card shows the real photo and tapping it opens the viewer", async () => {
     mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
       ...feed([feedItem({ files: { thumb: "/media/f1/thumb", original: "/media/f1/original" } })]),
       revealed: true,
     });
@@ -508,7 +508,7 @@ describe("Map", () => {
 
   it("tapping the author on the card opens their profile, without opening the photo", async () => {
     mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
       ...feed([feedItem({ files: { thumb: "/media/f1/thumb", original: "/media/f1/original" } })]),
       revealed: true,
     });
@@ -528,7 +528,7 @@ describe("Map", () => {
   it("tapping your own name on the card goes to Perfil", async () => {
     await signInAs({ user: { ...USER, id: "u-m1" }, trips: [tripSummary(SUR, "Viaje al sur")] });
     mocked.fetchTrip.mockResolvedValue(detail());
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem({ author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem({ author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]));
     await renderRouter(routes, { initialUrl: "/map" });
 
     await fireEvent.press(await screen.findByLabelText("pin f1"));

@@ -6,7 +6,7 @@ import { Alert } from "react-native";
 import { featuredByKey } from "@/features/activity/use-featured-by";
 import { myCommentsKey } from "@/features/activity/use-my-comments";
 import { myLikesKey } from "@/features/activity/use-my-likes";
-import type { Feed } from "@/features/trips/actions";
+import { removeFeedItem } from "@/features/trips/feed-cache";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { feedKey } from "@/features/trips/use-feed";
 import { tripKey } from "@/features/trips/use-trip-detail";
@@ -25,7 +25,7 @@ export function useDeletePhoto() {
     mutationFn: ({ mediaId }: Vars) => deleteMedia(mediaId),
     onSuccess: (_data, { mediaId, tripId }) => {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      client.setQueryData<Feed>(feedKey(tripId), (feed) => feed && { ...feed, items: feed.items.filter((i) => i.id !== mediaId) });
+      removeFeedItem(client, tripId, mediaId);
       void client.invalidateQueries({ queryKey: feedKey(tripId) });
       void client.invalidateQueries({ queryKey: tripKey(tripId) });
       void client.invalidateQueries({ queryKey: myTripsKey });

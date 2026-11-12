@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { createQueryClient } from "@/api/query-client";
 import * as tripActions from "@/features/trips/actions";
 import { feedKey } from "@/features/trips/use-feed";
+import { feedPagesOf } from "@/test/feed";
 import { tripKey } from "@/features/trips/use-trip-detail";
 import { useRemoveFeedPhoto } from "../use-remove-feed-photo";
 
@@ -12,7 +13,7 @@ jest.mock("@/features/trips/actions");
 function setup() {
   const queryClient = createQueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-  queryClient.setQueryData(feedKey("t1"), { items: [] });
+  queryClient.setQueryData(feedKey("t1"), feedPagesOf([]));
   queryClient.setQueryData(tripKey("t1"), {});
   return { queryClient, wrapper };
 }

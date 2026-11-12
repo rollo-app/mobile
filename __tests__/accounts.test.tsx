@@ -102,7 +102,7 @@ beforeEach(() => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   jest.mocked(moderationActions).fetchBlocked.mockResolvedValue([]);
   mocked.fetchTrip.mockResolvedValue(tripDetail());
-  mocked.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
+  mocked.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [], nextCursor: null });
   mocked.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   sheet.mockReset();
