@@ -3436,11 +3436,13 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`; before the reveal only a daily moment's photo has `commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out. Oldest first (`takenAt`, ties by id), paginated with a keyset cursor: send `limit` and then each page's `nextCursor` as `cursor`. Without cursor or limit returns the whole feed, for older app builds; new clients should always send limit.
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`; before the reveal only a daily moment's photo has `commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out. Oldest first by default (`order=asc`; `order=desc` for newest first), ordered by `takenAt` with ties by id, paginated with a keyset cursor: send `limit` and then each page's `nextCursor` as `cursor`. A cursor is only valid with the `order` it came from: keep `order` the same across pages. Without cursor or limit returns the whole feed (in the requested order), for older app builds; new clients should always send limit.
          */
         get: {
             parameters: {
                 query?: {
+                    /** @description `asc` (default): oldest first. `desc`: newest first. A cursor is only valid with the order it was produced with: keep the same `order` on every page. */
+                    order?: "asc" | "desc";
                     /** @description `nextCursor` of the previous page */
                     cursor?: string;
                     /** @description Page size (1-100; default 30 when only `cursor` is sent) */
