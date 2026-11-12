@@ -3,12 +3,25 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useDoubleTap } from "@/features/likes/use-double-tap";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
+import { useImageRetry } from "@/ui/use-image-retry";
 
 function VideoPage({ photo, token, active }: { photo: RevealedPhoto; token: string; active: boolean }) {
   const player = useVideoPlayer(mediaSource(photo.originalPath, token), (p) => {
     p.loop = true;
   });
-  if (!active) return <Image source={mediaSource(photo.thumbPath, token)} contentFit="contain" style={StyleSheet.absoluteFill} />;
+  const retry = useImageRetry(photo.thumbPath);
+  if (!active) {
+    return (
+      <Image
+        key={retry.retryKey}
+        onError={retry.onError}
+        onLoad={retry.onLoad}
+        source={mediaSource(photo.thumbPath, token)}
+        contentFit="contain"
+        style={StyleSheet.absoluteFill}
+      />
+    );
+  }
   return <VideoView player={player} nativeControls contentFit="contain" style={StyleSheet.absoluteFill} />;
 }
 
@@ -34,6 +47,9 @@ export function ViewerPage({
   onDoubleTap: (photo: RevealedPhoto) => void;
 }) {
   const taps = useDoubleTap(onTap, () => onDoubleTap(photo));
+  const original = selfieBig && photo.selfie ? photo.selfie.originalPath : photo.originalPath;
+  // The original and its thumb placeholder are requested together: a 429 on either blanks the page.
+  const retry = useImageRetry(original);
   if (photo.type === "video") {
     return (
       <View style={{ width, height }}>
@@ -53,7 +69,10 @@ export function ViewerPage({
     >
       <Pressable accessibilityLabel={`Foto de ${photo.author.name}`} onPress={() => taps.tap()} style={{ width, height }}>
         <Image
-          source={mediaSource(selfieBig && photo.selfie ? photo.selfie.originalPath : photo.originalPath, token)}
+          key={retry.retryKey}
+          onError={retry.onError}
+          onLoad={retry.onLoad}
+          source={mediaSource(original, token)}
           placeholder={mediaSource(selfieBig && photo.selfie ? photo.selfie.thumbPath : photo.thumbPath, token)}
           transition={150}
           contentFit="contain"

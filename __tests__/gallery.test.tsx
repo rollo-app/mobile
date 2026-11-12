@@ -36,6 +36,21 @@ jest.mock("@/features/gallery/save", () => ({
     return mockSaveOne(photo);
   }),
 }));
+// Counts how many times each thumbnail is (re)mounted, to see a retry re-request the image.
+const mockMounts: Record<string, number> = {};
+jest.mock("expo-image", () => {
+  const actual = jest.requireActual("expo-image");
+  const React = jest.requireActual("react");
+  return {
+    ...actual,
+    Image: (props: { testID?: string }) => {
+      React.useEffect(() => {
+        if (props.testID) mockMounts[props.testID] = (mockMounts[props.testID] ?? 0) + 1;
+      }, []);
+      return React.createElement(actual.Image, props);
+    },
+  };
+});
 const mocked = jest.mocked(actions);
 const featured = jest.mocked(featuredActions);
 const likes = jest.mocked(likeActions);
@@ -1004,5 +1019,20 @@ describe("Daily moment in the viewer before the reveal", () => {
   it("your own moment has no menu at all", async () => {
     await openMoment([moment("mine", { author: mine })], "mine");
     expect(screen.queryByRole("menuitem")).toBeNull();
+  });
+});
+
+describe("Gallery: thumbnails that fail to load", () => {
+  it("remounts a thumbnail that errored after the backoff, so it is requested again", async () => {
+    delete mockMounts["gallery-thumb-a"]; // other tests mounted a photo "a" too
+    mocked.fetchFeedPage.mockResolvedValue(feed([item("a")]));
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    const thumb = screen.queryByTestId("gallery-thumb-a")!;
+    expect(thumb).not.toBeNull();
+    expect(mockMounts["gallery-thumb-a"]).toBe(1);
+    await fireEvent(thumb, "error", { nativeEvent: { error: "429" } });
+    expect(mockMounts["gallery-thumb-a"]).toBe(1); // not right away: it waits the backoff
+    await waitFor(() => expect(mockMounts["gallery-thumb-a"]).toBe(2), { timeout: 3000 });
   });
 });
