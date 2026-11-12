@@ -231,6 +231,45 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(StyleSheet.flatten(list.props.contentContainerStyle).paddingTop).toBeUndefined();
   });
 
+  describe("full-quality originals notice", () => {
+    const EXPIRING = { keep: false, expiresAt: Date.UTC(2027, 11, 13, 1, 0), purged: false };
+    const SOON = "Las fotos en máxima calidad se borran el 12 de diciembre. Guardalas en tu celular antes.";
+    const GONE = "Las fotos en máxima calidad ya se borraron. Quedan en alta calidad para ver y guardar.";
+    const withOriginals = async (originals: actions.TripDetail["trip"]["originals"]) => {
+      await revealedWithMedia();
+      mocked.fetchTrip.mockResolvedValue(detail({ originals }));
+    };
+
+    it("shows the expiry date in the Rollo segment", async () => {
+      await withOriginals(EXPIRING);
+      await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+      await screen.findByText("Invitar");
+      expect(screen.getByText(SOON)).toBeVisible();
+    });
+
+    it("shows the expiry date at the top of the gallery", async () => {
+      await withOriginals(EXPIRING);
+      await renderRouter(testRoutes, { initialUrl: "/roll" });
+      await screen.findByTestId("gallery-list");
+      expect(await screen.findByText(SOON)).toBeVisible();
+    });
+
+    it("tells they were deleted once purged", async () => {
+      await withOriginals({ ...EXPIRING, purged: true });
+      await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+      await screen.findByText("Invitar");
+      expect(screen.queryByText(SOON)).toBeNull();
+      expect(screen.getAllByText(GONE).length).toBeGreaterThan(0);
+    });
+
+    it("shows nothing when the roll keeps its originals", async () => {
+      await withOriginals({ keep: true, expiresAt: null, purged: false });
+      await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+      await screen.findByText("Invitar");
+      expect(screen.queryByText(/máxima calidad/)).toBeNull();
+    });
+  });
+
   it("'Rollo' starts right below the row, on the grouped background", async () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
