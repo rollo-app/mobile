@@ -15,7 +15,7 @@ const mocked = jest.mocked(actions);
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const DAY = 24 * 60 * 60 * 1000;
-const me = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const, isCreator: false, blockedByMe: false };
+const me = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const, isCreator: false, blockedByMe: false, groupIds: [] };
 const detail = (): actions.TripDetail => ({
   trip: {
     id: SUR, name: "Viaje al sur", joinCode: "HUB5FT", timezone: "America/Argentina/Buenos_Aires",
@@ -23,6 +23,9 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, maxMembers: 15, photoLimitMode: "daily", totalPhotoLimit: null,
     momentMode: "off", momentWindowStart: 540, momentWindowEnd: 1380,
     originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
   me,

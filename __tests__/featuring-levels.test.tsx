@@ -31,7 +31,7 @@ const member = (id: string, name: string, role: "admin" | "member") => ({
 
 const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; allowFeaturing?: boolean; revealed?: boolean; isCreator?: boolean } = {}): actions.TripDetail => {
   const { role = "admin", featuringDisabled = false, allowFeaturing = true, revealed = false, isCreator = role === "admin" } = opts;
-  const me = { ...member("m1", "Juani", role), isCreator, allowFeaturing };
+  const me = { ...member("m1", "Juani", role), isCreator, allowFeaturing, groupIds: [] };
   return {
     trip: {
       id: SUR,
@@ -52,6 +52,9 @@ const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; 
       momentWindowStart: 540,
       momentWindowEnd: 1380,
       originals: keepOriginals,
+      type: "trip",
+      coverUrl: null,
+      groups: [],
       createdBy: null,
     },
     me,

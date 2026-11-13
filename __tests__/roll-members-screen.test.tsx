@@ -18,7 +18,7 @@ const trips = jest.mocked(tripActions);
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
 
-type Member = tripActions.TripDetail["me"];
+type Member = tripActions.TripDetail["members"][number];
 const member = (over: Partial<Member> & Pick<Member, "id" | "userId" | "name">): Member => ({
   username: over.name.toLowerCase().replace(/\s/g, "."),
   avatarUrl: null,
@@ -55,9 +55,12 @@ const detail = (me: Member, members: Member[]): tripActions.TripDetail => ({
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: { userId: "u1", name: "Juani" },
   },
-  me,
+  me: { ...me, groupIds: [] },
   members: members.map((x) => (x.id === me.id ? me : x)),
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,

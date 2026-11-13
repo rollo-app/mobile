@@ -50,10 +50,13 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
     ...over,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [{ id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -111,7 +114,7 @@ describe("revealed roll", () => {
 
   it("while selecting in the gallery the header shows how many are selected instead of the trip", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    const photo = (id: string): actions.Feed["items"][number] => ({
+    const photo = (id: string): actions.Feed["items"][number] => ({ groupIds: [],
       id,
       type: "photo",
       takenAt: Date.parse("2027-01-12T16:10:00Z"),
@@ -153,7 +156,7 @@ describe("revealed roll", () => {
       revealAt: Date.now() - DAY,
       items: [
         {
-          id: "a", type: "photo", takenAt: Date.now() - DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
+          id: "a", groupIds: [], type: "photo", takenAt: Date.now() - DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
           thumbhash: null, durationS: null, author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null },
           files: { thumb: "/m/a/thumb", original: "/m/a/original" },
         },
@@ -185,7 +188,7 @@ describe("revealed roll", () => {
 });
 
 const item = (id: string, type: "photo" | "video") => ({
-  id, type, takenAt: Date.now() - 3 * DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
+  id, type, groupIds: [], takenAt: Date.now() - 3 * DAY, day: "2027-01-12", lat: null, lng: null, caption: null,
   thumbhash: null, durationS: type === "video" ? 9 : null,
   author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null },
   files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },

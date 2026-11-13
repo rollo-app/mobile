@@ -16,7 +16,7 @@ jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(async () => {}), ImpactF
 
 type Feed = Schemas["Feed"];
 
-const item = (id: string, likedByMe: boolean, likeCount: number): Feed["items"][number] => ({
+const item = (id: string, likedByMe: boolean, likeCount: number): Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: 1,

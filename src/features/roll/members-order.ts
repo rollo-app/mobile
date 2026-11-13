@@ -1,7 +1,7 @@
 import { searchText } from "@/features/friends/search-text";
 import type { TripDetail } from "@/features/trips/actions";
 
-type Member = TripDetail["me"];
+type Member = TripDetail["members"][number];
 
 /** How many members "En el rollo" shows before "Ver todos". */
 export const PREVIEW_COUNT = 10;

@@ -3,7 +3,7 @@ import { mediaSource, toRevealedPhotos } from "../revealed";
 
 type FeedItem = Schemas["FeedItem"];
 
-const item = (overrides: Partial<FeedItem> = {}): FeedItem => ({
+const item = (overrides: Partial<FeedItem> = {}): FeedItem => ({ groupIds: [],
   id: "a",
   type: "photo",
   takenAt: 2000,

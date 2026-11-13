@@ -104,7 +104,7 @@ export async function setTripArchived(tripId: string, archived: boolean): Promis
   await unwrap((await authedClient()).PATCH("/trips/{tripId}/members/me", { params: { path: { tripId } }, body: { archived } }));
 }
 
-export type TripMember = TripDetail["me"];
+export type TripMember = TripDetail["members"][number];
 
 /** Makes a member an admin (any admin can). */
 export async function makeAdmin(tripId: string, memberId: string): Promise<TripMember> {

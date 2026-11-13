@@ -1,7 +1,7 @@
 import type { TripDetail } from "@/features/trips/actions";
 import { filterMembers, orderMembers, previewMembers, PREVIEW_COUNT } from "@/features/roll/members-order";
 
-type Member = TripDetail["me"];
+type Member = TripDetail["members"][number];
 const m = (id: string, name: string, over: Partial<Member> = {}): Member => ({
   id,
   userId: `u-${id}`,

@@ -6,7 +6,7 @@ import { useMakeAdmin } from "./use-make-admin";
 import { useRemoveAdmin } from "./use-remove-admin";
 import { useRemoveMember } from "./use-remove-member";
 
-type Member = TripDetail["me"];
+type Member = TripDetail["members"][number];
 
 /**
  * Role changes and removal for the members list (shared by "En el rollo" and the full list). Only the latest
