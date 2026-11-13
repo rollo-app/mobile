@@ -11,6 +11,7 @@ import { useNotificationResponse } from "@/features/notifications/use-notificati
 import { cancelLegacyRevealNotifications } from "@/features/notifications/legacy-reveal";
 import { usePushRegistration } from "@/features/notifications/use-push-registration";
 import { useOfflineMapSync } from "@/features/map/use-offline-map-sync";
+import { useOpenPendingJoin } from "@/features/events/use-pending-join";
 import { useRedeemPendingFriend } from "@/features/friends/use-pending-friend";
 import { useSyncTriggers } from "@/features/capture/use-sync-triggers";
 import { gateFor } from "@/features/auth/gate";
@@ -50,6 +51,7 @@ function RootStack() {
   const { session, me, failed, refetch } = useMe();
   const gate = gateFor({ session, me, meFailed: failed });
   useRedeemPendingFriend(gate === "app");
+  useOpenPendingJoin(gate === "app");
   usePushRegistration(gate === "app");
   useNotificationResponse(gate === "app");
 
@@ -70,6 +72,8 @@ function RootStack() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {/* A friend link works with or without a session: it routes to the right step itself. */}
       <Stack.Screen name="friends/[code]" options={{ headerShown: false }} />
+      {/* A join link works without a session too: it keeps the code and goes on with the sign-up. */}
+      <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />
       {/* The login email's magic link: signs in without a session, never switches an existing one. */}
       <Stack.Screen name="login" options={{ headerShown: false }} />
       {/* The profile photo crop: "Completá tu perfil" (login gate) and "Editar perfil" (app) both open it. */}
@@ -84,7 +88,6 @@ function RootStack() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create" options={{ title: "Nuevo rollo", presentation: "modal" }} />
           <Stack.Screen name="edit-trip" options={{ title: "Editar rollo", presentation: "modal" }} />
-          <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />
           <Stack.Screen
             name="trips"
             options={{

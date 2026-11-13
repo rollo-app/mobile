@@ -1,5 +1,6 @@
 import type { InfiniteData } from "@tanstack/react-query";
-import { unwrap, type Schemas } from "@/api/client";
+import { ApiError, createApiClient, unwrap, type Schemas } from "@/api/client";
+import { API_URL } from "@/config";
 import { authedClient } from "@/features/auth/session";
 import { setActiveTripId } from "@/storage/active-trip";
 import type { TripSummary } from "./active";
@@ -8,6 +9,7 @@ import type { UpdateTripBody } from "./edit-form";
 export type Trip = Schemas["Trip"];
 export type TripDetail = Schemas["TripDetail"];
 export type Feed = Schemas["Feed"];
+export type EventPreview = Schemas["EventPreview"];
 
 /** How many photos each person can take: that many per day, or that many in the whole rollo. */
 export type PhotoLimit = { mode: "daily"; perDay: number } | { mode: "total"; total: number };
@@ -44,10 +46,24 @@ export async function createTrip(input: {
   return created.trip;
 }
 
-/** Joins with the code (also fine if you were already in); it becomes the active trip. */
-export async function joinTrip(input: { code: string }): Promise<Trip> {
+/** What the code opens: the event's name, cover and groups; null if it's a regular trip (or doesn't exist). No session needed. */
+export async function previewEvent(code: string): Promise<EventPreview | null> {
+  try {
+    return await unwrap(
+      createApiClient({ baseUrl: API_URL }).GET("/events/{code}", { params: { path: { code: code.trim().toUpperCase() } } }),
+    );
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}
+
+/** Joins with the code (also fine if you were already in); it becomes the active trip. An event needs the chosen `groupIds`. */
+export async function joinTrip(input: { code: string; groupIds?: string[] }): Promise<Trip> {
   const joined = await unwrap(
-    (await authedClient()).POST("/trips/join", { body: { code: input.code.trim().toUpperCase() } }),
+    (await authedClient()).POST("/trips/join", {
+      body: { code: input.code.trim().toUpperCase(), ...(input.groupIds ? { groupIds: input.groupIds } : {}) },
+    }),
   );
   await setActiveTripId(joined.trip.id);
   return joined.trip;

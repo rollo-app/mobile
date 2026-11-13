@@ -15,6 +15,11 @@ describe("redirectSystemPath", () => {
     expect(go("https://rolloproject.com/friends")).toBe("/friends/invalid");
   });
 
+  it("maps the https and rollo:// join links to /join?code=<CODE>", () => {
+    expect(go("https://rolloproject.com/join/abc123")).toBe("/join?code=ABC123");
+    expect(go("rollo://join/ABC123")).toBe("/join?code=ABC123");
+  });
+
   it("leaves everything else unchanged", () => {
     for (const path of [
       "rollo://login?token=a&email=b",
