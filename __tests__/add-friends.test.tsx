@@ -197,7 +197,8 @@ describe("Add friends to a roll", () => {
     await markPresentationSeen(SUR);
     await renderRouter(routes, { initialUrl: "/roll?view=roll" });
 
-    expect(await screen.findByText("Invitar")).toBeVisible();
+    expect(await screen.findByText("Personas")).toBeVisible();
+    expect(screen.queryByText("Invitar")).toBeNull();
     expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();
     await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     expect(await screen.findByRole("button", { name: "Salirme del rollo" })).toBeVisible();

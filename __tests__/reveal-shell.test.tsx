@@ -247,7 +247,7 @@ describe("revealed roll: Galería | Rollo", () => {
     it("shows the expiry date in the Rollo segment", async () => {
       await withOriginals(EXPIRING);
       await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
-      await screen.findByText("Invitar");
+      await screen.findByText("Personas");
       expect(screen.getByText(SOON)).toBeVisible();
     });
 
@@ -261,7 +261,7 @@ describe("revealed roll: Galería | Rollo", () => {
     it("tells they were deleted once purged", async () => {
       await withOriginals({ ...EXPIRING, purged: true });
       await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
-      await screen.findByText("Invitar");
+      await screen.findByText("Personas");
       expect(screen.queryByText(SOON)).toBeNull();
       expect(screen.getAllByText(GONE).length).toBeGreaterThan(0);
     });
@@ -269,7 +269,7 @@ describe("revealed roll: Galería | Rollo", () => {
     it("shows nothing when the roll keeps its originals", async () => {
       await withOriginals({ keep: true, expiresAt: null, purged: false });
       await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
-      await screen.findByText("Invitar");
+      await screen.findByText("Personas");
       expect(screen.queryByText(/máxima calidad/)).toBeNull();
     });
   });
@@ -277,7 +277,7 @@ describe("revealed roll: Galería | Rollo", () => {
   it("'Rollo' starts right below the row, on the grouped background", async () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
-    await screen.findByText("Invitar");
+    await screen.findByText("Personas");
 
     const row = StyleSheet.flatten(screen.getByTestId("revealed-roll-controls").props.style);
     expect(row.backgroundColor).toBe(colors.groupedBackground);
@@ -322,7 +322,7 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(screen.queryByRole("menuitem", { name: "Sobre el rollo" })).toBeNull();
   });
 
-  it("'Rollo' shows the summary, the uploads, the invite and the people row, without the gallery toolbar", async () => {
+  it("'Rollo' shows the summary, the uploads and the people row, without the invite (nobody joins a revealed rollo), without the gallery toolbar", async () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: "/roll" });
     await screen.findByTestId("gallery-list");
@@ -335,8 +335,8 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(screen.queryByText("Fechas")).toBeNull();
     expect(jest.mocked(RollDates)).not.toHaveBeenCalled();
     expect(jest.mocked(UploadStatusSection)).toHaveBeenCalledWith(expect.objectContaining({ tripId: SUR }), undefined);
-    expect(screen.getByText("Invitar")).toBeVisible();
-    expect(screen.getByText("HUB5FT")).toBeVisible();
+    expect(screen.queryByText("Invitar")).toBeNull();
+    expect(screen.queryByText("HUB5FT")).toBeNull();
     expect(screen.getByText("Personas")).toBeVisible();
     expect(screen.getByText("1 de 15")).toBeVisible();
     expect(screen.queryByText("Hoy")).toBeNull();
@@ -363,11 +363,11 @@ describe("revealed roll: Galería | Rollo", () => {
     const list = await screen.findByTestId("gallery-list");
 
     await fireEvent.press(screen.getByRole("button", { name: "Rollo" }));
-    await screen.findByText("Invitar");
+    await screen.findByText("Personas");
     await fireEvent.press(screen.getByRole("button", { name: "Galería" }));
 
     expect(screen.getByTestId("gallery-list")).toBe(list);
-    expect(screen.queryByText("Invitar")).toBeNull();
+    expect(screen.queryByText("Personas")).toBeNull();
     expect(screen.getByRole("button", { name: "Seleccionar" })).toBeTruthy();
   });
 
@@ -375,7 +375,7 @@ describe("revealed roll: Galería | Rollo", () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
 
-    expect(await screen.findByText("Invitar")).toBeVisible();
+    expect(await screen.findByText("Personas")).toBeVisible();
     expect(screen.getByText("1 foto · 1 video · 1 persona · 4 días")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
   });

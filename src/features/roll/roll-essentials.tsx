@@ -65,11 +65,11 @@ export function RollPeopleRow({ detail }: { detail: TripDetail }) {
   );
 }
 
-/** What a roll's board keeps below the uploads: invite and people. */
+/** What a roll's board keeps below the uploads: invite (only before the reveal: nobody joins a revealed roll) and people. */
 export function RollEssentials({ detail }: { detail: TripDetail }) {
   return (
     <>
-      <RollInvite detail={detail} />
+      {!detail.trip.revealed && <RollInvite detail={detail} />}
       <RollPeopleRow detail={detail} />
     </>
   );

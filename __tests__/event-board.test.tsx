@@ -143,10 +143,11 @@ describe("Event board", () => {
     expect(screen.queryByRole("button", { name: "Cambiar portada" })).toBeNull();
   });
 
-  it("hides Código QR once the event is revealed", async () => {
+  it("hides the whole invite (code and QR) once the event is revealed", async () => {
     await markPresentationSeen(EVENT);
     await open(detail(organizer, [], { revealed: true }), undefined, "/roll?view=roll");
-    expect(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ })).toBeVisible();
+    expect(await screen.findByText("Personas")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^Código .*Compartir invitación$/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
   });
 
