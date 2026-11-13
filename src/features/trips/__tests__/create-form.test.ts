@@ -1,4 +1,17 @@
-import { MAX_DAILY_PHOTOS, MAX_TOTAL_PHOTOS, canCreate, dateAtMinutes, DEFAULT_MOMENT_WINDOW, defaultStart, effectiveStart, endAfter, minutesOfDay, revealNotBefore } from "../create-form";
+import {
+  MAX_DAILY_PHOTOS,
+  MAX_TOTAL_PHOTOS,
+  canCreate,
+  canCreateEvent,
+  cleanGroups,
+  dateAtMinutes,
+  DEFAULT_MOMENT_WINDOW,
+  defaultStart,
+  effectiveStart,
+  endAfter,
+  minutesOfDay,
+  revealNotBefore,
+} from "../create-form";
 
 const HOUR = 60 * 60 * 1000;
 const T = Date.UTC(2027, 0, 5, 12, 0);
@@ -21,6 +34,32 @@ describe("canCreate", () => {
   it("requires a name, ignoring blanks", () => {
     expect(canCreate("  ")).toBe(false);
     expect(canCreate("")).toBe(false);
+  });
+});
+
+describe("canCreateEvent", () => {
+  it("needs at least one non-empty unique group", () => {
+    expect(canCreateEvent("Casamiento", ["Novios"])).toBe(true);
+    expect(canCreateEvent("Casamiento", [])).toBe(false);
+    expect(canCreateEvent("Casamiento", ["  ", ""])).toBe(false);
+    expect(canCreateEvent("Casamiento", ["Novios", " novios "])).toBe(false);
+    expect(canCreateEvent("Casamiento", ["Novios", "", "Familia"])).toBe(true);
+  });
+
+  it("still needs a name and at most 30 groups", () => {
+    expect(canCreateEvent(" ", ["Novios"])).toBe(false);
+    expect(
+      canCreateEvent(
+        "Casamiento",
+        Array.from({ length: 31 }, (_, i) => `G${i}`),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("cleanGroups", () => {
+  it("trims and drops blanks", () => {
+    expect(cleanGroups([" Novios ", "", "  ", "Familia"])).toEqual(["Novios", "Familia"]);
   });
 });
 

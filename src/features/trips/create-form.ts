@@ -14,6 +14,22 @@ export function canCreate(name: string): boolean {
   return name.trim().length > 0;
 }
 
+/** Caps the server enforces on an event's groups. */
+export const MAX_EVENT_GROUPS = 30;
+export const MAX_GROUP_NAME = 40;
+
+/** Trimmed, blank-free group names, in order. */
+export function cleanGroups(groups: string[]): string[] {
+  return groups.map((g) => g.trim()).filter((g) => g.length > 0);
+}
+
+/** An event needs a name and at least one named group; the server rejects repeated names (we compare ignoring case). */
+export function canCreateEvent(name: string, groups: string[]): boolean {
+  const clean = cleanGroups(groups);
+  const unique = new Set(clean.map((g) => g.toLocaleLowerCase()));
+  return canCreate(name) && clean.length >= 1 && clean.length <= MAX_EVENT_GROUPS && unique.size === clean.length;
+}
+
 export type StartMode = "now" | "custom";
 
 /** "Now" is taken at submit time (the server tolerates a few minutes in the past); otherwise the chosen date. */

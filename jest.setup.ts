@@ -273,14 +273,21 @@ jest.mock("@expo/ui/swift-ui", () => {
     HStack: Wrap,
     Spacer: () => null,
     Image: () => null,
-    Button: ({ onPress, modifiers, children }: any) =>
+    Button: ({ onPress, modifiers, label, children }: any) =>
       h(
         Pressable,
-        { accessibilityRole: "button", accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel, onPress },
-        children,
+        {
+          accessibilityRole: "button",
+          accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel ?? label,
+          accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled },
+          onPress,
+        },
+        label ? h(RNText, null, label) : children,
       ),
-    TextField: ({ placeholder, onTextChange }: any) =>
-      h(TextInput, { placeholder, onChangeText: onTextChange }),
+    // Swipe actions render always visible, so tests can press them directly.
+    SwipeActions: Object.assign(Wrap, { Actions: Wrap }),
+    TextField: ({ placeholder, onTextChange, modifiers }: any) =>
+      h(TextInput, { placeholder, onChangeText: onTextChange, accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel }),
     DatePicker: ({ title, selection, range, modifiers }: any) =>
       h(View, { accessibilityLabel: title, accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled }, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
     Stepper: ({ label, value, modifiers }: any) =>

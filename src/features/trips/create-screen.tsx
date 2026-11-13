@@ -1,16 +1,24 @@
-import { Form, Host, Section, Text, TextField, Toggle } from "@expo/ui/swift-ui";
-import { accessibilityLabel, foregroundStyle } from "@expo/ui/swift-ui/modifiers";
+import { Button, Form, Host, Picker, Section, SwipeActions, Text, TextField, Toggle } from "@expo/ui/swift-ui";
+import { accessibilityLabel, foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { pickCoverPhoto } from "@/features/events/use-upload-cover";
 import { PRIVATE_ROLLO_NOTE } from "@/features/featured/featuring-section";
 import { fetchFriends } from "@/features/friends/actions";
 import { friendsKey } from "@/features/friends/use-friends";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { errorMessage } from "@/api/client";
+import { uploadCover } from "@/features/trips/actions";
+import { myTripsKey } from "@/features/trips/use-active-trip";
+import { tripKey } from "@/features/trips/use-trip-detail";
 import {
   canCreate,
+  canCreateEvent,
+  cleanGroups,
+  MAX_EVENT_GROUPS,
+  MAX_GROUP_NAME,
   DEFAULT_MOMENT_WINDOW,
   defaultStart,
   effectiveStart,
@@ -24,6 +32,10 @@ import { useCreateTrip } from "@/features/trips/use-create-trip";
 import { colors } from "@/ui/theme";
 
 const HOUR = 60 * 60 * 1000;
+
+type Kind = "trip" | "event";
+type GroupRow = { id: number; name: string };
+type CoverPhoto = { uri: string; width: number; height: number };
 
 export function CreateScreen() {
   const queryClient = useQueryClient();
@@ -41,12 +53,23 @@ export function CreateScreen() {
   const [momentMode, setMomentMode] = useState<MomentMode>("photo_selfie");
   const [momentStart, setMomentStart] = useState(DEFAULT_MOMENT_WINDOW.start);
   const [momentEnd, setMomentEnd] = useState(DEFAULT_MOMENT_WINDOW.end);
+  const [kind, setKind] = useState<Kind>("trip");
+  // Rows have a stable id: the native text fields keep their own text, so removing one must not shift the others.
+  const [groups, setGroups] = useState<GroupRow[]>([{ id: 0, name: "" }]);
+  const nextGroupId = useRef(1);
+  const [cover, setCover] = useState<CoverPhoto | null>(null);
   const create = useCreateTrip();
-  const error = errorMessage(create.error, "No se pudo crear el rollo");
+  const isEvent = kind === "event";
+  const error = errorMessage(create.error, isEvent ? "No se pudo crear el evento" : "No se pudo crear el rollo");
 
   // With "Al terminar" the reveal follows the end on its own.
   const revealAt = revealMode === "end" ? endsAt : customReveal;
-  const valid = canCreate(name);
+  const valid = isEvent
+    ? canCreateEvent(
+        name,
+        groups.map((g) => g.name),
+      )
+    : canCreate(name);
 
   function chooseReveal(mode: RevealMode) {
     if (mode === "custom") setCustomReveal(endsAt + 12 * HOUR);
@@ -64,7 +87,63 @@ export function CreateScreen() {
     }
   }
 
+  function chooseKind(next: Kind) {
+    // The group fields are native and keep their own text: leaving them unmounts it, so start over on return.
+    if (next === "trip") {
+      setGroups([{ id: nextGroupId.current++, name: "" }]);
+      setCover(null);
+    }
+    setKind(next);
+  }
+
+  function addGroup() {
+    setGroups((rows) => [...rows, { id: nextGroupId.current++, name: "" }]);
+  }
+
+  async function chooseCover() {
+    const photo = await pickCoverPhoto().catch(() => null);
+    if (photo) setCover(photo);
+  }
+
+  // The event exists by now: the cover goes up in the background. If it fails the organizer sets it from the board.
+  async function uploadChosenCover(tripId: string, photo: CoverPhoto) {
+    try {
+      await uploadCover(tripId, photo);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: tripKey(tripId) }),
+        queryClient.invalidateQueries({ queryKey: myTripsKey }),
+      ]);
+    } catch {
+      // Not blocking: it can be set later from the board.
+    }
+  }
+
   function submit() {
+    if (isEvent) {
+      create.mutate(
+        {
+          name,
+          startsAt: effectiveStart(startMode, startsAt, Date.now()),
+          endsAt,
+          revealAt,
+          photoLimit: { mode: "total", total: totalPhotos },
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          momentMode: "off",
+          type: "event",
+          groups: cleanGroups(groups.map((g) => g.name)),
+          ...(isPrivate && { featuringDisabled: true }),
+        },
+        {
+          onSuccess: (trip) => {
+            if (cover) void uploadChosenCover(trip.id, cover);
+            router.dismissTo("/roll");
+            // An event has no friends to add: guests come in by code or QR.
+            void offerPushAfterJoining();
+          },
+        },
+      );
+      return;
+    }
     create.mutate(
       {
         name,
@@ -92,7 +171,10 @@ export function CreateScreen() {
   async function offerNext() {
     let hasFriends = false;
     try {
-      const friends = await queryClient.ensureQueryData({ queryKey: friendsKey, queryFn: fetchFriends });
+      const friends = await queryClient.ensureQueryData({
+        queryKey: friendsKey,
+        queryFn: fetchFriends,
+      });
       hasFriends = friends.length > 0;
     } catch {
       // Without friends loaded, the roll stays as is.
@@ -119,12 +201,56 @@ export function CreateScreen() {
       <Host style={styles.form}>
         <Form>
           {/* The server's message goes under the name, inside the form: above it, the transparent header covers it. */}
-          <Section footer={error ? <Text modifiers={[foregroundStyle("red")]}>{error}</Text> : undefined}>
-            <TextField placeholder="Nombre del rollo" maxLength={60} onTextChange={setName} />
+          <Section>
+            <Picker selection={kind} onSelectionChange={chooseKind} modifiers={[pickerStyle("segmented")]}>
+              <Text modifiers={[tag("trip")]}>Rollo</Text>
+              <Text modifiers={[tag("event")]}>Evento</Text>
+            </Picker>
           </Section>
 
+          <Section footer={error ? <Text modifiers={[foregroundStyle("red")]}>{error}</Text> : undefined}>
+            <TextField placeholder={isEvent ? "Nombre del evento" : "Nombre del rollo"} maxLength={60} onTextChange={setName} />
+          </Section>
+
+          {isEvent && (
+            <Section header={<Text>Grupos</Text>} footer={<Text>Los invitados eligen en cuál están. Deslizá un grupo para borrarlo.</Text>}>
+              {groups.map((group) => (
+                <SwipeActions key={group.id}>
+                  <TextField
+                    placeholder="Nombre del grupo"
+                    maxLength={MAX_GROUP_NAME}
+                    onTextChange={(text) => setGroups((rows) => rows.map((r) => (r.id === group.id ? { ...r, name: text } : r)))}
+                  />
+                  <SwipeActions.Actions>
+                    <Button role="destructive" label="Borrar" onPress={() => setGroups((rows) => rows.filter((r) => r.id !== group.id))} />
+                  </SwipeActions.Actions>
+                </SwipeActions>
+              ))}
+              {groups.length < MAX_EVENT_GROUPS && <Button label="Agregar grupo" systemImage="plus" onPress={addGroup} />}
+            </Section>
+          )}
+
+          {isEvent && (
+            <Section header={<Text>Portada</Text>} footer={<Text>Opcional. La podés cambiar después desde el tablero.</Text>}>
+              <Button label={cover ? "Cambiar portada" : "Elegir portada"} onPress={() => void chooseCover()} />
+              {cover && <Button role="destructive" label="Quitar portada" onPress={() => setCover(null)} />}
+            </Section>
+          )}
+
           <TripForm
-            values={{ startMode, startsAt, endsAt, revealMode, customReveal, limitMode, photos, totalPhotos, momentMode, momentStart, momentEnd }}
+            values={{
+              startMode,
+              startsAt,
+              endsAt,
+              revealMode,
+              customReveal,
+              limitMode: isEvent ? "total" : limitMode,
+              photos,
+              totalPhotos,
+              momentMode,
+              momentStart,
+              momentEnd,
+            }}
             on={{
               onStartModeChange: chooseStart,
               onStartsAtChange: setStartsAt,
@@ -138,6 +264,8 @@ export function CreateScreen() {
               onMomentStartChange: setMomentStart,
               onMomentEndChange: setMomentEnd,
             }}
+            locks={isEvent ? { limitMode: true } : undefined}
+            hideMoment={isEvent}
           />
 
           <Section header={infoHeader("Privacidad", "privateRollo")} footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
@@ -145,7 +273,6 @@ export function CreateScreen() {
           </Section>
         </Form>
       </Host>
-
     </View>
   );
 }

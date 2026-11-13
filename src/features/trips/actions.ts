@@ -35,14 +35,17 @@ export async function createTrip(input: {
   /** Minutes from midnight in `timezone`. */
   momentWindowStart?: number;
   momentWindowEnd?: number;
+  /** "event" needs `groups` (names); a regular trip leaves both out. */
+  type?: "trip" | "event";
+  groups?: string[];
 }): Promise<Trip> {
-  const { photoLimit, ...rest } = input;
+  const { photoLimit, groups, ...rest } = input;
   const limit =
     photoLimit.mode === "total"
       ? { photoLimitMode: "total" as const, totalPhotoLimit: photoLimit.total }
       : { photoLimitMode: "daily" as const, dailyPhotoLimit: photoLimit.perDay };
   const created = await unwrap(
-    (await authedClient()).POST("/trips", { body: { ...rest, ...limit, name: input.name.trim() } }),
+    (await authedClient()).POST("/trips", { body: { ...rest, ...limit, ...(groups && { groups: groups.map((g) => g.trim()) }), name: input.name.trim() } }),
   );
   await setActiveTripId(created.trip.id);
   return created.trip;
