@@ -140,4 +140,9 @@ describe("media source", () => {
       headers: { Authorization: "Bearer secret" },
     });
   });
+
+  it("defaults groupIds to [] for an item cached before events existed", () => {
+    const legacy = { ...item(), groupIds: undefined } as unknown as FeedItem;
+    expect(toRevealedPhotos([legacy])[0]!.groupIds).toEqual([]);
+  });
 });

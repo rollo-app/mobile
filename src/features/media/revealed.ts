@@ -83,7 +83,7 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
               featuredByMe: item.featuredByMe ?? false,
               featureBlocked: item.featureBlocked ?? false,
               canFeature: item.canFeature ?? true,
-              groupIds: item.groupIds,
+              groupIds: item.groupIds ?? [],
               likeCount: item.likeCount ?? 0,
               likedByMe: item.likedByMe ?? false,
               commentCount: item.commentCount ?? 0,

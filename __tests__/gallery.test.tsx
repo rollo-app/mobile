@@ -218,6 +218,22 @@ describe("Gallery", () => {
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
   });
 
+  it("opens the gallery of a revealed trip whose cached data predates events (no type, groups or groupIds)", async () => {
+    const base = detail();
+    const { type: _t, groups: _g, coverUrl: _c, ...trip } = base.trip;
+    const { groupIds: _m, ...me } = base.me;
+    mocked.fetchTrip.mockResolvedValue({ ...base, trip, me } as unknown as actions.TripDetail);
+    const legacyItem = (id: string) => {
+      const { groupIds: _i, ...rest } = item(id);
+      return rest as unknown as actions.Feed["items"][number];
+    };
+    mocked.fetchFeedPage.mockResolvedValue(feed([legacyItem("a"), legacyItem("b")]));
+    await open();
+    expect(await screen.findByText("Martes 12 de enero")).toBeVisible();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(2);
+    expect(screen.queryByLabelText("Grupos")).toBeNull();
+  });
+
   it("a guest in one group sees no group menu", async () => {
     mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "member", groupIds: ["g1"] }));
     mocked.fetchFeedPage.mockResolvedValue(eventFeed());

@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import type { TripDetail } from "@/features/trips/actions";
 import { Row, Section } from "@/ui/components";
-import { isOrganizer, myGroups } from "./event";
+import { allGroups, isOrganizer, myGroups } from "./event";
 
 /**
  * "Grupos" in an event's board: organizers see all the groups and manage them; guests see their own and can join others.
@@ -9,7 +9,7 @@ import { isOrganizer, myGroups } from "./event";
  */
 export function EventGroupsSection({ detail }: { detail: TripDetail }) {
   const organizer = isOrganizer(detail);
-  const groups = organizer ? detail.trip.groups : myGroups(detail);
+  const groups = organizer ? allGroups(detail) : myGroups(detail);
   const open = !detail.trip.revealed;
   const params = { tripId: detail.trip.id };
   if (groups.length === 0 && !open) return null;

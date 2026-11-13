@@ -47,3 +47,19 @@ describe("sendableGroups", () => {
     expect(sendableGroups(detail("member", ["g2"]))).toEqual([GROUPS[1]]);
   });
 });
+
+describe("legacy cached objects (saved by 1.3, without the event fields)", () => {
+  const legacy = { trip: {}, me: { role: "member" } } as unknown as TripDetail;
+  const legacyAdmin = { trip: {}, me: { role: "admin" } } as unknown as TripDetail;
+
+  it("treats a trip without type as a regular trip", () => {
+    expect(isEvent({} as never)).toBe(false);
+  });
+
+  it("defaults missing groups and groupIds to empty lists", () => {
+    expect(myGroups(legacy)).toEqual([]);
+    expect(sendableGroups(legacy)).toEqual([]);
+    expect(sendableGroups(legacyAdmin)).toEqual([]);
+    expect(isOrganizer(legacyAdmin)).toBe(true);
+  });
+});
