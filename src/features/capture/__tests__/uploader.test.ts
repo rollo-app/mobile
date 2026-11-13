@@ -26,6 +26,7 @@ const item = (overrides: Partial<QueuedMedia> = {}): QueuedMedia => ({
   momentDay: null,
   pairedWith: null,
   ownerUserId: "u1",
+  groupIds: null,
   ...overrides,
 });
 
@@ -1197,5 +1198,19 @@ describe("uploader per account", () => {
 
     expect(removed).toEqual(["a"]);
     expect((await queue.pending("u1")).map((m) => m.id)).toEqual(["b"]);
+  });
+});
+
+describe("uploader: event groups", () => {
+  it("sends groupIds when present and omits them when null", async () => {
+    happyServer();
+    await queue.enqueue(item({ groupIds: ["g1", "g2"] }));
+    await queue.enqueue(item({ id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", takenAt: 2000 }));
+
+    await createUploader(deps).run();
+
+    const bodies = calls.filter((c) => c.url.endsWith("/media")).map((c) => c.body as Record<string, unknown>);
+    expect(bodies[0]).toMatchObject({ groupIds: ["g1", "g2"] });
+    expect(bodies[1]).not.toHaveProperty("groupIds");
   });
 });
