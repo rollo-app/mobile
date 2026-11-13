@@ -323,6 +323,19 @@ describe("Map", () => {
       expect(screen.queryByText("Filtros")).toBeNull();
     });
 
+    it("the event feed tab has the rollo selector in the header and no \"Mapa\" title", async () => {
+      asEvent();
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await screen.findByTestId("feed-list");
+      // One selector for the Rollo tab (kept mounted) and one for this tab's header.
+      expect(screen.getAllByRole("button", { name: "Casamiento, cambiar de rollo" })).toHaveLength(2);
+      // Perfil (also mounted) has its own "Fotos | Mapa" control; any other "Mapa" would be this tab's header title.
+      const profileMapa = within(screen.getByTestId("profile-showcase")).queryAllByText("Mapa");
+      expect(screen.queryAllByText("Mapa").filter((t) => !profileMapa.includes(t))).toHaveLength(0);
+    });
+
     it("tapping a feed row does not go to the map", async () => {
       asEvent();
       mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));

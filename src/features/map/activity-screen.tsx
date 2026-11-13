@@ -1,11 +1,12 @@
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect } from "react";
 import { StyleSheet, useColorScheme } from "react-native";
 import { FeedList } from "@/features/feed/feed-list";
 import type { MapItem } from "@/features/map/features";
 import { CONTROLS_ROW_HEIGHT, RollMap } from "@/features/map/roll-map";
 import { isEvent } from "@/features/events/event";
+import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { spacing, tintHex } from "@/ui/theme";
@@ -34,7 +35,15 @@ export function ActivityScreen() {
     if (leaveRevealedEvent) router.navigate("/roll");
   }, [leaveRevealedEvent, router]);
 
-  if (eventTrip) return leaveRevealedEvent ? null : <FeedList />;
+  if (eventTrip) {
+    if (leaveRevealedEvent) return null;
+    return (
+      <>
+        <Stack.Screen options={{ title: "Feed", headerTitle: () => (trip ? <TripSwitcher name={trip.name} /> : null) }} />
+        <FeedList />
+      </>
+    );
+  }
 
   // After the reveal there is no Feed: the photos are in the gallery and the view is always Mapa.
   const showFeed = !revealed && view === "feed";
