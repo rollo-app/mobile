@@ -24,6 +24,7 @@ const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto =>
   momentDay: null,
   archived: false,
   selfie: null,
+  groupIds: [],
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,

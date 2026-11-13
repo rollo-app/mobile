@@ -10,10 +10,14 @@ type Props = {
   canSaveAll: boolean;
   authors: { id: string; name: string }[];
   authorId: string | null;
+  /** Groups to filter by; only given when you see more than one (an organizer, or a guest in several groups). */
+  groups?: { id: string; name: string }[];
+  groupId?: string | null;
   onToggleAll: () => void;
   onStopSelecting: () => void;
   onStartSelecting: () => void;
   onSelectAuthor: (id: string | null) => void;
+  onSelectGroup?: (id: string | null) => void;
   onSaveAll: () => void;
 };
 
@@ -27,10 +31,13 @@ export function GalleryToolbar({
   canSaveAll,
   authors,
   authorId,
+  groups = [],
+  groupId = null,
   onToggleAll,
   onStopSelecting,
   onStartSelecting,
   onSelectAuthor,
+  onSelectGroup,
   onSaveAll,
 }: Props) {
   return (
@@ -62,6 +69,18 @@ export function GalleryToolbar({
                 </Stack.Toolbar.MenuAction>
               ))}
             </Stack.Toolbar.Menu>
+            {groups.length > 0 && (
+              <Stack.Toolbar.Menu title="Grupos" icon="person.3">
+                <Stack.Toolbar.MenuAction isOn={groupId === null} onPress={() => onSelectGroup?.(null)}>
+                  Todos
+                </Stack.Toolbar.MenuAction>
+                {groups.map((g) => (
+                  <Stack.Toolbar.MenuAction key={g.id} isOn={groupId === g.id} onPress={() => onSelectGroup?.(g.id)}>
+                    {g.name}
+                  </Stack.Toolbar.MenuAction>
+                ))}
+              </Stack.Toolbar.Menu>
+            )}
             <Stack.Toolbar.MenuAction icon="square.and.arrow.down" disabled={!canSaveAll} onPress={onSaveAll}>
               Guardar todo en Fotos
             </Stack.Toolbar.MenuAction>

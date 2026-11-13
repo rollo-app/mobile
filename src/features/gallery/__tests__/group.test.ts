@@ -1,5 +1,5 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
-import { authorsOf, chunkRows, dayTitle, filterByAuthor, groupByDay } from "../group";
+import { authorsOf, chunkRows, dayTitle, filterByAuthor, filterByGroup, groupByDay } from "../group";
 
 const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedPhoto => ({
   id,
@@ -28,6 +28,7 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   momentDay: null,
   archived: false,
   selfie: null,
+  groupIds: [],
 });
 
 describe("gallery grouping", () => {
@@ -49,6 +50,13 @@ describe("gallery grouping", () => {
     const photos = [photo("a", "d", "m1"), photo("b", "d", "m2")];
     expect(filterByAuthor(photos, "m2").map((p) => p.id)).toEqual(["b"]);
     expect(filterByAuthor(photos, null)).toBe(photos);
+  });
+
+  it("filterByGroup keeps photos in the group and null keeps all", () => {
+    const photos = [{ ...photo("a", "d"), groupIds: ["g1"] }, { ...photo("b", "d"), groupIds: ["g1", "g2"] }, photo("c", "d")];
+    expect(filterByGroup(photos, "g2").map((p) => p.id)).toEqual(["b"]);
+    expect(filterByGroup(photos, "g1").map((p) => p.id)).toEqual(["a", "b"]);
+    expect(filterByGroup(photos, null)).toBe(photos);
   });
 
   it("lists each author once", () => {

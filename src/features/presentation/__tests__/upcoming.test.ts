@@ -29,6 +29,7 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   momentDay: null,
   archived: false,
   selfie: null,
+  groupIds: [],
 });
 
 describe("upcomingPhotos", () => {

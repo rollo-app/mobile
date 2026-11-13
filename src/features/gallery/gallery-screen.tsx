@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
+import { sendableGroups } from "@/features/events/event";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
@@ -21,7 +22,7 @@ import { LoadMoreFooter } from "@/ui/load-more-footer";
 import { colors, spacing, type } from "@/ui/theme";
 import { Cell } from "./gallery-cell";
 import { GalleryToolbar } from "./gallery-toolbar";
-import { authorsOf, chunkRows, filterByAuthor, groupByDay } from "./group";
+import { authorsOf, chunkRows, filterByAuthor, filterByGroup, groupByDay } from "./group";
 import { SaveBar } from "./save-bar";
 import { useArchivePhoto } from "./use-archive-photo";
 import { useBulkSave } from "./use-bulk-save";
@@ -64,6 +65,10 @@ export function GalleryScreen({
   useEffect(() => setFeatureErrorDismissed(false), [featureError]);
 
   const [authorId, setAuthorId] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState<string | null>(null);
+  // Only someone who sees more than one group (an organizer, or a guest in several) gets the group filter.
+  const sendable = useMemo(() => (detail ? sendableGroups(detail) : []), [detail]);
+  const groups = sendable.length > 1 ? sendable : [];
 
   const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
   // Until every page is in, a member's photos may all be on a page not loaded yet: offer every member so they can still be picked.
@@ -74,7 +79,7 @@ export function GalleryScreen({
     const known = new Set(loaded.map((a) => a.id));
     return [...loaded, ...members.filter((m) => !known.has(m.id)).map((m) => ({ id: m.id, name: m.name }))];
   }, [photos, members, complete]);
-  const shown = useMemo(() => filterByAuthor(photos, authorId), [photos, authorId]);
+  const shown = useMemo(() => filterByGroup(filterByAuthor(photos, authorId), groupId), [photos, authorId, groupId]);
   const sections = useMemo(
     () =>
       groupByDay(shown).map((s) => ({
@@ -88,7 +93,7 @@ export function GalleryScreen({
   const { selecting, selected, allSelected, toggle, toggleAll, start: startSelecting, stop: stopSelecting } =
     useGallerySelection(shown);
   // The grid loads on scroll, but whatever works on "everyone's photos" needs them all: selecting, filtering by person, and a first page with no photos in it.
-  const needsAll = selecting || authorId !== null || (!loading && photos.length === 0);
+  const needsAll = selecting || authorId !== null || groupId !== null || (!loading && photos.length === 0);
   useEffect(() => {
     if (needsAll && hasMore && !loadingMore && !loadMoreError) void fetchMore();
   }, [needsAll, hasMore, loadingMore, loadMoreError, fetchMore, photos]);
@@ -229,10 +234,13 @@ export function GalleryScreen({
           canSaveAll={canSaveAll}
           authors={authors}
           authorId={authorId}
+          groups={groups}
+          groupId={groupId}
           onToggleAll={toggleAll}
           onStopSelecting={stopSelecting}
           onStartSelecting={startSelecting}
           onSelectAuthor={setAuthorId}
+          onSelectGroup={setGroupId}
           onSaveAll={confirmSaveAll}
         />
       )}

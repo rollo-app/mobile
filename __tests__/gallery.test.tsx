@@ -189,6 +189,44 @@ describe("Gallery", () => {
     expect(screen.queryByText("Solo Juani")).toBeNull();
   });
 
+  const eventDetail = (me: Partial<actions.TripDetail["me"]>): actions.TripDetail => {
+    const base = detail();
+    return {
+      ...base,
+      trip: { ...base.trip, type: "event", groups: [{ id: "g1", name: "Novios" }, { id: "g2", name: "Amigos" }] },
+      me: { ...base.me, ...me },
+    };
+  };
+  const eventFeed = () =>
+    feed([
+      item("a", { takenAt: Date.parse("2027-01-12T15:00:00Z"), groupIds: ["g1"] }),
+      item("b", { takenAt: Date.parse("2027-01-12T16:00:00Z"), groupIds: ["g2"] }),
+      item("c", { takenAt: Date.parse("2027-01-12T17:00:00Z"), groupIds: ["g1", "g2"] }),
+    ]);
+
+  it("an organizer can filter the gallery by group", async () => {
+    mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "admin", groupIds: [] }));
+    mocked.fetchFeedPage.mockResolvedValue(eventFeed());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.getByLabelText("Grupos")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Amigos" }));
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(2);
+    expect(screen.getByRole("menuitem", { name: "Amigos" }).props.accessibilityState).toMatchObject({ checked: true });
+    await fireEvent.press(screen.getAllByRole("menuitem", { name: "Todos" })[1]!  /* second "Todos": the groups menu, after the people one */);
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("a guest in one group sees no group menu", async () => {
+    mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "member", groupIds: ["g1"] }));
+    mocked.fetchFeedPage.mockResolvedValue(eventFeed());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByLabelText("Grupos")).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Amigos" })).toBeNull();
+  });
+
   it("the ✕ on the active filter goes back to everyone", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();

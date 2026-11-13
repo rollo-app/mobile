@@ -42,6 +42,7 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   momentDay: null,
   archived: false,
   selfie: null,
+  groupIds: [],
 });
 
 const ctx = {
