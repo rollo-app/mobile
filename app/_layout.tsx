@@ -5,8 +5,6 @@ import { useEffect } from "react";
 import { StyleSheet, Text, useColorScheme, View } from "react-native";
 import { CACHE_MAX_AGE, connectAppState, persister, queryClient, shouldDehydrateQuery } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
-import { REVEAL_BACKGROUND } from "@/features/reveal/reveal-screen";
-import { CROP_BACKGROUND } from "@/features/crop/photo-crop";
 import { useNotificationResponse } from "@/features/notifications/use-notification-response";
 import { cancelLegacyRevealNotifications } from "@/features/notifications/legacy-reveal";
 import { usePushRegistration } from "@/features/notifications/use-push-registration";
@@ -21,7 +19,7 @@ import { useMe } from "@/features/auth/use-me";
 import { Button } from "@/ui/components";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PillHost } from "@/ui/pill-host";
-import { colors, spacing, type } from "@/ui/theme";
+import { colors, screenBackgrounds, spacing, type } from "@/ui/theme";
 
 export default function RootLayout() {
   const scheme = useColorScheme();
@@ -79,12 +77,12 @@ function RootStack() {
       {/* The profile photo crop: "Completá tu perfil" (login gate) and "Editar perfil" (app) both open it. */}
       <Stack.Screen
         name="crop-avatar"
-        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: CROP_BACKGROUND } }}
+        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.crop } }}
       />
       {/* The event cover crop: the board and Crear rollo open it. */}
       <Stack.Screen
         name="crop-cover"
-        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: CROP_BACKGROUND } }}
+        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.crop } }}
       />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -176,7 +174,7 @@ function RootStack() {
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen
             name="reveal"
-            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: REVEAL_BACKGROUND } }}
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.reveal } }}
           />
           <Stack.Screen
             name="presentation"

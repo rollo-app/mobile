@@ -7,6 +7,7 @@ import { formatDate } from "@/features/trips/phase";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { markRevealIntroSeen } from "@/storage/reveal-intro";
+import { screenBackgrounds } from "@/ui/theme";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { DarkroomIntro } from "./darkroom-intro";
 import { REVEAL_MAX_CELLS, sampleEvenly } from "./sample-evenly";
@@ -14,9 +15,6 @@ import { REVEAL_TIMELINE } from "./timeline";
 import { useThumbBytes } from "./use-thumb-bytes";
 
 const NO_CELLS: RevealedPhoto[] = [];
-
-/** The screen's own background, painted from the first frame: the darkroom's red-black. */
-export const REVEAL_BACKGROUND = "#1a0000";
 
 /**
  * The reveal of the active roll, full screen and on its own (the stories never contain it): the
@@ -127,6 +125,6 @@ export function RevealScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: REVEAL_BACKGROUND },
+  root: { flex: 1, backgroundColor: screenBackgrounds.reveal },
   loading: { alignItems: "center", justifyContent: "center" },
 });

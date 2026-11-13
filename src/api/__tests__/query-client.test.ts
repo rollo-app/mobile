@@ -34,4 +34,19 @@ describe("shouldDehydrateQuery", () => {
     expect(shouldDehydrateQuery(query(["me"]))).toBe(true);
     expect(shouldDehydrateQuery(query(["config"]))).toBe(false);
   });
+
+  it("never saves user search results", () => {
+    expect(shouldDehydrateQuery(query(["user-search", "ana"]))).toBe(false);
+  });
+
+  it("never saves queries read from the local upload queue (SQLite is already their persistence)", () => {
+    expect(shouldDehydrateQuery(query(["pending", "t1"]))).toBe(false);
+    expect(shouldDehydrateQuery(query(["pending-items", "t1"]))).toBe(false);
+    expect(shouldDehydrateQuery(query(["upload-status", "t1"]))).toBe(false);
+  });
+
+  it("keeps saving feed, trip and profile queries for offline cold starts", () => {
+    expect(shouldDehydrateQuery(query(["trips"]))).toBe(true);
+    expect(shouldDehydrateQuery(query(["feed", "t1"]))).toBe(true);
+  });
 });
