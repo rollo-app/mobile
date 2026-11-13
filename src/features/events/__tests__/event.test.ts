@@ -1,5 +1,5 @@
 import type { TripDetail } from "@/features/trips/actions";
-import { isEvent, isOrganizer, myGroups, sendableGroups } from "../event";
+import { isEvent, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
 
 const GROUPS = [
   { id: "g1", name: "Novios" },
@@ -61,5 +61,32 @@ describe("legacy cached objects (saved by 1.3, without the event fields)", () =>
     expect(sendableGroups(legacy)).toEqual([]);
     expect(sendableGroups(legacyAdmin)).toEqual([]);
     expect(isOrganizer(legacyAdmin)).toBe(true);
+  });
+});
+
+describe("photoGroupLabel", () => {
+  it("names the photo's groups for an organizer, in the event's order", () => {
+    expect(photoGroupLabel(detail("admin", []), ["g3", "g1"])).toBe("Novios, Amigos");
+  });
+
+  it("says Todos los grupos when an organizer's photo went to every group", () => {
+    expect(photoGroupLabel(detail("admin", []), ["g2", "g1", "g3"])).toBe("Todos los grupos");
+  });
+
+  it("names only the guest's own groups for a guest in several", () => {
+    expect(photoGroupLabel(detail("member", ["g1", "g2"]), ["g2", "g3"])).toBe("Familia");
+    expect(photoGroupLabel(detail("member", ["g1", "g2"]), ["g1", "g2"])).toBe("Novios, Familia");
+  });
+
+  it("is null for a guest in a single group: every photo they see is from it", () => {
+    expect(photoGroupLabel(detail("member", ["g1"]), ["g1", "g2"])).toBeNull();
+  });
+
+  it("is null in a regular trip and without known groups", () => {
+    const trip = { trip: { type: "trip", groups: [] }, me: { role: "admin", groupIds: [] } } as unknown as TripDetail;
+    expect(photoGroupLabel(trip, [])).toBeNull();
+    expect(photoGroupLabel(detail("admin", []), [])).toBeNull();
+    expect(photoGroupLabel(detail("admin", []), ["gone"])).toBeNull();
+    expect(photoGroupLabel(detail("admin", []), undefined)).toBeNull();
   });
 });

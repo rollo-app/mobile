@@ -12,6 +12,7 @@ import { markPresentationSeen } from "@/storage/presentation";
 import { signInAs, tripSummary } from "@/test/account";
 import { keepOriginals } from "@/test/trip";
 import { routes } from "@/test/routes";
+import { ORGANIZER_NOTE } from "@/features/events/event-groups-section";
 
 jest.mock("@/features/friends/actions");
 jest.mock("@/features/trips/actions");
@@ -97,6 +98,7 @@ describe("Event board", () => {
     expect(screen.getByRole("button", { name: "Código QR" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Elegir portada" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();
+    expect(screen.getByText(ORGANIZER_NOTE)).toBeVisible();
   });
 
   it("a guest sees their groups and Sumarme a otro grupo, and no Código QR", async () => {
@@ -108,6 +110,7 @@ describe("Event board", () => {
     expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Elegir portada" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();
+    expect(screen.queryByText(ORGANIZER_NOTE)).toBeNull();
   });
 
   it("hides group management and the cover row after the reveal", async () => {

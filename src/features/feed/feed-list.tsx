@@ -3,6 +3,7 @@ import { errorMessage } from "@/api/client";
 import { memo, useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
+import { photoGroupLabel } from "@/features/events/event";
 import { FeedRow } from "@/features/feed/feed-row";
 import { groupByDay, type FeedSection } from "@/features/feed/sections";
 import { useReport } from "@/features/moderation/use-report";
@@ -110,9 +111,10 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
         onAuthorPress={openAuthor}
         onDelete={isAdmin ? confirmRemove : undefined}
         onReport={me && item.authorUserId !== me.userId ? reportItem : undefined}
+        groupLabel={detail ? photoGroupLabel(detail, item.groupIds) : null}
       />
     ),
-    [timeZone, onOpenOnMap, token, openPhoto, openAuthor, isAdmin, confirmRemove, me, reportItem],
+    [timeZone, onOpenOnMap, token, openPhoto, openAuthor, isAdmin, confirmRemove, me, reportItem, detail],
   );
 
   const renderSectionHeader = useCallback(

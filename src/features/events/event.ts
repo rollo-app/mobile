@@ -25,3 +25,19 @@ export function myGroups(detail: TripDetail): Group[] {
 export function sendableGroups(detail: TripDetail): Group[] {
   return isOrganizer(detail) ? groupsOf(detail) : myGroups(detail);
 }
+
+/**
+ * Which groups a photo in the Feed belongs to, for the viewer: the photo's groups among the ones they can see (all for an
+ * organizer, their own for a guest), "Todos los grupos" when an organizer's photo went to every group. Null when there is
+ * nothing to tell: a regular rollo, a guest in a single group (every photo they see is from it) or no known group.
+ */
+export function photoGroupLabel(detail: TripDetail, groupIds: readonly string[] | null | undefined): string | null {
+  if (!isEvent(detail.trip)) return null;
+  const visible = isOrganizer(detail) ? groupsOf(detail) : myGroups(detail);
+  if (visible.length <= 1) return null;
+  const ids = new Set(groupIds ?? []);
+  const names = visible.filter((g) => ids.has(g.id)).map((g) => g.name);
+  if (names.length === 0) return null;
+  if (isOrganizer(detail) && names.length === visible.length) return "Todos los grupos";
+  return names.join(", ");
+}
