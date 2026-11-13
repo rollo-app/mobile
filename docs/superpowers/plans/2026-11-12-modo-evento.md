@@ -414,3 +414,43 @@ Comportamiento:
    - Crear en producción, con la cuenta de revisión (`REVIEW_EMAIL`), un evento de prueba con dos grupos, y poner su código en las notas para el revisor de App Store Connect.
    - Verificar que `https://rolloproject.com/.well-known/apple-app-site-association` incluya `/join/*`.
 7. Fuera de este plan, pero antes del 12/12: decidir los registros (abrirlos esa semana o hacer una excepción para eventos).
+
+---
+
+## Estado al cerrar la implementación (12/11/2026)
+
+Implementado y revisado en `feature/event-mode` en los cuatro repos (sin push). Backend `49583c2..bdef500`, app `d6e4044..b5ba973`, sitio `6f67184..cf0efff`, panel `e875a32..e829770`.
+
+### Decisiones tomadas durante la implementación
+- Los eventos guardan la ubicación como cualquier rollo; solo se oculta el mapa (Juani).
+- Después del revelado no se cambian grupos, portada ni se muestra el QR.
+- El autor siempre ve sus propias fotos mientras sea miembro activo.
+- Destacadas en perfiles siguen como en cualquier rollo.
+- Un evento no admite momento del día ni cupo diario, tampoco al editarlo.
+- No se puede sacar el rol a un organizador sin grupos, ni borrar el último grupo.
+- La portada pública se publica sin EXIF; barrido de portadas huérfanas una vez por hora en eventos recientes.
+- Vista previa pública: 300/min por IP, bloqueo de 1 min tras ~20 códigos inexistentes, CORS solo para rolloproject.com.
+- `/join` sin analytics; sin JavaScript no muestra el código.
+- La 1.4 tolera el caché guardado por la 1.3 (sin vaciarlo).
+
+### Pruebas en el iPhone pendientes (no se cubren con Jest)
+1. Actualizar 1.3 → 1.4 con caché guardado y fotos en la cola.
+2. Universal Link en el build de producción, en frío y en caliente, incluido "Cancelar" en frío.
+3. Cuenta nueva por link: login, perfil, intro y después grupos.
+4. Sin la app: página del sitio, App Store, código en "Unirme".
+5. "Abrir Rollo" (`rollo://join/<CÓDIGO>`) desde Safari.
+6. AASA en `main` con `/join/*`.
+7. Chips de grupos en la captura (2, 5 y 30 grupos, con teclado), últimos grupos recordados, ubicación guardada, foto offline que sube con sus grupos.
+8. Tab Feed: ícono, título, se oculta al revelar y estar ahí al revelar lleva a Rollo.
+9. Menú "Grupos" y "Solo <grupo>" en la galería.
+10. QR nítido en claro y oscuro, escanea en pantalla y desde el PNG impreso, la hoja de compartir funciona.
+11. Portada desde la galería (HEIC, vertical) derecha en todos lados.
+12. Crear: "Rollo | Evento", borrar grupo deslizando, borrar una fila del medio conserva las otras, la portada se sube después de crear.
+13. Agregar y renombrar grupos; el 409 inline al borrar uno con gente.
+14. Pushes de un evento abren la pestaña correcta; sin avisos de momento del día.
+
+### Antes del 12/12 (fuera de este plan)
+- Registros: topes de mails (20/IP/día, 40 cuentas nuevas/día, Resend 100/día) no alcanzan para ~150 invitados. Decidir: subir topes para el evento o empujar Google/Apple.
+- Costo de D1 a escala casamiento: medir o confirmar Workers Paid.
+- Confirmar en Cloudflare que los namespaces de rate limit 1008 y 1009 no estén usados.
+- Orden de deploy: migración 0039 → backend → panel → sitio a `main` → build 1.4 → revisión de Apple (a más tardar 5/12). No volver el Worker a una versión previa a eventos sin desactivarlos.
