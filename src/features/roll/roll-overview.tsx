@@ -1,4 +1,5 @@
 import { StyleSheet, Text } from "react-native";
+import { EventBoardHero } from "@/features/events/event-board-hero";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
@@ -27,6 +28,7 @@ export function RollOverview({ tripId }: { tripId: string }) {
       {!error && !detail && <Loading />}
       {detail && (
         <>
+          <EventBoardHero detail={detail} />
           <Text style={[type.subhead, styles.summary]}>
             {rollSummary({
               media: photos,

@@ -1,5 +1,5 @@
 import type { TripDetail } from "@/features/trips/actions";
-import { isEvent, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
+import { eventDay, isEvent, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
 
 const GROUPS = [
   { id: "g1", name: "Novios" },
@@ -88,5 +88,13 @@ describe("photoGroupLabel", () => {
     expect(photoGroupLabel(detail("admin", []), [])).toBeNull();
     expect(photoGroupLabel(detail("admin", []), ["gone"])).toBeNull();
     expect(photoGroupLabel(detail("admin", []), undefined)).toBeNull();
+  });
+});
+
+describe("eventDay", () => {
+  it("is the start's day and month in the event's time zone", () => {
+    expect(eventDay(Date.parse("2026-12-12T21:00:00Z"), "America/Montevideo")).toBe("12 de diciembre");
+    // 01:30 UTC on the 13th is still the 12th in Montevideo
+    expect(eventDay(Date.parse("2026-12-13T01:30:00Z"), "America/Montevideo")).toBe("12 de diciembre");
   });
 });

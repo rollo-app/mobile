@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { EventBoardHero } from "@/features/events/event-board-hero";
 import { MomentBanner } from "@/features/moments/moment-banner";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { usePendingCount } from "@/features/capture/use-pending-count";
@@ -35,6 +36,7 @@ export function RollBoard() {
         <Loading />
       ) : (
         <>
+          <EventBoardHero detail={detail} />
           {phase === "active" && <MomentBanner tripId={detail.trip.id} />}
           <View style={styles.block}>
             <View style={styles.header}>

@@ -1,13 +1,12 @@
-import { Image } from "expo-image";
 import { router, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { ApiError, errorMessage } from "@/api/client";
-import { API_URL } from "@/config";
+import { EventHero } from "@/features/events/event-hero";
 import { PickGroups } from "@/features/events/pick-groups";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
-import { colors, radius, spacing, type } from "@/ui/theme";
+import { colors, spacing, type } from "@/ui/theme";
 import { usePreviewEvent } from "@/features/events/use-preview-event";
 import type { EventPreview } from "./actions";
 import { useJoinTrip } from "./use-join-trip";
@@ -105,10 +104,13 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
 
       {event ? (
         <>
-          {event.coverUrl && <Image source={{ uri: `${API_URL}${event.coverUrl}` }} style={styles.cover} contentFit="cover" accessibilityIgnoresInvertColors />}
-          <Text accessibilityRole="header" style={styles.name}>
-            {event.name}
-          </Text>
+          {event.coverUrl ? (
+            <EventHero name={event.name} coverUrl={event.coverUrl} eyebrow="Te invitaron a" />
+          ) : (
+            <Text accessibilityRole="header" style={styles.name}>
+              {event.name}
+            </Text>
+          )}
           {event.revealed ? (
             <ErrorText>{REVEALED_EVENT}</ErrorText>
           ) : (
@@ -142,7 +144,6 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
 }
 
 const styles = StyleSheet.create({
-  cover: { height: 160, borderRadius: radius.lg, backgroundColor: colors.fill },
   name: { ...type.title, color: colors.label, paddingHorizontal: spacing.md },
   groups: { gap: spacing.sm },
 });

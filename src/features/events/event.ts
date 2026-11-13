@@ -41,3 +41,8 @@ export function photoGroupLabel(detail: TripDetail, groupIds: readonly string[] 
   if (isOrganizer(detail) && names.length === visible.length) return "Todos los grupos";
   return names.join(", ");
 }
+
+/** The event's day for its cover ("12 de diciembre"), in the event's time zone. */
+export function eventDay(startsAt: number, timeZone: string): string {
+  return new Intl.DateTimeFormat("es-AR", { timeZone, day: "numeric", month: "long" }).format(startsAt);
+}

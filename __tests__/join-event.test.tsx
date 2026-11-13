@@ -1,7 +1,7 @@
 import { act } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { ApiError } from "@/api/client";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
 import { markAppIntroPending } from "@/storage/app-intro";
 import { getPendingJoin, setPendingJoin } from "@/storage/pending-join";
@@ -58,6 +58,28 @@ describe("Joining an event", () => {
 
     await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "ABC123", groupIds: ["g2"] }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("shows the cover big with the event's name over it", async () => {
+    mocked.previewEvent.mockResolvedValue(preview({ coverUrl: "/covers/e/c.jpg" }));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await enterCode();
+
+    const hero = await screen.findByTestId("event-hero");
+    expect(within(hero).getByText("Casamiento de Cami")).toBeVisible();
+    expect(within(hero).getByText("Te invitaron a")).toBeVisible();
+    expect(screen.getByText("Elegí tus grupos")).toBeVisible();
+  });
+
+  it("without a cover the name is a plain title", async () => {
+    mocked.previewEvent.mockResolvedValue(preview());
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await enterCode();
+
+    expect(await screen.findByText("Casamiento de Cami")).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
   });
 
   it("asks for a single group when the event has just one", async () => {

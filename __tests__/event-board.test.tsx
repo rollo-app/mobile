@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { Alert, Share } from "react-native";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import "@/test/reanimated";
 import * as friendActions from "@/features/friends/actions";
 import * as tripActions from "@/features/trips/actions";
@@ -142,6 +142,21 @@ describe("Event board", () => {
     expect(await screen.findByRole("button", { name: "Sumar amigos" })).toBeVisible();
     expect(screen.queryByText("Grupos")).toBeNull();
     expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
+  });
+});
+
+describe("Cover hero", () => {
+  it("shows the cover big at the top of the board with the event's name and day", async () => {
+    await open(detail(guest, ["g1"], { coverUrl: "/covers/x/y.jpg", startsAt: Date.parse("2026-12-12T21:00:00Z") }));
+    const hero = await screen.findByTestId("event-hero");
+    expect(within(hero).getByText("Casamiento de Cami")).toBeVisible();
+    expect(within(hero).getByText("12 de diciembre")).toBeVisible();
+  });
+
+  it("has no hero without a cover", async () => {
+    await open(detail(organizer, []));
+    expect(await screen.findByRole("button", { name: "Elegir portada" })).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
   });
 });
 
