@@ -16,7 +16,7 @@ export function RollOverview({ tripId }: { tripId: string }) {
 
   return (
     <Screen grouped testID="roll-overview">
-      {error && (
+      {!!error && (
         <>
           <ErrorText>{error}</ErrorText>
           <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />

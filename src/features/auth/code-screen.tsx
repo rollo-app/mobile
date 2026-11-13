@@ -67,8 +67,8 @@ export function CodeScreen({ email }: { email: string }) {
         autoFocus
         placeholder="Ingresar código"
       />
-      {error && closed && <RegistrationsClosedNotice message={error} />}
-      {error && !closed && (
+      {!!error && closed && <RegistrationsClosedNotice message={error} />}
+      {!!error && !closed && (
         <>
           <ErrorText>{error}</ErrorText>
           {/* iOS can delete the mail after autofilling the code ("Delete after use"). */}

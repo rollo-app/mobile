@@ -62,7 +62,7 @@ export function FeaturedGrid({
               onPress={() => onOpen(photo)}
               style={{ width: size, height: size, backgroundColor: colors.latent }}
             >
-              {token && <FeaturedThumb photo={photo} token={token} />}
+              {!!token && <FeaturedThumb photo={photo} token={token} />}
               {photo.author && <AuthorBadge author={photo.author} />}
             </Pressable>
           ))}

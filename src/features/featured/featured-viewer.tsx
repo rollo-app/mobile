@@ -196,7 +196,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                 )}
               </View>
               {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
-              {error && <Text style={[type.footnote, styles.dim]}>{error}</Text>}
+              {!!error && <Text style={[type.footnote, styles.dim]}>{error}</Text>}
             </View>
           )}
         </>

@@ -13,7 +13,7 @@ export function EventCover({ detail }: { detail: TripDetail }) {
       <Section>
         <Row label={coverUrl ? "Cambiar portada" : "Elegir portada"} loading={cover.uploading} onPress={cover.uploading ? undefined : () => void cover.pick()} />
       </Section>
-      {cover.error && <ErrorText>{cover.error}</ErrorText>}
+      {!!cover.error && <ErrorText>{cover.error}</ErrorText>}
     </>
   );
 }

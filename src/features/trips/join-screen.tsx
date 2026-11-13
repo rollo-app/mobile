@@ -138,7 +138,7 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
         </>
       )}
 
-      {error && <ErrorText>{error}</ErrorText>}
+      {!!error && <ErrorText>{error}</ErrorText>}
     </Screen>
   );
 }

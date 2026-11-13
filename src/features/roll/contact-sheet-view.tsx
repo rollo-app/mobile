@@ -47,10 +47,10 @@ export function ContactSheet({
             <View key={i < shown ? keys[i] : `filler-${i}`} style={styles.cell}>
               <EnteringFrame enter={i < shown && keys[i] === entering}>
                 <View style={[styles.frame, { backgroundColor: i < shown ? colors.latent : colors.fill }]}>
-                  {thumbhash && <Image testID={`thumbhash-${thumbhash}`} placeholder={{ thumbhash }} style={StyleSheet.absoluteFill} />}
+                  {!!thumbhash && <Image testID={`thumbhash-${thumbhash}`} placeholder={{ thumbhash }} style={StyleSheet.absoluteFill} />}
                   {rest > 0 && i === shown - 1 && (
                     <>
-                      {thumbhash && <View style={styles.dim} />}
+                      {!!thumbhash && <View style={styles.dim} />}
                       <Text style={[type.footnote, styles.more, thumbhash ? styles.moreOnPhoto : null]}>+{rest + 1}</Text>
                     </>
                   )}

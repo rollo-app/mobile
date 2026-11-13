@@ -59,7 +59,7 @@ export function EmailScreen({ initialEmail = "" }: { initialEmail?: string }) {
         onSubmitEditing={isValidEmail(email) ? submit : undefined}
         placeholder="nombre@email.com"
       />
-      {error && (closed ? <RegistrationsClosedNotice message={error} /> : <ErrorText>{error}</ErrorText>)}
+      {!!error && (closed ? <RegistrationsClosedNotice message={error} /> : <ErrorText>{error}</ErrorText>)}
       <Button label="Continuar" onPress={submit} disabled={!isValidEmail(email)} loading={start.isPending} />
       {/* Apple's own button (its guidelines: at least as prominent as any other sign-in option), so it goes before Google. */}
       {appleAvailable && (

@@ -84,7 +84,7 @@ function Settings({ detail }: { detail: TripDetail }) {
           )}
         </Section>
       )}
-      {failure && <ErrorText>{failure}</ErrorText>}
+      {!!failure && <ErrorText>{failure}</ErrorText>}
 
       {event && <EventCover detail={detail} />}
 
@@ -109,7 +109,7 @@ function Settings({ detail }: { detail: TripDetail }) {
           <Row label="Salirme del rollo" tone="danger" chevron={false} loading={leave.leaving} onPress={leave.leaving ? undefined : leave.confirm} />
         </Section>
       )}
-      {leave.error && <ErrorText>{leave.error}</ErrorText>}
+      {!!leave.error && <ErrorText>{leave.error}</ErrorText>}
 
       {detail.me.isCreator && (
         <Section>

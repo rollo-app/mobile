@@ -12,7 +12,7 @@ export function ActivityThumb({ path, hash, token, id }: { path: string; hash: s
   const retry = useImageRetry(id);
   return (
     <View style={styles.thumb}>
-      {token && (
+      {!!token && (
         <Image
           key={retry.retryKey}
           onError={retry.onError}
