@@ -393,6 +393,42 @@ Reglas:
   TanStack Query, carpetas `Documents/pending/` y `Documents/map/`): no se renombran, porque rompería los
   datos de quien ya tiene la app.
 
+## Performance y componentes
+
+Reglas para todo código nuevo (salen de auditar la app con `vercel-react-native-skills`, `vercel-composition-patterns` y
+`building-react-native-apps:react-native-best-practices` de Callstack; las dos de Vercel están en `.claude/skills/`, la de
+Callstack es un plugin a nivel usuario). Al diseñar o revisar algo con listas, animaciones, arranque o la API de un componente,
+consultarlas. Si una regla de esas skills contradice este archivo (p. ej. Galeria para el visor, que acá es propio), gana este archivo.
+
+- **Listas:** una lista que puede pasar de ~50 filas (galería, feed, miembros de un evento, amigos) va con **FlashList v2**
+  (`@shopify/flash-list`, solo JS; sin `estimatedItemSize`, que en v2 no existe): nunca `.map` dentro de un `ScrollView`. Filas en
+  su propio componente con `memo`, `renderItem` y `keyExtractor` estables (`useCallback` o a nivel módulo) y `extraData` memoizado.
+  Grillas con encabezados: lista plana + `getItemType` + `overrideItemLayout` (ver `gallery/grid-items.ts`). Imágenes con
+  `expo-image` y `recyclingKey`. Para listas cortas y acotadas (≤ 30, p. ej. grupos de un evento) alcanza `Section`.
+- **Fechas:** siempre `dateFormatter(locale, options)` de `src/lib/intl.ts` (cachea el formatter). Nunca `new Intl.DateTimeFormat`
+  ni `toLocaleDateString/TimeString` en render, por fila o dentro de un loop: en Hermes crearlo es caro.
+- **Render:** nada de `{string && <X />}` (con `""` React Native se cae: "Text strings must be rendered within a <Text>");
+  usar `!!x &&` o un ternario con `null`.
+- **Arranque:** `app/_layout.tsx` y `app/(tabs)/_layout.tsx` (y todo lo que importan) se evalúan al abrir la app, porque Metro no
+  tiene `inlineRequires`. No importar ahí pantallas ni constantes de features pesadas (Skia, VisionCamera, revelado, recorte,
+  presentación): los tokens van en `src/ui/theme.ts` (p. ej. `screenBackgrounds`). Las rutas de Expo Router se cargan solas
+  cuando se navega a ellas.
+- **Inputs:** el estado de un `TextInput` vive en un componente propio (como `CommentComposer`), no en el que tiene la lista: si
+  no, cada tecla re-renderiza todas las filas. Filtros sobre listas grandes con `useDeferredValue` + `useMemo`; búsquedas a la API
+  con debounce (como `useUserSearch`).
+- **Cache persistido:** al sumar una query, decidir si se persiste. `shouldDehydrateQuery` (`src/api/query-client.ts`) excluye lo
+  descartable o derivado de datos locales (búsquedas, la cola de SQLite); lo que la app muestra sin señal (feed, rollos, `me`)
+  se persiste. Ojo con guardar dos copias del mismo dato grande con keys distintas.
+- **Trabajo en el hilo de JS:** nada de `O(n²)` sobre el feed (puede tener ~2000 fotos: Map/Set y `push`, no copiar arrays por
+  ítem); cálculos sobre listas grandes con `useMemo`. Nada de leer archivos enteros en base64 en JS si alcanza con una parte.
+- **Animaciones:** solo `transform` y `opacity` en el UI thread (ver "Skills de diseño y motion").
+- **Memoización:** no hay React Compiler. `memo`/`useCallback`/`useMemo` donde evitan trabajo real (filas de listas, props de
+  componentes pesados); no por las dudas. Para optimizar algo que no es obvio, **medir antes y después** (React DevTools →
+  Profiler, tecla `j` en Metro).
+- **Composición:** antes de sumar una prop booleana a un componente (`isCompact`, `showX`, `withY`), preferir variantes
+  explícitas (`<ThingCompact />`) o componentes compuestos (`<Thing.Header />`, `<Thing.Body />`) con el estado en un provider;
+  `children` antes que props `renderX`. React 19: sin `forwardRef` (el `ref` es una prop) y `use()` en vez de `useContext()`.
+
 ## Skills de diseño y motion
 
 En `.claude/skills/` (copiadas tal cual de sus repos): `emil-design-eng`, `animate-expo`, `review-animations`,
