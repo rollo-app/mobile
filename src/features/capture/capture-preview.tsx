@@ -12,6 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { CapturedPhoto } from "@/features/camera/captured-photo";
+import { GroupChips } from "@/features/events/group-chips";
 import { ErrorText } from "@/ui/components";
 import { useKeyboardLift } from "@/ui/keyboard-lift";
 import { insetFrame } from "@/ui/inset-frame";
@@ -53,6 +54,12 @@ export function CapturePreview(props: {
   onGone?: () => void;
   /** The moment's second shot: also blurred, in the top-left corner like the viewers' inset (only visual, no swapping). */
   inset?: CapturedPhoto | null;
+  /** Event only, when there is more than one to choose from: the groups the shot can go to, and which are chosen. */
+  groups?: { id: string; name: string }[];
+  selectedGroupIds?: string[];
+  onGroupsChange?: (ids: string[]) => void;
+  /** Organizers get a "Todos los grupos" chip. */
+  allGroupsOption?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const keyboardStyle = useKeyboardLift(insets.bottom, spacing.md, spacing.sm);
@@ -60,6 +67,9 @@ export function CapturePreview(props: {
   const exitStyle = useSendExit(props.sent ?? false, reduceMotion, props.onGone);
   const [pressed, setPressed] = useState(false);
   const busy = props.sending || !!props.sent;
+  const choosingGroups = !!props.groups && props.groups.length > 1;
+  const noGroupChosen = choosingGroups && !(props.selectedGroupIds?.length ?? 0);
+  const blocked = busy || noGroupChosen;
   // Normal column (no absolute positioning): when the keyboard opens, the controls rise with it
   // and the photo shrinks into the remaining space, instead of being covered.
   return (
@@ -110,14 +120,23 @@ export function CapturePreview(props: {
           submitBehavior="blurAndSubmit"
           style={[type.body, styles.caption]}
         />
+        {choosingGroups && props.groups && (
+          <GroupChips
+            groups={props.groups}
+            selected={props.selectedGroupIds ?? []}
+            onChange={(ids) => props.onGroupsChange?.(ids)}
+            allOption={!!props.allGroupsOption}
+            disabled={busy}
+          />
+        )}
         {props.error && <ErrorText>{props.error}</ErrorText>}
         <View style={styles.sendRow}>
           <Text style={[type.footnote, styles.dim, styles.note]}>Después de mandarla no la ves hasta el revelado</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Mandar al rollo"
-            accessibilityState={{ busy, disabled: busy }}
-            disabled={busy}
+            accessibilityState={{ busy, disabled: blocked }}
+            disabled={blocked}
             onPress={props.onSend}
             onPressIn={() => setPressed(true)}
             onPressOut={() => setPressed(false)}
@@ -128,7 +147,7 @@ export function CapturePreview(props: {
                 styles.send,
                 getPressTransition(),
                 {
-                  opacity: busy ? 0.6 : pressed && reduceMotion !== false ? 0.8 : 1,
+                  opacity: blocked ? 0.6 : pressed && reduceMotion !== false ? 0.8 : 1,
                   transform: [{ scale: pressed && reduceMotion === false ? 0.97 : 1 }],
                 },
               ]}

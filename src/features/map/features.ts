@@ -26,6 +26,8 @@ export type MapItem = {
   authorUsername?: string | null;
   authorAvatarUrl: string | null;
   pending: boolean;
+  /** Events: the groups the photo was sent to (empty or absent in a regular rollo). */
+  groupIds?: string[];
 };
 
 export type MapFilters = { day: string | null; authorId: string | null; /** Only the photos of the daily moment. */ momentsOnly?: boolean };
@@ -60,6 +62,7 @@ export function feedToItems(items: Schemas["FeedItem"][]): MapItem[] {
     authorUsername: i.author.username,
     authorAvatarUrl: i.author.avatarUrl,
     pending: false,
+    groupIds: i.groupIds ?? [],
   }));
 }
 
@@ -84,6 +87,7 @@ export function pendingToItems(
     authorUsername: me.username ?? null,
     authorAvatarUrl: me.avatarUrl ?? null,
     pending: true,
+    groupIds: m.groupIds ?? [],
   }));
 }
 

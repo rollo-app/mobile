@@ -41,10 +41,13 @@ const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" =
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
     ...over,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, isCreator: false, blockedByMe: false },
     { id: "m5", userId: "u5", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -194,9 +197,11 @@ describe("Add friends to a roll", () => {
     await markPresentationSeen(SUR);
     await renderRouter(routes, { initialUrl: "/roll?view=roll" });
 
-    expect(await screen.findByText("Invitar")).toBeVisible();
+    expect(await screen.findByText("Personas")).toBeVisible();
+    expect(screen.queryByText("Invitar")).toBeNull();
     expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Salirme del rollo" })).toBeVisible();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    expect(await screen.findByRole("button", { name: "Salirme del rollo" })).toBeVisible();
   });
 });
 
@@ -209,6 +214,7 @@ describe("Leaving a roll", () => {
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     const leave = await screen.findByRole("button", { name: "Salirme del rollo" });
     jest.mocked(N.cancelScheduledNotificationAsync).mockClear();
     await fireEvent.press(leave);
@@ -231,6 +237,7 @@ describe("Leaving a roll", () => {
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
 
     expect(alert).toHaveBeenCalledTimes(1);
@@ -251,6 +258,7 @@ describe("Leaving a roll", () => {
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
     trips.fetchMyTrips.mockResolvedValue({ trips: [] });
     await confirmLeave();
@@ -264,6 +272,7 @@ describe("Leaving a roll", () => {
   it("the admin can't: the server's message shows inline and the roll stays", async () => {
     friends.leaveTrip.mockRejectedValue(new Error("Sos el admin: no podés salirte del rollo"));
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
     await confirmLeave();
 

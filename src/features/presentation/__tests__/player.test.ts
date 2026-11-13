@@ -30,6 +30,7 @@ const photo = (id: string, iso: string): RevealedPhoto => ({
   momentDay: null,
   archived: false,
   selfie: null,
+  groupIds: [],
 });
 
 // 0 day, 1 a, 2 b, 3 day, 4 c, 5 outro

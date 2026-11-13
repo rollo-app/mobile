@@ -37,6 +37,14 @@ describe("FeedRow", () => {
     expect(screen.getByText("sacó una foto")).toBeTruthy();
   });
 
+  it("shows the photo's groups after the time when given, and nothing extra without them", async () => {
+    const { rerender } = await render(<FeedRow item={item()} timeZone={TZ} groupLabel="Familia, Amigos" />);
+    expect(screen.getByText("Familia, Amigos")).toBeTruthy();
+
+    await rerender(<FeedRow item={item()} timeZone={TZ} groupLabel={null} />);
+    expect(screen.queryByText("Familia, Amigos")).toBeNull();
+  });
+
   it("for a video without a caption it shows how long it lasts", async () => {
     await render(<FeedRow item={item({ type: "video", durationS: 12.2 })} timeZone={TZ} />);
     expect(screen.getByText("sacó un video · 12 s")).toBeTruthy();

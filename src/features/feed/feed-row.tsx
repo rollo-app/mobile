@@ -32,10 +32,12 @@ type Props = {
   token?: string | null;
   /** Tap on a daily moment that shows its real photo: opens it in the viewer instead of the map. */
   onOpenPhoto?: (item: MapItem) => void;
+  /** Events: the groups the photo was sent to ("Familia, Amigos"); null when there is nothing to tell. */
+  groupLabel?: string | null;
 };
 
 /** A native Feed row: who, when, the caption (or what they took) and the blurred photo. */
-export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete, onReport, token, onOpenPhoto }: Props) {
+export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete, onReport, token, onOpenPhoto, groupLabel }: Props) {
   const who = item.authorUsername ? formatHandle(item.authorUsername) : item.authorName;
   const when = clockTime(item.takenAt, timeZone);
   const generic = item.type === "video" ? `sacó un video · ${Math.round(item.durationS ?? 0)} s` : "sacó una foto";
@@ -72,6 +74,8 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
           </Text>
           {" · "}
           <Text>{when}</Text>
+          {groupLabel ? " · " : null}
+          {groupLabel ? <Text>{groupLabel}</Text> : null}
         </Text>
         {item.caption ? (
           <Text numberOfLines={3} style={[type.quote, { color: colors.label }]}>

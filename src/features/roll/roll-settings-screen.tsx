@@ -1,45 +1,52 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Share } from "react-native";
+import { Alert } from "react-native";
 import { errorMessage } from "@/api/client";
-import { InfoButton } from "@/features/info/info-button";
+import { EventCover } from "@/features/events/event-cover";
+import { EventGroupsSection } from "@/features/events/event-groups-section";
+import { isEvent } from "@/features/events/event";
 import { FeaturingSection } from "@/features/featured/featuring-section";
 import { useLeaveTrip } from "@/features/friends/use-leave-trip";
 import type { TripDetail } from "@/features/trips/actions";
-import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { editableFields } from "@/features/trips/edit-form";
-import { useArchiveTrip } from "@/features/trips/use-archive-trip";
 import { canRename } from "@/features/trips/roles";
-import { ErrorText, Row, Section } from "@/ui/components";
+import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { useArchiveTrip } from "@/features/trips/use-archive-trip";
+import { useRollPhase } from "@/features/trips/use-roll-phase";
+import { useTripDetail } from "@/features/trips/use-trip-detail";
+import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
+import { RollDates } from "./roll-dates";
 import { useDeleteTrip } from "./use-delete-trip";
-import { MemberRow } from "./member-row";
-import { previewMembers } from "./members-order";
-import { useMemberActions } from "./use-member-actions";
 import { MAX_TRIP_NAME, nextTripName, useRenameTrip } from "./use-rename-trip";
 
-const FULL_NOTE = "El rollo está lleno. Para sumar a alguien, primero tiene que salir otra persona.";
+/** "Ajustes del rollo": name, cover, dates, groups, featuring and leaving/archiving/deleting; the board keeps only what matters now. */
+export function RollSettingsScreen({ tripId }: { tripId: string }) {
+  const { detail, error, refetch, isRefetching } = useTripDetail(tripId);
+  return (
+    <Screen grouped>
+      {error ? (
+        <>
+          <ErrorText>{error}</ErrorText>
+          <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
+        </>
+      ) : !detail ? (
+        <Loading />
+      ) : (
+        <Settings detail={detail} />
+      )}
+    </Screen>
+  );
+}
 
-/**
- * The invite (code and share) and the members of a roll. Tapping a member (not you) opens their profile.
- */
-export function RollPeople({ detail }: { detail: TripDetail }) {
-  const share = () =>
-    Share.share({ message: `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}` });
-
+function Settings({ detail }: { detail: TripDetail }) {
+  const phase = useRollPhase(detail);
+  const event = isEvent(detail.trip);
   const leave = useLeaveTrip(detail.trip.id, detail.trip.name, { revealed: detail.trip.revealed });
   const deleteTrip = useDeleteTrip(detail.trip.id, detail.trip.name);
   const { setArchived } = useArchiveTrip();
   const archived = useActiveTrip().trips.find((t) => t.id === detail.trip.id)?.archived ?? false;
   const rename = useRenameTrip(detail.trip.id);
   const [nameTooLong, setNameTooLong] = useState(false);
-  const members = useMemberActions(detail.trip.id, [rename]);
-  // Only the latest action's error shows: starting a rename clears the member actions' errors.
-  const startRename = () => {
-    members.start(rename);
-    setNameTooLong(false);
-  };
-  const full = detail.members.length >= detail.trip.maxMembers;
-  const preview = previewMembers(detail.members, detail.me.id);
 
   const editName = () =>
     Alert.prompt(
@@ -52,10 +59,10 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
           onPress: (text?: string) => {
             const name = nextTripName(text ?? "", detail.trip.name);
             if (name) {
-              startRename();
+              setNameTooLong(false);
               rename.mutate(name);
             } else if ((text ?? "").trim().length > MAX_TRIP_NAME) {
-              startRename();
+              rename.reset();
               setNameTooLong(true);
             }
           },
@@ -65,9 +72,7 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
       detail.trip.name,
     );
   const failure =
-    (nameTooLong ? `El nombre puede tener hasta ${MAX_TRIP_NAME} caracteres` : null) ??
-    members.failure ??
-    errorMessage(rename.error, "No se pudo cambiar el nombre");
+    (nameTooLong ? `El nombre puede tener hasta ${MAX_TRIP_NAME} caracteres` : null) ?? errorMessage(rename.error, "No se pudo cambiar el nombre");
 
   return (
     <>
@@ -79,33 +84,15 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
           )}
         </Section>
       )}
+      {failure && <ErrorText>{failure}</ErrorText>}
 
-      {!detail.trip.revealed && (
-        <Section>
-          <Row label="Sumar amigos" onPress={() => router.push("/add-friends")} />
-        </Section>
-      )}
+      {event && <EventCover detail={detail} />}
 
-      <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : "Con este código se suman al rollo."}>
-        <Row label="Código" value={detail.trip.joinCode} disabled={full} />
-        <Row label="Compartir invitación" chevron={false} disabled={full} onPress={() => void share()} />
-      </Section>
+      <RollDates detail={detail} phase={phase} />
+
+      {event && <EventGroupsSection detail={detail} />}
 
       <FeaturingSection detail={detail} />
-
-      <Section title={`En el rollo · ${detail.members.length} de ${detail.trip.maxMembers}`}>
-        {preview.shown.map((m) => (
-          <MemberRow key={m.id} me={detail.me} member={m} onAction={members.run} />
-        ))}
-        {preview.hasMore && (
-          <Row
-            label="Ver todos"
-            value={String(preview.total)}
-            onPress={() => router.push({ pathname: "/roll-members", params: { tripId: detail.trip.id } })}
-          />
-        )}
-      </Section>
-      {failure && <ErrorText>{failure}</ErrorText>}
 
       {detail.trip.revealed && (
         <Section>

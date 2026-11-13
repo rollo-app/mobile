@@ -271,16 +271,25 @@ jest.mock("@expo/ui/swift-ui", () => {
     Section: ({ title, header, footer, children }: any) =>
       h(View, null, title && h(RNText, null, title), header, children, footer),
     HStack: Wrap,
+    Group: Wrap,
+    RNHostView: ({ children }: any) => children,
     Spacer: () => null,
     Image: () => null,
-    Button: ({ onPress, modifiers, children }: any) =>
+    Button: ({ onPress, modifiers, label, children }: any) =>
       h(
         Pressable,
-        { accessibilityRole: "button", accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel, onPress },
-        children,
+        {
+          accessibilityRole: "button",
+          accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel ?? label,
+          accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled },
+          onPress,
+        },
+        label ? h(RNText, null, label) : children,
       ),
-    TextField: ({ placeholder, onTextChange }: any) =>
-      h(TextInput, { placeholder, onChangeText: onTextChange }),
+    // Swipe actions render always visible, so tests can press them directly.
+    SwipeActions: Object.assign(Wrap, { Actions: Wrap }),
+    TextField: ({ placeholder, onTextChange, modifiers }: any) =>
+      h(TextInput, { placeholder, onChangeText: onTextChange, accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel }),
     DatePicker: ({ title, selection, range, modifiers }: any) =>
       h(View, { accessibilityLabel: title, accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled }, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
     Stepper: ({ label, value, modifiers }: any) =>
@@ -294,8 +303,9 @@ jest.mock("@expo/ui/swift-ui", () => {
         value: !!isOn,
         onValueChange: onIsOnChange,
       }),
-    Picker: ({ selection, onSelectionChange, children }: any) =>
-      h(
+    Picker: ({ selection, onSelectionChange, children, modifiers }: any) => {
+      const disabled = !!modifiers?.find((m: any) => "disabled" in m)?.disabled;
+      return h(
         View,
         null,
         React.Children.map(children, (child: any) =>
@@ -304,13 +314,15 @@ jest.mock("@expo/ui/swift-ui", () => {
             {
               accessibilityRole: "button",
               accessibilityLabel: child.props.children,
-              accessibilityState: { selected: child.props.modifiers?.[0]?.tag === selection },
+              accessibilityState: { selected: child.props.modifiers?.[0]?.tag === selection, disabled },
+              disabled,
               onPress: () => onSelectionChange(child.props.modifiers?.[0]?.tag),
             },
             h(RNText, null, child.props.children),
           ),
         ),
-      ),
+      );
+    },
   };
 });
 jest.mock("@expo/ui/swift-ui/modifiers", () => ({
@@ -323,6 +335,9 @@ jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   accessibilityLabel: (accessibilityLabel: string) => ({ accessibilityLabel }),
   buttonStyle: (style: string) => ({ buttonStyle: style }),
   font: (params: unknown) => ({ font: params }),
+  listRowInsets: (params: unknown) => ({ listRowInsets: params }),
+  listRowBackground: (color: unknown) => ({ listRowBackground: color }),
+  aspectRatio: (params: unknown) => ({ aspectRatio: params }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).
@@ -499,6 +514,11 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
     DarkroomIntro: ({ title, date }: { title: string; date: string }) =>
       h(View, null, h(Text, null, "Se reveló"), h(Text, null, title), h(Text, null, date)),
   };
+});
+// The QR (Skia) is a plain View in tests.
+jest.mock("@/features/events/qr-canvas", () => {
+  const { View } = require("react-native");
+  return { QrCanvas: View, qrPng: jest.fn(() => null) };
 });
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));

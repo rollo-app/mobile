@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { EventBoardHero } from "@/features/events/event-board-hero";
 import { MomentBanner } from "@/features/moments/moment-banner";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { usePendingCount } from "@/features/capture/use-pending-count";
@@ -10,10 +11,10 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { ContactSheet } from "./contact-sheet-view";
-import { RollDates } from "./roll-dates";
-import { RollPeople } from "./roll-people";
+import { RevealRow } from "./roll-dates";
+import { RollEssentials } from "./roll-essentials";
 
-/** The Rollo tab before the reveal: contact sheet, today's quota, dates, uploads and people. */
+/** The Rollo tab before the reveal: contact sheet, today's quota, reveal date, uploads, invite and people. */
 export function RollBoard() {
   const { trip } = useActiveTrip();
   const { detail, error, refetch, isRefetching } = useTripDetail(trip?.id);
@@ -35,6 +36,7 @@ export function RollBoard() {
         <Loading />
       ) : (
         <>
+          <EventBoardHero detail={detail} />
           {phase === "active" && <MomentBanner tripId={detail.trip.id} />}
           <View style={styles.block}>
             <View style={styles.header}>
@@ -57,11 +59,11 @@ export function RollBoard() {
             )
           )}
 
-          <RollDates detail={detail} phase={phase} />
+          <RevealRow detail={detail} phase={phase} />
 
           <UploadStatusSection tripId={detail.trip.id} timeZone={detail.trip.timezone} />
           <BelowUploads>
-            <RollPeople detail={detail} />
+            <RollEssentials detail={detail} />
           </BelowUploads>
         </>
       )}

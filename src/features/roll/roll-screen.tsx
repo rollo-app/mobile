@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useState } from "react";
 import { SelectionHeaderTitle } from "@/features/gallery/selection-header-title";
 import type { ColorValue } from "react-native";
@@ -39,8 +39,22 @@ export function RollScreen({ view }: { view?: string }) {
           }}
         />
       )}
+      {/* "Ajustes del rollo": on the board and in the revealed "Rollo" view; the gallery has its own toolbar. */}
+      {trip && (!revealed || view === "roll") && <SettingsButton tripId={trip.id} />}
       {revealed ? <RevealedRollScreen tripId={trip.id} onSelectionChange={setSelection} /> : <RollBoard />}
     </>
+  );
+}
+
+function SettingsButton({ tripId }: { tripId: string }) {
+  return (
+    <Stack.Toolbar placement="right">
+      <Stack.Toolbar.Button
+        icon="gearshape"
+        accessibilityLabel="Ajustes del rollo"
+        onPress={() => router.push({ pathname: "/roll-settings", params: { tripId } })}
+      />
+    </Stack.Toolbar>
   );
 }
 

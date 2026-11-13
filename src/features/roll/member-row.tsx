@@ -7,7 +7,7 @@ import type { TripDetail } from "@/features/trips/actions";
 import { memberActions, memberBadge, type MemberAction } from "@/features/trips/roles";
 import { Row } from "@/ui/components";
 
-type Member = TripDetail["me"];
+type Member = TripDetail["members"][number];
 
 const ACTION_TITLES: Record<MemberAction, string> = { makeAdmin: "Hacer admin", removeAdmin: "Quitar admin", remove: "Sacar del rollo" };
 const ACTION_ICONS: Record<MemberAction, SFSymbol> = { makeAdmin: "person.badge.plus", removeAdmin: "person.badge.minus", remove: "person.fill.xmark" };

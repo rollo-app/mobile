@@ -18,6 +18,7 @@ export function ViewerInfo({
   timeZone,
   bottomInset,
   readOnly,
+  hasMap,
   liking,
   featuring,
   saveState,
@@ -33,6 +34,8 @@ export function ViewerInfo({
   bottomInset: number;
   /** A moment before the reveal: no likes, saving or featuring. */
   readOnly: boolean;
+  /** The roll has a map to jump to (an event doesn't). */
+  hasMap: boolean;
   liking: boolean;
   featuring: boolean;
   saveState: SaveState;
@@ -83,7 +86,7 @@ export function ViewerInfo({
             onPress={onToggleFeatured}
           />
         )}
-        {photo.lat !== null && photo.lng !== null && (
+        {hasMap && photo.lat !== null && photo.lng !== null && (
           <OverlayIconButton
             symbol="map"
             label="Ver en el mapa"

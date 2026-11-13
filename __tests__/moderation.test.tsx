@@ -93,7 +93,7 @@ describe("Members", () => {
       isCreator: false,
       blockedByMe,
     });
-    const me = member("m1", "u1", "Juani", "admin", false);
+    const me = { ...member("m1", "u1", "Juani", "admin", false), groupIds: [] };
     jest.mocked(moderation).fetchBlocked.mockResolvedValue([]);
     jest.mocked(tripActions).fetchTrip.mockResolvedValue({
       trip: {
@@ -115,6 +115,9 @@ describe("Members", () => {
         momentWindowStart: 540,
         momentWindowEnd: 1380,
         originals: keepOriginals,
+        type: "trip",
+        coverUrl: null,
+        groups: [],
         createdBy: null,
       },
       me,
@@ -124,6 +127,7 @@ describe("Members", () => {
     });
     jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
 
     expect(await screen.findByText("Bloqueado")).toBeVisible();
     expect(screen.getByText("Admin")).toBeVisible();

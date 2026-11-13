@@ -17,7 +17,7 @@ jest.mock("@/ui/pill", () => ({ showPill: jest.fn() }));
 
 type Feed = Schemas["Feed"];
 
-const item = (id: string, featuredByMe: boolean): Feed["items"][number] => ({
+const item = (id: string, featuredByMe: boolean): Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: 1,

@@ -59,8 +59,8 @@ describe("app config", () => {
     expect(configFor(undefined).ios?.usesAppleSignIn).toBeUndefined();
   });
 
-  it("is version 1.3.0 (runtimeVersion follows it)", () => {
-    expect(appJson.expo.version).toBe("1.3.0");
+  it("is version 1.4.0 (runtimeVersion follows it)", () => {
+    expect(appJson.expo.version).toBe("1.4.0");
   });
 
   it("talks to the API on rolloproject.com (the build profile and the fallback agree)", () => {

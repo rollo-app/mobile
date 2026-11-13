@@ -25,7 +25,7 @@ const moderationActions = jest.mocked(moderation);
 const SUR = "11111111-1111-4111-8111-111111111111";
 const DAY = 24 * 60 * 60 * 1000;
 
-const feedItem = (id: string, over: Partial<tripActions.Feed["items"][number]> = {}): tripActions.Feed["items"][number] => ({
+const feedItem = (id: string, over: Partial<tripActions.Feed["items"][number]> = {}): tripActions.Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: Date.parse("2027-01-12T16:10:00Z"),

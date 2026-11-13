@@ -27,9 +27,13 @@ import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
 import CommentsRoute from "../../app/comments/[mediaId]";
 import CreateScreen from "../../app/create";
+import EventGroupsRoute from "../../app/event-groups";
+import EventQrRoute from "../../app/event-qr";
+import MyGroupsRoute from "../../app/my-groups";
 import EditTripRoute from "../../app/edit-trip";
 import WorstCaseRoute from "../../app/dev/worst-case";
 import CropAvatarScreen from "../../app/crop-avatar";
+import CropCoverScreen from "../../app/crop-cover";
 import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
 import InfoRoute from "../../app/info/[topic]";
@@ -44,6 +48,7 @@ import PresentationScreen from "../../app/presentation";
 import RevealRoute from "../../app/reveal";
 import IntroRoute from "../../app/intro";
 import RollMembersRoute from "../../app/roll-members";
+import RollSettingsRoute from "../../app/roll-settings";
 import RollStartedScreen from "../../app/roll-started";
 import PhotoRoute from "../../app/photo/[id]";
 import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
@@ -62,6 +67,7 @@ export const routes = {
   create: CreateScreen,
   "edit-trip": EditTripRoute,
   "crop-avatar": CropAvatarScreen,
+  "crop-cover": CropCoverScreen,
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
   settings: SettingsScreen,
@@ -79,6 +85,10 @@ export const routes = {
   reveal: RevealRoute,
   intro: IntroRoute,
   "roll-members": RollMembersRoute,
+  "event-groups": EventGroupsRoute,
+  "my-groups": MyGroupsRoute,
+  "event-qr": EventQrRoute,
+  "roll-settings": RollSettingsRoute,
   "roll-started": RollStartedScreen,
   "photo/[id]": PhotoRoute,
   "comments/[mediaId]": CommentsRoute,

@@ -26,6 +26,8 @@ export type RevealedPhoto = {
   featureBlocked: boolean;
   /** You can feature it on your profile now (false if its rollo is private or its author, their rollo setting or their account says no). */
   canFeature: boolean;
+  /** Event groups the photo was sent to (empty for a regular rollo). */
+  groupIds: string[];
   /** How many people like it (one counter, also likes from profiles that feature it). */
   likeCount: number;
   /** You like it. */
@@ -81,6 +83,7 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
               featuredByMe: item.featuredByMe ?? false,
               featureBlocked: item.featureBlocked ?? false,
               canFeature: item.canFeature ?? true,
+              groupIds: item.groupIds ?? [],
               likeCount: item.likeCount ?? 0,
               likedByMe: item.likedByMe ?? false,
               commentCount: item.commentCount ?? 0,

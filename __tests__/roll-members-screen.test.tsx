@@ -18,7 +18,7 @@ const trips = jest.mocked(tripActions);
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
 
-type Member = tripActions.TripDetail["me"];
+type Member = tripActions.TripDetail["members"][number];
 const member = (over: Partial<Member> & Pick<Member, "id" | "userId" | "name">): Member => ({
   username: over.name.toLowerCase().replace(/\s/g, "."),
   avatarUrl: null,
@@ -55,9 +55,12 @@ const detail = (me: Member, members: Member[]): tripActions.TripDetail => ({
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: { userId: "u1", name: "Juani" },
   },
-  me,
+  me: { ...me, groupIds: [] },
   members: members.map((x) => (x.id === me.id ? me : x)),
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -72,7 +75,7 @@ async function openBoard(d: tripActions.TripDetail) {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(SUR);
   await renderRouter(routes, { initialUrl: "/roll" });
-  await screen.findByText(/^En el rollo · /);
+  await screen.findByText("Personas");
 }
 async function openMembers(d: tripActions.TripDetail) {
   trips.fetchTrip.mockResolvedValue(d);
@@ -97,35 +100,25 @@ beforeEach(async () => {
 });
 afterEach(() => alert.mockRestore());
 
-describe("En el rollo with many members", () => {
-  it("shows 10 members and a Ver todos row with the total, the title keeps the total", async () => {
+describe("Personas row on the board", () => {
+  it("shows the total against the cap and a few faces, not the member list", async () => {
     await openBoard(detail(creator, big));
-    expect(screen.getByText("En el rollo · 101 de 15")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Ver todos, 101" })).toBeVisible();
-    // creator + admin first, then the rest in order: 10 member rows in total.
-    expect(screen.getByRole("button", { name: "Cami, Admin" })).toBeVisible();
-    expect(screen.getAllByRole("button", { name: /^Persona \d+/ })).toHaveLength(7); // creator, Cami and José fill the first three
-    expect(screen.queryByRole("button", { name: "Tomi" })).toBeNull();
+    expect(screen.getByText("101 de 15")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Cami, Admin" })).toBeNull();
+    expect(screen.queryByText("Ver todos")).toBeNull();
   });
 
-  it("Ver todos opens the members screen for this roll", async () => {
+  it("opens the members screen for this roll", async () => {
     await openBoard(detail(creator, big));
-    await fireEvent.press(screen.getByRole("button", { name: "Ver todos, 101" }));
+    await fireEvent.press(screen.getByRole("button", { name: /^Personas/ }));
     await waitFor(() => expect(screen).toHavePathname("/roll-members"));
     expect(screen).toHaveSearchParams({ tripId: SUR });
   });
 
-  it("with 8 members shows all of them and no Ver todos row", async () => {
+  it("with few members shows the real count", async () => {
     const eight = [creator, adminCami, jose, ...others.slice(0, 5)];
     await openBoard(detail(creator, eight));
-    expect(screen.getByText("En el rollo · 8 de 15")).toBeVisible();
-    expect(screen.getAllByRole("button", { name: /^Persona \d+/ })).toHaveLength(5);
-    expect(screen.queryByText("Ver todos")).toBeNull();
-  });
-
-  it("with exactly 10 members shows no Ver todos row", async () => {
-    await openBoard(detail(creator, [creator, adminCami, jose, ...others.slice(0, 7)]));
-    expect(screen.queryByText("Ver todos")).toBeNull();
+    expect(screen.getByText("8 de 15")).toBeVisible();
   });
 });
 

@@ -5,6 +5,7 @@ import { claimLegacyQueue } from "@/features/capture/account-queue";
 import { cancelMomentNotifications } from "@/features/moments/cancel";
 import { forgetPushToken } from "@/features/notifications/push-token";
 import { clearActiveTripId } from "@/storage/active-trip";
+import { clearPendingJoin } from "@/storage/pending-join";
 import { clearSessionToken, getSessionToken, setSessionToken } from "@/storage/session";
 import { clearSessionUserId, getSessionUserIdStored, setSessionUserId } from "@/storage/session-user";
 import { forgetGoogleAccount } from "./google";
@@ -54,6 +55,8 @@ export async function signOut(): Promise<void> {
   await clearSessionToken();
   await clearSessionUserId();
   await clearActiveTripId();
+  // A join link waiting for the profile belongs to the account that opened it.
+  await clearPendingJoin();
   // The next account must not get this one's moments (covers logout, delete account and a 401).
   await cancelMomentNotifications();
   // Same for Google: the next Google sign-in shows the account picker instead of reusing this account.

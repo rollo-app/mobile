@@ -33,6 +33,8 @@ export type QueuedMedia = {
   /** The 2048 px display JPEG next to the original; null for rows queued before it existed (they upload without it). */
   displayUri?: string | null;
   displaySizeBytes?: number | null;
+  /** Event groups the photo goes to (ids); null for a regular rollo and for rows queued before groups existed. */
+  groupIds?: string[] | null;
 };
 
 export type PendingMedia = QueuedMedia & {
@@ -84,6 +86,7 @@ const ADDED_COLUMNS = [
   ["owner_user_id", "TEXT"],
   ["display_uri", "TEXT"],
   ["display_size_bytes", "INTEGER"],
+  ["group_ids", "TEXT"],
 ] as const;
 
 type Row = {
@@ -111,6 +114,18 @@ type Row = {
   owner_user_id: string | null;
   display_uri: string | null;
   display_size_bytes: number | null;
+  /** JSON array of group ids. */
+  group_ids: string | null;
+};
+
+const parseGroupIds = (raw: string | null | undefined): string[] | null => {
+  if (!raw) return null;
+  try {
+    const ids: unknown = JSON.parse(raw);
+    return Array.isArray(ids) && ids.every((id) => typeof id === "string") ? ids : null;
+  } catch {
+    return null;
+  }
 };
 
 const fromRow = (r: Row): PendingMedia => ({
@@ -135,6 +150,7 @@ const fromRow = (r: Row): PendingMedia => ({
   ownerUserId: r.owner_user_id ?? null,
   displayUri: r.display_uri ?? null,
   displaySizeBytes: r.display_size_bytes ?? null,
+  groupIds: parseGroupIds(r.group_ids),
   attempts: r.attempts,
   retryAt: r.retry_at,
 });
@@ -151,11 +167,12 @@ export async function createQueue(db: QueueDb) {
       await db.runAsync(
         `INSERT OR IGNORE INTO pending_media
           (id, trip_id, type, taken_at, day, lat, lng, accuracy_m, caption, duration_s, width, height,
-           size_bytes, original_uri, thumb_uri, thumbhash, moment_day, paired_with, owner_user_id, display_uri, display_size_bytes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           size_bytes, original_uri, thumb_uri, thumbhash, moment_day, paired_with, owner_user_id, display_uri, display_size_bytes, group_ids)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         m.id, m.tripId, m.type, m.takenAt, m.day, m.lat, m.lng, m.accuracyM, m.caption, m.durationS,
         m.width, m.height, m.sizeBytes, m.originalUri, m.thumbUri, m.thumbhash,
         m.momentDay ?? null, m.pairedWith ?? null, m.ownerUserId ?? null, m.displayUri ?? null, m.displaySizeBytes ?? null,
+        m.groupIds ? JSON.stringify(m.groupIds) : null,
       );
     },
 

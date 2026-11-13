@@ -12,10 +12,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, ErrorText } from "@/ui/components";
-import { spacing, type } from "@/ui/theme";
-import { cropAvatarImage } from "./crop-avatar-image";
+import { radius, spacing, type } from "@/ui/theme";
+import { cropImage } from "./crop-image";
 import { clampOffset, clampZoom, cropRect, displayedSize, type Offset } from "./crop-math";
-import { cropRequestPhoto, settleCropRequest } from "./crop-request";
+import { cropRequestOptions, cropRequestPhoto, settleCropRequest } from "./crop-request";
 
 export const CROP_BACKGROUND = "#000000";
 const GUTTER = 16;
@@ -28,12 +28,13 @@ const midpoint = (t: Touches) => ({
 const distance = (t: Touches) => Math.hypot(t[0]!.pageX - t[1]!.pageX, t[0]!.pageY - t[1]!.pageY);
 
 /**
- * Square profile photo crop (like Contacts): the photo behind a circle, pinch to zoom and drag to move,
- * always covering the circle. "Elegir" hands a 512×512 JPEG back to whoever opened the crop.
+ * Square photo crop (like Contacts): the photo behind a circle (profile photo) or a rounded square (event cover), pinch to
+ * zoom and drag to move, always covering the frame. "Elegir" hands the square JPEG back to whoever opened the crop.
  */
-export function AvatarCrop({ requestId }: { requestId: string | undefined }) {
+export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
   // Read once: after "Elegir" the request is gone, and the screen must not react to that while it closes.
   const [photo] = useState(() => cropRequestPhoto(requestId));
+  const [options] = useState(() => cropRequestOptions(requestId));
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const diameter = width - 2 * GUTTER;
@@ -95,15 +96,16 @@ export function AvatarCrop({ requestId }: { requestId: string | undefined }) {
   if (!photo) return <View style={styles.screen} />;
 
   const shown = displayedSize(photo, diameter, zoom);
-  // A huge border around a transparent circle dims everything but the circle.
+  // A huge border around a transparent frame dims everything but the frame.
   const ring = Math.max(width, height);
+  const corner = options.shape === "circle" ? diameter / 2 : radius.lg;
 
   async function choose() {
     if (!photo) return;
     setError(null);
     setSaving(true);
     try {
-      const cropped = await cropAvatarImage(photo.uri, cropRect(photo, diameter, zoom, offset));
+      const cropped = await cropImage(photo.uri, cropRect(photo, diameter, zoom, offset), options.size);
       settleCropRequest(requestId, cropped);
       router.back();
     } catch {
@@ -136,7 +138,7 @@ export function AvatarCrop({ requestId }: { requestId: string | undefined }) {
               left: width / 2 - diameter / 2 - ring,
               top: height / 2 - diameter / 2 - ring,
               borderWidth: ring,
-              borderRadius: diameter / 2 + ring,
+              borderRadius: corner + ring,
             },
           ]}
         />
@@ -144,7 +146,7 @@ export function AvatarCrop({ requestId }: { requestId: string | undefined }) {
           pointerEvents="none"
           style={[
             styles.circle,
-            { width: diameter, height: diameter, borderRadius: diameter / 2, left: GUTTER, top: height / 2 - diameter / 2 },
+            { width: diameter, height: diameter, borderRadius: corner, left: GUTTER, top: height / 2 - diameter / 2 },
           ]}
         />
       </View>

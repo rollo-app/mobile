@@ -6,11 +6,12 @@ import { StyleSheet, Text, useColorScheme, View } from "react-native";
 import { CACHE_MAX_AGE, connectAppState, persister, queryClient, shouldDehydrateQuery } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
 import { REVEAL_BACKGROUND } from "@/features/reveal/reveal-screen";
-import { CROP_BACKGROUND } from "@/features/profile/avatar-crop";
+import { CROP_BACKGROUND } from "@/features/crop/photo-crop";
 import { useNotificationResponse } from "@/features/notifications/use-notification-response";
 import { cancelLegacyRevealNotifications } from "@/features/notifications/legacy-reveal";
 import { usePushRegistration } from "@/features/notifications/use-push-registration";
 import { useOfflineMapSync } from "@/features/map/use-offline-map-sync";
+import { useOpenPendingJoin } from "@/features/events/use-pending-join";
 import { useRedeemPendingFriend } from "@/features/friends/use-pending-friend";
 import { useSyncTriggers } from "@/features/capture/use-sync-triggers";
 import { gateFor } from "@/features/auth/gate";
@@ -50,6 +51,7 @@ function RootStack() {
   const { session, me, failed, refetch } = useMe();
   const gate = gateFor({ session, me, meFailed: failed });
   useRedeemPendingFriend(gate === "app");
+  useOpenPendingJoin(gate === "app");
   usePushRegistration(gate === "app");
   useNotificationResponse(gate === "app");
 
@@ -70,11 +72,18 @@ function RootStack() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {/* A friend link works with or without a session: it routes to the right step itself. */}
       <Stack.Screen name="friends/[code]" options={{ headerShown: false }} />
+      {/* A join link works without a session too: it keeps the code and goes on with the sign-up. */}
+      <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />
       {/* The login email's magic link: signs in without a session, never switches an existing one. */}
       <Stack.Screen name="login" options={{ headerShown: false }} />
       {/* The profile photo crop: "Completá tu perfil" (login gate) and "Editar perfil" (app) both open it. */}
       <Stack.Screen
         name="crop-avatar"
+        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: CROP_BACKGROUND } }}
+      />
+      {/* The event cover crop: the board and Crear rollo open it. */}
+      <Stack.Screen
+        name="crop-cover"
         options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: CROP_BACKGROUND } }}
       />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>
@@ -84,7 +93,6 @@ function RootStack() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create" options={{ title: "Nuevo rollo", presentation: "modal" }} />
           <Stack.Screen name="edit-trip" options={{ title: "Editar rollo", presentation: "modal" }} />
-          <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />
           <Stack.Screen
             name="trips"
             options={{
@@ -105,6 +113,12 @@ function RootStack() {
           />
           {/* "Ver todos" in a roll's "En el rollo": the full members list, with search. */}
           <Stack.Screen name="roll-members" options={{ title: "Integrantes" }} />
+          {/* The gear in the Rollo tab: name, cover, dates, groups, featuring, archive, leave, delete. */}
+          <Stack.Screen name="roll-settings" options={{ title: "Ajustes del rollo" }} />
+          {/* Event board: organizers manage the groups and show the QR; guests change their groups. */}
+          <Stack.Screen name="event-groups" options={{ title: "Grupos" }} />
+          <Stack.Screen name="my-groups" options={{ title: "Sumarme a otro grupo" }} />
+          <Stack.Screen name="event-qr" options={{ title: "Código QR" }} />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
           <Stack.Screen name="notifications" options={{ title: "Notificaciones" }} />
           {/* "¿Te avisamos…?", once, after creating or joining a roll. */}

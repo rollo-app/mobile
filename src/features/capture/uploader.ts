@@ -160,6 +160,8 @@ export function createUploader(deps: UploaderDeps) {
             thumbhash: m.thumbhash,
             momentDay: m.momentDay,
             pairedMediaId: m.pairedWith,
+            // Event photos only: the server ignores stale ids and falls back to the guest's groups.
+            ...(m.groupIds ? { groupIds: m.groupIds } : {}),
           },
         }),
       );

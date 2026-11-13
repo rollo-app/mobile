@@ -26,6 +26,11 @@ export function filterByAuthor(photos: RevealedPhoto[], authorId: string | null)
   return authorId === null ? photos : photos.filter((p) => p.author.id === authorId);
 }
 
+/** Photos sent to the group; null means every group. */
+export function filterByGroup(photos: RevealedPhoto[], groupId: string | null): RevealedPhoto[] {
+  return groupId === null ? photos : photos.filter((p) => p.groupIds.includes(groupId));
+}
+
 export function authorsOf(photos: RevealedPhoto[]): { id: string; name: string }[] {
   const seen = new Map<string, { id: string; name: string }>();
   for (const p of photos) if (!seen.has(p.author.id)) seen.set(p.author.id, p.author);

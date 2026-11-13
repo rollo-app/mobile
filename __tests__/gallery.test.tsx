@@ -81,9 +81,12 @@ const detail = (): actions.TripDetail => ({
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -92,7 +95,7 @@ const detail = (): actions.TripDetail => ({
   totalUploaded: 3,
 });
 
-const item = (id: string, over: Partial<actions.Feed["items"][number]> = {}): actions.Feed["items"][number] => ({
+const item = (id: string, over: Partial<actions.Feed["items"][number]> = {}): actions.Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: Date.parse("2027-01-12T16:10:00Z"),
@@ -184,6 +187,74 @@ describe("Gallery", () => {
     await fireEvent.press(screen.getByRole("menuitem", { name: "Todos" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
     expect(screen.queryByText("Solo Juani")).toBeNull();
+  });
+
+  const eventDetail = (me: Partial<actions.TripDetail["me"]>): actions.TripDetail => {
+    const base = detail();
+    return {
+      ...base,
+      trip: { ...base.trip, type: "event", groups: [{ id: "g1", name: "Novios" }, { id: "g2", name: "Amigos" }] },
+      me: { ...base.me, ...me },
+    };
+  };
+  const eventFeed = () =>
+    feed([
+      item("a", { takenAt: Date.parse("2027-01-12T15:00:00Z"), groupIds: ["g1"] }),
+      item("b", { takenAt: Date.parse("2027-01-12T16:00:00Z"), groupIds: ["g2"] }),
+      item("c", { takenAt: Date.parse("2027-01-12T17:00:00Z"), groupIds: ["g1", "g2"] }),
+    ]);
+
+  it("an organizer can filter the gallery by group", async () => {
+    mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "admin", groupIds: [] }));
+    mocked.fetchFeedPage.mockResolvedValue(eventFeed());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.getByLabelText("Grupos")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Amigos" }));
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(2);
+    expect(screen.getByRole("menuitem", { name: "Amigos" }).props.accessibilityState).toMatchObject({ checked: true });
+    await fireEvent.press(screen.getAllByRole("menuitem", { name: "Todos" })[1]!  /* second "Todos": the groups menu, after the people one */);
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("opens the gallery of a revealed trip whose cached data predates events (no type, groups or groupIds)", async () => {
+    const base = detail();
+    const { type: _t, groups: _g, coverUrl: _c, ...trip } = base.trip;
+    const { groupIds: _m, ...me } = base.me;
+    mocked.fetchTrip.mockResolvedValue({ ...base, trip, me } as unknown as actions.TripDetail);
+    const legacyItem = (id: string) => {
+      const { groupIds: _i, ...rest } = item(id);
+      return rest as unknown as actions.Feed["items"][number];
+    };
+    mocked.fetchFeedPage.mockResolvedValue(feed([legacyItem("a"), legacyItem("b")]));
+    await open();
+    expect(await screen.findByText("Martes 12 de enero")).toBeVisible();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(2);
+    expect(screen.queryByLabelText("Grupos")).toBeNull();
+  });
+
+  it("shows \"Solo <grupo>\" while a group filter is on and a ✕ clears it", async () => {
+    mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "admin", groupIds: [] }));
+    mocked.fetchFeedPage.mockResolvedValue(eventFeed());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByText("Solo Amigos")).toBeNull();
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Amigos" }));
+    expect(screen.getByText("Solo Amigos")).toBeVisible();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(2);
+    await fireEvent.press(screen.getByRole("button", { name: "Quitar filtro de grupo" }));
+    expect(screen.queryByText("Solo Amigos")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("a guest in one group sees no group menu", async () => {
+    mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "member", groupIds: ["g1"] }));
+    mocked.fetchFeedPage.mockResolvedValue(eventFeed());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByLabelText("Grupos")).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Amigos" })).toBeNull();
   });
 
   it("the ✕ on the active filter goes back to everyone", async () => {
@@ -651,6 +722,13 @@ describe("Photo viewer", () => {
   it("hides Ver en el mapa for a photo without location", async () => {
     mocked.fetchFeedPage.mockResolvedValue(feed([item("n", { lat: null, lng: null })]));
     await renderRouter(routes, { initialUrl: `/photo/n?tripId=${SUR}` });
+    await screen.findByRole("button", { name: "Guardar en Fotos" });
+    expect(screen.queryByRole("button", { name: "Ver en el mapa" })).toBeNull();
+  });
+
+  it("hides Ver en el mapa in an event", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { type: "event" })] });
+    await openViewer("b");
     await screen.findByRole("button", { name: "Guardar en Fotos" });
     expect(screen.queryByRole("button", { name: "Ver en el mapa" })).toBeNull();
   });

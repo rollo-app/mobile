@@ -1,10 +1,12 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import { useCameraPermission } from "react-native-vision-camera";
 import { errorMessage } from "@/api/client";
 import { Camera } from "@/features/camera/camera";
+import { isEvent, isOrganizer, sendableGroups } from "@/features/events/event";
+import { getLastGroups, setLastGroups } from "@/storage/last-groups";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { CaptureMessage } from "./capture-message";
@@ -38,6 +40,12 @@ export function CaptureScreen() {
   const [sent, setSent] = useState(false);
   const started = useRef(false);
   const fix = useRef<Promise<Fix | null> | null>(null);
+  const [chosenGroups, setChosenGroups] = useState<string[] | null>(null);
+  // The saved summary knows the type even with no cached detail (offline): groups stay empty then, and the server falls back.
+  const summary = detail?.trip ?? trip;
+  const inEvent = !!summary && isEvent(summary);
+  const groups = useMemo(() => (detail && inEvent ? sendableGroups(detail) : []), [detail, inEvent]);
+  const choosing = groups.length > 1;
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
@@ -49,6 +57,23 @@ export function CaptureScreen() {
   useEffect(() => {
     if (state.kind === "camera" && hasPermission) fix.current ??= startFix();
   }, [state.kind, hasPermission]);
+
+  // With several groups to choose from, start with the ones used last (the ones that still count), else the first.
+  const previewing = state.kind === "preview";
+  useEffect(() => {
+    if (!previewing || !trip || !choosing || chosenGroups) return;
+    let active = true;
+    getLastGroups(trip.id)
+      .catch(() => [] as string[])
+      .then((last) => {
+        if (!active) return;
+        const valid = groups.filter((g) => last.includes(g.id)).map((g) => g.id);
+        setChosenGroups(valid.length ? valid : groups.slice(0, 1).map((g) => g.id));
+      });
+    return () => {
+      active = false;
+    };
+  }, [previewing, trip, choosing, chosenGroups, groups]);
 
   // Once we know the quota (or that there's no signal to know it), open the camera or show the lock.
   useEffect(() => {
@@ -64,6 +89,9 @@ export function CaptureScreen() {
 
   function send(shot: Shot) {
     if (!trip) return;
+    // One group: the photo goes there. Several: the chosen ones (kept for the next photo).
+    const groupIds = choosing ? (chosenGroups ?? []) : groups.map((g) => g.id);
+    if (choosing) void setLastGroups(trip.id, groupIds).catch(() => {});
     sendShot.mutate(
       {
         tripId: trip.id,
@@ -73,6 +101,7 @@ export function CaptureScreen() {
         caption,
         author: detail?.me.name ?? "",
         fix: fix.current,
+        ...(inEvent && groupIds.length ? { groupIds } : {}),
       },
       {
         onSuccess: () => {
@@ -123,6 +152,10 @@ export function CaptureScreen() {
       sent={sent}
       onGone={() => router.back()}
       error={errorMessage(sendShot.error, "No se pudo guardar. Probá de nuevo.")}
+      groups={choosing ? groups : undefined}
+      selectedGroupIds={chosenGroups ?? []}
+      onGroupsChange={setChosenGroups}
+      allGroupsOption={!!detail && isOrganizer(detail)}
       onSend={() => send(state.shot)}
       onDiscard={() => {
         void discard(state.shot.photo.uri);

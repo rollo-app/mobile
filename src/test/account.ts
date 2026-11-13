@@ -6,7 +6,7 @@ import { setActiveTripId } from "@/storage/active-trip";
 import { setSessionToken } from "@/storage/session";
 import { setSessionUserId } from "@/storage/session-user";
 
-export const USER: User = { id: "u1", email: "juani@rollo.test", name: "Juani", username: "juani", avatarUrl: null, bio: null, badge: null, profileVisibility: "friends" };
+export const USER: User = { id: "u1", email: "juani@rollo.test", name: "Juani", username: "juani", avatarUrl: null, bio: null, badge: null, profileVisibility: "friends", canCreateEvents: false };
 
 export const tripSummary = (id: string, name: string, over: Partial<TripSummary> = {}): TripSummary => ({
   id,
@@ -22,6 +22,8 @@ export const tripSummary = (id: string, name: string, over: Partial<TripSummary>
   totalUploaded: 0,
   momentMode: "off",
   coverThumbhash: null,
+  type: "trip",
+  coverUrl: null,
   ...over,
 });
 

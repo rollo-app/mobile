@@ -7,7 +7,7 @@ import { errorMessage } from "@/api/client";
 import { meKey } from "@/features/auth/actions";
 import { feedRootKey } from "@/features/trips/use-feed";
 import { uploadAvatar } from "./actions";
-import { openCropRequest, type Photo } from "./crop-request";
+import { openCropRequest, type Photo } from "@/features/crop/crop-request";
 
 export type PhotoSource = "camera" | "library";
 

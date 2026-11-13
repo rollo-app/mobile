@@ -60,9 +60,12 @@ const detail = (): actions.TripDetail => ({
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -71,7 +74,7 @@ const detail = (): actions.TripDetail => ({
   totalUploaded: 3,
 });
 
-const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Feed["items"][number] => ({
+const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Feed["items"][number] => ({ groupIds: [],
   id: "f1",
   type: "photo",
   takenAt: Date.parse("2027-01-12T16:10:00Z"),
@@ -297,6 +300,62 @@ describe("Map", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: "Feed" })).toBeNull());
     expect(screen.queryByRole("menuitem", { name: "Solo hoy" })).toBeNull();
     expect(screen.getByText("Filtros")).toBeVisible();
+  });
+
+  describe("event", () => {
+    const asEvent = (over: Partial<actions.TripDetail["trip"]> = {}) => {
+      mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, type: "event", ...over } });
+    };
+    beforeEach(async () => {
+      await signInAs({ trips: [tripSummary(SUR, "Casamiento", { role: "admin", type: "event" })] });
+    });
+
+    it("the event feed tab never mounts the map", async () => {
+      mapMounts.current = 0;
+      asEvent();
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      expect(await screen.findByTestId("feed-list")).toBeVisible();
+      expect(mapMounts.current).toBe(0);
+      expect(screen.queryByLabelText("mapa")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Feed" })).toBeNull();
+      expect(screen.queryByText("Filtros")).toBeNull();
+    });
+
+    it("the event feed tab has the rollo selector in the header and no \"Mapa\" title", async () => {
+      asEvent();
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await screen.findByTestId("feed-list");
+      // One selector for the Rollo tab (kept mounted) and one for this tab's header.
+      expect(screen.getAllByRole("button", { name: "Casamiento, cambiar de rollo" })).toHaveLength(2);
+      // Perfil (also mounted) has its own "Fotos | Mapa" control; any other "Mapa" would be this tab's header title.
+      const profileMapa = within(screen.getByTestId("profile-showcase")).queryAllByText("Mapa");
+      expect(screen.queryAllByText("Mapa").filter((t) => !profileMapa.includes(t))).toHaveLength(0);
+    });
+
+    it("tapping a feed row does not go to the map", async () => {
+      asEvent();
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await screen.findByTestId("feed-list");
+      const row = await screen.findByText("el viento no perdona");
+      await fireEvent.press(row);
+
+      expect(screen).toHavePathname("/map");
+      expect(screen).not.toHaveSearchParams({ focus: "f1" });
+      expect(screen.queryByLabelText("mapa")).toBeNull();
+    });
+
+    it("a revealed event on the Feed tab goes to Rollo", async () => {
+      asEvent({ revealed: true, endsAt: Date.now() - DAY });
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await waitFor(() => expect(screen).toHavePathname("/roll"));
+    });
   });
 
   it("once the roll is revealed view=feed still shows the map", async () => {
