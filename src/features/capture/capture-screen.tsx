@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 import { useCameraPermission } from "react-native-vision-camera";
 import { errorMessage } from "@/api/client";
@@ -42,8 +42,9 @@ export function CaptureScreen() {
   const fix = useRef<Promise<Fix | null> | null>(null);
   const [chosenGroups, setChosenGroups] = useState<string[] | null>(null);
   // An event's photos never carry a location: guests don't need to be placed on a map.
-  const inEvent = !!detail && isEvent(detail.trip);
-  const groups = detail && inEvent ? sendableGroups(detail) : [];
+  // The saved summary knows the type even with no cached detail (offline): groups stay empty then, and the server falls back.
+  const inEvent = !!(detail?.trip ?? trip) && isEvent((detail?.trip ?? trip)!);
+  const groups = useMemo(() => (detail && inEvent ? sendableGroups(detail) : []), [detail, inEvent]);
   const choosing = groups.length > 1;
   const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -59,7 +60,6 @@ export function CaptureScreen() {
 
   // With several groups to choose from, start with the ones used last (the ones that still count), else the first.
   const previewing = state.kind === "preview";
-  const groupIdsKey = groups.map((g) => g.id).join(",");
   useEffect(() => {
     if (!previewing || !trip || !choosing || chosenGroups) return;
     let active = true;
@@ -73,8 +73,7 @@ export function CaptureScreen() {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- groups is derived from groupIdsKey
-  }, [previewing, trip?.id, choosing, chosenGroups, groupIdsKey]);
+  }, [previewing, trip, choosing, chosenGroups, groups]);
 
   // Once we know the quota (or that there's no signal to know it), open the camera or show the lock.
   useEffect(() => {

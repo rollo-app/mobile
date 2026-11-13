@@ -41,9 +41,10 @@ jest.mock("@/features/camera/camera", () => {
     ),
   };
 });
-jest.mock("@/features/trips/use-active-trip", () => ({ useActiveTrip: () => ({ trip: { id: "t1" }, loaded: true }) }));
-let mockDetail: TripDetail;
-jest.mock("@/features/trips/use-trip-detail", () => ({ useTripDetail: () => ({ detail: mockDetail, error: null }) }));
+let mockDetail: TripDetail | null;
+let mockTripType: "trip" | "event";
+jest.mock("@/features/trips/use-active-trip", () => ({ useActiveTrip: () => ({ trip: { id: "t1", type: mockTripType }, loaded: true }) }));
+jest.mock("@/features/trips/use-trip-detail", () => ({ useTripDetail: () => ({ detail: mockDetail, error: mockDetail ? null : new Error("offline") }) }));
 jest.mock("../location", () => ({ startFix: jest.fn(async () => null) }));
 jest.mock("../load-left", () => ({ loadLeft: jest.fn(async () => ({ photos: 10 })) }));
 jest.mock("../media");
@@ -95,35 +96,51 @@ beforeEach(async () => {
   });
 });
 
-async function toPreview() {
+const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
+
+async function renderScreen() {
   await render(
     <QueryClientProvider client={newClient()}>
-      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } }}>
+      <SafeAreaProvider initialMetrics={metrics}>
         <CaptureScreen />
       </SafeAreaProvider>
     </QueryClientProvider>,
   );
+}
+
+const open = (d: TripDetail) => {
+  mockDetail = d;
+  mockTripType = d.trip.type;
+};
+
+async function toPreview() {
+  await renderScreen();
   await fireEvent.press(await screen.findByLabelText("Sacar foto"));
   await screen.findByLabelText("Mandar al rollo");
 }
 
 describe("capture in an event", () => {
   it("an event never asks for location", async () => {
-    mockDetail = detail({ type: "event", role: "member", groupIds: ["g1"] });
-    await render(
-      <QueryClientProvider client={newClient()}>
-        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } }}>
-        <CaptureScreen />
-      </SafeAreaProvider>
-      </QueryClientProvider>,
-    );
+    open(detail({ type: "event", role: "member", groupIds: ["g1"] }));
+    await renderScreen();
     await screen.findByLabelText("Sacar foto");
 
     expect(startFix).not.toHaveBeenCalled();
   });
 
+  it("an event without cached detail still never asks for location", async () => {
+    mockDetail = null;
+    mockTripType = "event";
+    await renderScreen();
+    await fireEvent.press(await screen.findByLabelText("Sacar foto"));
+    await screen.findByLabelText("Mandar al rollo");
+
+    expect(startFix).not.toHaveBeenCalled();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
   it("a guest in one group sees no chips and sends to it", async () => {
-    mockDetail = detail({ type: "event", role: "member", groupIds: ["g2"] });
+    open(detail({ type: "event", role: "member", groupIds: ["g2"] }));
     await toPreview();
 
     expect(screen.queryByRole("checkbox")).toBeNull();
@@ -133,7 +150,7 @@ describe("capture in an event", () => {
   });
 
   it("a guest in two groups starts with the last used and can add the other", async () => {
-    mockDetail = detail({ type: "event", role: "member", groupIds: ["g1", "g2"] });
+    open(detail({ type: "event", role: "member", groupIds: ["g1", "g2"] }));
     await setLastGroups("t1", ["g1", "gone"]);
     await toPreview();
 
@@ -148,7 +165,7 @@ describe("capture in an event", () => {
   });
 
   it("starts with the first group when none of the last used still applies", async () => {
-    mockDetail = detail({ type: "event", role: "member", groupIds: ["g1", "g2"] });
+    open(detail({ type: "event", role: "member", groupIds: ["g1", "g2"] }));
     await setLastGroups("t1", ["gone"]);
     await toPreview();
 
@@ -157,7 +174,7 @@ describe("capture in an event", () => {
   });
 
   it("cannot send with no group checked", async () => {
-    mockDetail = detail({ type: "event", role: "member", groupIds: ["g1", "g2"] });
+    open(detail({ type: "event", role: "member", groupIds: ["g1", "g2"] }));
     await toPreview();
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Novios" })).toBeChecked());
 
@@ -167,7 +184,7 @@ describe("capture in an event", () => {
   });
 
   it("an organizer sees Todos los grupos, and checking it chooses every group", async () => {
-    mockDetail = detail({ type: "event", role: "admin", groupIds: [] });
+    open(detail({ type: "event", role: "admin", groupIds: [] }));
     await toPreview();
 
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Novios" })).toBeChecked());
@@ -180,7 +197,7 @@ describe("capture in an event", () => {
 
 describe("capture in a regular trip", () => {
   it("a trip shows no chips and still asks for location", async () => {
-    mockDetail = detail({ type: "trip", role: "member", groupIds: [] });
+    open(detail({ type: "trip", role: "member", groupIds: [] }));
     await toPreview();
 
     expect(screen.queryByRole("checkbox")).toBeNull();
