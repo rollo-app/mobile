@@ -2,6 +2,10 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, Share } from "react-native";
 import { errorMessage } from "@/api/client";
+import { EventCover } from "@/features/events/event-cover";
+import { EventGroupsSection } from "@/features/events/event-groups-section";
+import { isEvent, isOrganizer } from "@/features/events/event";
+import { joinLinkUrl } from "@/features/events/join-link";
 import { InfoButton } from "@/features/info/info-button";
 import { FeaturingSection } from "@/features/featured/featuring-section";
 import { useLeaveTrip } from "@/features/friends/use-leave-trip";
@@ -23,8 +27,13 @@ const FULL_NOTE = "El rollo está lleno. Para sumar a alguien, primero tiene que
  * The invite (code and share) and the members of a roll. Tapping a member (not you) opens their profile.
  */
 export function RollPeople({ detail }: { detail: TripDetail }) {
+  const event = isEvent(detail.trip);
   const share = () =>
-    Share.share({ message: `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}` });
+    Share.share({
+      message: event
+        ? `Sumate a "${detail.trip.name}" en Rollo: ${joinLinkUrl(detail.trip.joinCode)}`
+        : `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}`,
+    });
 
   const leave = useLeaveTrip(detail.trip.id, detail.trip.name, { revealed: detail.trip.revealed });
   const deleteTrip = useDeleteTrip(detail.trip.id, detail.trip.name);
@@ -71,6 +80,8 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
 
   return (
     <>
+      {event && <EventCover detail={detail} />}
+
       {canRename(detail.me) && (
         <Section>
           <Row label="Nombre" value={detail.trip.name} onPress={editName} />
@@ -80,14 +91,19 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
         </Section>
       )}
 
-      {!detail.trip.revealed && (
+      {!event && !detail.trip.revealed && (
         <Section>
           <Row label="Sumar amigos" onPress={() => router.push("/add-friends")} />
         </Section>
       )}
 
+      {event && <EventGroupsSection detail={detail} />}
+
       <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : "Con este código se suman al rollo."}>
         <Row label="Código" value={detail.trip.joinCode} disabled={full} />
+        {event && isOrganizer(detail) && (
+          <Row label="Código QR" disabled={full} onPress={() => router.push({ pathname: "/event-qr", params: { tripId: detail.trip.id } })} />
+        )}
         <Row label="Compartir invitación" chevron={false} disabled={full} onPress={() => void share()} />
       </Section>
 

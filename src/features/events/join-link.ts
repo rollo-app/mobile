@@ -1,3 +1,5 @@
+import { SITE_URL } from "@/config";
+
 const SCHEME_PREFIX = /^rollo:\/\/join\/([^/?#]*)\/?(?:[?#].*)?$/i;
 // rollo.juanifraga.com: the old host, kept for consistency with the friend link.
 const HTTPS_LINK = /^https:\/\/(?:rolloproject\.com|rollo\.juanifraga\.com)(?::443)?\/join\/([^/?#]*)\/?(?:[?#].*)?$/i;
@@ -15,3 +17,6 @@ export function joinLinkPath(url: string): string | null {
   const code = parseJoinLinkCode(url);
   return code ? `/join?code=${code}` : null;
 }
+
+/** The public link that opens an event's join screen (the QR and "Compartir invitación" carry it). */
+export const joinLinkUrl = (code: string): string => `${SITE_URL}/join/${code}`;

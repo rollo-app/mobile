@@ -1,4 +1,6 @@
 import type { InfiniteData } from "@tanstack/react-query";
+import { File } from "expo-file-system";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { ApiError, createApiClient, unwrap, type Schemas } from "@/api/client";
 import { API_URL } from "@/config";
 import { authedClient } from "@/features/auth/session";
@@ -118,6 +120,62 @@ export async function deleteMedia(mediaId: string): Promise<void> {
 /** Archives or unarchives a revealed roll for you only (it moves to "Archivados" in your list). */
 export async function setTripArchived(tripId: string, archived: boolean): Promise<void> {
   await unwrap((await authedClient()).PATCH("/trips/{tripId}/members/me", { params: { path: { tripId } }, body: { archived } }));
+}
+
+export type EventGroup = Schemas["EventGroup"];
+
+/** Replaces the groups you are in, in an event (refused after the reveal). */
+export async function setMyGroups(tripId: string, groupIds: string[]): Promise<string[]> {
+  const mine = await unwrap(
+    (await authedClient()).PUT("/trips/{tripId}/members/me/groups", { params: { path: { tripId } }, body: { groupIds } }),
+  );
+  return mine.groupIds;
+}
+
+/** Adds a group to an event (organizers only; the name is unique in the event). */
+export async function createGroup(tripId: string, name: string): Promise<EventGroup> {
+  return unwrap((await authedClient()).POST("/trips/{tripId}/groups", { params: { path: { tripId } }, body: { name: name.trim() } }));
+}
+
+export async function renameGroup(tripId: string, groupId: string, name: string): Promise<EventGroup> {
+  return unwrap(
+    (await authedClient()).PATCH("/trips/{tripId}/groups/{groupId}", { params: { path: { tripId, groupId } }, body: { name: name.trim() } }),
+  );
+}
+
+/** Deletes a group; the server refuses (409) while it has people or photos. */
+export async function deleteGroup(tripId: string, groupId: string): Promise<void> {
+  await unwrap((await authedClient()).DELETE("/trips/{tripId}/groups/{groupId}", { params: { path: { tripId, groupId } } }));
+}
+
+const COVER_WIDTH = 1600;
+/** The server's cap; the upload URL is signed for the JPEG's exact size. */
+const COVER_MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Event cover: resize to 1600 px wide JPEG (this also bakes the EXIF rotation in; the server strips EXIF) → signed URL → PUT →
+ * complete. Returns the cover's path.
+ */
+export async function uploadCover(tripId: string, photo: { uri: string; width: number; height: number }): Promise<string> {
+  const ctx = ImageManipulator.manipulate(photo.uri);
+  if (photo.width > COVER_WIDTH) ctx.resize({ width: COVER_WIDTH });
+  const image = await ctx.renderAsync();
+  const file = new File((await image.saveAsync({ compress: 0.8, format: SaveFormat.JPEG })).uri);
+  const sizeBytes = file.size ?? 0;
+  if (sizeBytes > COVER_MAX_BYTES) throw new ApiError(400, "La foto es muy pesada. Probá con otra.");
+  const api = await authedClient();
+  const { upload } = await unwrap(api.POST("/trips/{tripId}/cover", { params: { path: { tripId } }, body: { sizeBytes } }));
+
+  let status = 0;
+  try {
+    status = (await file.upload(upload, { httpMethod: "PUT", headers: { "Content-Type": "image/jpeg" } })).status;
+  } catch {
+    // No connection: the same message as a rejected upload.
+  }
+  if (status < 200 || status >= 300) throw new ApiError(status, "No se pudo subir la foto. Probá de nuevo.");
+
+  const { coverUrl } = await unwrap(api.POST("/trips/{tripId}/cover/complete", { params: { path: { tripId } } }));
+  return coverUrl;
 }
 
 export type TripMember = TripDetail["members"][number];

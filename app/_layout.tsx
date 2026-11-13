@@ -108,6 +108,10 @@ function RootStack() {
           />
           {/* "Ver todos" in a roll's "En el rollo": the full members list, with search. */}
           <Stack.Screen name="roll-members" options={{ title: "Integrantes" }} />
+          {/* Event board: organizers manage the groups and show the QR; guests change their groups. */}
+          <Stack.Screen name="event-groups" options={{ title: "Grupos" }} />
+          <Stack.Screen name="my-groups" options={{ title: "Sumarme a otro grupo" }} />
+          <Stack.Screen name="event-qr" options={{ title: "Código QR" }} />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
           <Stack.Screen name="notifications" options={{ title: "Notificaciones" }} />
           {/* "¿Te avisamos…?", once, after creating or joining a roll. */}
