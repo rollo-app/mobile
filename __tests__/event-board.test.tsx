@@ -122,14 +122,14 @@ describe("Event board", () => {
     await markPresentationSeen(EVENT);
     await open(detail(organizer, [], { revealed: true }), undefined, "/roll?view=roll");
     expect(await screen.findByText("Grupos")).toBeVisible();
-    expect(screen.getByText("Compartir invitación")).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Código .*Compartir invitación$/ })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
   });
 
   it("shares the join link of an event", async () => {
     const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
     await open(detail(guest, ["g1"]));
-    await fireEvent.press(await screen.findByRole("button", { name: "Compartir invitación" }));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ }));
     expect(share).toHaveBeenCalledWith({ message: expect.stringContaining("https://rolloproject.com/join/ABC123") });
     share.mockRestore();
   });

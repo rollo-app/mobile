@@ -18,5 +18,5 @@ export function joinLinkPath(url: string): string | null {
   return code ? `/join?code=${code}` : null;
 }
 
-/** The public link that opens an event's join screen (the QR and "Compartir invitación" carry it). */
+/** The public link that opens an event's join screen (the QR and the shared invitation carry it). */
 export const joinLinkUrl = (code: string): string => `${SITE_URL}/join/${code}`;

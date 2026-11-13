@@ -21,6 +21,7 @@ import { previewMembers } from "./members-order";
 import { useMemberActions } from "./use-member-actions";
 import { MAX_TRIP_NAME, nextTripName, useRenameTrip } from "./use-rename-trip";
 
+const INVITE_NOTE = "Con este código se suman al rollo. Tocalo para compartir la invitación.";
 const FULL_NOTE = "El rollo está lleno. Para sumar a alguien, primero tiene que salir otra persona.";
 
 /**
@@ -99,12 +100,19 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
 
       {event && <EventGroupsSection detail={detail} />}
 
-      <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : "Con este código se suman al rollo."}>
-        <Row label="Código" value={detail.trip.joinCode} disabled={full} />
+      <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : INVITE_NOTE}>
+        {/* Tapping the code shares the invitation (it used to be its own "Compartir invitación" row). */}
+        <Row
+          label="Código"
+          value={detail.trip.joinCode}
+          chevron={false}
+          disabled={full}
+          accessibilityLabel={`Código ${detail.trip.joinCode}. Compartir invitación`}
+          onPress={() => void share()}
+        />
         {event && isOrganizer(detail) && !detail.trip.revealed && (
           <Row label="Código QR" disabled={full} onPress={() => router.push({ pathname: "/event-qr", params: { tripId: detail.trip.id } })} />
         )}
-        <Row label="Compartir invitación" chevron={false} disabled={full} onPress={() => void share()} />
       </Section>
 
       <FeaturingSection detail={detail} />

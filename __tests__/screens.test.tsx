@@ -261,7 +261,7 @@ describe("Roll board · people and settings", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Compartir invitación" }));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ }));
 
     expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo con el código HUB5FT' });
     share.mockRestore();
@@ -296,7 +296,7 @@ describe("Roll board · people and settings", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await screen.findByRole("button", { name: "Compartir invitación" });
+    await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ });
     expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
   });
 });

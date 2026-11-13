@@ -120,7 +120,7 @@ describe("Roll cap", () => {
   it("dims the invite and does not share while the roll is full", async () => {
     const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
     await openBoard(detail(creator, { maxMembers: 4 }));
-    const row = screen.getByRole("button", { name: "Compartir invitación" });
+    const row = screen.getByRole("button", { name: /^Código .*Compartir invitación$/ });
     expect(row.props.accessibilityState).toMatchObject({ disabled: true });
     fireEvent.press(row);
     expect(share).not.toHaveBeenCalled();
@@ -131,17 +131,18 @@ describe("Roll cap", () => {
   it("still shares the invite while there is room", async () => {
     const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
     await openBoard(detail(creator, { maxMembers: 5 }));
-    const row = screen.getByRole("button", { name: "Compartir invitación" });
+    const row = screen.getByRole("button", { name: /^Código .*Compartir invitación$/ });
     expect(row.props.accessibilityState?.disabled).toBeFalsy();
     fireEvent.press(row);
     expect(share).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Compartir invitación")).toBeNull();
     share.mockRestore();
   });
 
   it("shows no full note while there is room", async () => {
     await openBoard(detail(creator, { maxMembers: 5 }));
     expect(screen.queryByText(FULL)).toBeNull();
-    expect(screen.getByText("Con este código se suman al rollo.")).toBeVisible();
+    expect(screen.getByText("Con este código se suman al rollo. Tocalo para compartir la invitación.")).toBeVisible();
   });
 });
 
