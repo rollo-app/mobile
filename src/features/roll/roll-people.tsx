@@ -101,7 +101,7 @@ export function RollPeople({ detail }: { detail: TripDetail }) {
 
       <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : "Con este código se suman al rollo."}>
         <Row label="Código" value={detail.trip.joinCode} disabled={full} />
-        {event && isOrganizer(detail) && (
+        {event && isOrganizer(detail) && !detail.trip.revealed && (
           <Row label="Código QR" disabled={full} onPress={() => router.push({ pathname: "/event-qr", params: { tripId: detail.trip.id } })} />
         )}
         <Row label="Compartir invitación" chevron={false} disabled={full} onPress={() => void share()} />

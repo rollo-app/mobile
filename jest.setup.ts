@@ -503,7 +503,7 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
 // The QR (Skia) is a plain View in tests.
 jest.mock("@/features/events/qr-canvas", () => {
   const { View } = require("react-native");
-  return { QrCanvas: View, useQrCanvasRef: () => ({ current: null }), snapshotPng: jest.fn(async () => null) };
+  return { QrCanvas: View, qrPng: jest.fn(() => null) };
 });
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));

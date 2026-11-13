@@ -5,21 +5,21 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Screen } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import { joinLinkUrl } from "./join-link";
-import { QrCanvas, snapshotPng, useQrCanvasRef } from "./qr-canvas";
+import { QrCanvas, qrPng } from "./qr-canvas";
 
 /** "Código QR": the event's name, its join link as a QR and the code under it, to show or share. */
 export function QrScreen({ tripId }: { tripId: string }) {
   const { detail, error, refetch, isRefetching } = useTripDetail(tripId);
   const { width } = useWindowDimensions();
-  const canvasRef = useQrCanvasRef();
   const [failure, setFailure] = useState<string | null>(null);
   const size = Math.min(width - spacing.lg * 4, 320);
 
   const share = async () => {
     setFailure(null);
     try {
-      const png = await snapshotPng(canvasRef);
-      if (!png) throw new Error("no snapshot");
+      if (!detail) return;
+      const png = qrPng(joinLinkUrl(detail.trip.joinCode));
+      if (!png) throw new Error("no image");
       const file = new File(Paths.cache, "rollo-qr.png");
       file.create({ overwrite: true });
       await file.write(png);
@@ -44,7 +44,7 @@ export function QrScreen({ tripId }: { tripId: string }) {
             <Text style={[type.title, styles.name]} numberOfLines={2}>
               {detail.trip.name}
             </Text>
-            <QrCanvas text={joinLinkUrl(detail.trip.joinCode)} size={size} canvasRef={canvasRef} />
+            <QrCanvas text={joinLinkUrl(detail.trip.joinCode)} size={size} />
             <Text selectable style={[type.largeTitle, styles.code]}>
               {detail.trip.joinCode}
             </Text>

@@ -4,6 +4,8 @@ import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-li
 import "@/test/reanimated";
 import * as friendActions from "@/features/friends/actions";
 import * as tripActions from "@/features/trips/actions";
+import { queryClient } from "@/api/query-client";
+import { feedKey } from "@/features/trips/use-feed";
 import { ApiError } from "@/api/client";
 import { setActiveTripId } from "@/storage/active-trip";
 import { markPresentationSeen } from "@/storage/presentation";
@@ -116,6 +118,14 @@ describe("Event board", () => {
     expect(screen.queryByRole("button", { name: "Cambiar portada" })).toBeNull();
   });
 
+  it("hides Código QR once the event is revealed", async () => {
+    await markPresentationSeen(EVENT);
+    await open(detail(organizer, [], { revealed: true }), undefined, "/roll?view=roll");
+    expect(await screen.findByText("Grupos")).toBeVisible();
+    expect(screen.getByText("Compartir invitación")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
+  });
+
   it("shares the join link of an event", async () => {
     const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
     await open(detail(guest, ["g1"]));
@@ -189,10 +199,13 @@ describe("Groups (organizer)", () => {
 describe("Sumarme a otro grupo (guest)", () => {
   it("saves the chosen groups", async () => {
     trips.setMyGroups.mockResolvedValue(["g1", "g2"]);
+    const invalidate = jest.spyOn(queryClient, "invalidateQueries");
     await open(detail(guest, ["g2"]), "Sumarme a otro grupo");
     await fireEvent.press(await screen.findByRole("button", { name: "Familia" }));
     await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(trips.setMyGroups).toHaveBeenCalledWith(EVENT, ["g2", "g1"]));
+    // Groups decide which photos you see: the feed (both orders) is refetched.
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: feedKey(EVENT) }));
   });
 
   it("shows the server message when the event was revealed meanwhile", async () => {

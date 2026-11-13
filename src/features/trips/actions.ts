@@ -161,21 +161,30 @@ export async function uploadCover(tripId: string, photo: { uri: string; width: n
   if (photo.width > COVER_WIDTH) ctx.resize({ width: COVER_WIDTH });
   const image = await ctx.renderAsync();
   const file = new File((await image.saveAsync({ compress: 0.8, format: SaveFormat.JPEG })).uri);
-  const sizeBytes = file.size ?? 0;
-  if (sizeBytes > COVER_MAX_BYTES) throw new ApiError(400, "La foto es muy pesada. Probá con otra.");
-  const api = await authedClient();
-  const { upload } = await unwrap(api.POST("/trips/{tripId}/cover", { params: { path: { tripId } }, body: { sizeBytes } }));
-
-  let status = 0;
   try {
-    status = (await file.upload(upload, { httpMethod: "PUT", headers: { "Content-Type": "image/jpeg" } })).status;
-  } catch {
-    // No connection: the same message as a rejected upload.
-  }
-  if (status < 200 || status >= 300) throw new ApiError(status, "No se pudo subir la foto. Probá de nuevo.");
+    const sizeBytes = file.size;
+    if (!sizeBytes) throw new ApiError(400, "No se pudo leer la foto. Probá con otra.");
+    if (sizeBytes > COVER_MAX_BYTES) throw new ApiError(400, "La foto es muy pesada. Probá con otra.");
+    const api = await authedClient();
+    const { upload } = await unwrap(api.POST("/trips/{tripId}/cover", { params: { path: { tripId } }, body: { sizeBytes } }));
 
-  const { coverUrl } = await unwrap(api.POST("/trips/{tripId}/cover/complete", { params: { path: { tripId } } }));
-  return coverUrl;
+    let status = 0;
+    try {
+      status = (await file.upload(upload, { httpMethod: "PUT", headers: { "Content-Type": "image/jpeg" } })).status;
+    } catch {
+      // No connection: the same message as a rejected upload.
+    }
+    if (status < 200 || status >= 300) throw new ApiError(status, "No se pudo subir la foto. Probá de nuevo.");
+
+    const { coverUrl } = await unwrap(api.POST("/trips/{tripId}/cover/complete", { params: { path: { tripId } } }));
+    return coverUrl;
+  } finally {
+    try {
+      file.delete();
+    } catch {
+      // Best effort: it's a temp file in the cache.
+    }
+  }
 }
 
 export type TripMember = TripDetail["members"][number];
