@@ -120,23 +120,12 @@ async function toPreview() {
 }
 
 describe("capture in an event", () => {
-  it("an event never asks for location", async () => {
+  it("an event asks for location like a trip", async () => {
     open(detail({ type: "event", role: "member", groupIds: ["g1"] }));
     await renderScreen();
     await screen.findByLabelText("Sacar foto");
 
-    expect(startFix).not.toHaveBeenCalled();
-  });
-
-  it("an event without cached detail still never asks for location", async () => {
-    mockDetail = null;
-    mockTripType = "event";
-    await renderScreen();
-    await fireEvent.press(await screen.findByLabelText("Sacar foto"));
-    await screen.findByLabelText("Mandar al rollo");
-
-    expect(startFix).not.toHaveBeenCalled();
-    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(startFix).toHaveBeenCalled();
   });
 
   it("a guest in one group sees no chips and sends to it", async () => {
