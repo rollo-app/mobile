@@ -443,7 +443,7 @@ export interface paths {
         };
         /**
          * Preview an event by its invite code
-         * @description No token. The name, cover and groups the guest picks from before joining (`POST /trips/join`), and whether the event was already revealed. 404 'Código inválido' if the code does not exist or belongs to a regular trip. Limited per IP (429).
+         * @description No token. The name, cover and groups the guest picks from before joining (`POST /trips/join`), and whether the event was already revealed. 404 'Código inválido' if the code does not exist or belongs to a regular trip. Limited per IP (429, 300/min: a venue shares one IP; more than 20 misses (404) a minute block the IP for 60 s, valid codes included). CORS: open to the website (`https://rolloproject.com`, `https://www.rolloproject.com`), GET only.
          */
         get: {
             parameters: {
@@ -2534,7 +2534,7 @@ export interface paths {
         put?: never;
         /**
          * Create a trip
-         * @description Whoever creates it becomes the admin. The profile must have a name and a username. Returns the invite code. 409 at the limits on rollos you created (at most 2 unrevealed at once and 4 in the last 30 days; rollos you joined do not count; users with `users.unlimited_rollos` are exempt), with the message to show.
+         * @description Whoever creates it becomes the admin. The profile must have a name and a username. Returns the invite code. 409 at the limits on rollos you created (at most 2 unrevealed at once and 4 in the last 30 days; rollos you joined do not count; users with `users.unlimited_rollos` are exempt), with the message to show. Events (`type: "event"`) are enabled per account (`users.can_create_events`, see `canCreateEvents` in GET /me): 403 without it, checked first; and 409 if you already created an event that is not revealed yet, for everyone including `unlimited_rollos` users.
          */
         post: {
             parameters: {
@@ -2569,6 +2569,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2834,7 +2843,7 @@ export interface paths {
         head?: never;
         /**
          * Edit the trip (admin)
-         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything.
+         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything. An event stays `photoLimitMode: total` with `momentMode: off` (409 otherwise).
          */
         patch: {
             parameters: {
@@ -3417,7 +3426,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a group of an event (admin)
-         * @description 409 ('Este grupo tiene gente o fotos.') while anyone is in the group or any photo was sent to it. 404 if the group is not in this event. 409 for a regular trip and once the event is revealed ('Este evento ya se reveló.').
+         * @description 409 ('Este grupo tiene gente o fotos.') while anyone is in the group or any photo was sent to it; 409 ('Un evento necesita al menos un grupo.') for the last group. 404 if the group is not in this event. 409 for a regular trip and once the event is revealed ('Este evento ya se reveló.').
          */
         delete: {
             parameters: {
@@ -3936,7 +3945,7 @@ export interface paths {
         };
         /**
          * Take the admin role away (creator)
-         * @description Only the creator. The creator's own admin role can't be removed (400).
+         * @description Only the creator. The creator's own admin role can't be removed (400). In an event, 409 if the organizer is in no group (they would become a guest without one).
          */
         delete: {
             parameters: {
@@ -3988,6 +3997,15 @@ export interface paths {
                 };
                 /** @description Not found */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5720,6 +5738,8 @@ export interface components {
              */
             badge: "founder" | "first_edition" | null;
             profileVisibility: components["schemas"]["ProfileVisibility"];
+            /** @description Whether this account can create events (POST /trips with type "event"); enabled by hand for now. Without it that call is a 403 */
+            canCreateEvents: boolean;
         };
         /**
          * @description Who can see your bio and featured photos: your friends only, or anyone signed in. Name, username and avatar are always visible
@@ -6242,7 +6262,7 @@ export interface components {
             momentWindowStart: number;
             /** @description Moment window end, minutes from midnight in the rollo's time zone */
             momentWindowEnd: number;
-            /** @description Maximum number of active participants (15 for free rollos); joining or adding past it is refused */
+            /** @description Maximum number of active participants (15 for a new rollo, 200 for a new event); joining or adding past it is refused */
             maxMembers: number;
             /** @description Retention of the full-quality originals; the 2048px display version of every photo is kept forever */
             originals: {

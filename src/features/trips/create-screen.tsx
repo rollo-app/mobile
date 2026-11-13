@@ -4,6 +4,7 @@ import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useMe } from "@/features/auth/use-me";
 import { EventHero } from "@/features/events/event-hero";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
 import { PRIVATE_ROLLO_NOTE } from "@/features/featured/featuring-section";
@@ -60,7 +61,9 @@ export function CreateScreen() {
   const nextGroupId = useRef(1);
   const [cover, setCover] = useState<CoverPhoto | null>(null);
   const create = useCreateTrip();
-  const isEvent = kind === "event";
+  // Events are enabled per account. Not blocking: until /me says so (or if it fails) this is the regular rollo form.
+  const canPickEvent = useMe().me?.canCreateEvents === true;
+  const isEvent = canPickEvent && kind === "event";
   const error = errorMessage(create.error, isEvent ? "No se pudo crear el evento" : "No se pudo crear el rollo");
 
   // With "Al terminar" the reveal follows the end on its own.
@@ -202,12 +205,14 @@ export function CreateScreen() {
       <Host style={styles.form}>
         <Form>
           {/* The server's message goes under the name, inside the form: above it, the transparent header covers it. */}
-          <Section>
-            <Picker selection={kind} onSelectionChange={chooseKind} modifiers={[pickerStyle("segmented")]}>
-              <Text modifiers={[tag("trip")]}>Rollo</Text>
-              <Text modifiers={[tag("event")]}>Evento</Text>
-            </Picker>
-          </Section>
+          {canPickEvent && (
+            <Section>
+              <Picker selection={kind} onSelectionChange={chooseKind} modifiers={[pickerStyle("segmented")]}>
+                <Text modifiers={[tag("trip")]}>Rollo</Text>
+                <Text modifiers={[tag("event")]}>Evento</Text>
+              </Picker>
+            </Section>
+          )}
 
           <Section footer={error ? <Text modifiers={[foregroundStyle("red")]}>{error}</Text> : undefined}>
             <TextField placeholder={isEvent ? "Nombre del evento" : "Nombre del rollo"} maxLength={60} onTextChange={setName} />

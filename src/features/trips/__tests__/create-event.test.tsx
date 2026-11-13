@@ -5,6 +5,8 @@ import { CreateScreen } from "../create-screen";
 import { createTrip, uploadCover } from "../actions";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
+import { ApiError } from "@/api/client";
+import { useMe } from "@/features/auth/use-me";
 
 jest.mock("expo-router", () => ({
   ...jest.requireActual("expo-router"),
@@ -21,6 +23,7 @@ jest.mock("@/features/notifications/offer-push", () => ({
 jest.mock("@/features/events/use-upload-cover", () => ({
   pickCoverPhoto: jest.fn(),
 }));
+jest.mock("@/features/auth/use-me", () => ({ useMe: jest.fn() }));
 jest.mock("@/features/friends/actions", () => ({
   fetchFriends: jest.fn(async () => [{ id: "f1" }]),
 }));
@@ -28,6 +31,7 @@ jest.mock("@/features/friends/actions", () => ({
 const createTripMock = jest.mocked(createTrip);
 const uploadCoverMock = jest.mocked(uploadCover);
 const pickCoverMock = jest.mocked(pickCoverPhoto);
+const useMeMock = jest.mocked(useMe);
 const offerMock = jest.mocked(offerPushAfterJoining);
 
 async function renderScreen() {
@@ -47,8 +51,19 @@ async function fillEvent() {
   await fireEvent.changeText(screen.getByPlaceholderText("Nombre del grupo"), " Novios ");
 }
 
+function mockMe(canCreateEvents: boolean | undefined) {
+  useMeMock.mockReturnValue({
+    session: "in",
+    token: "tok",
+    me: canCreateEvents === undefined ? undefined : { canCreateEvents },
+    failed: false,
+    refetch: jest.fn(),
+  } as never);
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
+  mockMe(true);
   createTripMock.mockResolvedValue({ id: "t1" } as never);
 });
 
@@ -150,5 +165,46 @@ describe("CreateScreen as an event", () => {
     expect(input).not.toHaveProperty("type");
     expect(input).not.toHaveProperty("groups");
     await waitFor(() => expect(offerMock).toHaveBeenCalledWith("/add-friends"));
+  });
+
+  it("without canCreateEvents there is no Evento picker and creating sends a regular rollo", async () => {
+    mockMe(false);
+    await renderScreen();
+    expect(screen.queryByRole("button", { name: "Evento" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Rollo" })).toBeNull();
+
+    await fireEvent.changeText(screen.getByPlaceholderText("Nombre del rollo"), "Sur");
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    await waitFor(() => expect(createTripMock).toHaveBeenCalledTimes(1));
+    const input = createTripMock.mock.calls[0]![0];
+    expect(input).not.toHaveProperty("type");
+    expect(input).not.toHaveProperty("groups");
+  });
+
+  it("while /me has not loaded the form is the regular one, without the picker", async () => {
+    mockMe(undefined);
+    await renderScreen();
+    expect(screen.queryByRole("button", { name: "Evento" })).toBeNull();
+    expect(screen.getByPlaceholderText("Nombre del rollo")).toBeTruthy();
+  });
+
+  it("with canCreateEvents the Evento picker shows", async () => {
+    mockMe(true);
+    await renderScreen();
+    expect(screen.getByRole("button", { name: "Evento" })).toBeTruthy();
+  });
+
+  it("a 409 for an unrevealed event shows inline and keeps what was typed", async () => {
+    const message = "Ya tenés un evento sin revelar. Vas a poder crear otro cuando se revele.";
+    createTripMock.mockRejectedValue(new ApiError(409, message));
+    await renderScreen();
+    await fillEvent();
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(router.dismissTo).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText("Nombre del evento")).toHaveDisplayValue("  Casamiento ");
+    expect(screen.getByPlaceholderText("Nombre del grupo")).toHaveDisplayValue(" Novios ");
   });
 });
