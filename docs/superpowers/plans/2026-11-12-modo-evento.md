@@ -278,10 +278,10 @@ Flujo:
 - [ ] **Step 2–4:** FAIL → implementar → PASS (además de los tests de `join` que ya existen).
 - [ ] **Step 5: Commit** `"Eventos: unirse por link o código eligiendo grupos"`.
 
-### Task M3: Captura sin ubicación y con grupos
+### Task M3: Captura con grupos
 
 **Files:**
-- Modify: `src/features/capture/capture-screen.tsx` (no llamar a `startFix` en eventos), `capture-preview.tsx` (prop `groups?: {id,name}[]`, `selectedGroupIds`, `onGroupsChange`), `use-send-shot.ts` (`SendShotInput.groupIds?: string[]`), `queue.ts` (columna `group_ids TEXT` con JSON en `ADDED_COLUMNS`, `QueuedMedia.groupIds: string[] | null`), `uploader.ts` (manda `groupIds`)
+- Modify: `src/features/capture/capture-screen.tsx` `capture-preview.tsx` (prop `groups?: {id,name}[]`, `selectedGroupIds`, `onGroupsChange`), `use-send-shot.ts` (`SendShotInput.groupIds?: string[]`), `queue.ts` (columna `group_ids TEXT` con JSON en `ADDED_COLUMNS`, `QueuedMedia.groupIds: string[] | null`), `uploader.ts` (manda `groupIds`)
 - Create: `src/storage/last-groups.ts` (SecureStore `rollo.lastGroups.<tripId>`, JSON de ids), `src/features/events/group-chips.tsx`
 - Test: `src/features/capture/__tests__/queue.test.ts`, `__tests__/capture.test.tsx`
 
@@ -298,7 +298,7 @@ Reglas de la pantalla del caption:
 - [ ] **Step 1: Write the failing tests:**
   - Cola: `persists group ids and reads them back`, y `an old row without the column reads groupIds as null` (migración aditiva sobre una base creada sin la columna).
   - Captura:
-    - `an event never asks for location`: `startFix` no se llama.
+    - `an event asks for location like a trip` (cambio del 12/11: en eventos se guarda la ubicación).
     - `a guest in one group sees no chips and sends to it`.
     - `a guest in two groups starts with the last used and can add the other`: `enqueue` se llama con `groupIds` igual a `["g1","g2"]`.
     - `an organizer sees Todos los grupos`.

@@ -71,7 +71,7 @@ El casamiento del 12/12 es la prueba real. Si sale bien, es la base de los event
 - Los organizadores ven todas.
 - Después del revelado, los organizadores tienen **las dos vistas**: todo mezclado en orden cronológico y separado por grupo.
 
-**Sin mapa ni ubicación.** En un evento no se muestra el mapa ni se pide la ubicación.
+**Sin mapa, con ubicación.** En un evento no se muestra el mapa, pero la cámara pide y guarda la ubicación como en cualquier rollo (cambio de Juani del 12/11: puede servir más adelante).
 
 **Cupos.**
 - **Fotos:** cupo **total por persona en todo el evento** ("Todo el rollo", ya existe), que elige el organizador.
