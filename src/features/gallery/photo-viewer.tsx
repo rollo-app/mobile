@@ -13,6 +13,7 @@ import { SelfieInset } from "@/features/media/selfie-inset";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { useReport } from "@/features/moderation/use-report";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { isEvent } from "@/features/events/event";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { OverlayCornerSymbol, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
 import { spacing, type } from "@/ui/theme";
@@ -183,6 +184,7 @@ export function PhotoViewer({
               timeZone={detail?.trip.timezone ?? "America/Argentina/Buenos_Aires"}
               bottomInset={insets.bottom}
               readOnly={readOnly}
+              hasMap={!(detail && isEvent(detail.trip))}
               liking={likes.pending.has(photo.id)}
               featuring={featured.pending.has(photo.id)}
               saveState={saveState}

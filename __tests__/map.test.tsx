@@ -302,6 +302,38 @@ describe("Map", () => {
     expect(screen.getByText("Filtros")).toBeVisible();
   });
 
+  describe("event", () => {
+    const asEvent = (over: Partial<actions.TripDetail["trip"]> = {}) => {
+      mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, type: "event", ...over } });
+    };
+    beforeEach(async () => {
+      await signInAs({ trips: [tripSummary(SUR, "Casamiento", { role: "admin", type: "event" })] });
+    });
+
+    it("the event feed tab never mounts the map", async () => {
+      mapMounts.current = 0;
+      asEvent();
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      expect(await screen.findByTestId("feed-list")).toBeVisible();
+      expect(mapMounts.current).toBe(0);
+      expect(screen.queryByLabelText("mapa")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Feed" })).toBeNull();
+      expect(screen.queryByText("Filtros")).toBeNull();
+    });
+
+    it("tapping a feed row does not go to the map", async () => {
+      asEvent();
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await screen.findByTestId("feed-list");
+      expect(screen.queryByRole("button", { name: /^Fede, / })).toBeNull();
+      expect(screen).toHaveSearchParams({});
+    });
+  });
+
   it("once the roll is revealed view=feed still shows the map", async () => {
     mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, revealed: true, endsAt: Date.now() - DAY } });
     await renderRouter(routes, { initialUrl: "/map?view=feed" });

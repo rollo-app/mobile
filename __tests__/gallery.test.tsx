@@ -658,6 +658,13 @@ describe("Photo viewer", () => {
     expect(screen.queryByRole("button", { name: "Ver en el mapa" })).toBeNull();
   });
 
+  it("hides Ver en el mapa in an event", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, type: "event" } });
+    await openViewer("b");
+    await screen.findByRole("button", { name: "Guardar en Fotos" });
+    expect(screen.queryByRole("button", { name: "Ver en el mapa" })).toBeNull();
+  });
+
   it("saves the original and turns into Guardada", async () => {
     await openViewer("b");
     await fireEvent.press(await screen.findByRole("button", { name: "Guardar en Fotos" }));

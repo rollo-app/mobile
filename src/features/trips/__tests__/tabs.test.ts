@@ -41,3 +41,31 @@ describe("tabsFor without a roll", () => {
     expect(tabsFor(null, null, true)).toEqual(tabsFor(null, null));
   });
 });
+
+describe("tabsFor map tab", () => {
+  const MAPA = { sf: { default: "map", selected: "map.fill" }, md: "map", label: "Mapa", hidden: false };
+
+  it("trips keep Mapa", () => {
+    expect(tabsFor("active", { photos: 7 }).map).toEqual(MAPA);
+    expect(tabsFor("revealed", null, true, false).map).toEqual(MAPA);
+    expect(tabsFor(null, null, false).map).toEqual(MAPA);
+  });
+
+  it("event tabs show Feed before reveal and hide it after", () => {
+    for (const phase of ["upcoming", "active", "ended", null] as const) {
+      expect(tabsFor(phase, { photos: 3 }, true, true).map).toEqual({
+        sf: { default: "list.bullet.rectangle", selected: "list.bullet.rectangle.fill" },
+        md: "list",
+        label: "Feed",
+        hidden: false,
+      });
+    }
+    expect(tabsFor("revealed", null, true, true).map.hidden).toBe(true);
+  });
+
+  it("an event leaves the other tabs as in a trip", () => {
+    const { map: _a, ...event } = tabsFor("active", { photos: 7 }, true, true);
+    const { map: _b, ...trip } = tabsFor("active", { photos: 7 });
+    expect(event).toEqual(trip);
+  });
+});

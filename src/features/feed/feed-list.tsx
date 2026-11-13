@@ -27,8 +27,8 @@ const Separator = memo(function Separator() {
 const keyExtractor = (item: MapItem) => item.id;
 
 type FeedListProps = {
-  /** Where tapping a row goes: the map, focused on that pin. */
-  onOpenOnMap: (item: MapItem) => void;
+  /** Where tapping a row goes: the map, focused on that pin. Omitted in an event, which has no map. */
+  onOpenOnMap?: (item: MapItem) => void;
   /** Extra padding above the list (for content drawn over it). */
   contentInsetTop?: number;
 };

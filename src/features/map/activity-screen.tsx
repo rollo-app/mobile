@@ -5,6 +5,7 @@ import { StyleSheet, useColorScheme } from "react-native";
 import { FeedList } from "@/features/feed/feed-list";
 import type { MapItem } from "@/features/map/features";
 import { CONTROLS_ROW_HEIGHT, RollMap } from "@/features/map/roll-map";
+import { isEvent } from "@/features/events/event";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { spacing, tintHex } from "@/ui/theme";
@@ -12,7 +13,7 @@ import { spacing, tintHex } from "@/ui/theme";
 const VIEWS = ["Mapa", "Feed"];
 
 /**
- * The Mapa tab: the roll's map and, before the reveal, its Feed, switched with "Mapa | Feed".
+ * The Mapa tab (in an event, just the Feed with no map): the roll's map and, before the reveal, its Feed, switched with "Mapa | Feed".
  * The view lives in the `view` route param ("map" by default, or "feed"). The map is always
  * mounted: the Feed is drawn over it, so going back keeps the camera and the loaded style.
  */
@@ -21,6 +22,7 @@ export function ActivityScreen() {
   const { view, focus } = useLocalSearchParams<{ view?: string; focus?: string }>();
   const { trip } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
+  const eventTrip = trip ? isEvent(trip) : false;
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
 
   // After the reveal there is no Feed: the photos are in the gallery and the view is always Mapa.
@@ -38,6 +40,9 @@ export function ActivityScreen() {
       onValueChange={(v) => router.setParams({ view: v === "Feed" ? "feed" : "map" })}
     />
   );
+
+  // An event has no map: its tab is only the Feed (and the tab is hidden once it is revealed).
+  if (eventTrip) return detail?.trip.revealed ? null : <FeedList />;
 
   return (
     <RollMap

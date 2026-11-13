@@ -7,6 +7,8 @@ type Sf = NonNullable<Extract<IconProps, { sf?: unknown }>["sf"]>;
 type Md = Extract<Extract<IconProps, { md: unknown }>["md"], string>;
 
 export type TabsConfig = {
+  /** The tab that is Mapa in a trip and Feed (no map) in an event; hidden once an event is revealed. */
+  map: { sf: Sf; md: Md; label: string; hidden: boolean };
   roll: { sf: Sf; md: Md; label: string };
   camera: { sf: Sf; md: Md; label: string; target: "/capture" | "/presentation" | "/roll"; badge: string | null };
 };
@@ -15,7 +17,22 @@ export type TabsConfig = {
  * What the tab bar looks like for each phase. NativeTabs can't add or remove tabs on the fly, so
  * the tabs stay and the roll and camera ones change icon, label and behavior after the reveal.
  */
-export function tabsFor(phase: RollPhase | null, left: { photos: number } | null, hasTrip = true): TabsConfig {
+export function tabsFor(phase: RollPhase | null, left: { photos: number } | null, hasTrip = true, isEvent = false): TabsConfig {
+  return { map: mapTab(phase, hasTrip && isEvent), ...baseTabs(phase, left, hasTrip) };
+}
+
+function mapTab(phase: RollPhase | null, isEvent: boolean): TabsConfig["map"] {
+  if (!isEvent) return { sf: { default: "map", selected: "map.fill" }, md: "map", label: "Mapa", hidden: false };
+  // After the reveal the photos are in the gallery and an event has no map to show.
+  return {
+    sf: { default: "list.bullet.rectangle", selected: "list.bullet.rectangle.fill" },
+    md: "list",
+    label: "Feed",
+    hidden: phase === "revealed",
+  };
+}
+
+function baseTabs(phase: RollPhase | null, left: { photos: number } | null, hasTrip: boolean): Omit<TabsConfig, "map"> {
   if (!hasTrip) {
     return {
       roll: { sf: { default: "film", selected: "film.fill" }, md: "movie", label: "Rollo" },
