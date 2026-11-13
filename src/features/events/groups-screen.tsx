@@ -1,12 +1,11 @@
 import { SymbolView } from "expo-symbols";
 import { Alert, Pressable } from "react-native";
 import { errorMessage } from "@/api/client";
+import { MAX_GROUP_NAME } from "@/features/trips/create-form";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Row, Screen, Section } from "@/ui/components";
 import { colors } from "@/ui/theme";
 import { useGroupMutations } from "./use-group-mutations";
-
-export const MAX_GROUP_NAME = 40;
 
 /** "Grupos" for organizers: add, rename (tap a group) and delete the groups of the event. Server errors (409) show inline. */
 export function GroupsScreen({ tripId }: { tripId: string }) {

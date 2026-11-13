@@ -23,10 +23,10 @@ export function cleanGroups(groups: string[]): string[] {
   return groups.map((g) => g.trim()).filter((g) => g.length > 0);
 }
 
-/** An event needs a name and at least one named group; the server rejects repeated names (we compare ignoring case). */
+/** An event needs a name and at least one named group; the server rejects repeated names; the client is deliberately stricter and compares case-insensitively. */
 export function canCreateEvent(name: string, groups: string[]): boolean {
   const clean = cleanGroups(groups);
-  const unique = new Set(clean.map((g) => g.toLocaleLowerCase()));
+  const unique = new Set(clean.map((g) => g.toLowerCase()));
   return canCreate(name) && clean.length >= 1 && clean.length <= MAX_EVENT_GROUPS && unique.size === clean.length;
 }
 
