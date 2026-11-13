@@ -1,4 +1,4 @@
-import { Children, Fragment, type ReactNode } from "react";
+import { Children, Fragment, isValidElement, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -132,7 +132,7 @@ export function Section({
   const rows = Children.toArray(children);
   return (
     <View style={styles.section}>
-      {title && (
+      {!!title && (
         <View style={styles.sectionTitleRow}>
           <Text style={[type.headline, styles.sectionTitle]}>{title}</Text>
           {titleAccessory}
@@ -140,13 +140,14 @@ export function Section({
       )}
       <View style={styles.group}>
         {rows.map((row, i) => (
-          <Fragment key={i}>
+          // Children.toArray prefixes each child's own key, so filtering keeps row instances with their members.
+          <Fragment key={isValidElement(row) ? row.key : i}>
             {i > 0 && <View style={styles.separator} />}
             {row}
           </Fragment>
         ))}
       </View>
-      {footer && <Footnote>{footer}</Footnote>}
+      {!!footer && <Footnote>{footer}</Footnote>}
     </View>
   );
 }
