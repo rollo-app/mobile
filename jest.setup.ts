@@ -271,6 +271,8 @@ jest.mock("@expo/ui/swift-ui", () => {
     Section: ({ title, header, footer, children }: any) =>
       h(View, null, title && h(RNText, null, title), header, children, footer),
     HStack: Wrap,
+    Group: Wrap,
+    RNHostView: ({ children }: any) => children,
     Spacer: () => null,
     Image: () => null,
     Button: ({ onPress, modifiers, label, children }: any) =>
@@ -333,6 +335,8 @@ jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   accessibilityLabel: (accessibilityLabel: string) => ({ accessibilityLabel }),
   buttonStyle: (style: string) => ({ buttonStyle: style }),
   font: (params: unknown) => ({ font: params }),
+  listRowInsets: (params: unknown) => ({ listRowInsets: params }),
+  listRowBackground: (color: unknown) => ({ listRowBackground: color }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).

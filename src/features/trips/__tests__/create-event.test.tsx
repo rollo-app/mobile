@@ -112,6 +112,20 @@ describe("CreateScreen as an event", () => {
     expect(offerMock).toHaveBeenCalledWith();
   });
 
+  it("shows the chosen cover with the event's name, and removing it hides it", async () => {
+    pickCoverMock.mockResolvedValue({ uri: "file:///cover.jpg", width: 1600, height: 1600 });
+    await renderScreen();
+    await fillEvent();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Elegir portada" }));
+
+    expect(await screen.findByTestId("event-hero")).toBeVisible();
+    expect(screen.getByRole("header", { name: "Casamiento" })).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Quitar portada" }));
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+  });
+
   it("uploads the chosen cover after creating, and a failed upload does not block", async () => {
     const photo = { uri: "file:///cover.jpg", width: 4000, height: 3000 };
     pickCoverMock.mockResolvedValue(photo);

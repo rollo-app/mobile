@@ -1,9 +1,10 @@
-import { Button, Form, Host, Picker, Section, SwipeActions, Text, TextField, Toggle } from "@expo/ui/swift-ui";
-import { accessibilityLabel, foregroundStyle, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
+import { Button, Form, Group, Host, Picker, RNHostView, Section, SwipeActions, Text, TextField, Toggle } from "@expo/ui/swift-ui";
+import { accessibilityLabel, foregroundStyle, listRowBackground, listRowInsets, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { EventHero } from "@/features/events/event-hero";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
 import { PRIVATE_ROLLO_NOTE } from "@/features/featured/featuring-section";
 import { fetchFriends } from "@/features/friends/actions";
@@ -232,6 +233,14 @@ export function CreateScreen() {
 
           {isEvent && (
             <Section header={<Text>Portada</Text>} footer={<Text>Opcional. La podés cambiar después desde el tablero.</Text>}>
+              {cover && (
+                // The same hero the board and the join screen show, edge to edge in its row: what guests will see.
+                <Group modifiers={[listRowInsets({ top: 0, leading: 0, bottom: 0, trailing: 0 }), listRowBackground("transparent")]}>
+                  <RNHostView matchContents={{ vertical: true }}>
+                    <EventHero name={name.trim() || "Nombre del evento"} coverUrl={cover.uri} />
+                  </RNHostView>
+                </Group>
+              )}
               <Button label={cover ? "Cambiar portada" : "Elegir portada"} onPress={() => void chooseCover()} />
               {cover && <Button role="destructive" label="Quitar portada" onPress={() => setCover(null)} />}
             </Section>
