@@ -514,7 +514,7 @@ describe("Gallery: loading page by page", () => {
     mocked.fetchFeedPage.mockImplementation(async (_trip, { cursor }) => (cursor ? (second ? second() : page(["c", "d"], null)) : page(["a", "b"], "c1")));
   beforeEach(() => mocked.fetchFeedPage.mockClear());
   const cells = () => screen.queryAllByRole("button", { name: /^(Foto|Video) de / });
-  // The host does not expose the list props: walk up to the SectionList.
+  // The host does not expose the list props: walk up to the list.
   const endReached = () => {
     let node: { props: Record<string, any>; parent: any } | null = screen.getByTestId("gallery-list");
     while (node && !node.props.onEndReached) node = node.parent;
@@ -524,11 +524,12 @@ describe("Gallery: loading page by page", () => {
   it("shows only the first page and asks for the next one when the end is reached", async () => {
     serve();
     await open();
-    await waitFor(() => expect(cells()).toHaveLength(2));
-    expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(1);
+    // FlashList reports the end on its own when the content does not fill the (mocked) viewport, so the first
+    // page may already pull the second: either way the first request has no cursor and the next one carries it.
     await endReached();
     await waitFor(() => expect(cells()).toHaveLength(4));
     expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(2);
+    expect(mocked.fetchFeedPage).toHaveBeenNthCalledWith(1, SUR, { cursor: undefined, limit: 30 });
     expect(mocked.fetchFeedPage).toHaveBeenLastCalledWith(SUR, { cursor: "c1", limit: 30 });
   });
 

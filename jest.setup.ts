@@ -1,4 +1,5 @@
 import "react-native-gesture-handler/jestSetup";
+import "@shopify/flash-list/jestSetup";
 
 // In-memory SecureStore: tests don't touch the real keychain.
 jest.mock("expo-secure-store", () => {
