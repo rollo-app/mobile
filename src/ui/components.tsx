@@ -1,4 +1,4 @@
-import { Children, Fragment, type ReactNode } from "react";
+import { Children, Fragment, isValidElement, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -90,10 +90,10 @@ export function Button({
   );
 }
 
-export function Field({ label, prefix, style, ...props }: { label: string; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
+export function Field({ label, hideLabel, prefix, style, ...props }: { label: string; /** Keep `label` for accessibility only (the placeholder says it on screen). */ hideLabel?: boolean; /** Fixed text before the input, like the "@" of a handle. */ prefix?: string } & TextInputProps) {
   return (
     <View style={styles.field}>
-      <Text style={[type.footnote, styles.footnote]}>{label}</Text>
+      {!hideLabel && <Text style={[type.footnote, styles.footnote]}>{label}</Text>}
       {prefix ? (
         <View style={[styles.input, styles.prefixed]}>
           <Text style={[type.body, { color: colors.secondaryLabel }]}>{prefix}</Text>
@@ -132,7 +132,7 @@ export function Section({
   const rows = Children.toArray(children);
   return (
     <View style={styles.section}>
-      {title && (
+      {!!title && (
         <View style={styles.sectionTitleRow}>
           <Text style={[type.headline, styles.sectionTitle]}>{title}</Text>
           {titleAccessory}
@@ -140,13 +140,14 @@ export function Section({
       )}
       <View style={styles.group}>
         {rows.map((row, i) => (
-          <Fragment key={i}>
+          // Children.toArray prefixes each child's own key, so filtering keeps row instances with their members.
+          <Fragment key={isValidElement(row) ? row.key : i}>
             {i > 0 && <View style={styles.separator} />}
             {row}
           </Fragment>
         ))}
       </View>
-      {footer && <Footnote>{footer}</Footnote>}
+      {!!footer && <Footnote>{footer}</Footnote>}
     </View>
   );
 }
@@ -157,6 +158,7 @@ export function Row({
   note,
   onPress,
   loading,
+  disabled,
   tone,
   leading,
   detail,
@@ -185,6 +187,8 @@ export function Row({
   chevron?: boolean;
   /** Spinner in place of the chevron (an action running). */
   loading?: boolean;
+  /** Dimmed and not pressable (the same 0.35 as a disabled Button). */
+  disabled?: boolean;
   /** "danger" colors the label red, for destructive actions; "tint" makes it an action in the brand color. */
   tone?: "danger" | "tint";
 }) {
@@ -216,7 +220,10 @@ export function Row({
   );
   if (!onPress)
     return (
-      <View style={styles.row} accessibilityState={loading ? { busy: true } : undefined}>
+      <View
+        style={[styles.row, disabled && styles.rowDisabled]}
+        accessibilityState={loading || disabled ? { busy: loading || undefined, disabled: disabled || undefined } : undefined}
+      >
         {content}
         {accessory}
       </View>
@@ -228,7 +235,9 @@ export function Row({
       accessibilityActions={accessibilityActions?.length ? accessibilityActions : undefined}
       onAccessibilityAction={onAccessibilityAction ? ({ nativeEvent }) => onAccessibilityAction(nativeEvent.actionName) : undefined}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, accessory ? styles.rowGrow : null, pressed && { backgroundColor: colors.fill }]}
+      disabled={disabled}
+      accessibilityState={disabled ? { disabled: true } : undefined}
+      style={({ pressed }) => [styles.row, accessory ? styles.rowGrow : null, disabled && styles.rowDisabled, pressed && !disabled && { backgroundColor: colors.fill }]}
     >
       {content}
     </Pressable>
@@ -316,6 +325,7 @@ const styles = StyleSheet.create({
   group: { backgroundColor: colors.cell, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden" },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 50, paddingHorizontal: spacing.md },
+  rowDisabled: { opacity: 0.35 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   rowGrow: { flex: 1 },
   rowWithAccessory: { flexDirection: "row", alignItems: "center", paddingRight: spacing.md },

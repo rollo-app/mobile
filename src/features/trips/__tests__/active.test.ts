@@ -2,6 +2,8 @@ import { hasNoTrips, pickActiveTrip, type TripSummary } from "../active";
 
 const trip = (id: string): TripSummary => ({
   id,
+  type: "trip",
+  coverUrl: null,
   name: id,
   joinCode: "ABC234",
   startsAt: 0,

@@ -1,5 +1,5 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
-import { authorsOf, chunkRows, dayTitle, filterByAuthor, groupByDay } from "../group";
+import { authorsOf, dayTitle, filterByAuthor, filterByGroup, groupByDay } from "../group";
 
 const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedPhoto => ({
   id,
@@ -16,6 +16,8 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   author: { id: authorId, userId: `u-${authorId}`, name: authorId, username: null, avatarUrl: null },
   thumbPath: `/t/${id}`,
   originalPath: `/o/${id}`,
+  displayPath: `/o/${id}`,
+  originalAvailable: true,
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,
@@ -26,6 +28,7 @@ const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedP
   momentDay: null,
   archived: false,
   selfie: null,
+  groupIds: [],
 });
 
 describe("gallery grouping", () => {
@@ -49,12 +52,14 @@ describe("gallery grouping", () => {
     expect(filterByAuthor(photos, null)).toBe(photos);
   });
 
-  it("lists each author once", () => {
-    expect(authorsOf([photo("a", "d", "m1"), photo("b", "d", "m2"), photo("c", "d", "m1")]).map((a) => a.id)).toEqual(["m1", "m2"]);
+  it("filterByGroup keeps photos in the group and null keeps all", () => {
+    const photos = [{ ...photo("a", "d"), groupIds: ["g1"] }, { ...photo("b", "d"), groupIds: ["g1", "g2"] }, photo("c", "d")];
+    expect(filterByGroup(photos, "g2").map((p) => p.id)).toEqual(["b"]);
+    expect(filterByGroup(photos, "g1").map((p) => p.id)).toEqual(["a", "b"]);
+    expect(filterByGroup(photos, null)).toBe(photos);
   });
 
-  it("splits photos into rows of three", () => {
-    const rows = chunkRows([1, 2, 3, 4, 5, 6, 7], 3);
-    expect(rows).toEqual([[1, 2, 3], [4, 5, 6], [7]]);
+  it("lists each author once", () => {
+    expect(authorsOf([photo("a", "d", "m1"), photo("b", "d", "m2"), photo("c", "d", "m1")]).map((a) => a.id)).toEqual(["m1", "m2"]);
   });
 });

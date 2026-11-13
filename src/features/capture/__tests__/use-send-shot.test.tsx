@@ -22,6 +22,8 @@ const photo = { uri: "file:///cache/IMG_1.jpg", width: 4000, height: 3000 };
 const prepared = {
   originalUri: "file:///docs/o.jpg",
   thumbUri: "file:///docs/t.jpg",
+  displayUri: "file:///docs/d.jpg",
+  displaySizeBytes: 3,
   width: 10,
   height: 10,
   sizeBytes: 5,
@@ -64,7 +66,7 @@ describe("useSendShot", () => {
       await result.current.mutateAsync(input);
     });
     const [item] = await queue.pendingForTrip("u1", "t1");
-    expect(item).toMatchObject({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", type: "photo", caption: "hola", lat: 1, lng: 2, day: "2027-01-05" });
+    expect(item).toMatchObject({ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", type: "photo", caption: "hola", lat: 1, lng: 2, day: "2027-01-05", displayUri: "file:///docs/d.jpg", displaySizeBytes: 3 });
     expect(queryClient.getQueryState(pendingKey("t1"))?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(pendingItemsKey("t1"))?.isInvalidated).toBe(true);
     expect(syncQueue).toHaveBeenCalled();

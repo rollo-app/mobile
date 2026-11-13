@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import fs from "node:fs";
 import path from "node:path";
 import appJson from "../app.json";
@@ -36,12 +37,36 @@ describe("app config", () => {
   });
 
   it("only the production build declares the Universal Links domain", () => {
-    expect(configFor("production").ios?.associatedDomains).toEqual(["applinks:rollo.juanifraga.com"]);
+    expect(configFor("production").ios?.associatedDomains).toEqual(["applinks:rolloproject.com"]);
     expect(configFor(undefined).ios?.associatedDomains).toBeUndefined();
   });
 
-  it("is version 1.2.0 (runtimeVersion follows it)", () => {
-    expect(appJson.expo.version).toBe("1.2.0");
+  it("registers each build's Google Sign-In URL scheme", () => {
+    const googlePlugin = (variant: string | undefined) =>
+      configFor(variant).plugins?.find((p) => Array.isArray(p) && p[0] === "@react-native-google-signin/google-signin");
+    expect(googlePlugin("production")).toEqual([
+      "@react-native-google-signin/google-signin",
+      { iosUrlScheme: "com.googleusercontent.apps.331161321522-eg16sji80rga1jor4b5k8ebhs4tc750f" },
+    ]);
+    expect(googlePlugin(undefined)).toEqual([
+      "@react-native-google-signin/google-signin",
+      { iosUrlScheme: "com.googleusercontent.apps.331161321522-22bg1d28fj30lnliseebuit2v7bc5lcm" },
+    ]);
+  });
+
+  it("only the production build asks for Sign in with Apple (the free Personal Team can't sign it)", () => {
+    expect(configFor("production").ios?.usesAppleSignIn).toBe(true);
+    expect(configFor(undefined).ios?.usesAppleSignIn).toBeUndefined();
+  });
+
+  it("is version 1.4.0 (runtimeVersion follows it)", () => {
+    expect(appJson.expo.version).toBe("1.4.0");
+  });
+
+  it("talks to the API on rolloproject.com (the build profile and the fallback agree)", () => {
+    const eas = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "eas.json"), "utf8"));
+    expect(eas.build.production.env.EXPO_PUBLIC_API_URL).toBe("https://api.rolloproject.com");
+    expect(appJson.expo.extra.apiUrl).toBe("https://api.rolloproject.com");
   });
 
   it("keeps the EAS project id push tokens need", () => {

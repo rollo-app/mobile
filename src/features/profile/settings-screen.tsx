@@ -41,7 +41,7 @@ export function SettingsScreen() {
       <Section footer="Si está apagado, solo tus amigos ven tus fotos destacadas y tu lista de amigos.">
         <SwitchRow label="Perfil público" labelAccessory={<InfoButton topic="publicProfile" />} value={visibility.isPublic} onValueChange={(v) => void visibility.setPublic(v)} />
       </Section>
-      {visibility.error && <ErrorText>{visibility.error}</ErrorText>}
+      {!!visibility.error && <ErrorText>{visibility.error}</ErrorText>}
 
       <Section footer="Si lo apagás, nadie puede agregar tus fotos a su perfil. Las que ya están en un perfil se sacan. Vos siempre podés destacar las tuyas.">
         <SwitchRow
@@ -49,7 +49,7 @@ export function SettingsScreen() {
           labelAccessory={<InfoButton topic="othersProfiles" />}
           value={privacy.allowFeaturing} onValueChange={privacy.set} />
       </Section>
-      {privacy.error && <ErrorText>{privacy.error}</ErrorText>}
+      {!!privacy.error && <ErrorText>{privacy.error}</ErrorText>}
 
       {__DEV__ && (
         <Section title="Desarrollo">

@@ -6,6 +6,8 @@ const DAY = 24 * 60 * 60 * 1000;
 
 const trip = (id: string, over: Partial<TripSummary> = {}): TripSummary => ({
   id,
+  type: "trip",
+  coverUrl: null,
   name: id,
   joinCode: "ABC234",
   startsAt: NOW - 10 * DAY,

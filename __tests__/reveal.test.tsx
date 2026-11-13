@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import { router } from "expo-router";
@@ -11,6 +12,7 @@ import "@/test/reanimated";
 import { routes } from "@/test/routes";
 import { queryClient } from "@/api/query-client";
 import { feedKey } from "@/features/trips/use-feed";
+import { pagedFeed } from "@/test/feed";
 
 jest.mock("@/features/trips/actions");
 // A short intro, so the hand-over to the stories happens within the test's wait.
@@ -38,14 +40,19 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -54,7 +61,7 @@ const detail = (): actions.TripDetail => ({
   totalUploaded: 3,
 });
 
-const item = (id: string, iso: string, author: { id: string; name: string; username?: string | null; avatarUrl: string | null }, caption: string | null): actions.Feed["items"][number] => ({
+const item = (id: string, iso: string, author: { id: string; name: string; username?: string | null; avatarUrl: string | null }, caption: string | null): actions.Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: Date.parse(iso),
@@ -70,7 +77,8 @@ const item = (id: string, iso: string, author: { id: string; name: string; usern
 
 beforeEach(async () => {
   mocked.fetchTrip.mockResolvedValue(detail());
-  mocked.fetchFeed.mockResolvedValue({
+  mocked.fetchFeedPage.mockResolvedValue({
+    nextCursor: null,
     revealed: true,
     revealAt: Date.parse("2027-01-14T12:00:00Z"),
     items: [
@@ -114,7 +122,7 @@ describe("Reveal", () => {
   });
 
   describe("while it loads", () => {
-    const hangingFeed = () => mocked.fetchFeed.mockReturnValue(new Promise(() => {}));
+    const hangingFeed = () => mocked.fetchFeedPage.mockReturnValue(new Promise(() => {}));
 
     it("shows a spinner and a tap goes on to the stories", async () => {
       hangingFeed();
@@ -158,7 +166,7 @@ describe("Reveal", () => {
   it("plays with the fresh feed instead of skipping to the stories with the cached one", async () => {
     queryClient.setQueryData(
       feedKey(SUR),
-      { revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), files: null }] },
+      pagedFeed({ revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), files: null }] }),
       { updatedAt: Date.now() },
     );
     await renderRouter(routes, { initialUrl: "/roll" });
@@ -171,12 +179,12 @@ describe("Reveal", () => {
   it("with only moments cached from before the reveal, waits for the refetch instead of playing with just them", async () => {
     queryClient.setQueryData(
       feedKey(SUR),
-      { revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), momentDay: "2027-01-12" }] },
+      pagedFeed({ revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), momentDay: "2027-01-12" }] }),
       { updatedAt: Date.now() },
     );
-    const full = await mocked.fetchFeed(SUR);
+    const full = await mocked.fetchFeedPage(SUR, { limit: 30 });
     let resolve!: (f: actions.Feed) => void;
-    mocked.fetchFeed.mockReturnValue(new Promise((r) => (resolve = r)));
+    mocked.fetchFeedPage.mockReturnValue(new Promise((r) => (resolve = r)));
     await renderRouter(routes, { initialUrl: "/roll" });
     await act(async () => router.push("/reveal"));
 

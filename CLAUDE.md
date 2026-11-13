@@ -13,8 +13,8 @@ amigos al sur de Argentina en **enero de 2027** (mucho tramo sin señal) y para 
 Decisiones de producto:
 
 - **Solo iOS** en la primera versión. **Con cuentas:** login con **email + código de 6 caracteres (letras y números, vale 5 min)** (sin
-  contraseña), obligatorio al abrir la app (`app/(auth)/`: email → código → "Completá tu perfil" si es nueva o
-  no tiene nombre). El perfil es **nombre + foto + descripción opcional** (`bio`, hasta 150 caracteres y 3 renglones; `GET/PATCH /me`, foto con `expo-image-picker` (cámara: recorte nativo 1:1; galería: PHPicker sin edición + recorte propio en `/crop-avatar`, `avatar-crop.tsx`) →
+  contraseña), obligatorio al abrir la app (`app/(auth)/`: **bienvenida** → email → código → "Completá tu perfil" si es nueva o
+  no tiene nombre). **Bienvenida** (`welcome.tsx` → `src/features/auth/welcome-screen.tsx`, primera pantalla del grupo; ahí caen el gate, "Cerrar sesión" y los links sin sesión): logo (último cuadro del Lottie de la intro), "Rollo", una línea de qué es y "Crear cuenta" / "Ya tengo cuenta" (las dos van a la pantalla de email, que crea la cuenta si no existe). **Registros cerrados:** `GET /config` (`src/features/waitlist/`, `useRegistrationsOpen`, sin sesión; si falla o no hay red cuenta como **abierto**: nunca se bloquea a quien ya tiene cuenta; no se guarda en el caché persistido) decide: con `registrationsOpen: false` la bienvenida dice "Estamos abriendo Rollo de a poco" (nunca "beta": regla de Apple) y muestra la **lista de espera** (`waitlist-form.tsx`: email + switch de consentimiento + "Política de privacidad", `POST /waitlist` → "¡Listo! Te mandamos un mail para confirmar." que queda en pantalla) en vez de "Crear cuenta"; "Ya tengo cuenta" sigue. Un alta nueva que el server rechaza con **403 `code: "REGISTRATIONS_CLOSED"`** (verificar código, link mágico, Google, Apple; `ApiError.code`, `isRegistrationsClosed`) muestra el mensaje del server con "Anotarme en la lista" (`RegistrationsClosedNotice`: marca la config como cerrada, la invalida y vuelve a la bienvenida); no se cierra ninguna sesión porque no se creó nada. El perfil es **nombre + foto + descripción opcional** (`bio`, hasta 150 caracteres y 3 renglones; `GET/PATCH /me`, foto con `expo-image-picker` (cámara: recorte nativo 1:1; galería: PHPicker sin edición + recorte propio en `/crop-avatar`, `src/features/crop/photo-crop.tsx`, el mismo que recorta la portada cuadrada de un evento en `/crop-cover`) →
   512 px JPEG → `POST /me/avatar` → PUT → complete; sin foto, círculo con la inicial y `memberColor`). Además tiene un **nombre de usuario único** (`@usuario`, `PATCH /me`): se pide en "Completá tu perfil" junto al nombre
   (sugerido desde el email, con chequeo de disponibilidad) y se muestra en Perfil, Amigos, miembros y Feed. Crear rollo
   o unirse es solo con el código de 6 (`POST /trips/join`; el server pide nombre en el perfil). **La sesión es un
@@ -38,6 +38,27 @@ Decisiones de producto:
   `associatedDomains` en `app.config.ts`; la cuenta gratis no los firma): `https://…/entrar#…` y `https://…/friends#CODE` abren la app directo y
   `app/+native-intent.tsx` los traduce a `/login?token=…&email=…` y `/friends/<CODE>` (`magicLinkPath`, `friendLinkPath`); sin la app, o con un build
   viejo, quedan las páginas del sitio. El sitio publica `/.well-known/apple-app-site-association` (`application/json` vía `_headers`).
+  **Continuar con Google** (botón secundario debajo de "Continuar" en el paso del email; `@react-native-google-signin/google-signin` v17, nativo):
+  `signInWithGoogle` (`actions.ts`) abre el selector de cuentas de Google (`getGoogleIdToken` en `google.ts`), manda el ID token a
+  `POST /auth/google` y guarda la sesión igual que el código (el gate lleva a "Completá tu perfil" si hace falta). Cerrar el selector no hace
+  nada (devuelve `null`); cualquier otra falla es un error inline. El token se pide para el client **web** (`GOOGLE_WEB_CLIENT_ID`, la audiencia
+  que chequea el backend) y cada build usa su client de iOS (`googleIosClientId` según el bundle id; IDs en `src/config.ts`, proyecto de Google
+  Cloud `rollo-514415`). El URL scheme de vuelta lo pone el plugin en `app.config.ts`, uno por variante. `signOut` (cerrar sesión, borrar
+  cuenta, 401) también hace `GoogleSignin.signOut()`, así el próximo login muestra el selector. **Nombre y foto por defecto:** el backend le pone a
+  la cuenta nueva el nombre de Google (lo trae `GET /me` y "Completá tu perfil" lo muestra editable). La foto la pone la app: se pide a Google en
+  512 px (`profileImageSize`; con el avatar de letra de Google el SDK da `photo: null` y no se usa nada), `signInWithGoogle` la deja en memoria
+  (`google-photo.ts`, solo si la cuenta es nueva y sin foto; `signOut` la borra) y "Completá tu perfil" la toma una vez y se la pasa a
+  `ProfileForm` (`defaultPhotoUrl`), que al montar la baja (`sendFromUrl` de `useAvatarUpload`) y la sube con el flujo normal del avatar (spinner,
+  error con "Reintentar"); "Cambiar foto" la reemplaza. Si no se puede bajar, no pasa nada. Si la app se cierra antes de ese paso, la cuenta
+  queda sin foto. En Jest, `jest.setup.ts` mockea el paquete
+  (`signIn` resuelve "cancelled" salvo que el test diga otra cosa). **Continuar con Apple** (Sign in with Apple, `expo-apple-authentication`, nativo; lo pide la guideline 4.8 por ofrecer Google): el botón
+  oficial de Apple (negro en claro, blanco en oscuro, 50 pt y bordes redondos como `Button`) va entre "Continuar" y Google. `signInWithApple`
+  (`actions.ts`, `getAppleAccount` en `apple.ts`) pide nombre y email, manda el identity token a `POST /auth/apple` con el nombre (Apple lo da
+  **solo la primera vez**; el backend lo usa para precompletar "Completá tu perfil") y guarda la sesión. Cancelar no hace nada; otro error va
+  inline. Apple no da foto. **Solo en el build de producción:** la capability la firma la cuenta paga (`ios.usesAppleSignIn` en la variante de
+  producción de `app.config.ts`); el dev build (Personal Team) no puede, así que ahí el botón no aparece (`appleSignInEnabled` /
+  `useAppleSignInAvailable`, que además pregunta `isAvailableAsync`). Se prueba en TestFlight. En Jest, `jest.setup.ts` mockea el paquete
+  (el botón es un `Pressable` "Continuar con Apple"; `signInAsync` cancela salvo que el test diga otra cosa).
 - **Cámara propia** (**VisionCamera** `react-native-vision-camera` v5, módulo compartido `src/features/camera/`, la misma de la captura y del momento): la del sistema
   (`launchCameraAsync`) siempre muestra "Repetir / Usar foto" después de sacar y no se puede evitar, y sin videos ya no hace falta.
   **Calidad máxima en cada iPhone** (`device.ts`): atrás usa la cámara virtual con más lentes (quad > triple > dual-wide > dual > gran angular), así iOS
@@ -75,9 +96,11 @@ Decisiones de producto:
   (arranca en automático), temporizador, cuadrícula, zoom y exposición. Permiso con `useCameraPermission` de VisionCamera (sin permiso: "Rollo necesita la cámara" + "Abrir Ajustes"); el texto
   del permiso va en `ios.infoPlist.NSCameraUsageDescription` de `app.json` (VisionCamera v5 no trae config plugin). `expo-image-picker` queda solo para la
   foto de perfil. Lo que se saca **no queda en el carrete**: se sube y se borra del caché local.
-- **Fotos a resolución completa** (~4000 px, JPEG 85–90 %, para imprimir) + **thumbnail ~800 px** que
-  genera el celular. **Sin videos en rollos nuevos** (la cámara saca solo fotos; los videos de rollos viejos se siguen viendo).
-- **Metadatos:** al mandar, la foto lleva EXIF (fecha/hora local del rollo con offset, GPS, `Software: Rollo`) y XMP
+- **Fotos en tres archivos** (`prepareMedia`, `Documents/pending/<id>/`): el **original** (~4000 px, JPEG 88 %, para imprimir), la **versión de visualización** `display.jpg` (**2048 px**, JPEG 82 %, tope 4 MB del server, con los mismos EXIF/XMP que el original) y el **thumbnail** ~800 px. La visualización sale del original ya terminado; si la foto ya entra en 2048 px (la frontal del momento, 1080 px) no se vuelve a codificar: es una copia del original (y igual se sube, para que el original se pueda borrar). Si no se puede generar, la foto sube sin ella y el server le guarda el original para siempre. La cola suma `display_uri` y `display_size_bytes` (columnas nuevas, nullable, por migración aditiva en `ADDED_COLUMNS`; no se renombran); el registro manda `displaySizeBytes` solo si la fila tiene visualización (el server devuelve entonces `upload.display`) y las filas viejas suben exactamente como antes. **Sin videos en rollos nuevos** (la cámara saca solo fotos; los videos de rollos viejos se siguen viendo y no llevan visualización).
+- **Eventos** (`src/features/events/`; diseño en `docs/superpowers/specs/2026-11-12-modo-evento-design.md`): un evento es un rollo de tipo `event` con **grupos** y una **portada**, pensado para muchos invitados (un casamiento). Quien lo crea es **organizador** (ve todo y arma grupos, QR y portada); los **invitados** ven solo las fotos de sus grupos. Se crea desde "Rollo | Evento" en Crear (nombre y al menos un grupo). Se entra por el QR o link `https://rolloproject.com/join/<CÓDIGO>` (`app/join.tsx`, también se escribe el código): sin cuenta guarda el código en SecureStore (`rollo.pendingJoin`, 24 h) y lo abre al terminar de crear la cuenta, **esperando la intro de cuenta nueva** (`use-pending-join.ts`); ahí elige uno o varios grupos (mínimo uno). En la captura salen los chips de grupos (ver abajo). Las tabs de un evento tienen **Feed en vez de Mapa**, y el Feed se oculta tras el revelado; la Galería suma el filtro **"Grupos"**. El tablero del organizador tiene Grupos (crear, renombrar, borrar), QR (Skia, se comparte como PNG de ~1024 px) y portada.
+- **Eventos en la captura:** la ubicación se pide y se guarda igual que en un rollo común (el mapa no se muestra en eventos). Con varios grupos para mandar, el caption muestra chips (`GroupChips`; el organizador tiene "Todos los grupos"); la elección viaja en la columna `group_ids` de `pending_media` (JSON de ids, solo eventos, `null` en un rollo común y en filas viejas) y el uploader la manda como `groupIds`. Los últimos grupos elegidos se guardan en SecureStore `rollo.lastGroups.<tripId>` (JSON de ids). Ni la columna ni la clave se renombran.
+- **Qué se ve y qué se guarda:** a pantalla completa (visor de la galería, historias, destacadas, selfie del momento grande) la app carga `files.display` (`RevealedPhoto.displayPath`; si no hay, el original) y las miniaturas no cambian; `use-story-prefetch` precarga la visualización. Las destacadas piden la variante `display` (`featuredDisplayPath`). **"Guardar en Fotos" / "Guardar todo"** (`gallery/save.ts`) bajan el **original** mientras `originalAvailable !== false` y, si ya se borró, la visualización (con la misma inyección de metadatos). **Los originales se borran 30 días después del revelado** salvo que el rollo los conserve (`Trip.originals: { keep, expiresAt, purged }`): con `expiresAt` y sin `purged`, el segmento "Rollo" del rollo revelado y el tope de la Galería muestran "Las fotos en máxima calidad se borran el 12 de diciembre. Guardalas en tu celular antes." (fecha en la zona del rollo, `originalsNotice` + `OriginalsNotice` en `trips/`); con `purged`, "…ya se borraron. Quedan en alta calidad para ver y guardar."; con `keep`, nada.
+- **Metadatos:** al mandar, el original y la visualización llevan EXIF (fecha/hora local del rollo con offset, GPS, `Software: Rollo`) y XMP
   con caption y autor en Unicode (`piexifjs`, JS puro). Al guardar en Fotos se inyectan si el original no tiene fecha.
 - **Límite de fotos por persona**, que el admin elige al crear el rollo: **"Por día"** (10 por defecto) o **"Todo el rollo"** (`photoLimitMode` `daily` | `total` + `totalPhotoLimit`; 20 por defecto). Lo aplica el server, con tope de **30 por día** y **200 en todo el rollo** (`MAX_DAILY_PHOTOS` / `MAX_TOTAL_PHOTOS` de `create-form.ts`, los de los steppers; al crear y al editar; un rollo viejo que ya pasa el tope lo conserva hasta que se cambie ese valor). Con cupo total, el badge de la cámara, "Tenés N fotos en el rollo", el tablero ("Te quedan N de M") y la cola offline (`countPending` sin día) cuentan lo que queda en todo el rollo.
 - **Offline first:** al disparar se guardan foto, hora (UTC + zona) y GPS. Pedir ubicación apenas se
@@ -147,7 +170,8 @@ Decisiones de producto:
   (la descripción y la cantidad de amigos son siempre públicas).
 - **Insignias** (`src/features/profile/badge.ts`): `badge` (`"founder"` | `"first_edition"` | null) viene del server en el usuario (`GET /me`, `GET /users/{id}`) y se asigna a mano en el backend. Se muestra solo en el encabezado del perfil (`ProfileHeader`, el tuyo y el de otros) bajo el nombre, con `Badge` neutral y las etiquetas en inglés **FOUNDER** / **FIRST EDITION**; valores desconocidos no muestran nada. No va en listas, Feed ni mapa.
 - **Límites para crear rollos** (los aplica el server en `POST /trips`, **409** con el mensaje): máximo 2 rollos sin revelar creados por vos a la vez y 4 creados en los últimos 30 días; los rollos a los que te sumaste no cuentan y hay usuarios exentos (flag a mano en la DB). La app no chequea nada antes: `create-screen.tsx` muestra el mensaje del server debajo del botón (`ErrorText`, como cualquier error del form) sin perder lo cargado.
-- **Roles, archivar y eliminar rollos** (`src/features/trips/roles.ts`, `row-actions.ts`, `use-archive-trip.ts`; `src/features/roll/roll-people.tsx`): el rol de la API sigue siendo `admin` | `member`; el **creador** es el miembro con `isCreator` (también en `TripSummary`; el trip trae `createdBy`) y se muestra como "Creador", los demás admins como "Admin" (`memberBadge`). Mantener apretado un miembro (`MenuView` + acciones de VoiceOver, `memberActions`) ofrece "Hacer admin" / "Quitar admin" / "Sacar del rollo" (con `Alert`; hooks `use-make-admin`, `use-remove-admin`, `use-remove-member`). Cualquier admin cambia el nombre del rollo con la fila "Nombre" (`Alert.prompt` "Nombre del rollo", `use-rename-trip`; más de 60 caracteres: `ErrorText`). **Archivar** es por miembro y solo de rollos revelados: menú de mantener apretado en "Tus rollos" y fila "Archivar rollo" / "Desarchivar rollo" en el rollo revelado (`useArchiveTrip`, optimista; si falla, `Burnt.alert` "No se pudo archivar" / "No se pudo desarchivar"). **Eliminar** (menú de la fila, no lo ve el creador) es salirse: `useLeaveTrip(tripId, name, { revealed, copy: "list" | "board" })`; en un rollo revelado avisa "…No vas a poder volver a entrar." (a un revelado no se entra de nuevo con el código) y en uno sin revelar "…Podés volver con el código."; si falla desde la lista, `Burnt.alert`. **"Borrar rollo"** (solo el creador, fila roja con `Alert` "¿Borrar "{rollo}" para todos?", `useDeleteTrip`, `DELETE /trips/{id}`) lo borra para todos; un 403 del server dice "Solo quien creó el rollo puede hacer esto".
+- **Roles, archivar y eliminar rollos** (`src/features/trips/roles.ts`, `row-actions.ts`, `use-archive-trip.ts`; `src/features/roll/roll-essentials.tsx y `roll-settings-screen.tsx``): el rol de la API sigue siendo `admin` | `member`; el **creador** es el miembro con `isCreator` (también en `TripSummary`; el trip trae `createdBy`) y se muestra como "Creador", los demás admins como "Admin" (`memberBadge`). Mantener apretado un miembro (`MenuView` + acciones de VoiceOver, `memberActions`) ofrece "Hacer admin" / "Quitar admin" / "Sacar del rollo" (con `Alert`; hooks `use-make-admin`, `use-remove-admin`, `use-remove-member`). Cualquier admin cambia el nombre del rollo con la fila "Nombre" (`Alert.prompt` "Nombre del rollo", `use-rename-trip`; más de 60 caracteres: `ErrorText`). **Archivar** es por miembro y solo de rollos revelados: menú de mantener apretado en "Tus rollos" y fila "Archivar rollo" / "Desarchivar rollo" en el rollo revelado (`useArchiveTrip`, optimista; si falla, `Burnt.alert` "No se pudo archivar" / "No se pudo desarchivar"). **Eliminar** (menú de la fila, no lo ve el creador) es salirse: `useLeaveTrip(tripId, name, { revealed, copy: "list" | "board" })`; en un rollo revelado avisa "…No vas a poder volver a entrar." (a un revelado no se entra de nuevo con el código) y en uno sin revelar "…Podés volver con el código."; si falla desde la lista, `Burnt.alert`. **"Borrar rollo"** (solo el creador, fila roja con `Alert` "¿Borrar "{rollo}" para todos?", `useDeleteTrip`, `DELETE /trips/{id}`) lo borra para todos; un 403 del server dice "Solo quien creó el rollo puede hacer esto".
+  **Muchos integrantes** (`members-order.ts`, `member-row.tsx`, `use-member-actions.ts`, `members-screen.tsx`, ruta `app/roll-members.tsx` → `/roll-members?tripId=…`, push en el stack raíz, título "Integrantes"): "En el rollo · N" muestra solo los primeros **10** (`previewMembers`: creador, después los demás admins, después vos, después el resto en el orden del server) y, si hay más, la fila "Ver todos" con el total (`value`) que abre la pantalla con todos, en el mismo orden y con la misma fila (`MemberRow`: badge, perfil, mantener apretado y acciones de VoiceOver). Búsqueda nativa del header (`useSearchBar`) por nombre o @usuario, sin tildes ni mayúsculas (`filterMembers`, contiene); sin coincidencias: "No hay integrantes con ese nombre.". Comparte el caché del detalle (`useTripDetail`), así los cambios de rol se ven también en el tablero.
 - **Editar rollo** (`/edit-trip?tripId=…`: `app/edit-trip.tsx` → `src/features/trips/edit-screen.tsx`; el formulario es el mismo de Crear, `trip-form.tsx`; la lógica pura vive en `edit-form.ts`: `editableFields`, `changedFields`, `lockedNote`; `use-update-trip.ts` hace `PATCH /trips/{id}`): fila "Editar rollo" en el tablero (`roll-people.tsx`), solo para admins y mientras el rollo no terminó. **Cualquier admin** cambia fechas, cupo y momento: antes del inicio, todo; en curso, no el inicio ni el tipo de cupo (nota `lockedNote`); terminado o revelado, solo el nombre (fila "Nombre"). **Solo el creador**: rollo privado, quitar admin, sacar a otro admin, borrar el rollo y **adelantar el revelado** (el server contesta "Solo quien creó el rollo puede adelantar el revelado"). Solo se manda lo que cambió; con el revelado en "Al terminar" sigue al fin. Si cambian fechas o momento, el hook corre `syncMoments()`. Los topes (30 / 200 / 31 días) los pone el server.
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
   abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
@@ -198,7 +222,7 @@ Decisiones de producto:
   arrancó el rollo, se reveló, destacaron tu foto, le gustó tu foto y comentaron tu foto. Nunca por acciones propias ni de usuarios bloqueados. Se **sacó el aviso
   local del revelado**: al abrir la app se cancelan los `reveal.*` que dejaron versiones viejas (`legacy-reveal.ts`).
   **Ajustes → Notificaciones** (`settings-screen.tsx`, `GET/PATCH /me/settings`): un switch por aviso (`addedToTrip`, `newFriend`, `tripStarted`,
-  `tripRevealed`, `photoFeatured`, `photoLiked`, `photoCommented`, `friendRequest`, `dailyMoment` y `momentPosted`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
+  `tripRevealed`, `photoFeatured`, `photoLiked`, `photoCommented`, `friendRequest`, `dailyMoment`, `momentPosted` y `originalsExpiring`, "Fotos por borrarse", en el grupo Rollos: aviso unos días antes de que se borren las fotos en máxima calidad; abre `/roll?trip=<id>`) y, si el permiso del sistema está apagado, un banner que lleva a Ajustes del iPhone.
 - **Archivar y eliminar tus fotos y videos** (`src/features/gallery/`: `actions.ts`, `use-archive-photo.ts`, `use-delete-photo.ts`, `own-photo-actions.ts`):
   solo en **tus fotos y videos** de un rollo **revelado** (los rollos viejos tienen videos; un video no se destaca ni tiene me gusta ni comentarios), desde el "…" del visor y el menú de mantener apretado de la grilla: "Archivar" /
   "Desarchivar" y "Eliminar". **Archivar** es al instante y sin confirmar (optimista sobre el cache del feed; si falla vuelve atrás con
@@ -313,6 +337,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 - `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
+- Claves de SecureStore de eventos (no se renombran): `rollo.pendingJoin` (código del link de evento pendiente, 24 h) y `rollo.lastGroups.<tripId>` (últimos grupos elegidos al sacar fotos).
 - Clave de SecureStore de la cuenta (no se renombra): `rollo.sessionUserId` (id del usuario con sesión; la cola offline la usa para saber de quién es cada foto).
 - Clave de SecureStore de la cámara (no se renombra): `rollo.cameraGrid` (`"1"`/`"0"`, cuadrícula prendida; ajuste del celular).
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`; `app.config.ts` solo cambia nombre y
@@ -335,7 +360,7 @@ src/
                           *.ts            lógica pura, testeable sin React
                           *.tsx           componentes propios del dominio
                           __tests__/      tests de esa lógica, al lado del código
-                        Dominios: info (botones "i" con explicación), camera (la cámara propia compartida: disparador, flash, zoom, dar vuelta; la usan capture y moments), moments (momento del día: planificador de avisos locales, cuenta regresiva y dos cámaras, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
+                        Dominios: events (modo evento: unirse por link/QR, grupos, QR, portada, chips de captura), info (botones "i" con explicación), camera (la cámara propia compartida: disparador, flash, zoom, dar vuelta; la usan capture y moments), moments (momento del día: planificador de avisos locales, cuenta regresiva y dos cámaras, banner en Rollo), auth (sesión, login, gate), friends (amigos, link de amistad, perfil de un usuario, sumar a un rollo, salirse), profile (nombre, foto, `Avatar`, `useOpenProfile`, visibilidad), featured (destacadas: grilla, mapa por zonas, visor), trips (el rollo: lista desde el server, rollo activo, detalle, etapas), capture (cámara, cola
                         offline, subida), feed, map, media (fotos reveladas + fuente con token), gallery
                         (grilla, visor, descargas), exif (metadatos de las fotos), presentation, reveal, notifications (push, permiso, Ajustes → Notificaciones), likes (me gusta), roll (tablero), moderation (denunciar y bloquear: menú en Feed, visores y perfil de otro, Ajustes → Bloqueados; los errores van con `burnt`).
   ui/                   theme.ts (tokens) + componentes base compartidos: Screen, Section, Row, SwitchRow, Button,
@@ -368,6 +393,42 @@ Reglas:
   TanStack Query, carpetas `Documents/pending/` y `Documents/map/`): no se renombran, porque rompería los
   datos de quien ya tiene la app.
 
+## Performance y componentes
+
+Reglas para todo código nuevo (salen de auditar la app con `vercel-react-native-skills`, `vercel-composition-patterns` y
+`building-react-native-apps:react-native-best-practices` de Callstack; las dos de Vercel están en `.claude/skills/`, la de
+Callstack es un plugin a nivel usuario). Al diseñar o revisar algo con listas, animaciones, arranque o la API de un componente,
+consultarlas. Si una regla de esas skills contradice este archivo (p. ej. Galeria para el visor, que acá es propio), gana este archivo.
+
+- **Listas:** una lista que puede pasar de ~50 filas (galería, feed, miembros de un evento, amigos) va con **FlashList v2**
+  (`@shopify/flash-list`, solo JS; sin `estimatedItemSize`, que en v2 no existe): nunca `.map` dentro de un `ScrollView`. Filas en
+  su propio componente con `memo`, `renderItem` y `keyExtractor` estables (`useCallback` o a nivel módulo) y `extraData` memoizado.
+  Grillas con encabezados: lista plana + `getItemType` + `overrideItemLayout` (ver `gallery/grid-items.ts`). Imágenes con
+  `expo-image` y `recyclingKey`. Para listas cortas y acotadas (≤ 30, p. ej. grupos de un evento) alcanza `Section`.
+- **Fechas:** siempre `dateFormatter(locale, options)` de `src/lib/intl.ts` (cachea el formatter). Nunca `new Intl.DateTimeFormat`
+  ni `toLocaleDateString/TimeString` en render, por fila o dentro de un loop: en Hermes crearlo es caro.
+- **Render:** nada de `{string && <X />}` (con `""` React Native se cae: "Text strings must be rendered within a <Text>");
+  usar `!!x &&` o un ternario con `null`.
+- **Arranque:** `app/_layout.tsx` y `app/(tabs)/_layout.tsx` (y todo lo que importan) se evalúan al abrir la app, porque Metro no
+  tiene `inlineRequires`. No importar ahí pantallas ni constantes de features pesadas (Skia, VisionCamera, revelado, recorte,
+  presentación): los tokens van en `src/ui/theme.ts` (p. ej. `screenBackgrounds`). Las rutas de Expo Router se cargan solas
+  cuando se navega a ellas.
+- **Inputs:** el estado de un `TextInput` vive en un componente propio (como `CommentComposer`), no en el que tiene la lista: si
+  no, cada tecla re-renderiza todas las filas. Filtros sobre listas grandes con `useDeferredValue` + `useMemo`; búsquedas a la API
+  con debounce (como `useUserSearch`).
+- **Cache persistido:** al sumar una query, decidir si se persiste. `shouldDehydrateQuery` (`src/api/query-client.ts`) excluye lo
+  descartable o derivado de datos locales (búsquedas, la cola de SQLite); lo que la app muestra sin señal (feed, rollos, `me`)
+  se persiste. Ojo con guardar dos copias del mismo dato grande con keys distintas.
+- **Trabajo en el hilo de JS:** nada de `O(n²)` sobre el feed (puede tener ~2000 fotos: Map/Set y `push`, no copiar arrays por
+  ítem); cálculos sobre listas grandes con `useMemo`. Nada de leer archivos enteros en base64 en JS si alcanza con una parte.
+- **Animaciones:** solo `transform` y `opacity` en el UI thread (ver "Skills de diseño y motion").
+- **Memoización:** no hay React Compiler. `memo`/`useCallback`/`useMemo` donde evitan trabajo real (filas de listas, props de
+  componentes pesados); no por las dudas. Para optimizar algo que no es obvio, **medir antes y después** (React DevTools →
+  Profiler, tecla `j` en Metro).
+- **Composición:** antes de sumar una prop booleana a un componente (`isCompact`, `showX`, `withY`), preferir variantes
+  explícitas (`<ThingCompact />`) o componentes compuestos (`<Thing.Header />`, `<Thing.Body />`) con el estado en un provider;
+  `children` antes que props `renderX`. React 19: sin `forwardRef` (el `ref` es una prop) y `use()` en vez de `useContext()`.
+
 ## Skills de diseño y motion
 
 En `.claude/skills/` (copiadas tal cual de sus repos): `emil-design-eng`, `animate-expo`, `review-animations`,
@@ -393,7 +454,7 @@ Si una skill contradice este archivo, **gana este archivo**.
   (`flexShrink: 0`, `minWidth: 0`, `numberOfLines` + `ellipsizeMode`, `fontVariant: ["tabular-nums"]`, plurales sin "1 amigos"); en vez de zoom al 200 %
   y RTL se mira con **texto grande de iOS** (Dynamic Type) y en **modo oscuro**. Los límites salen de `src/api/schema.d.ts` y del backend.
 - **Lottie:** `text-to-lottie` arma un player web de preview (`npx degit diffusionstudio/lottie`): va **fuera del repo** (scratchpad),
-  nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio a `scripts/site/`) y salen de
+  nunca dentro de `mobile/`. Los JSON van a `assets/lottie/` (los del sitio viven en rollo-app/web) y salen de
   `scripts/build-lottie.mjs`; en la app se reproducen con `lottie-react-native` (nativo: cambiarlo pide rebuild). El revelado (shader de Skia)
   se mantiene; Lottie es para piezas chicas e ilustrativas, nunca para estados de la UI.
   **Intro de una cuenta nueva** (`/intro`, `src/features/intro/`, fullScreenModal): al terminar "Completá tu perfil" se marca pendiente
@@ -435,7 +496,7 @@ npm test                      # ~1800 tests
 npm run test:watch
 npm run typecheck
 npm run icons                 # regenera ícono y splash (assets/)
-npm run lottie                # regenera los Lottie (momento, bienvenida, intro; assets/lottie/ y scripts/site/)
+npm run lottie                # regenera los Lottie (momento, bienvenida, intro; assets/lottie/)
 npx expo run:ios --device     # compila e instala el dev build en el iPhone
 npm start                     # día a día, con el dev build ya instalado
 ```
@@ -461,30 +522,12 @@ link de amistad de Lu (`rollo://friends/<CODE>`, vale 1 hora; correr el seed de 
 
 ## Sitio público
 
-`rollo.juanifraga.com` (Cloudflare Workers, solo archivos estáticos, Worker `rollo-site`): la home es la **landing** corta (hero con el video del
-celular + 2 secciones, mapa y revelado, con una captura de la app cada una + cierre; badge oficial "Descárgalo en el App Store"), `/soporte` (preguntas frecuentes y contacto;
-`/#soporte` cae en el link a esa página), `/privacidad`, `/terminos`, `/friends` (respaldo del link de amistad: código, "Abrir Rollo" y bajar la app, sin redirigir) y `/entrar` (el link mágico del mail; script inline, sin pedidos a
-ningún lado, con su CSP). Los textos legales se escriben **solo** en `docs/legal/*.md` (`etiquetas-privacidad.md` es interna, no
-se publica); `scripts/build-site.mjs` arma el HTML en `site/dist/` (la home vive en `scripts/site/home.mjs` y `mockups.mjs`, los
-tokens de color compartidos en `scripts/site/tokens.mjs`). `npm run site:build` para verlo, `npm run site:deploy` para publicarlo.
-Son las URLs de privacidad, soporte (`https://rollo.juanifraga.com/soporte`) y marketing de App Store Connect.
-- **Botón de la home:** la app está en la App Store (noviembre 2026), así que `STORE_MODE` es `"appstore"` por defecto en
-  `build-site.mjs` (`SITE_STORE_MODE=beta` vuelve al botón de TestFlight). El botón es el badge oficial de Apple
-  (`scripts/site/app-store-badge.svg`, "Descárgalo en el App Store", negro, es-MX, bajado de
-  `toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/es-mx`; no se dibuja a mano) y apunta a
-  `APP_STORE_URL` (`https://apps.apple.com/app/id6825843502`, sin país: Apple abre la tienda de quien lo toca). Sin el badge o sin
-  `APP_STORE_URL` el build falla; la ruta del badge se puede pisar con `SITE_APP_STORE_BADGE` (lo usa el test). El deploy no setea
-  `SITE_STORE_MODE`, así que lo que sale es el default del código.
-- **Video del hero:** proyecto Remotion en `video/` (escenas que recrean la app con las fotos del viaje de Juani: cámara, mapa real, revelado, galería, perfil y momento); las fotos no entran al repo (`npm run photos -- <zip>` en `video/` las prepara en una carpeta ignorada), `npm run render` deja `hero.mp4`, `hero.webm` y `hero-poster.jpg` en `scripts/site/` (se commitean); con "Reducir movimiento" queda el póster.
-- **Imágenes de la home:** el video del hero (`hero.mp4`, `hero.webm`, `hero-poster.jpg`) y las capturas `map.jpg` / `reveal.jpg` salen de `video/` (Remotion) y se commitean en `scripts/site/`; `npm run render` en `video/` rehace todo y `npm run stills` solo las dos capturas, sin recodificar los videos. En el celular todo va sobre un solo margen de 20 px y una escala fija de espacios (variables `--s-*` de `home.mjs`).
-- **Animaciones:** Motion (`animate`, `inView`) empaquetado con esbuild en `/motion.js` (servido desde el sitio, sin CDN) +
-  `scripts/site/landing.js`. Con "Reducir movimiento" o sin JS la página queda en su estado final (fotos nítidas).
-  Ojo: en Motion no animar a `transform: "none"` (lo vuelve una matriz de escala 0); usar `y`.
-- **Analytics:** Cloudflare Web Analytics (sin cookies, solo vistas). El token (público) está en `CF_ANALYTICS_TOKEN` de `build-site.mjs`; `SITE_CF_ANALYTICS_TOKEN=""` arma sin beacon (lo usan los tests). Las vistas se ven en Cloudflare → Web Analytics → `rollo.juanifraga.com`. El beacon va en todas las páginas menos `/entrar`; en `/friends` el CSP suma `static.cloudflareinsights.com` solo cuando hay token.
-- **QR en desktop:** el hero lleva un QR inline (`qrcode`, generado en el build, del link de TestFlight o de la App Store según `STORE_MODE`) con "Escaneá con tu iPhone"; solo se ve en pantallas anchas con mouse (`hover:hover` + `pointer:fine`).
-- **Smart App Banner:** con `STORE_MODE === "appstore"` la home suma `apple-itunes-app` (app-id 6825843502); en beta no hay nada.
-- **Imagen para compartir:** `npm run og` regenera `scripts/site/og.png` (1200×630, `scripts/build-og.mjs`: título a la izquierda y el still del revelado en un marco de teléfono a la derecha); se commitea.
-Contacto: `soporte@juanifraga.com` (Email Routing de Cloudflare → Gmail de Juani).
+Vive en su propio repo, [rollo-app/web](https://github.com/rollo-app/web) (se separó el 11/11/2026; la historia anterior
+quedó acá): landing, `/soporte`, `/privacidad`, `/terminos`, `/friends` y `/entrar` (las dos que usan los links de la app), el
+archivo de Universal Links y el video del hero (Remotion). Se sirve en `rolloproject.com` y sigue en `rollo.juanifraga.com`
+(los builds instalados declaran ese dominio para Universal Links). Los legales se editan allá (`docs/legal/`); acá queda
+`docs/legal/etiquetas-privacidad.md` (interna, para App Store Connect). El video del hero usa una copia del estilo del mapa
+de la app (`src/features/map/style.ts` + `positron.json`): si cambia la paleta, copiarlos también allá.
 
 ## Apple
 

@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { router } from "expo-router";
 import { AccessibilityInfo } from "react-native";
 import { act, fireEvent, renderRouter, screen } from "expo-router/testing-library";
@@ -60,14 +61,19 @@ function tripDetail(photosLeft: number): actions.TripDetail {
       dailyPhotoLimit: 10,
       dailyVideoLimit: 3,
       featuringDisabled: false,
+      maxMembers: 15,
       photoLimitMode: "daily",
       totalPhotoLimit: null,
       momentMode: "off",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      originals: keepOriginals,
+      type: "trip",
+      coverUrl: null,
+      groups: [],
       createdBy: null,
     },
-    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
     members: [],
     today: { date: localDay(Date.now(), TZ), photosLeft, videosLeft: 3 },
     totalUploaded: 0,

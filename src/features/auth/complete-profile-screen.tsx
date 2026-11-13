@@ -1,7 +1,9 @@
 import { router } from "expo-router";
+import { useState } from "react";
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { errorMessage } from "@/api/client";
+import { takePendingGooglePhoto } from "@/features/auth/google-photo";
 import { useLogOut } from "@/features/auth/use-log-out";
 import { useMe } from "@/features/auth/use-me";
 import { ProfileForm } from "@/features/profile/profile-form";
@@ -14,6 +16,8 @@ export function CompleteProfileScreen() {
   const insets = useSafeAreaInsets();
   const { me } = useMe();
   const logOut = useLogOut();
+  // Taken once per mount: the Google photo of an account that just signed up with Google.
+  const [googlePhoto] = useState(takePendingGooglePhoto);
   if (!me) return null;
 
   return (
@@ -28,10 +32,10 @@ export function CompleteProfileScreen() {
           <Text style={[type.body, { color: colors.secondaryLabel }]}>Así te ve el resto del rollo.</Text>
         </View>
         {/* Saving the name flips the gate: the app opens on its own; the intro is queued first so the tabs find it. */}
-        <ProfileForm user={me} submitLabel="Listo" askFriendCode beforeApply={() => markAppIntroPending().catch(() => {})} onSaved={() => {}} />
+        <ProfileForm user={me} submitLabel="Listo" askFriendCode defaultPhotoUrl={googlePhoto} beforeApply={() => markAppIntroPending().catch(() => {})} onSaved={() => {}} />
         {/* The way out of this step without killing the app: the server blocks everything else (428) until the profile is complete. */}
         <View style={styles.signOut}>
-          <Button label="Cerrar sesión" variant="secondary" disabled={logOut.isPending} onPress={() => logOut.mutate(undefined, { onSuccess: () => router.replace("/email") })} />
+          <Button label="Cerrar sesión" variant="secondary" disabled={logOut.isPending} onPress={() => logOut.mutate(undefined, { onSuccess: () => router.replace("/welcome") })} />
           {logOut.error && <ErrorText>{errorMessage(logOut.error, "No se pudo cerrar sesión")}</ErrorText>}
         </View>
       </ScrollView>

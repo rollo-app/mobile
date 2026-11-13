@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act } from "@testing-library/react-native";
 import * as Burnt from "burnt";
 import { Alert } from "react-native";
@@ -43,14 +44,19 @@ const detail = (revealed = true): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { ...MINE, role: "member", isCreator: false, blockedByMe: false },
+  me: { ...MINE, role: "member", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { ...MINE, role: "member", isCreator: false, blockedByMe: false },
     { ...FEDE, role: "admin", isCreator: false, blockedByMe: false },
@@ -59,7 +65,7 @@ const detail = (revealed = true): actions.TripDetail => ({
   totalUploaded: 3,
 });
 
-const item = (id: string, over: Partial<actions.Feed["items"][number]> = {}): actions.Feed["items"][number] => ({
+const item = (id: string, over: Partial<actions.Feed["items"][number]> = {}): actions.Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: Date.parse("2027-01-12T16:10:00Z"),
@@ -82,6 +88,7 @@ const feed = (items: actions.Feed["items"], revealed = true): actions.Feed => ({
   revealed,
   revealAt: revealed ? Date.now() - DAY : Date.now() + DAY,
   items,
+  nextCursor: null,
 });
 
 /** Mine ("a", "b") and Fede's ("f"), in that order. */
@@ -104,7 +111,7 @@ const pressAlert = (text: string) =>
 
 beforeEach(async () => {
   trips.fetchTrip.mockResolvedValue(detail());
-  trips.fetchFeed.mockResolvedValue(three());
+  trips.fetchFeedPage.mockResolvedValue(three());
   gallery.archiveMedia.mockReset().mockResolvedValue(undefined);
   gallery.unarchiveMedia.mockReset().mockResolvedValue(undefined);
   gallery.deleteMedia.mockReset().mockResolvedValue(undefined);
@@ -134,7 +141,7 @@ describe("Gallery grid: archive and delete your photos", () => {
   });
 
   it("an archived photo from the server shows Archivada, has no Agregar a tu perfil, and Desarchivar unarchives it", async () => {
-    trips.fetchFeed.mockResolvedValue(feed([item("a", { archived: true })]));
+    trips.fetchFeedPage.mockResolvedValue(feed([item("a", { archived: true })]));
     await openGrid();
     expect(await screen.findByText("Archivada")).toBeVisible();
     expect(screen.queryByRole("menuitem", { name: "Agregar a tu perfil" })).toBeNull();
@@ -160,7 +167,7 @@ describe("Gallery grid: archive and delete your photos", () => {
     expect(buttons.find((b) => b.text === "Eliminar")!.style).toBe("destructive");
     expect(gallery.deleteMedia).not.toHaveBeenCalled();
 
-    trips.fetchFeed.mockResolvedValue(feed([three().items[1]!, three().items[2]!]));
+    trips.fetchFeedPage.mockResolvedValue(feed([three().items[1]!, three().items[2]!]));
     await pressAlert("Eliminar");
     await waitFor(() => expect(gallery.deleteMedia).toHaveBeenCalledWith("a"));
     await waitFor(() => expect(screen.getAllByRole("menuitem", { name: "Eliminar" })).toHaveLength(1));
@@ -207,7 +214,7 @@ describe("Photo viewer: archive and delete your photo", () => {
   });
 
   it("an archived photo can't be added to your profile from the viewer", async () => {
-    trips.fetchFeed.mockResolvedValue(feed([item("a", { archived: true })]));
+    trips.fetchFeedPage.mockResolvedValue(feed([item("a", { archived: true })]));
     await openViewer("a");
     expect(await screen.findByText("Archivada")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Agregar a tu perfil" })).toBeNull();
@@ -216,7 +223,7 @@ describe("Photo viewer: archive and delete your photo", () => {
   it("after deleting, the next photo shows", async () => {
     await openViewer("a");
     await fireEvent.press(await screen.findByRole("menuitem", { name: "Eliminar" }));
-    trips.fetchFeed.mockResolvedValue(feed([three().items[1]!, three().items[2]!]));
+    trips.fetchFeedPage.mockResolvedValue(feed([three().items[1]!, three().items[2]!]));
     await pressAlert("Eliminar");
     await waitFor(() => expect(gallery.deleteMedia).toHaveBeenCalledWith("a"));
     // "b" (mine) is now the photo on screen: its menu still offers Eliminar, and the viewer stays open.
@@ -225,11 +232,11 @@ describe("Photo viewer: archive and delete your photo", () => {
   });
 
   it("deleting the last photo closes the viewer", async () => {
-    trips.fetchFeed.mockResolvedValue(feed([item("only")]));
+    trips.fetchFeedPage.mockResolvedValue(feed([item("only")]));
     await renderRouter(routes, { initialUrl: "/map" });
     await act(async () => router.push(`/photo/only?tripId=${SUR}`));
     await fireEvent.press(await screen.findByRole("menuitem", { name: "Eliminar" }));
-    trips.fetchFeed.mockResolvedValue(feed([]));
+    trips.fetchFeedPage.mockResolvedValue(feed([]));
     await pressAlert("Eliminar");
     await waitFor(() => expect(screen).toHavePathname("/map"));
   });
@@ -245,7 +252,7 @@ describe("Photo viewer: archive and delete your photo", () => {
 
   it("before the reveal (a daily moment) there is neither Archivar nor Eliminar", async () => {
     trips.fetchTrip.mockResolvedValue(detail(false));
-    trips.fetchFeed.mockResolvedValue(feed([item("mom", { momentDay: "2027-01-12" })], false));
+    trips.fetchFeedPage.mockResolvedValue(feed([item("mom", { momentDay: "2027-01-12" })], false));
     await openViewer("mom");
     await screen.findByTestId("viewer-info");
     expect(screen.queryByRole("menuitem", { name: "Archivar" })).toBeNull();
@@ -262,7 +269,7 @@ describe("your own videos (old rollos)", () => {
     ]);
 
   it("grid: only your own video offers Archivar and Eliminar, never Agregar a tu perfil", async () => {
-    trips.fetchFeed.mockResolvedValue(withVideo());
+    trips.fetchFeedPage.mockResolvedValue(withVideo());
     await openGrid();
     await screen.findAllByRole("button", { name: /Video de Juani/ });
     expect(screen.getAllByRole("menuitem", { name: "Archivar" })).toHaveLength(2);
@@ -272,7 +279,7 @@ describe("your own videos (old rollos)", () => {
   });
 
   it("grid: Archivar on the video archives it and Eliminar asks about the video", async () => {
-    trips.fetchFeed.mockResolvedValue(withVideo());
+    trips.fetchFeedPage.mockResolvedValue(withVideo());
     await openGrid();
     await screen.findAllByRole("button", { name: /Video de Juani/ });
     await fireEvent.press(screen.getAllByRole("menuitem", { name: "Archivar" })[0]!);
@@ -284,7 +291,7 @@ describe("your own videos (old rollos)", () => {
   });
 
   it("viewer: the … menu of your video offers Archivar and Eliminar (with the video copy)", async () => {
-    trips.fetchFeed.mockResolvedValue(withVideo());
+    trips.fetchFeedPage.mockResolvedValue(withVideo());
     await openViewer("v");
     expect(await screen.findByRole("menuitem", { name: "Archivar" })).toBeTruthy();
     await fireEvent.press(screen.getByRole("menuitem", { name: "Eliminar" }));
@@ -292,7 +299,7 @@ describe("your own videos (old rollos)", () => {
   });
 
   it("viewer: someone else's video has neither", async () => {
-    trips.fetchFeed.mockResolvedValue(withVideo());
+    trips.fetchFeedPage.mockResolvedValue(withVideo());
     await openViewer("fv");
     await screen.findByRole("menuitem", { name: "Denunciar" });
     expect(screen.queryByRole("menuitem", { name: "Archivar" })).toBeNull();

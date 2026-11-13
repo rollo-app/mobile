@@ -63,7 +63,7 @@ const topics = {
     id: "inviteCode",
     title: "Código para invitar",
     body:
-      "Con este código de 6 caracteres se suma cualquiera al rollo: pasáselo o tocá \"Compartir invitación\".\n\n" +
+      "Con este código de 6 caracteres se suma cualquiera al rollo: pasáselo o tocalo para compartir la invitación.\n\n" +
       "Quien lo recibe elige \"Sumarme con un código\" y lo escribe. Si es tu amigo, también podés sumarlo desde \"Sumar amigos\".",
   },
 } as const satisfies Record<string, InfoTopic>;

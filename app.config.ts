@@ -11,6 +11,11 @@ import type { ConfigContext, ExpoConfig } from "expo/config";
 // reverse order, so it runs after expo-notifications.
 const WITHOUT_PUSH = "./plugins/without-push-entitlement";
 
+const GOOGLE_URL_SCHEME = {
+  production: "com.googleusercontent.apps.331161321522-eg16sji80rga1jor4b5k8ebhs4tc750f",
+  development: "com.googleusercontent.apps.331161321522-22bg1d28fj30lnliseebuit2v7bc5lcm",
+};
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const isProduction = process.env.APP_VARIANT === "production";
   return {
@@ -21,9 +26,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.ios,
       // Universal Links (the email's magic link and friend links). The free Personal Team can't sign
       // Associated Domains, so only the production build asks for it.
-      ...(isProduction ? { associatedDomains: ["applinks:rollo.juanifraga.com"] } : {}),
+      ...(isProduction ? { associatedDomains: ["applinks:rolloproject.com"] } : {}),
+      // Sign in with Apple: same story, the free Personal Team can't sign the capability (the dev build hides the button).
+      ...(isProduction ? { usesAppleSignIn: true } : {}),
       bundleIdentifier: isProduction ? "com.juanifraga.rollo.app" : "com.juanifraga.rollo",
     },
-    plugins: isProduction ? config.plugins : [WITHOUT_PUSH, ...(config.plugins ?? [])],
+    plugins: [
+      ...(isProduction ? (config.plugins ?? []) : [WITHOUT_PUSH, ...(config.plugins ?? [])]),
+      // Google Sign-In returns to the app through the reversed iOS client id of each build (see GOOGLE_IOS_CLIENT_IDS in src/config.ts).
+      ["@react-native-google-signin/google-signin", { iosUrlScheme: isProduction ? GOOGLE_URL_SCHEME.production : GOOGLE_URL_SCHEME.development }],
+    ],
   };
 };

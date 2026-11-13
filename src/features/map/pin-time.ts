@@ -1,8 +1,9 @@
+import { dateFormatter } from "@/lib/intl";
 /** Relative time of a photo in the trip's time zone: "hoy 13:10", "ayer 21:40", "lun 12 · 13:10". */
 
 function parts(ms: number, timeZone: string) {
   const out: Record<string, string> = {};
-  for (const p of new Intl.DateTimeFormat("es-AR", {
+  for (const p of dateFormatter("es-AR", {
     timeZone,
     year: "numeric",
     month: "2-digit",

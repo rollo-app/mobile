@@ -1,6 +1,6 @@
 import { Animated, StyleSheet } from "react-native";
 import { act, render, screen } from "@testing-library/react-native";
-import { ProgressBar } from "../progress-bar";
+import { MAX_SEGMENTS, ProgressBar } from "../progress-bar";
 
 type Node = { props?: { style?: unknown }; children?: unknown } | string;
 
@@ -39,5 +39,24 @@ describe("ProgressBar", () => {
     const progress = new Animated.Value(0.7);
     await render(<ProgressBar count={3} current={-1} progress={progress} />);
     expect(fillScales()).toEqual([0, 0, 0]);
+  });
+
+  it("keeps one segment per photo up to the limit", async () => {
+    await render(<ProgressBar count={MAX_SEGMENTS} current={0} progress={new Animated.Value(0)} />);
+    expect(fillScales()).toHaveLength(MAX_SEGMENTS);
+  });
+
+  it("draws a single continuous bar above the limit, filled by overall progress", async () => {
+    expect(MAX_SEGMENTS).toBe(30);
+    const progress = new Animated.Value(0.5);
+    await render(<ProgressBar count={2000} current={999} progress={progress} />);
+    const scales = fillScales();
+    expect(scales).toHaveLength(1);
+    expect(scales[0]).toBeCloseTo(999.5 / 2000, 5);
+  });
+
+  it("starts the continuous bar empty on the day card", async () => {
+    await render(<ProgressBar count={40} current={-1} progress={new Animated.Value(0.7)} />);
+    expect(fillScales()).toEqual([0]);
   });
 });

@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { AccessibilityInfo, Alert } from "react-native";
 import { router } from "expo-router";
 import { StyleSheet } from "react-native";
@@ -76,14 +77,19 @@ function tripDetail(photosLeft: number, mode: "daily" | "total" = "daily"): acti
       dailyPhotoLimit: 10,
       dailyVideoLimit: 0,
       featuringDisabled: false,
+      maxMembers: 15,
       photoLimitMode: mode,
       totalPhotoLimit: mode === "total" ? 20 : null,
       momentMode: "off",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      originals: keepOriginals,
+      type: "trip",
+      coverUrl: null,
+      groups: [],
       createdBy: null,
     },
-    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
     members: [],
     today: { date: localDay(Date.now(), TZ), photosLeft, videosLeft: 0 },
     totalUploaded: 0,
@@ -119,6 +125,8 @@ beforeEach(async () => {
   mediaMock.prepareMedia.mockResolvedValue({
     originalUri: "file:///docs/pending/a/original.jpg",
     thumbUri: "file:///docs/pending/a/thumb.jpg",
+    displayUri: "file:///docs/pending/a/display.jpg",
+    displaySizeBytes: 600_000,
     width: 4000,
     height: 3000,
     sizeBytes: 2_500_000,

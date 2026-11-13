@@ -3,7 +3,7 @@ import { useMutation, useMutationState, useQueryClient, type QueryClient } from 
 import { useCallback, useMemo } from "react";
 import { errorMessage } from "@/api/client";
 import { useMe } from "@/features/auth/use-me";
-import type { Feed } from "@/features/trips/actions";
+import { mapFeedItem } from "@/features/trips/feed-cache";
 import { feedKey } from "@/features/trips/use-feed";
 import { showPill } from "@/ui/pill";
 import { featureMedia, unfeatureMedia } from "./actions";
@@ -13,9 +13,7 @@ const TOGGLE_KEY = ["toggle-featured"];
 type Vars = { photo: { id: string; featuredByMe: boolean }; tripId: string };
 
 function setFeaturedInFeed(client: QueryClient, tripId: string, mediaId: string, featuredByMe: boolean) {
-  client.setQueryData<Feed>(feedKey(tripId), (feed) =>
-    feed ? { ...feed, items: feed.items.map((item) => (item.id === mediaId ? { ...item, featuredByMe } : item)) } : feed,
-  );
+  mapFeedItem(client, tripId, mediaId, (item) => ({ ...item, featuredByMe }));
 }
 
 /**

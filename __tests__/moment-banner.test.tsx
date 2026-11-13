@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -28,14 +29,19 @@ function tripDetail(): actions.TripDetail {
       dailyPhotoLimit: 10,
       dailyVideoLimit: 0,
       featuringDisabled: false,
+      maxMembers: 15,
       photoLimitMode: "daily",
       totalPhotoLimit: null,
       momentMode: "photo",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      originals: keepOriginals,
+      type: "trip",
+      coverUrl: null,
+      groups: [],
       createdBy: null,
     },
-    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+    me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
     members: [],
     today: { date: "2027-01-12", photosLeft: 7, videosLeft: 0 },
     totalUploaded: 0,
@@ -55,7 +61,7 @@ const deliveredAt = (at: number, extra = "") => [
 beforeEach(async () => {
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
   trips.fetchTrip.mockResolvedValue(tripDetail());
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [] } as never);
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [], nextCursor: null } as never);
   presented.mockResolvedValue([]);
 });
 

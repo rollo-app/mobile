@@ -26,7 +26,7 @@ beforeEach(() => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   jest.mocked(actions).fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
   jest.mocked(actions).fetchTrip.mockReturnValue(new Promise(() => {}));
-  jest.mocked(actions).fetchFeed.mockReturnValue(new Promise(() => {}));
+  jest.mocked(actions).fetchFeedPage.mockReturnValue(new Promise(() => {}));
   featured.fetchFeatured.mockReset().mockResolvedValue([]);
   featured.unfeatureMedia.mockReset().mockResolvedValue(undefined);
   featured.fetchPrivacySettings.mockReset().mockResolvedValue({ allowFeaturing: true });

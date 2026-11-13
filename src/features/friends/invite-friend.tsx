@@ -37,7 +37,7 @@ export function InviteFriend() {
           <Row label="Invitar a un amigo" chevron={false} loading={loading} onPress={loading ? undefined : generate} />
         </Section>
       )}
-      {error && <ErrorText>{error}</ErrorText>}
+      {!!error && <ErrorText>{error}</ErrorText>}
     </>
   );
 }

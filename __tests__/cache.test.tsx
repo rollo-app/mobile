@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -34,14 +35,19 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -53,7 +59,7 @@ const detail = (): actions.TripDetail => ({
 beforeEach(() => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   mocked.fetchTrip.mockReset();
-  mocked.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 9 * 24 * 60 * 60 * 1000, items: [] });
+  mocked.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + 9 * 24 * 60 * 60 * 1000, items: [], nextCursor: null });
   return signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { role: "admin" })] });
 });
 

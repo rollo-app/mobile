@@ -1,3 +1,4 @@
+import { featuredDisplayPath } from "./display-path";
 import { MenuView } from "@expo/ui/community/menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
@@ -16,6 +17,7 @@ import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { OverlayCornerSymbol, OverlayIconButton, OverlayMoreButton, overlayCorner } from "@/ui/overlay-button";
 import { spacing, type } from "@/ui/theme";
+import { useImageRetry } from "@/ui/use-image-retry";
 import type { FeaturedPhoto } from "./actions";
 import { featuredLabel } from "./featured-grid";
 import { featuredKey, useFeatured } from "./use-featured";
@@ -38,6 +40,8 @@ function Page({
   onDoubleTap: (photo: FeaturedPhoto) => void;
 }) {
   const taps = useDoubleTap(onTap, () => onDoubleTap(photo));
+  const fullPath = featuredDisplayPath(photo.originalPath);
+  const retry = useImageRetry(fullPath);
   return (
     <ScrollView
       style={{ width, height }}
@@ -50,7 +54,10 @@ function Page({
     >
       <Pressable accessibilityLabel={featuredLabel(photo)} onPress={() => taps.tap()} style={{ width, height }}>
         <Image
-          source={mediaSource(photo.originalPath, token)}
+          key={retry.retryKey}
+          onError={retry.onError}
+          onLoad={retry.onLoad}
+          source={mediaSource(fullPath, token)}
           placeholder={mediaSource(photo.thumbPath, token)}
           transition={150}
           contentFit="contain"
@@ -189,7 +196,7 @@ export function FeaturedViewer({ userId, mediaId }: { userId: string; mediaId: s
                 )}
               </View>
               {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
-              {error && <Text style={[type.footnote, styles.dim]}>{error}</Text>}
+              {!!error && <Text style={[type.footnote, styles.dim]}>{error}</Text>}
             </View>
           )}
         </>

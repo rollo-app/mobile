@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { createQueryClient } from "@/api/query-client";
 import { feedKey } from "@/features/trips/use-feed";
+import { feedPagesOf } from "@/test/feed";
 import * as actions from "../actions";
 import { featuredKey } from "../use-featured";
 import { useUnfeaturePhoto } from "../use-unfeature-photo";
@@ -13,7 +14,7 @@ function setup() {
   const queryClient = createQueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   queryClient.setQueryData(featuredKey("u1"), [{ mediaId: "a" }, { mediaId: "b" }]);
-  queryClient.setQueryData(feedKey("t1"), { items: [] });
+  queryClient.setQueryData(feedKey("t1"), feedPagesOf([]));
   return { queryClient, wrapper };
 }
 

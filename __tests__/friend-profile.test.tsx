@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { ActionSheetIOS, Alert } from "react-native";
 import * as moderation from "@/features/moderation/actions";
@@ -49,14 +50,19 @@ const detail = (id: string, name: string, revealed: boolean): tripActions.TripDe
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 0,
@@ -95,7 +101,7 @@ beforeEach(async () => {
   mocked.fetchFriends.mockResolvedValue([cami, tomi]);
   trips.fetchTrip.mockReturnValue(new Promise(() => {}));
   // The Mapa tab mounts too: keep its feed loading so its own "Reintentar" stays out of the way.
-  trips.fetchFeed.mockReturnValue(new Promise(() => {}));
+  trips.fetchFeedPage.mockReturnValue(new Promise(() => {}));
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   fetchUser = jest
     .spyOn(profileActions, "fetchUser")

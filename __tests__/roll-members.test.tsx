@@ -1,4 +1,5 @@
-import { Alert } from "react-native";
+import { keepOriginals } from "@/test/trip";
+import { Alert, Share } from "react-native";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -21,7 +22,7 @@ const trips = jest.mocked(tripActions);
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
 
-type Member = tripActions.TripDetail["me"];
+type Member = tripActions.TripDetail["members"][number];
 const member = (over: Partial<Member> & Pick<Member, "id" | "userId" | "name">): Member => ({
   username: over.name.toLowerCase(),
   avatarUrl: null,
@@ -49,15 +50,20 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: { userId: "u1", name: "Juani" },
     ...over,
   },
-  me,
+  me: { ...me, groupIds: [] },
   members: [creator, adminCami, fede, tomi].map((m) => (m.id === me.id ? me : m)),
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -70,7 +76,21 @@ async function openBoard(d: tripActions.TripDetail) {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(SUR);
   await renderRouter(routes, { initialUrl: "/roll" });
-  await screen.findByText(/^En el rollo · /);
+  await screen.findByText("Personas");
+}
+
+/** The gear in the header opens "Ajustes del rollo". */
+async function openSettings(d: tripActions.TripDetail) {
+  await openBoard(d);
+  await fireEvent.press(screen.getByRole("button", { name: "Ajustes del rollo" }));
+  await screen.findByText("Fechas");
+}
+
+/** The "Personas" row opens the full members list. */
+async function openMembers(d: tripActions.TripDetail) {
+  await openBoard(d);
+  await fireEvent.press(screen.getByRole("button", { name: /^Personas/ }));
+  await waitFor(() => expect(screen).toHavePathname("/roll-members"));
 }
 
 const items = () => screen.queryAllByRole("menuitem").map((m) => m.props.accessibilityLabel as string);
@@ -84,7 +104,7 @@ beforeEach(async () => {
   for (const mock of [...Object.values(friends), ...Object.values(trips)]) (mock as Partial<jest.Mock>).mockReset?.();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [], nextCursor: null });
   friends.fetchFriends.mockResolvedValue([]);
   friends.fetchFriendRequests.mockResolvedValue([]);
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
@@ -95,9 +115,54 @@ afterEach(() => {
   prompt.mockRestore();
 });
 
+describe("Roll cap", () => {
+  const FULL = "El rollo está lleno. Para sumar a alguien, primero tiene que salir otra persona.";
+
+  it("shows the cap in the people row", async () => {
+    await openBoard(detail(creator, { maxMembers: 15 }));
+    expect(screen.getByText("4 de 15")).toBeVisible();
+  });
+
+  it("notes that the roll is full next to the invite and keeps the code visible", async () => {
+    await openBoard(detail(creator, { maxMembers: 4 }));
+    expect(screen.getByText("4 de 4")).toBeVisible();
+    expect(screen.getByText(FULL)).toBeVisible();
+    expect(screen.getByText("HUB5FT")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sumar amigos" })).toBeVisible();
+  });
+
+  it("dims the invite and does not share while the roll is full", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
+    await openBoard(detail(creator, { maxMembers: 4 }));
+    const row = screen.getByRole("button", { name: /^Código .*Compartir invitación$/ });
+    expect(row.props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(row);
+    expect(share).not.toHaveBeenCalled();
+    expect(screen.getByText("HUB5FT")).toBeVisible();
+    share.mockRestore();
+  });
+
+  it("still shares the invite while there is room", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
+    await openBoard(detail(creator, { maxMembers: 5 }));
+    const row = screen.getByRole("button", { name: /^Código .*Compartir invitación$/ });
+    expect(row.props.accessibilityState?.disabled).toBeFalsy();
+    fireEvent.press(row);
+    expect(share).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Compartir invitación")).toBeNull();
+    share.mockRestore();
+  });
+
+  it("shows no full note while there is room", async () => {
+    await openBoard(detail(creator, { maxMembers: 5 }));
+    expect(screen.queryByText(FULL)).toBeNull();
+    expect(screen.getByText("Con este código se suman al rollo. Tocalo para compartir la invitación.")).toBeVisible();
+  });
+});
+
 describe("Members list: badges and actions", () => {
   it("shows Creador on the creator's row and Admin on an admin's", async () => {
-    await openBoard(detail(tomi));
+    await openMembers(detail(tomi));
     expect(screen.getByRole("button", { name: "Cami, Admin" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Fede" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Juani, Creador" })).toBeVisible();
@@ -108,11 +173,12 @@ describe("Members list: badges and actions", () => {
     trips.fetchTrip.mockResolvedValue({ ...detail(tomi), members: [creator, blocked, fede, tomi] });
     await setActiveTripId(SUR);
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
     expect(await screen.findByRole("button", { name: "Cami, Bloqueado" })).toBeVisible();
   });
 
   it("offers Hacer admin and Sacar del rollo on a plain member when you are an admin", async () => {
-    await openBoard(detail(adminCami));
+    await openMembers(detail(adminCami));
     expect(names(screen.getByRole("button", { name: "Fede" }))).toEqual(["makeAdmin", "remove"]);
     expect(items()).toContain("Hacer admin");
     expect(items()).toContain("Sacar del rollo");
@@ -121,7 +187,7 @@ describe("Members list: badges and actions", () => {
   });
 
   it("offers nothing to a plain member", async () => {
-    await openBoard(detail(tomi));
+    await openMembers(detail(tomi));
     expect(items()).not.toContain("Hacer admin");
     expect(items()).not.toContain("Sacar del rollo");
     expect(names(screen.getByRole("button", { name: "Fede" }))).toBeUndefined();
@@ -129,13 +195,13 @@ describe("Members list: badges and actions", () => {
 
   it("Hacer admin calls makeAdmin", async () => {
     trips.makeAdmin.mockResolvedValue(fede);
-    await openBoard(detail(adminCami));
+    await openMembers(detail(adminCami));
     await act1(screen.getByRole("button", { name: "Fede" }), "makeAdmin");
     await waitFor(() => expect(trips.makeAdmin).toHaveBeenCalledWith(SUR, "m5"));
   });
 
   it("only the creator can take admin away from an admin", async () => {
-    await openBoard(detail(creator));
+    await openMembers(detail(creator));
     const cami = screen.getByRole("button", { name: "Cami, Admin" });
     expect(names(cami)).toEqual(["removeAdmin", "remove"]);
     expect(items()).toContain("Quitar admin");
@@ -146,7 +212,7 @@ describe("Members list: badges and actions", () => {
 
   it("Sacar del rollo asks first, then removes the member", async () => {
     trips.removeMember.mockResolvedValue(undefined);
-    await openBoard(detail(adminCami));
+    await openMembers(detail(adminCami));
     await act1(screen.getByRole("button", { name: "Fede" }), "remove");
     expect(alert).toHaveBeenCalledWith("¿Sacar a Fede del rollo?", "Sus fotos se quedan. Solo un admin lo puede volver a sumar.", expect.any(Array));
     expect(alertButtons().map((b) => b.text)).toEqual(["Cancelar", "Sacar"]);
@@ -156,20 +222,20 @@ describe("Members list: badges and actions", () => {
   });
 
   it("the menu item triggers the same action", async () => {
-    await openBoard(detail(adminCami));
+    await openMembers(detail(adminCami));
     await fireEvent.press(screen.getAllByRole("menuitem", { name: "Sacar del rollo" })[0]!);
     expect(alert).toHaveBeenCalledWith("¿Sacar a Fede del rollo?", expect.any(String), expect.any(Array));
   });
 
   it("tapping a member row still opens their profile", async () => {
-    await openBoard(detail(adminCami));
+    await openMembers(detail(adminCami));
     await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
     await waitFor(() => expect(screen).toHavePathname("/user/u5"));
   });
 
   it("shows the failure under the members section and keeps the list", async () => {
     trips.makeAdmin.mockRejectedValue(new Error("Solo quien creó el rollo puede hacer esto"));
-    await openBoard(detail(adminCami));
+    await openMembers(detail(adminCami));
     await act1(screen.getByRole("button", { name: "Fede" }), "makeAdmin");
     expect(await screen.findByText("Solo quien creó el rollo puede hacer esto")).toBeVisible();
     expect(screen.getByRole("button", { name: "Fede" })).toBeVisible();
@@ -177,7 +243,7 @@ describe("Members list: badges and actions", () => {
 
   it("refetches the detail after a change", async () => {
     trips.makeAdmin.mockResolvedValue(fede);
-    await openBoard(detail(adminCami));
+    await openMembers(detail(adminCami));
     const before = trips.fetchTrip.mock.calls.length;
     await act1(screen.getByRole("button", { name: "Fede" }), "makeAdmin");
     await waitFor(() => expect(trips.fetchTrip.mock.calls.length).toBeGreaterThan(before));
@@ -186,37 +252,37 @@ describe("Members list: badges and actions", () => {
 
 describe("Leaving as creator", () => {
   it("hides Salirme del rollo for the creator", async () => {
-    await openBoard(detail(creator));
+    await openSettings(detail(creator));
     expect(screen.queryByRole("button", { name: "Salirme del rollo" })).toBeNull();
   });
 
   it("keeps it for an admin who is not the creator", async () => {
-    await openBoard(detail(adminCami));
+    await openSettings(detail(adminCami));
     expect(screen.getByRole("button", { name: "Salirme del rollo" })).toBeVisible();
   });
 });
 
 describe("Creado por", () => {
   it("shows who created the rollo in the Fechas footer", async () => {
-    await openBoard(detail(tomi));
+    await openSettings(detail(tomi));
     expect(screen.getByText("Creado por Juani")).toBeVisible();
   });
 
   it("shows nothing without createdBy", async () => {
-    await openBoard(detail(tomi, { createdBy: null }));
+    await openSettings(detail(tomi, { createdBy: null }));
     expect(screen.queryByText(/Creado por/)).toBeNull();
   });
 });
 
 describe("Renaming", () => {
   it("shows the Nombre row to admins only", async () => {
-    await openBoard(detail(tomi));
+    await openSettings(detail(tomi));
     expect(screen.queryByRole("button", { name: /^Nombre/ })).toBeNull();
   });
 
   it("prompts with the current name and saves the trimmed new one", async () => {
     trips.renameTrip.mockResolvedValue({} as tripActions.Trip);
-    await openBoard(detail(adminCami));
+    await openSettings(detail(adminCami));
     await fireEvent.press(screen.getByRole("button", { name: "Nombre, Viaje al sur" }));
     expect(prompt).toHaveBeenCalledWith("Nombre del rollo", undefined, expect.any(Array), "plain-text", "Viaje al sur");
     await act(async () => savePrompt().onPress!("  Patagonia  "));
@@ -224,7 +290,7 @@ describe("Renaming", () => {
   });
 
   it("sends nothing when the name is empty or unchanged", async () => {
-    await openBoard(detail(adminCami));
+    await openSettings(detail(adminCami));
     await fireEvent.press(screen.getByRole("button", { name: "Nombre, Viaje al sur" }));
     await act(async () => savePrompt().onPress!("   "));
     await act(async () => savePrompt().onPress!("Viaje al sur "));
@@ -232,28 +298,26 @@ describe("Renaming", () => {
   });
 
   it("rejects a name over 60 characters with a message and sends nothing", async () => {
-    await openBoard(detail(adminCami));
+    await openSettings(detail(adminCami));
     await fireEvent.press(screen.getByRole("button", { name: "Nombre, Viaje al sur" }));
     await act(async () => savePrompt().onPress!("x".repeat(61)));
     expect(await screen.findByText("El nombre puede tener hasta 60 caracteres")).toBeVisible();
     expect(trips.renameTrip).not.toHaveBeenCalled();
   });
 
-  it("only shows the latest action's error", async () => {
-    trips.makeAdmin.mockRejectedValue(new Error("Falló hacer admin"));
-    trips.renameTrip.mockRejectedValue(new Error("Falló renombrar"));
-    await openBoard(detail(adminCami));
-    await act1(screen.getByRole("button", { name: "Fede" }), "makeAdmin");
-    expect(await screen.findByText("Falló hacer admin")).toBeVisible();
+  it("a valid name after one that was too long clears the message", async () => {
+    trips.renameTrip.mockResolvedValue({} as tripActions.Trip);
+    await openSettings(detail(adminCami));
     await fireEvent.press(screen.getByRole("button", { name: "Nombre, Viaje al sur" }));
+    await act(async () => savePrompt().onPress!("x".repeat(61)));
+    expect(await screen.findByText("El nombre puede tener hasta 60 caracteres")).toBeVisible();
     await act(async () => savePrompt().onPress!("Otro"));
-    expect(await screen.findByText("Falló renombrar")).toBeVisible();
-    expect(screen.queryByText("Falló hacer admin")).toBeNull();
+    await waitFor(() => expect(screen.queryByText("El nombre puede tener hasta 60 caracteres")).toBeNull());
   });
 
-  it("shows the failure under the members section", async () => {
+  it("shows the rename failure under the name row", async () => {
     trips.renameTrip.mockRejectedValue(new Error("No se pudo"));
-    await openBoard(detail(adminCami));
+    await openSettings(detail(adminCami));
     await fireEvent.press(screen.getByRole("button", { name: "Nombre, Viaje al sur" }));
     await act(async () => savePrompt().onPress!("Otro"));
     expect(await screen.findByText("No se pudo")).toBeVisible();
@@ -267,11 +331,12 @@ describe("Archiving from the rollo", () => {
     trips.fetchMyTrips.mockResolvedValue(list);
     queryClient.setQueryData(myTripsKey, list);
     trips.fetchTrip.mockResolvedValue(d);
-    trips.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [] });
+    trips.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [], nextCursor: null });
     await setActiveTripId(SUR);
     await markPresentationSeen(SUR);
     await renderRouter(routes, { initialUrl: "/roll?view=roll" });
-    await screen.findByText(/^En el rollo · /);
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    await screen.findByText("Fechas");
   };
 
   it("offers Archivar rollo on a revealed rollo and archives it", async () => {
@@ -289,7 +354,7 @@ describe("Archiving from the rollo", () => {
   });
 
   it("does not offer archiving before the reveal", async () => {
-    await openBoard(detail(tomi));
+    await openSettings(detail(tomi));
     expect(screen.queryByRole("button", { name: /archivar rollo/i })).toBeNull();
   });
 });
@@ -298,18 +363,18 @@ describe("Borrar rollo (creator)", () => {
   let dismissTo: jest.SpyInstance;
   // The router is only live once rendered, so the spy goes on after `openBoard`.
   const open = async (d: tripActions.TripDetail) => {
-    await openBoard(d);
+    await openSettings(d);
     dismissTo = jest.spyOn(router, "dismissTo").mockImplementation(() => {});
   };
   afterEach(() => dismissTo?.mockRestore());
 
   it("is hidden for an admin who is not the creator", async () => {
-    await openBoard(detail(adminCami));
+    await openSettings(detail(adminCami));
     expect(screen.queryByRole("button", { name: "Borrar rollo" })).toBeNull();
   });
 
   it("asks first and does nothing on Cancelar", async () => {
-    await openBoard(detail(creator));
+    await openSettings(detail(creator));
     await fireEvent.press(screen.getByRole("button", { name: "Borrar rollo" }));
     expect(alert).toHaveBeenCalledWith(
       '¿Borrar "Viaje al sur" para todos?',
@@ -355,5 +420,46 @@ describe("Borrar rollo (creator)", () => {
     expect(await screen.findByText("Solo quien creó el rollo puede hacer esto")).toBeVisible();
     expect(dismissTo).not.toHaveBeenCalled();
     expect(await getActiveTripId()).toBe(SUR);
+  });
+});
+
+describe("Board and Ajustes del rollo", () => {
+  it("the board keeps the reveal row, Invitar and Personas, and none of what moved to the settings", async () => {
+    await openBoard(detail(creator, { maxMembers: 15 }));
+    expect(screen.getByText("Se revela")).toBeVisible();
+    expect(screen.getByText("Invitar")).toBeVisible();
+    expect(screen.getByText("Personas")).toBeVisible();
+    expect(screen.getByText("4 de 15")).toBeVisible();
+    for (const label of ["Empieza", "Termina", "Fechas"]) expect(screen.queryByText(label)).toBeNull();
+    for (const name of [/^Nombre/, "Editar rollo", "Salirme del rollo", "Borrar rollo", "Fede"])
+      expect(screen.queryByRole("button", { name })).toBeNull();
+  });
+
+  it("the Personas row opens the members list", async () => {
+    await openMembers(detail(tomi));
+    expect(screen).toHaveSearchParams({ tripId: SUR });
+  });
+
+  it("the gear opens Ajustes del rollo with the dates and, for an admin, the name", async () => {
+    await openSettings(detail(adminCami));
+    expect(screen).toHavePathname("/roll-settings");
+    for (const label of ["Empieza", "Termina"]) expect(screen.getByText(label)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Nombre, Viaje al sur" })).toBeVisible();
+  });
+
+  it("a plain member's settings have no Nombre but can leave", async () => {
+    await openSettings(detail(tomi));
+    expect(screen.queryByRole("button", { name: /^Nombre/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Salirme del rollo" })).toBeVisible();
+  });
+
+  it("leaving from the settings goes back to /roll", async () => {
+    await openSettings(detail(tomi));
+    const dismissTo = jest.spyOn(router, "dismissTo").mockImplementation(() => {});
+    friends.leaveTrip.mockResolvedValue(undefined);
+    await fireEvent.press(screen.getByRole("button", { name: "Salirme del rollo" }));
+    await act(async () => alertButtons().find((b) => b.text === "Salirme")!.onPress!());
+    await waitFor(() => expect(dismissTo).toHaveBeenCalledWith("/roll"));
+    dismissTo.mockRestore();
   });
 });

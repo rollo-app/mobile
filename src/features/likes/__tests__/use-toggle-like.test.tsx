@@ -5,7 +5,9 @@ import type { ReactNode } from "react";
 import type { Schemas } from "@/api/client";
 import { createQueryClient } from "@/api/query-client";
 import { featuredKey } from "@/features/featured/use-featured";
+import type { FeedPages } from "@/features/trips/actions";
 import { feedKey } from "@/features/trips/use-feed";
+import { feedPagesOf } from "@/test/feed";
 import { setSessionToken } from "@/storage/session";
 import { featuredPhoto } from "@/test/featured";
 import { useToggleLike } from "../use-toggle-like";
@@ -14,7 +16,7 @@ jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(async () => {}), ImpactF
 
 type Feed = Schemas["Feed"];
 
-const item = (id: string, likedByMe: boolean, likeCount: number): Feed["items"][number] => ({
+const item = (id: string, likedByMe: boolean, likeCount: number): Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: 1,
@@ -38,7 +40,7 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 const inFeed = (id: string) => {
-  const i = client.getQueryData<Feed>(feedKey("t1"))!.items.find((x) => x.id === id)!;
+  const i = client.getQueryData<FeedPages>(feedKey("t1"))!.pages.flatMap((p) => p.items).find((x) => x.id === id)!;
   return { likedByMe: i.likedByMe, likeCount: i.likeCount };
 };
 const inFeatured = (id: string) => {
@@ -67,7 +69,7 @@ beforeEach(() => {
 
 describe("useToggleLike", () => {
   it("likes before the server answers, in the roll's feed and on every profile that features it", async () => {
-    client.setQueryData(feedKey("t1"), { items: [item("a", false, 2), item("b", false, 0)] } as unknown as Feed);
+    client.setQueryData(feedKey("t1"), feedPagesOf([item("b", false, 0)], [item("a", false, 2)]));
     client.setQueryData(featuredKey("u9"), [featuredPhoto("a", { likeCount: 2 }), featuredPhoto("c")]);
     const net = deferredFetch();
     const { result } = await renderHook(() => useToggleLike(), { wrapper });
@@ -95,7 +97,7 @@ describe("useToggleLike", () => {
   });
 
   it("unlikes with a DELETE and no haptic", async () => {
-    client.setQueryData(feedKey("t1"), { items: [item("a", true, 3)] } as unknown as Feed);
+    client.setQueryData(feedKey("t1"), feedPagesOf([item("a", true, 3)]));
     const net = deferredFetch();
     const { result } = await renderHook(() => useToggleLike(), { wrapper });
 
@@ -113,7 +115,7 @@ describe("useToggleLike", () => {
   });
 
   it("reverts and says why for that photo when it fails", async () => {
-    client.setQueryData(feedKey("t1"), { items: [item("a", false, 2)] } as unknown as Feed);
+    client.setQueryData(feedKey("t1"), feedPagesOf([item("a", false, 2)]));
     client.setQueryData(featuredKey("u9"), [featuredPhoto("a", { likeCount: 2 })]);
     const net = deferredFetch();
     const { result } = await renderHook(() => useToggleLike(), { wrapper });
@@ -135,7 +137,7 @@ describe("useToggleLike", () => {
   });
 
   it("ignores a second toggle of the same photo while the first is pending", async () => {
-    client.setQueryData(feedKey("t1"), { items: [item("a", false, 0)] } as unknown as Feed);
+    client.setQueryData(feedKey("t1"), feedPagesOf([item("a", false, 0)]));
     const net = deferredFetch();
     const { result } = await renderHook(() => useToggleLike(), { wrapper });
 
@@ -156,7 +158,7 @@ describe("useToggleLike", () => {
   });
 
   it("like() never takes a like away", async () => {
-    client.setQueryData(feedKey("t1"), { items: [item("a", true, 1)] } as unknown as Feed);
+    client.setQueryData(feedKey("t1"), feedPagesOf([item("a", true, 1)]));
     const fetchMock = jest.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const { result } = await renderHook(() => useToggleLike(), { wrapper });
@@ -169,7 +171,7 @@ describe("useToggleLike", () => {
   });
 
   it("like() likes a photo you didn't like", async () => {
-    client.setQueryData(feedKey("t1"), { items: [item("a", false, 0)] } as unknown as Feed);
+    client.setQueryData(feedKey("t1"), feedPagesOf([item("a", false, 0)]));
     globalThis.fetch = jest.fn(async () => new Response(null, { status: 204 })) as unknown as typeof fetch;
     const { result } = await renderHook(() => useToggleLike(), { wrapper });
 

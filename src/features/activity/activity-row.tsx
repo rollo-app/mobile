@@ -3,15 +3,20 @@ import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { mediaSource } from "@/features/media/revealed";
 import { colors, radius, spacing, type } from "@/ui/theme";
+import { useImageRetry } from "@/ui/use-image-retry";
 
 const THUMB = 56;
 
 /** A photo thumbnail (ThumbHash while it loads) from the authed media source. */
 export function ActivityThumb({ path, hash, token, id }: { path: string; hash: string | null; token: string | null; id: string }) {
+  const retry = useImageRetry(id);
   return (
     <View style={styles.thumb}>
-      {token && (
+      {!!token && (
         <Image
+          key={retry.retryKey}
+          onError={retry.onError}
+          onLoad={retry.onLoad}
           source={mediaSource(path, token)}
           placeholder={hash ? { thumbhash: hash } : undefined}
           transition={120}

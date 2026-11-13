@@ -1,5 +1,5 @@
 import { errorMessage } from "@/api/client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActionSheetIOS, ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import type { User } from "@/features/auth/actions";
 import { Button, ErrorText, Field, Row, Section } from "@/ui/components";
@@ -22,6 +22,7 @@ export function ProfileForm({
   showEmail = false,
   askFriendCode = false,
   showBio = false,
+  defaultPhotoUrl = null,
 }: {
   user: User;
   submitLabel: string;
@@ -34,8 +35,18 @@ export function ProfileForm({
   askFriendCode?: boolean;
   /** Optional "Descripción", only when editing (not when completing the profile). */
   showBio?: boolean;
+  /** Photo uploaded on mount if the account has none (the Google one on sign-up); "Cambiar foto" replaces it. */
+  defaultPhotoUrl?: string | null;
 }) {
   const avatar = useAvatarUpload();
+  const { sendFromUrl } = avatar;
+  // Only once: the account's own photo (if it has one) always wins.
+  const defaultPhotoSent = useRef(false);
+  useEffect(() => {
+    if (defaultPhotoSent.current || !defaultPhotoUrl || user.avatarUrl) return;
+    defaultPhotoSent.current = true;
+    void sendFromUrl(defaultPhotoUrl);
+  }, [defaultPhotoUrl, user.avatarUrl, sendFromUrl]);
   const [name, setName] = useState(user.name ?? "");
   const [username, setUsername] = useState(user.username ?? suggestUsername(user.email));
   const [bio, setBio] = useState(user.bio ?? "");
@@ -93,10 +104,10 @@ export function ProfileForm({
         )}
         <Text style={[type.subhead, { color: colors.tint }]}>{user.avatarUrl || avatar.localUri ? "Cambiar foto" : "Agregar foto"}</Text>
       </Pressable>
-      {avatar.error && (
+      {!!avatar.error && (
         <View style={styles.photoError}>
           <ErrorText>{avatar.error}</ErrorText>
-          {avatar.localUri && <Button label="Reintentar" variant="secondary" onPress={() => void avatar.retry()} />}
+          {!!avatar.localUri && <Button label="Reintentar" variant="secondary" onPress={() => void avatar.retry()} />}
         </View>
       )}
 
@@ -162,17 +173,17 @@ export function ProfileForm({
           label="¿Te invitó un amigo? Código"
           value={friendCode}
           onChangeText={(value) => {
-            setFriendCode(value);
+            setFriendCode(value.toUpperCase());
             clearError();
           }}
           autoCapitalize="characters"
           autoCorrect={false}
           maxLength={12}
-          placeholder="Opcional"
+          placeholder="Ingresar código"
         />
       )}
 
-      {error && <ErrorText>{error}</ErrorText>}
+      {!!error && <ErrorText>{error}</ErrorText>}
 
       <Button label={submitLabel} onPress={save} disabled={!valid} loading={saveProfile.isPending} />
     </View>

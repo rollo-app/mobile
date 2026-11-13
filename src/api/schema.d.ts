@@ -15,7 +15,7 @@ export interface paths {
         put?: never;
         /**
          * Request a login code by email
-         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts) and, only when `linkChallenge` is sent, a magic link for the same attempt (`<LOGIN_LINK_URL>#t=<token>&e=<email>`, see `/auth/email/verify-link`), bound to that challenge. Using either one consumes both. A new request invalidates the previous codes. Rate limited per email and per IP, and capped globally per day (429). Works for new and existing users alike.
+         * @description Sends a 6-character code (letters and digits, no 0/O/1/I/L; valid 5 minutes, 5 attempts) and, only when `linkChallenge` is sent, a magic link for the same attempt (`<LOGIN_LINK_URL>#t=<token>&e=<email>`, see `/auth/email/verify-link`), bound to that challenge. Using either one consumes both. A new request invalidates the previous codes. Rate limited per email and per IP, and capped globally per day (429). Works for new and existing users alike, and answers the same while new registrations are closed (the rejection comes when verifying).
          */
         post: {
             parameters: {
@@ -83,7 +83,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange the emailed code for a session token
-         * @description Creates the user on the first successful verification. `isNew` is true while the user has no name. The code is case-insensitive and spaces or dashes are ignored; a malformed code is answered like a wrong one.
+         * @description Creates the user on the first successful verification. `isNew` is true while the user has no name. The code is case-insensitive and spaces or dashes are ignored; a malformed code is answered like a wrong one. While new registrations are closed (`GET /config` → `registrationsOpen: false`), an email with no account gets 403 `{ error, code: "REGISTRATIONS_CLOSED" }` here (after the code or link checks out), and existing accounts sign in as always.
          */
         post: {
             parameters: {
@@ -116,6 +116,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -135,7 +144,7 @@ export interface paths {
         put?: never;
         /**
          * Exchange the emailed magic-link token for a session token
-         * @description Same result as `/auth/email/verify`, with the token from the link's fragment instead of the code. Needs the `verifier` whose SHA-256 was sent as `linkChallenge` to `/auth/email/start`: the link only signs in the phone that asked for it. Shares the code's expiry, attempts and single use: a wrong or missing token or verifier uses up an attempt, and after the link or the code is used neither works again. Attempts started without a challenge have no link, so this always fails for them. Every failure answers the same 400. Only POST: the token is never accepted in a URL.
+         * @description Same result as `/auth/email/verify`, with the token from the link's fragment instead of the code. Needs the `verifier` whose SHA-256 was sent as `linkChallenge` to `/auth/email/start`: the link only signs in the phone that asked for it. Shares the code's expiry, attempts and single use: a wrong or missing token or verifier uses up an attempt, and after the link or the code is used neither works again. Attempts started without a challenge have no link, so this always fails for them. Every failure answers the same 400. Only POST: the token is never accepted in a URL. While new registrations are closed (`GET /config` → `registrationsOpen: false`), an email with no account gets 403 `{ error, code: "REGISTRATIONS_CLOSED" }` here (after the code or link checks out), and existing accounts sign in as always.
          */
         post: {
             parameters: {
@@ -161,6 +170,173 @@ export interface paths {
                 };
                 /** @description Invalid data */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with a Google ID token
+         * @description Same result as `/auth/email/verify`. The token must be signed by Google, issued for one of our OAuth clients (`GOOGLE_CLIENT_IDS`), not expired, and carry an email Google verified; any failure is the same 400. The Google account id finds the user it was linked to before (even if its email changed); otherwise the verified email signs into that email's account or creates it, and links it. An existing account is only linked when Google owns the address (Gmail, or a Workspace domain matching `hd`); for any other address with an account the answer is 409 (sign in with the emailed code instead). An account without a name gets the Google profile name (single spaces, up to 30 characters) as a suggestion: it stays incomplete (`isNew`) until it has a username, so the profile step shows it prefilled. 503 when Google sign-in is not configured, or in degraded mode for an email without an account. While new registrations are closed, a Google account with no Rollo account (no linked identity, no account with that email) gets 403 `{ error, code: "REGISTRATIONS_CLOSED" }`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GoogleSignInRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthSession"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Storage limit reached; new uploads are paused */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/apple": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with a Sign in with Apple identity token
+         * @description Same result as `/auth/email/verify` and the same rules as `/auth/google`. The token must be signed by Apple, issued for one of our bundle ids (`APPLE_CLIENT_IDS`) and not expired; if it carries an email, Apple must have verified it. Any failure is the same 400. The Apple account id finds the user it was linked to before (later tokens may come without an email); otherwise the email signs into that email's account or creates it, and links it. An existing account is only linked when Apple owns the address (iCloud, or the Hide My Email relay); any other address with an account answers 409 (sign in with the emailed code). A first sign-in without an email is a 400. `name`, which Apple gives only on the first sign-in, prefills an account without a name. 503 when Apple sign-in is not configured, or in degraded mode for an email without an account. While new registrations are closed, an Apple account with no Rollo account gets 403 `{ error, code: "REGISTRATIONS_CLOSED" }`.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AppleSignInRequest"];
+                };
+            };
+            responses: {
+                /** @description Signed in */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthSession"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Storage limit reached; new uploads are paused */
+                503: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -204,6 +380,163 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Public app configuration
+         * @description No token. `registrationsOpen` is false while a superadmin has closed new registrations: the app then shows its waitlist instead of sign-up (existing accounts still sign in). The value can lag up to a minute after a change.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Configuration */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AppConfig"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/events/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview an event by its invite code
+         * @description No token. The name, cover and groups the guest picks from before joining (`POST /trips/join`), and whether the event was already revealed. 404 'Código inválido' if the code does not exist or belongs to a regular trip. Limited per IP (429, 300/min: a venue shares one IP; more than 20 misses (404) a minute block the IP for 60 s, valid codes included). CORS: open to the website (`https://rolloproject.com`, `https://www.rolloproject.com`), GET only.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    code: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Event preview */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventPreview"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/waitlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join the waitlist (double opt-in)
+         * @description No token. For people who cannot sign up yet (registrations closed). Always 204 for valid input, whether or not the email was already listed, confirmed, throttled or over a daily cap: nothing about the list is revealed. 400 for an invalid email or `consent` other than `true`. Sends one confirmation email (a confirm and an unsubscribe link) at most once per address per 24 h; someone who unsubscribed and posts again gets a new one. Already confirmed addresses get nothing. Capped per IP and globally per day (still 204, nothing sent). 502 only if the email provider fails.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["WaitlistJoinRequest"];
+                };
+            };
+            responses: {
+                /** @description Accepted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Upstream service failed */
+                502: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1049,6 +1382,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/covers/{tripId}/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download an event's cover
+         * @description Public (no token) so it can be used directly as an image URL, also by the event preview and the website. Only the event's current cover is served; file names are random, so older or guessed ones return 404.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    file: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Cover */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/usernames/{username}": {
         parameters: {
             query?: never;
@@ -1451,7 +1835,7 @@ export interface paths {
         put?: never;
         /**
          * Generate a friend link
-         * @description Returns an 8-character code (the link is https://rollo.juanifraga.com/friends#<code>; rollo://friends/<code> is still accepted) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
+         * @description Returns an 8-character code (the link is https://rolloproject.com/friends#<code>; rollo://friends/<code> is still accepted) valid for 1 hour and reusable while it lives. Generating a new one invalidates the previous links of the user.
          */
         post: {
             parameters: {
@@ -2150,7 +2534,7 @@ export interface paths {
         put?: never;
         /**
          * Create a trip
-         * @description Whoever creates it becomes the admin. The profile must have a name and a username. Returns the invite code. 409 at the limits on rollos you created (at most 2 unrevealed at once and 4 in the last 30 days; rollos you joined do not count; users with `users.unlimited_rollos` are exempt), with the message to show.
+         * @description Whoever creates it becomes the admin. The profile must have a name and a username. Returns the invite code. 409 at the limits on rollos you created (at most 2 unrevealed at once and 4 in the last 30 days; rollos you joined do not count; users with `users.unlimited_rollos` are exempt), with the message to show. Events (`type: "event"`) are enabled per account (`users.can_create_events`, see `canCreateEvents` in GET /me): 403 without it, checked first; and 409 if you already created an event that is not revealed yet, for everyone including `unlimited_rollos` users.
          */
         post: {
             parameters: {
@@ -2185,6 +2569,15 @@ export interface paths {
                 };
                 /** @description Missing or invalid session token */
                 401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2229,7 +2622,7 @@ export interface paths {
         put?: never;
         /**
          * Join a trip
-         * @description With the invite code. The profile must have a name and a username. Idempotent: 201 when newly joined (or back after leaving), 200 when already an active member. Someone removed by the admin gets 403. Revealed rollos 409.
+         * @description With the invite code. An event is joined choosing groups (`groupIds`, all from that event, else 400): without them 409 with `code` EVENT_NEEDS_UPDATE, checked before anything else, even for an active member. The member and their groups are written together. The profile must have a name and a username. Idempotent: 201 when newly joined (or back after leaving), 200 when already an active member. Someone removed by the admin gets 403. Revealed rollos 409 ('Este evento ya se reveló.' for an event). A rollo that reached its member cap (`maxMembers`) also gets 409 with the numbers in the message (an active member still gets 200).
          */
         post: {
             parameters: {
@@ -2450,7 +2843,7 @@ export interface paths {
         head?: never;
         /**
          * Edit the trip (admin)
-         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything.
+         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything. An event stays `photoLimitMode: total` with `momentMode: off` (409 otherwise).
          */
         patch: {
             parameters: {
@@ -2604,7 +2997,7 @@ export interface paths {
         put?: never;
         /**
          * Add your friends to the trip
-         * @description Any member adds their own friends directly. The answer is per friend (never all-or-nothing): `added` (also when they had left and come back), `already_member`, or `unavailable` (not your friend, removed by the admin, or unknown). The rollo's admin can add back someone who was removed (they become active again with their old photos); for a regular member a removed person stays `unavailable`. A revealed rollo gets 409 for the whole request.
+         * @description Any member adds their own friends directly. The answer is per friend (never all-or-nothing): `added` (also when they had left and come back), `already_member`, `unavailable` (not your friend, removed by the admin, or unknown) or `full` (no room left: the rollo has a cap on active members and friends are processed in request order). An event refuses it (409): guests enter with the code. The rollo's admin can add back someone who was removed (they become active again with their old photos); for a regular member a removed person stays `unavailable`. A revealed rollo gets 409 for the whole request.
          */
         post: {
             parameters: {
@@ -2841,6 +3234,558 @@ export interface paths {
         };
         trace?: never;
     };
+    "/trips/{tripId}/members/me/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set your groups in an event
+         * @description Replaces the groups you are in (all must belong to the event, else 400). A guest needs at least one (400 with `[]`); an organizer (admin) may have none. 409 for a regular trip and once the event is revealed ('Este evento ya se reveló.').
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetMyGroupsRequest"];
+                };
+            };
+            responses: {
+                /** @description Your groups */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MyGroups"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a group in an event (admin)
+         * @description The name is trimmed (1 to 40 characters) and unique in the event (409). At most 30 groups (409). 409 for a regular trip and once the event is revealed ('Este evento ya se reveló.').
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GroupName"];
+                };
+            };
+            responses: {
+                /** @description Group created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventGroup"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/groups/{groupId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a group of an event (admin)
+         * @description 409 ('Este grupo tiene gente o fotos.') while anyone is in the group or any photo was sent to it; 409 ('Un evento necesita al menos un grupo.') for the last group. 404 if the group is not in this event. 409 for a regular trip and once the event is revealed ('Este evento ya se reveló.').
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    groupId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Group deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Rename a group of an event (admin)
+         * @description Same name rules as creating one (409 if taken). 404 if the group is not in this event. 409 for a regular trip and once the event is revealed ('Este evento ya se reveló.').
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    groupId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["GroupName"];
+                };
+            };
+            responses: {
+                /** @description Group renamed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventGroup"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/trips/{tripId}/cover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a URL to upload the event cover (admin)
+         * @description Send the exact byte size of the JPEG (`sizeBytes`, max 2 MB; 400 otherwise). Returns a URL signed for exactly that Content-Length to PUT the JPEG straight to R2. Then call POST /trips/{tripId}/cover/complete. 409 for a regular trip and once the event is revealed ('Este evento ya se reveló.'). 503 when the storage limit is reached. A previous upload that was never completed is discarded.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CoverUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description Upload URL */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CoverUpload"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Storage limit reached; new uploads are paused */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/cover/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm the event cover upload (admin)
+         * @description Checks that the file is in R2, is a JPEG (verified by its magic bytes) and is at most 2 MB, makes it the event's cover and deletes the previous one. Otherwise the upload is discarded and the response is a 400. 409 once the event is revealed (the pending upload is discarded). The cover is served publicly at `coverUrl` (GET /covers/{tripId}/{file}).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The new cover */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Cover"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips/{tripId}/members/{memberId}": {
         parameters: {
             query?: never;
@@ -3000,7 +3945,7 @@ export interface paths {
         };
         /**
          * Take the admin role away (creator)
-         * @description Only the creator. The creator's own admin role can't be removed (400).
+         * @description Only the creator. The creator's own admin role can't be removed (400). In an event, 409 if the organizer is in no group (they would become a guest without one).
          */
         delete: {
             parameters: {
@@ -3059,6 +4004,15 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Profile incomplete: set a name and a username first */
                 428: {
                     headers: {
@@ -3086,7 +4040,7 @@ export interface paths {
         put?: never;
         /**
          * Register a photo or video
-         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries).
+         * @description Returns signed URLs to upload the original and the thumbnail straight to R2; each is signed for the exact byte size declared (`sizeBytes`, `thumbSizeBytes`). Photos can also declare `displaySizeBytes` (2048px JPEG, kept forever): the response then adds `upload.display`. Photos registered without it keep their original forever. Idempotent by `id`: retrying from the offline queue neither duplicates nor spends quota. 503 when the storage limit is reached (new registrations only, never retries). 429 comes in two kinds: too fast (carries `Retry-After`, retry later) or photo quota used up (no `Retry-After`, do not retry).
          */
         post: {
             parameters: {
@@ -3212,7 +4166,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm the files were uploaded
-         * @description Checks that the original and the thumbnail are in R2 and that their sizes match what was registered. Only then does the photo show up in the feed. On a size mismatch both files are deleted and the media stays pending (register again for new URLs).
+         * @description Checks that the original and the thumbnail are in R2 and that their sizes match what was registered. Only then does the photo show up in the feed. On a size mismatch both files are deleted and the media stays pending (register again for new URLs). 429 comes in two kinds: too fast (carries `Retry-After`, retry later) or a quota error (no `Retry-After`, do not retry).
          */
         post: {
             parameters: {
@@ -3296,11 +4250,18 @@ export interface paths {
         };
         /**
          * Trip feed
-         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`; before the reveal only a daily moment's photo has `commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out.
+         * @description Before the reveal: metadata only (author, time, place, caption, thumbhash), no files, not even your own. After: includes dimensions, the download paths, whether you featured each photo, whether its author blocked featuring, and its likes (`likeCount`, `likedByMe`) and comments (`commentCount`; before the reveal only a daily moment's photo has `commentCount`). Every item carries the author's user id (`author.userId`). Photos you reported and photos by people you blocked are left out. Oldest first by default (`order=asc`; `order=desc` for newest first), ordered by `takenAt` with ties by id, paginated with a keyset cursor: send `limit` and then each page's `nextCursor` as `cursor`. A cursor is only valid with the `order` it came from: keep `order` the same across pages. Without cursor or limit returns the whole feed (in the requested order), for older app builds; new clients should always send limit.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description `asc` (default): oldest first. `desc`: newest first. A cursor is only valid with the order it was produced with: keep the same `order` on every page. */
+                    order?: "asc" | "desc";
+                    /** @description `nextCursor` of the previous page */
+                    cursor?: string;
+                    /** @description Page size (1-100; default 30 when only `cursor` is sent) */
+                    limit?: number;
+                };
                 header?: never;
                 path: {
                     tripId: string;
@@ -3309,13 +4270,22 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Feed ordered by the time the shot was taken */
+                /** @description A page of the feed ordered by the time the shot was taken */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["Feed"];
+                    };
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Missing or invalid session token */
@@ -3364,7 +4334,7 @@ export interface paths {
         };
         /**
          * Download a file (only after the reveal, except daily moment photos)
-         * @description Streamed from R2 with the same Bearer token. Before the reveal only the two images of a daily moment (main and linked) can be fetched, by active members; anything else is 403.
+         * @description Streamed from R2 with the same Bearer token. `display` is the 2048px version (the original for uploads that have none); `original` serves the display once the original was purged 30 days after the reveal. Before the reveal only the two images of a daily moment (main and linked) can be fetched, by active members; anything else is 403.
          */
         get: {
             parameters: {
@@ -3373,7 +4343,7 @@ export interface paths {
                 path: {
                     tripId: string;
                     mediaId: string;
-                    variant: "thumb" | "original";
+                    variant: "thumb" | "original" | "display";
                 };
                 cookie?: never;
             };
@@ -3381,6 +4351,16 @@ export interface paths {
             responses: {
                 /** @description File */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                        "video/mp4": string;
+                    };
+                };
+                /** @description Part of the file, for a single `Range: bytes=...` request (players such as AVPlayer need it for video). `Content-Range` says which bytes and the total size. Several ranges or an invalid one get the whole file with 200. */
+                206: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3415,6 +4395,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["Error"];
                     };
+                };
+                /** @description The requested range starts past the end of the file; `Content-Range: bytes *\/<size>` gives the size */
+                416: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Profile incomplete: set a name and a username first */
                 428: {
@@ -4077,7 +5064,7 @@ export interface paths {
                 path: {
                     userId: string;
                     mediaId: string;
-                    variant: "thumb" | "original";
+                    variant: "thumb" | "original" | "display";
                 };
                 cookie?: never;
             };
@@ -4718,6 +5705,11 @@ export interface components {
         Error: {
             /** @example Código inválido */
             error: string;
+            /**
+             * @description Machine-readable reason, only on the errors the app has to tell apart.
+             * @example REGISTRATIONS_CLOSED
+             */
+            code?: string;
         };
         EmailStartRequest: {
             /**
@@ -4763,6 +5755,8 @@ export interface components {
              */
             badge: "founder" | "first_edition" | null;
             profileVisibility: components["schemas"]["ProfileVisibility"];
+            /** @description Whether this account can create events (POST /trips with type "event"); enabled by hand for now. Without it that call is a 403 */
+            canCreateEvents: boolean;
         };
         /**
          * @description Who can see your bio and featured photos: your friends only, or anyone signed in. Name, username and avatar are always visible
@@ -4797,6 +5791,58 @@ export interface components {
              * @example dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk
              */
             verifier?: string;
+        };
+        GoogleSignInRequest: {
+            /**
+             * @description Google ID token from Google Sign-In on the phone (a JWT signed by Google)
+             * @example eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCIuLi4iOiIuLi4ifQ.c2ln
+             */
+            idToken: string;
+        };
+        AppleSignInRequest: {
+            /**
+             * @description Identity token from Sign in with Apple on the phone (a JWT signed by Apple)
+             * @example eyJraWQiOiIuLi4iLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwczovL2FwcGxlaWQuYXBwbGUuY29tIiwiLi4uIjoiLi4uIn0.c2ln
+             */
+            identityToken: string;
+            /**
+             * @description Full name Apple gave the app (only on the first sign-in). Suggested as the profile name if the account has none; trimmed, single spaces, cut to 30 characters
+             * @example Lucía Pérez
+             */
+            name?: string;
+        };
+        AppConfig: {
+            /** @description false while new accounts cannot be created (the app shows the waitlist instead of sign-up). */
+            registrationsOpen: boolean;
+        };
+        EventPreview: {
+            name: string;
+            /** @description Path of the cover (prefix the API base URL), null if none */
+            coverUrl: string | null;
+            revealed: boolean;
+            groups: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            }[];
+        };
+        WaitlistJoinRequest: {
+            /**
+             * @description Trimmed and lowercased
+             * @example juani@example.com
+             */
+            email: string;
+            /**
+             * @description Where the person signed up. Defaults to `app`.
+             * @default app
+             * @enum {string}
+             */
+            source?: "app" | "web";
+            /**
+             * @description Must be `true`: the person agreed to get an email when Rollo opens.
+             * @enum {boolean}
+             */
+            consent: true;
         };
         ReceivedFriendRequests: {
             /** @description Pending requests to you, most recent first */
@@ -4920,6 +5966,10 @@ export interface components {
              * @enum {string}
              */
             momentMode: "off" | "photo" | "photo_selfie";
+            /** @enum {string} */
+            type: "trip" | "event";
+            /** @description Public path of the event cover; null if none */
+            coverUrl: string | null;
             /** @description ThumbHash of the most recently taken uploaded photo or video of the rollo (null if none); the app derives the rollo's color from it */
             coverThumbhash: string | null;
         };
@@ -4950,6 +6000,8 @@ export interface components {
             dailyMoment: boolean;
             /** @description Someone in a rollo you are in uploaded their daily moment */
             momentPosted: boolean;
+            /** @description The full-quality originals of a rollo you are in will be deleted in 5 days (the display versions stay) */
+            originalsExpiring: boolean;
         };
         PrivacySettings: {
             /** @description Others may feature any of your photos on their profile (on by default) */
@@ -4977,6 +6029,8 @@ export interface components {
                 dailyMoment?: boolean;
                 /** @description Someone in a rollo you are in uploaded their daily moment */
                 momentPosted?: boolean;
+                /** @description The full-quality originals of a rollo you are in will be deleted in 5 days (the display versions stay) */
+                originalsExpiring?: boolean;
             };
             privacy?: {
                 /** @description Others may feature any of your photos on their profile (on by default) */
@@ -5094,7 +6148,7 @@ export interface components {
         };
         FriendLink: {
             /**
-             * @description 8-character code; the link is https://rollo.juanifraga.com/friends#<code> (rollo://friends/<code> is also accepted)
+             * @description 8-character code; the link is https://rolloproject.com/friends#<code> (rollo://friends/<code> is also accepted)
              * @example K7M2QX9A
              */
             code: string;
@@ -5225,12 +6279,36 @@ export interface components {
             momentWindowStart: number;
             /** @description Moment window end, minutes from midnight in the rollo's time zone */
             momentWindowEnd: number;
+            /** @description Maximum number of active participants (15 for a new rollo, 200 for a new event); joining or adding past it is refused */
+            maxMembers: number;
+            /** @description Retention of the full-quality originals; the 2048px display version of every photo is kept forever */
+            originals: {
+                /** @description The rollo keeps its full-quality originals forever (rollos that existed before the policy, and later the paid pass) */
+                keep: boolean;
+                /** @description When the originals are deleted: 30 days after the reveal; null when `keep` */
+                expiresAt: number | null;
+                /** @description The cron already deleted every purgeable original (the display versions stay) */
+                purged: boolean;
+            };
             /** @description Who created the rollo (always an admin). Only filled in by GET /trips/{tripId}, create, join and the edit routes; null if unknown */
             createdBy: {
                 /** Format: uuid */
                 userId: string;
                 name: string;
             } | null;
+            /**
+             * @description event: guests join groups; trip: a regular rollo
+             * @enum {string}
+             */
+            type: "trip" | "event";
+            /** @description Public path of the event cover (the app prefixes the API base URL); null if none */
+            coverUrl: string | null;
+            /** @description Groups of an event, in order; [] for a regular trip */
+            groups: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            }[];
         };
         Member: {
             /**
@@ -5314,14 +6392,27 @@ export interface components {
              * @default 1380
              */
             momentWindowEnd?: number;
+            /**
+             * @description event: guests join one or more groups. Events always use the total photo limit (20 if omitted) and no daily moment
+             * @default trip
+             * @enum {string}
+             */
+            type?: "trip" | "event";
+            /** @description Event only (required, 1 to 30 distinct names of 1 to 40 characters); rejected on a regular trip */
+            groups?: string[];
         };
         JoinTripRequest: {
             /** @example HUB5FT */
             code: string;
+            /** @description Event groups to join (required for an event: without them 409 EVENT_NEEDS_UPDATE; ignored for a regular trip). An active member who sends more groups adds them to the ones they had */
+            groupIds?: string[];
         };
         TripDetail: {
             trip: components["schemas"]["Trip"];
-            me: components["schemas"]["Member"];
+            me: components["schemas"]["Member"] & {
+                /** @description Ids of the event groups the member is in; [] for a regular trip and for organizers without groups */
+                groupIds: string[];
+            };
             members: components["schemas"]["Member"][];
             today: {
                 /**
@@ -5372,10 +6463,10 @@ export interface components {
             results: {
                 userId: string;
                 /**
-                 * @description added: now a member (also if they had left); already_member; unavailable: not your friend, removed by the admin (unless the caller is the admin), or unknown
+                 * @description added: now a member (also if they had left); already_member; unavailable: not your friend, removed by the admin (unless the caller is the admin), or unknown; full: the rollo reached its member cap before this friend (friends are processed in request order)
                  * @enum {string}
                  */
-                status: "added" | "already_member" | "unavailable";
+                status: "added" | "already_member" | "unavailable" | "full";
             }[];
         };
         AddMembersRequest: {
@@ -5391,6 +6482,40 @@ export interface components {
             allowFeaturing?: boolean;
             /** @description Archive the rollo for you only (revealed rollos only, 409 otherwise); it stays in your list marked as archived */
             archived?: boolean;
+        };
+        MyGroups: {
+            groupIds: string[];
+        };
+        SetMyGroupsRequest: {
+            groupIds: string[];
+        };
+        EventGroup: {
+            id: string;
+            name: string;
+        };
+        GroupName: {
+            /** @example Familia */
+            name: string;
+        };
+        CoverUpload: {
+            /**
+             * Format: uri
+             * @description PUT of the JPEG cover
+             */
+            upload: string;
+            /** @description Seconds the URL stays valid */
+            expiresIn: number;
+        };
+        CoverUploadRequest: {
+            /** @description Exact byte size of the JPEG (max 2 MB); the upload URL is signed for exactly this Content-Length */
+            sizeBytes: number;
+        };
+        Cover: {
+            /**
+             * @description Path of the cover (prefix the API base URL)
+             * @example /covers/abc/3f1c2a.jpg
+             */
+            coverUrl: string;
         };
         MediaRegistered: {
             /** Format: uuid */
@@ -5408,6 +6533,11 @@ export interface components {
                  * @description PUT of the JPEG thumbnail (~800px); send exactly `thumbSizeBytes` bytes as Content-Length
                  */
                 thumb: string;
+                /**
+                 * Format: uri
+                 * @description Only when `displaySizeBytes` was sent: PUT of the display JPEG (2048px); send exactly `displaySizeBytes` bytes as Content-Length
+                 */
+                display?: string;
             };
             /** @description Seconds the URLs stay valid */
             expiresIn: number;
@@ -5446,11 +6576,15 @@ export interface components {
             sizeBytes: number;
             /** @description Exact byte size of the thumbnail JPEG; the upload URL is signed for exactly this Content-Length */
             thumbSizeBytes: number;
+            /** @description Photos only. Exact byte size of the display JPEG (2048 px, compressed, up to 4 MB); when present the response's `upload` also has a signed `display` URL for exactly this Content-Length. Omit it (older builds) and the photo keeps its original forever. */
+            displaySizeBytes?: number;
             /**
              * @description Trip-local date (YYYY-MM-DD) of the daily moment this photo answers. The member must have a moment for that day (409 otherwise, or if it already has a photo). Moment photos don't use the photo quota. Photos only.
              * @example 2027-01-12
              */
             momentDay?: string | null;
+            /** @description Events only (ignored in a regular rollo): the groups that will see the photo. Ids the guest is not in (or that no longer exist) are dropped; if none is left the photo goes to all the guest's groups (to all the groups, for an organizer). Retrying the same `id` never changes them. */
+            groupIds?: string[];
             /**
              * Format: uuid
              * @description Marks this photo as the selfie of a moment: the id of the member's own moment photo in the same rollo (400 otherwise). The selfie takes its moment day from that photo and doesn't use the photo quota.
@@ -5463,6 +6597,8 @@ export interface components {
             revealed: boolean;
             revealAt: number;
             items: components["schemas"]["FeedItem"][];
+            /** @description Pass it as `cursor` to get the next page; null when there are no more items (always null without cursor or limit) */
+            nextCursor: string | null;
         };
         FeedItem: {
             /** Format: uuid */
@@ -5477,6 +6613,8 @@ export interface components {
             /** @description ThumbHash in base64. Always returned, also before the reveal, on purpose: it only encodes blurry colors (~25 bytes), the photo cannot be reconstructed from it. */
             thumbhash: string | null;
             durationS: number | null;
+            /** @description Event groups the photo was sent to. Always empty in a regular trip. */
+            groupIds: string[];
             /** @description `id` is the author's membership id; `userId` their user id */
             author: {
                 /** Format: uuid */
@@ -5497,8 +6635,13 @@ export interface components {
             /** @description Download paths; only after the reveal, except for the photos of a daily moment (main and linked image), which any active member gets as soon as they are uploaded */
             files?: {
                 thumb: string;
+                /** @description Always present. Once the original was purged (30 days after the reveal) the same path serves the display file instead; see `originalAvailable` */
                 original: string;
+                /** @description 2048px version, kept forever; absent for uploads from builds that predate it (they keep their original) */
+                display?: string;
             };
+            /** @description Comes with `files`: false once the full-quality original was deleted (the `original` path then serves the display file). Always true for videos and for uploads without a display */
+            originalAvailable?: boolean;
             /** @description Only after the reveal: you featured it on your profile */
             featuredByMe?: boolean;
             /** @description Only after the reveal: the author does not let others feature it (they still can) */
@@ -5526,7 +6669,10 @@ export interface components {
                 files: {
                     thumb: string;
                     original: string;
+                    display?: string;
                 } | null;
+                /** @description false once the linked image's original was deleted (the `original` path then serves the display file) */
+                originalAvailable?: boolean;
             } | null;
         };
         FeaturedPhotos: {

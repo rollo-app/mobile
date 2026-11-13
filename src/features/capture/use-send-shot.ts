@@ -20,6 +20,8 @@ export type SendShotInput = {
   author: string;
   /** The location fix started when the camera opened (may resolve to null). */
   fix: Promise<Fix | null> | null;
+  /** Event groups the photo goes to; omitted for a regular rollo (the server uses the guest's groups). */
+  groupIds?: string[];
   /** The "momento del día" this shot belongs to (trip-local YYYY-MM-DD). */
   momentDay?: string;
   /** Which camera took `asset` (moment shots only). */
@@ -86,6 +88,7 @@ async function sendShot(input: SendShotInput) {
     caption,
     momentDay: input.momentDay ?? null,
     pairedWith: null,
+    groupIds: input.groupIds?.length ? input.groupIds : null,
     ...prepared,
   });
   if (withSelfie && selfiePrepared) {

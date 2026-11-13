@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { OfflineManager } from "@maplibre/maplibre-react-native";
 import { renderRouter, screen, fireEvent, waitFor } from "expo-router/testing-library";
 import { Alert, type AlertButton } from "react-native";
@@ -8,12 +9,16 @@ import { routes } from "@/test/routes";
 jest.mock("@/features/trips/actions");
 
 const DAY = 24 * 60 * 60 * 1000;
-const member = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const, isCreator: false, blockedByMe: false };
+const member = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const, isCreator: false, blockedByMe: false, groupIds: [] };
 const detail = (): actions.TripDetail => ({
   trip: {
     id: "t1", name: "Viaje al sur", joinCode: "HUB5FT", timezone: "America/Argentina/Buenos_Aires",
     startsAt: Date.now() - DAY, endsAt: Date.now() + DAY, revealAt: Date.now() + DAY, revealed: false,
-    dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, photoLimitMode: "daily", totalPhotoLimit: null, momentMode: "off", momentWindowStart: 540, momentWindowEnd: 1380,
+    dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, maxMembers: 15, photoLimitMode: "daily", totalPhotoLimit: null, momentMode: "off", momentWindowStart: 540, momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
   me: member,

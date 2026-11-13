@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
 import { ApiError } from "@/api/client";
@@ -18,7 +19,7 @@ const sync = jest.mocked(momentSync);
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
 
-type Member = tripActions.TripDetail["me"];
+type Member = tripActions.TripDetail["members"][number];
 const member = (over: Partial<Member> & Pick<Member, "id" | "userId" | "name">): Member => ({
   username: over.name.toLowerCase(),
   avatarUrl: null,
@@ -45,15 +46,20 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
       dailyPhotoLimit: 10,
       dailyVideoLimit: 3,
       featuringDisabled: false,
+      maxMembers: 15,
       photoLimitMode: "daily",
       totalPhotoLimit: null,
       momentMode: "off",
       momentWindowStart: 540,
       momentWindowEnd: 1380,
+      originals: keepOriginals,
+      type: "trip",
+      coverUrl: null,
+      groups: [],
       createdBy: { userId: "u1", name: "Juani" },
       ...over,
     },
-    me,
+    me: { ...me, groupIds: [] },
     members: [admin, plain].map((m) => (m.id === me.id ? me : m)),
     today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
     totalUploaded: 3,
@@ -64,11 +70,17 @@ async function openBoard(d: tripActions.TripDetail) {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(SUR);
   await renderRouter(routes, { initialUrl: "/roll" });
-  await screen.findByText(/^En el rollo · /);
+  await screen.findByText("Personas");
+}
+
+async function openSettings(d: tripActions.TripDetail) {
+  await openBoard(d);
+  await fireEvent.press(screen.getByRole("button", { name: "Ajustes del rollo" }));
+  await screen.findByText("Fechas");
 }
 
 async function openEditor(d = detail(admin)) {
-  await openBoard(d);
+  await openSettings(d);
   await fireEvent.press(await screen.findByText("Editar rollo"));
   await screen.findByRole("button", { name: "Guardar" });
 }
@@ -79,24 +91,24 @@ beforeEach(async () => {
   for (const mock of [...Object.values(friends), ...Object.values(trips)]) (mock as Partial<jest.Mock>).mockReset?.();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [], nextCursor: null });
   friends.fetchFriends.mockResolvedValue([]);
   friends.fetchFriendRequests.mockResolvedValue([]);
 });
 
 describe("Editar rollo row", () => {
   it("shows for an admin of a rollo that has not ended", async () => {
-    await openBoard(detail(admin));
+    await openSettings(detail(admin));
     expect(screen.getByText("Editar rollo")).toBeVisible();
   });
 
   it("does not show for a plain member", async () => {
-    await openBoard(detail(plain));
+    await openSettings(detail(plain));
     expect(screen.queryByText("Editar rollo")).toBeNull();
   });
 
   it("does not show once the rollo ended", async () => {
-    await openBoard(detail(admin, { startsAt: Date.now() - 5 * DAY, endsAt: Date.now() - DAY, revealAt: Date.now() + DAY }));
+    await openSettings(detail(admin, { startsAt: Date.now() - 5 * DAY, endsAt: Date.now() - DAY, revealAt: Date.now() + DAY }));
     expect(screen.queryByText("Editar rollo")).toBeNull();
   });
 });
@@ -123,6 +135,19 @@ describe("Editar rollo screen", () => {
     expect(screen.queryByText(/Los cambios valen desde mañana/)).toBeNull();
   });
 
+  it("an event hides the daily moment and locks the quota type to the whole rollo", async () => {
+    await openEditor(detail(admin, { type: "event", photoLimitMode: "total", totalPhotoLimit: 20, startsAt: Date.now() + DAY }));
+    expect(screen.queryByText("Momento del día")).toBeNull();
+    expect(screen.queryByText(/Los cambios valen desde mañana/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Todo el rollo" })).toBeSelected();
+    expect(screen.getByRole("button", { name: "Por día" })).toBeDisabled();
+  });
+
+  it("a regular rollo still shows the daily moment", async () => {
+    await openEditor(detail(admin, { startsAt: Date.now() + DAY }));
+    expect(screen.getByText("Momento del día")).toBeVisible();
+  });
+
   it("keeps Guardar disabled until something changes", async () => {
     await openEditor();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
@@ -139,7 +164,7 @@ describe("Editar rollo screen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => expect(trips.updateTrip).toHaveBeenCalledWith(SUR, { endsAt: newEnd, revealAt: newEnd }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname("/roll-settings"));
     expect(sync.syncMoments).toHaveBeenCalled();
   });
 
@@ -152,7 +177,7 @@ describe("Editar rollo screen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => expect(trips.updateTrip).toHaveBeenCalledWith(SUR, { dailyPhotoLimit: 12 }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname("/roll-settings"));
     expect(sync.syncMoments).not.toHaveBeenCalled();
   });
 

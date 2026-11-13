@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { Text } from "react-native";
@@ -38,14 +39,19 @@ const detail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -54,7 +60,7 @@ const detail = (): actions.TripDetail => ({
   totalUploaded: 3,
 });
 
-const item = (id: string, iso: string, author: { id: string; name: string; username?: string | null; avatarUrl: string | null }, caption: string | null): actions.Feed["items"][number] => ({
+const item = (id: string, iso: string, author: { id: string; name: string; username?: string | null; avatarUrl: string | null }, caption: string | null): actions.Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: Date.parse(iso),
@@ -79,7 +85,8 @@ beforeEach(async () => {
   likes.likeMedia.mockReset().mockResolvedValue(undefined);
   likes.unlikeMedia.mockReset().mockResolvedValue(undefined);
   mocked.fetchTrip.mockResolvedValue(detail());
-  mocked.fetchFeed.mockResolvedValue({
+  mocked.fetchFeedPage.mockResolvedValue({
+    nextCursor: null,
     revealed: true,
     revealAt: Date.parse("2027-01-14T12:00:00Z"),
     items: [
@@ -114,6 +121,26 @@ describe("Presentation", () => {
     expect(screen.getByLabelText("2 personas")).toBeTruthy();
     expect(screen.getByLabelText("2 días")).toBeTruthy();
     expect(screen.getByText("Fede sacó más fotos: 2 fotos")).toBeTruthy();
+  });
+
+  it("shows the display version of a photo, or its original when the upload has no display", async () => {
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
+      revealed: true,
+      revealAt: Date.parse("2027-01-14T12:00:00Z"),
+      items: [
+        { ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), files: { thumb: "/m/a/thumb", original: "/m/a/original", display: "/m/a/display" } },
+        item("b", "2027-01-12T16:00:00Z", { id: "m1", name: "Juani", avatarUrl: null }, null),
+      ],
+    });
+    const uri = () => (screen.getByTestId("slide-image").props.source as Array<{ uri: string }>)[0]!.uri;
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await tap(); // day card -> a
+    await screen.findByTestId("slide-image");
+    expect(uri()).toMatch(/\/m\/a\/display$/);
+
+    await tap(); // b
+    await waitFor(() => expect(uri()).toMatch(/\/m\/b\/original$/));
   });
 
   it("tapping the left side goes back to the previous photo", async () => {
@@ -210,9 +237,53 @@ describe("Presentation", () => {
   });
 
   it("explains when there are no photos to show", async () => {
-    mocked.fetchFeed.mockResolvedValue({ revealed: true, revealAt: 0, items: [] });
+    mocked.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: 0, items: [], nextCursor: null });
     await renderRouter(routes, { initialUrl: "/presentation" });
     await screen.findByText("Todavía no hay fotos para mostrar.");
+  });
+});
+
+describe("Presentation: a huge day", () => {
+  const bigFeed = () =>
+    Array.from({ length: 2000 }, (_, i) =>
+      item(`big${i}`, new Date(Date.parse("2027-01-12T12:00:00Z") + i * 10_000).toISOString(), { id: i % 2 ? "m2" : "m1", name: i % 2 ? "Fede" : "Juani", avatarUrl: null }, null),
+    );
+  const toOutro = async () => {
+    await screen.findByText("Día 1");
+    for (let i = 0; i < 31; i++) await tap(); // 30 photos, then the outro
+    await screen.findByText("Así fue");
+  };
+
+  beforeEach(() => {
+    mocked.fetchFeedPage.mockResolvedValue({ nextCursor: null, revealed: true, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: bigFeed() });
+  });
+
+  it("shows a 30-photo selection, the real count on the card and all 2.000 in the outro", async () => {
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    expect(await screen.findByText("2.000 fotos")).toBeTruthy();
+    expect(screen.getByText("Una selección de 30")).toBeTruthy();
+    await toOutro();
+    expect(screen.getByLabelText("2.000 fotos")).toBeTruthy();
+  });
+
+  it("'Ver las 2.000 fotos en la galería' closes the presentation and lands on the gallery view", async () => {
+    await renderRouter(routes, { initialUrl: "/roll?view=roll" });
+    await act(async () => router.push("/presentation"));
+    await toOutro();
+    await fireEvent.press(screen.getByRole("button", { name: "Ver las 2.000 fotos en la galería" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(screen).toHaveSearchParams({ view: "gallery" });
+    expect(screen.queryByTestId("story-surface")).toBeNull();
+  });
+
+  it("does not offer it when nothing was trimmed", async () => {
+    mocked.fetchFeedPage.mockResolvedValue({ nextCursor: null, revealed: true, revealAt: 0, items: bigFeed().slice(0, 3) });
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await screen.findByText("Día 1");
+    for (let i = 0; i < 4; i++) await tap();
+    await screen.findByText("Así fue");
+    expect(screen.queryByText(/Ver las/)).toBeNull();
+    expect(screen.getByLabelText("Ver la galería")).toBeTruthy();
   });
 });
 
@@ -265,8 +336,8 @@ describe("Presentation: likes", () => {
   });
 
   it("on a video, taps move right away and never like", async () => {
-    const base = await mocked.fetchFeed("x");
-    mocked.fetchFeed.mockResolvedValue({
+    const base = await mocked.fetchFeedPage("x", { limit: 30 });
+    mocked.fetchFeedPage.mockResolvedValue({
       ...base,
       items: [{ ...base.items[0]!, type: "video", durationS: 10, caption: "un video" }, ...base.items.slice(1)],
     });
@@ -304,7 +375,8 @@ describe("Presentation: daily moment", () => {
   const selfie = { id: "s", width: 1080, height: 1440, thumbhash: null, files: { thumb: "/m/s/thumb", original: "/m/s/original" } };
 
   it("shows the other-image inset on a moment photo and tapping it swaps, without advancing the story", async () => {
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
       revealed: true,
       revealAt: Date.parse("2027-01-14T12:00:00Z"),
       items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, "el viento"), momentDay: "2027-01-12", selfie }],
@@ -317,7 +389,8 @@ describe("Presentation: daily moment", () => {
   });
 
   it("shows the badge on a moment photo without selfie", async () => {
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
       revealed: true,
       revealAt: Date.parse("2027-01-14T12:00:00Z"),
       items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, "el viento"), momentDay: "2027-01-12" }],

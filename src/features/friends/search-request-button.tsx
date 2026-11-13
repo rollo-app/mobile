@@ -15,7 +15,7 @@ export function SearchRequestButton({ user }: { user: UserSearchResult }) {
         <Button size="small" variant="secondary" label="Enviada" accessibilityLabel={`Solicitud enviada a ${user.name}, cancelar`} onPress={request.cancel} />
       )}
       {user.friendRequest === "received" && <Button size="small" label="Aceptar" accessibilityLabel={`Aceptar solicitud de ${user.name}`} onPress={request.accept} />}
-      {request.error && <ErrorText>{request.error}</ErrorText>}
+      {!!request.error && <ErrorText>{request.error}</ErrorText>}
     </View>
   );
 }

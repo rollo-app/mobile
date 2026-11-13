@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Schemas } from "@/api/client";
 import { API_URL } from "@/config";
 import { getSession } from "@/features/auth/session";
-import { useFeed } from "@/features/trips/use-feed";
+import { useFeed, type FeedMode } from "@/features/trips/use-feed";
 
 /** A photo or video of a revealed roll, with the paths to download it. */
 export type RevealedPhoto = {
@@ -26,6 +26,8 @@ export type RevealedPhoto = {
   featureBlocked: boolean;
   /** You can feature it on your profile now (false if its rollo is private or its author, their rollo setting or their account says no). */
   canFeature: boolean;
+  /** Event groups the photo was sent to (empty for a regular rollo). */
+  groupIds: string[];
   /** How many people like it (one counter, also likes from profiles that feature it). */
   likeCount: number;
   /** You like it. */
@@ -39,13 +41,20 @@ export type RevealedPhoto = {
   /** The selfie taken with a moment photo (null if none). Never likeable, commentable or featurable: those act on the main photo. */
   selfie: RevealedSelfie | null;
   thumbPath: string;
+  /** Full-quality file. Once purged (30 days after the reveal) the server serves the display file at this same path. */
   originalPath: string;
+  /** What to load for full-size viewing: the 2048 px display, or the original for uploads that have none. */
+  displayPath: string;
+  /** false once the full-quality original was deleted: saving to Photos then takes the display. */
+  originalAvailable: boolean;
 };
 
 export type RevealedSelfie = {
   id: string;
   thumbPath: string;
   originalPath: string;
+  displayPath: string;
+  originalAvailable: boolean;
   thumbhash: string | null;
   width: number | null;
   height: number | null;
@@ -74,6 +83,7 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
               featuredByMe: item.featuredByMe ?? false,
               featureBlocked: item.featureBlocked ?? false,
               canFeature: item.canFeature ?? true,
+              groupIds: item.groupIds ?? [],
               likeCount: item.likeCount ?? 0,
               likedByMe: item.likedByMe ?? false,
               commentCount: item.commentCount ?? 0,
@@ -84,6 +94,8 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
                     id: item.selfie.id,
                     thumbPath: item.selfie.files.thumb,
                     originalPath: item.selfie.files.original,
+                    displayPath: item.selfie.files.display ?? item.selfie.files.original,
+                    originalAvailable: item.selfie.originalAvailable ?? true,
                     thumbhash: item.selfie.thumbhash,
                     width: item.selfie.width,
                     height: item.selfie.height,
@@ -91,6 +103,8 @@ export function toRevealedPhotos(items: Schemas["FeedItem"][]): RevealedPhoto[] 
                 : null,
               thumbPath: item.files.thumb,
               originalPath: item.files.original,
+              displayPath: item.files.display ?? item.files.original,
+              originalAvailable: item.originalAvailable ?? true,
             },
           ]
         : [],
@@ -124,13 +138,20 @@ export function useMediaToken(key: string | undefined) {
 /**
  * Revealed photos of a roll plus the token needed to load them (`mediaSource`).
  * Before the reveal `photos` holds only the daily moments (the one kind of photo the feed gives files for).
+ * `mode` is `useFeed`'s: "all" (default) keeps loading pages until every photo is here; "lazy" loads more only on `fetchMore`
+ * (`hasMore`, `loadingMore`, `complete` tell where it stands). `loadAll` loads the rest and resolves with every photo (null if it failed).
  */
-export function useRevealedPhotos(tripId: string | undefined) {
-  const { feed, error, loading, refetch, isRefetching } = useFeed(tripId);
+export function useRevealedPhotos(tripId: string | undefined, mode: FeedMode = "all") {
+  const { feed, error, loading, refetch, isRefetching, hasMore, fetchMore, loadingMore, loadMoreError, complete, loadAll: loadAllFeed } = useFeed(tripId, { mode });
   const token = useMediaToken(tripId);
 
   // Memoized on the feed so screens' derived lists (and memoized grid cells) don't rebuild on every render.
   const photos = useMemo(() => (feed ? toRevealedPhotos(feed.items) : []), [feed]);
+
+  const loadAll = useCallback(async () => {
+    const whole = await loadAllFeed();
+    return whole.complete && whole.feed ? toRevealedPhotos(whole.feed.items) : null;
+  }, [loadAllFeed]);
 
   return {
     photos,
@@ -139,5 +160,11 @@ export function useRevealedPhotos(tripId: string | undefined) {
     loading,
     refetch,
     isRefetching,
+    hasMore,
+    fetchMore,
+    loadingMore,
+    loadMoreError,
+    complete,
+    loadAll,
   };
 }

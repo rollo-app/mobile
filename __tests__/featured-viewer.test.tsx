@@ -24,7 +24,7 @@ beforeEach(async () => {
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   jest.mocked(actions).fetchTrip.mockReturnValue(new Promise(() => {}));
-  jest.mocked(actions).fetchFeed.mockReturnValue(new Promise(() => {}));
+  jest.mocked(actions).fetchFeedPage.mockReturnValue(new Promise(() => {}));
   featured.fetchFeatured.mockReset().mockResolvedValue([featuredPhoto("p1"), featuredPhoto("p2", { author: CAMI })]);
   featured.unfeatureMedia.mockReset().mockResolvedValue(undefined);
   likes.likeMedia.mockReset().mockResolvedValue(undefined);

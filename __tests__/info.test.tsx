@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
 import "@/test/reanimated";
 import * as featuredActions from "@/features/featured/actions";
@@ -14,13 +15,17 @@ const mocked = jest.mocked(actions);
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const DAY = 24 * 60 * 60 * 1000;
-const me = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const, isCreator: false, blockedByMe: false };
+const me = { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin" as const, isCreator: false, blockedByMe: false, groupIds: [] };
 const detail = (): actions.TripDetail => ({
   trip: {
     id: SUR, name: "Viaje al sur", joinCode: "HUB5FT", timezone: "America/Argentina/Buenos_Aires",
     startsAt: Date.now() - DAY, endsAt: Date.now() + 9 * DAY, revealAt: Date.now() + 9 * DAY, revealed: false,
-    dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, photoLimitMode: "daily", totalPhotoLimit: null,
+    dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, maxMembers: 15, photoLimitMode: "daily", totalPhotoLimit: null,
     momentMode: "off", momentWindowStart: 540, momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
   me,
@@ -56,7 +61,7 @@ beforeEach(async () => {
   jest.mocked(featuredActions).fetchPrivacySettings.mockResolvedValue({ allowFeaturing: true } as never);
   mocked.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
   mocked.fetchTrip.mockResolvedValue(detail());
-  mocked.fetchFeed.mockReturnValue(new Promise(() => {}));
+  mocked.fetchFeedPage.mockReturnValue(new Promise(() => {}));
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
 });
 

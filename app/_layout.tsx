@@ -3,14 +3,13 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { StyleSheet, Text, useColorScheme, View } from "react-native";
-import { CACHE_MAX_AGE, connectAppState, persister, queryClient } from "@/api/query-client";
+import { CACHE_MAX_AGE, connectAppState, persister, queryClient, shouldDehydrateQuery } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
-import { REVEAL_BACKGROUND } from "@/features/reveal/reveal-screen";
-import { CROP_BACKGROUND } from "@/features/profile/avatar-crop";
 import { useNotificationResponse } from "@/features/notifications/use-notification-response";
 import { cancelLegacyRevealNotifications } from "@/features/notifications/legacy-reveal";
 import { usePushRegistration } from "@/features/notifications/use-push-registration";
 import { useOfflineMapSync } from "@/features/map/use-offline-map-sync";
+import { useOpenPendingJoin } from "@/features/events/use-pending-join";
 import { useRedeemPendingFriend } from "@/features/friends/use-pending-friend";
 import { useSyncTriggers } from "@/features/capture/use-sync-triggers";
 import { gateFor } from "@/features/auth/gate";
@@ -20,7 +19,7 @@ import { useMe } from "@/features/auth/use-me";
 import { Button } from "@/ui/components";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PillHost } from "@/ui/pill-host";
-import { colors, spacing, type } from "@/ui/theme";
+import { colors, screenBackgrounds, spacing, type } from "@/ui/theme";
 
 export default function RootLayout() {
   const scheme = useColorScheme();
@@ -31,7 +30,7 @@ export default function RootLayout() {
   useEffect(() => void cancelLegacyRevealNotifications(), []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE }}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: CACHE_MAX_AGE, dehydrateOptions: { shouldDehydrateQuery } }}>
         <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
           <StatusBar style="auto" />
           <RootStack />
@@ -50,6 +49,7 @@ function RootStack() {
   const { session, me, failed, refetch } = useMe();
   const gate = gateFor({ session, me, meFailed: failed });
   useRedeemPendingFriend(gate === "app");
+  useOpenPendingJoin(gate === "app");
   usePushRegistration(gate === "app");
   useNotificationResponse(gate === "app");
 
@@ -70,12 +70,19 @@ function RootStack() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {/* A friend link works with or without a session: it routes to the right step itself. */}
       <Stack.Screen name="friends/[code]" options={{ headerShown: false }} />
+      {/* A join link works without a session too: it keeps the code and goes on with the sign-up. */}
+      <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />
       {/* The login email's magic link: signs in without a session, never switches an existing one. */}
       <Stack.Screen name="login" options={{ headerShown: false }} />
       {/* The profile photo crop: "Completá tu perfil" (login gate) and "Editar perfil" (app) both open it. */}
       <Stack.Screen
         name="crop-avatar"
-        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: CROP_BACKGROUND } }}
+        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.crop } }}
+      />
+      {/* The event cover crop: the board and Crear rollo open it. */}
+      <Stack.Screen
+        name="crop-cover"
+        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.crop } }}
       />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -84,7 +91,6 @@ function RootStack() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create" options={{ title: "Nuevo rollo", presentation: "modal" }} />
           <Stack.Screen name="edit-trip" options={{ title: "Editar rollo", presentation: "modal" }} />
-          <Stack.Screen name="join" options={{ title: "Sumate a un rollo", presentation: "modal" }} />
           <Stack.Screen
             name="trips"
             options={{
@@ -103,6 +109,14 @@ function RootStack() {
               sheetGrabberVisible: true,
             }}
           />
+          {/* "Ver todos" in a roll's "En el rollo": the full members list, with search. */}
+          <Stack.Screen name="roll-members" options={{ title: "Integrantes" }} />
+          {/* The gear in the Rollo tab: name, cover, dates, groups, featuring, archive, leave, delete. */}
+          <Stack.Screen name="roll-settings" options={{ title: "Ajustes del rollo" }} />
+          {/* Event board: organizers manage the groups and show the QR; guests change their groups. */}
+          <Stack.Screen name="event-groups" options={{ title: "Grupos" }} />
+          <Stack.Screen name="my-groups" options={{ title: "Sumarme a otro grupo" }} />
+          <Stack.Screen name="event-qr" options={{ title: "Código QR" }} />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
           <Stack.Screen name="notifications" options={{ title: "Notificaciones" }} />
           {/* "¿Te avisamos…?", once, after creating or joining a roll. */}
@@ -160,7 +174,7 @@ function RootStack() {
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
           <Stack.Screen
             name="reveal"
-            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: REVEAL_BACKGROUND } }}
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.reveal } }}
           />
           <Stack.Screen
             name="presentation"

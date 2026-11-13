@@ -1,4 +1,5 @@
 import "react-native-gesture-handler/jestSetup";
+import "@shopify/flash-list/jestSetup";
 
 // In-memory SecureStore: tests don't touch the real keychain.
 jest.mock("expo-secure-store", () => {
@@ -271,16 +272,25 @@ jest.mock("@expo/ui/swift-ui", () => {
     Section: ({ title, header, footer, children }: any) =>
       h(View, null, title && h(RNText, null, title), header, children, footer),
     HStack: Wrap,
+    Group: Wrap,
+    RNHostView: ({ children }: any) => children,
     Spacer: () => null,
     Image: () => null,
-    Button: ({ onPress, modifiers, children }: any) =>
+    Button: ({ onPress, modifiers, label, children }: any) =>
       h(
         Pressable,
-        { accessibilityRole: "button", accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel, onPress },
-        children,
+        {
+          accessibilityRole: "button",
+          accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel ?? label,
+          accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled },
+          onPress,
+        },
+        label ? h(RNText, null, label) : children,
       ),
-    TextField: ({ placeholder, onTextChange }: any) =>
-      h(TextInput, { placeholder, onChangeText: onTextChange }),
+    // Swipe actions render always visible, so tests can press them directly.
+    SwipeActions: Object.assign(Wrap, { Actions: Wrap }),
+    TextField: ({ placeholder, onTextChange, modifiers }: any) =>
+      h(TextInput, { placeholder, onChangeText: onTextChange, accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel }),
     DatePicker: ({ title, selection, range, modifiers }: any) =>
       h(View, { accessibilityLabel: title, accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled }, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
     Stepper: ({ label, value, modifiers }: any) =>
@@ -294,8 +304,9 @@ jest.mock("@expo/ui/swift-ui", () => {
         value: !!isOn,
         onValueChange: onIsOnChange,
       }),
-    Picker: ({ selection, onSelectionChange, children }: any) =>
-      h(
+    Picker: ({ selection, onSelectionChange, children, modifiers }: any) => {
+      const disabled = !!modifiers?.find((m: any) => "disabled" in m)?.disabled;
+      return h(
         View,
         null,
         React.Children.map(children, (child: any) =>
@@ -304,13 +315,15 @@ jest.mock("@expo/ui/swift-ui", () => {
             {
               accessibilityRole: "button",
               accessibilityLabel: child.props.children,
-              accessibilityState: { selected: child.props.modifiers?.[0]?.tag === selection },
+              accessibilityState: { selected: child.props.modifiers?.[0]?.tag === selection, disabled },
+              disabled,
               onPress: () => onSelectionChange(child.props.modifiers?.[0]?.tag),
             },
             h(RNText, null, child.props.children),
           ),
         ),
-      ),
+      );
+    },
   };
 });
 jest.mock("@expo/ui/swift-ui/modifiers", () => ({
@@ -323,6 +336,9 @@ jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   accessibilityLabel: (accessibilityLabel: string) => ({ accessibilityLabel }),
   buttonStyle: (style: string) => ({ buttonStyle: style }),
   font: (params: unknown) => ({ font: params }),
+  listRowInsets: (params: unknown) => ({ listRowInsets: params }),
+  listRowBackground: (color: unknown) => ({ listRowBackground: color }),
+  aspectRatio: (params: unknown) => ({ aspectRatio: params }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).
@@ -500,6 +516,11 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
       h(View, null, h(Text, null, "Se reveló"), h(Text, null, title), h(Text, null, date)),
   };
 });
+// The QR (Skia) is a plain View in tests.
+jest.mock("@/features/events/qr-canvas", () => {
+  const { View } = require("react-native");
+  return { QrCanvas: View, qrPng: jest.fn(() => null) };
+});
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
 jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));
@@ -539,5 +560,33 @@ jest.mock("expo-crypto", () => {
       const hash: Uint8Array = nodeCrypto.createHash("sha256").update(data).digest();
       return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength);
     },
+  };
+});
+
+// Google Sign-In is native: the account picker answers "cancelled" unless a test sets what signIn resolves to.
+jest.mock("@react-native-google-signin/google-signin", () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    signIn: jest.fn(async () => ({ type: "cancelled", data: null })),
+    signOut: jest.fn(async () => null),
+  },
+  isErrorWithCode: (e: unknown) => typeof e === "object" && e !== null && "code" in e,
+  statusCodes: { SIGN_IN_CANCELLED: "SIGN_IN_CANCELLED", IN_PROGRESS: "IN_PROGRESS", PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE" },
+}));
+
+// Sign in with Apple is native: the sheet answers "canceled" unless a test sets what signInAsync resolves to. The native button
+// becomes a plain pressable with the label iOS reads on it.
+jest.mock("expo-apple-authentication", () => {
+  const { Pressable, Text } = require("react-native");
+  return {
+    isAvailableAsync: jest.fn(async () => true),
+    signInAsync: jest.fn(async () => {
+      throw Object.assign(new Error("canceled"), { code: "ERR_REQUEST_CANCELED" });
+    }),
+    AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
+    AppleAuthenticationButtonType: { SIGN_IN: 0, CONTINUE: 1 },
+    AppleAuthenticationButtonStyle: { WHITE: 0, WHITE_OUTLINE: 1, BLACK: 2 },
+    AppleAuthenticationButton: ({ onPress }: { onPress: () => void }) =>
+      require("react").createElement(Pressable, { accessibilityRole: "button", accessibilityLabel: "Continuar con Apple", onPress }, require("react").createElement(Text, null, "Continuar con Apple")),
   };
 });

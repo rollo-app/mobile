@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import { Alert, Share } from "react-native";
 import * as actions from "@/features/friends/actions";
@@ -33,14 +34,19 @@ const revealedDetail = (): tripActions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [{ id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false }],
   today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
@@ -93,7 +99,7 @@ describe("Friends", () => {
 
   it("after the reveal the Amigos tab is still there", async () => {
     trips.fetchTrip.mockResolvedValue(revealedDetail());
-    trips.fetchFeed.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [] });
+    trips.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [], nextCursor: null });
     await markPresentationSeen("t1");
     await renderRouter(routes, { initialUrl: "/friends" });
 
@@ -157,7 +163,7 @@ describe("Friends", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
 
     expect(share).toHaveBeenCalledTimes(1);
-    expect((share.mock.calls[0]![0] as { message: string }).message).toContain("https://rollo.juanifraga.com/friends#K7M2QX9A");
+    expect((share.mock.calls[0]![0] as { message: string }).message).toContain("https://rolloproject.com/friends#K7M2QX9A");
   });
 
   it("shows the error inline when the link can't be made", async () => {

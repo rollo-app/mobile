@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import * as Notifications from "expo-notifications";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
@@ -46,14 +47,19 @@ const detail = (id = SUR, name = "Viaje al sur"): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [],
   today: { date: "2027-01-12", photosLeft: 10, videosLeft: 3 },
   totalUploaded: 0,
@@ -71,7 +77,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   trips.fetchTrip.mockImplementation(async (id: string) => (id === OTRO ? detail(OTRO, "Bariloche") : detail()));
   trips.joinTrip.mockResolvedValue(detail().trip);
-  trips.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [] } as never);
+  trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [], nextCursor: null } as never);
   push.registerPushToken.mockResolvedValue();
   trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(OTRO, "Bariloche")] });
   friends.fetchFriends.mockResolvedValue([]);
@@ -241,7 +247,7 @@ describe("tapping a push", () => {
   });
 
   it("the 'momentPosted' push opens the viewer on that moment of a roll that is not revealed yet, and leaves its roll active", async () => {
-    trips.fetchFeed.mockImplementation(async (id: string) => ({
+    trips.fetchFeedPage.mockImplementation(async (id: string) => ({
       revealed: false,
       revealAt: Date.now() + 4 * DAY,
       items:
@@ -308,8 +314,8 @@ describe("tapping a push", () => {
 });
 
 describe("Ajustes: Notificaciones", () => {
-  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true, momentPosted: true };
-  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad", "Momento del día", "Momentos del grupo"];
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true, momentPosted: true, originalsExpiring: true };
+  const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad", "Momento del día", "Momentos del grupo", "Fotos por borrarse"];
 
   beforeEach(() => {
     push.fetchNotificationSettings.mockResolvedValue(ALL_ON);
@@ -338,12 +344,24 @@ describe("Ajustes: Notificaciones", () => {
     expect(screen.getByRole("switch", { name: "Te suman a un rollo" }).props.value).toBe(true);
     for (const title of ["Rollos", "Amigos", "Tus fotos"]) expect(screen.getByText(title)).toBeVisible();
     expect(screen.getAllByText("Momento del día").length).toBeGreaterThan(1); // group title + switch label
-    expect(screen.getByText("Se revela: cuando se pueden ver las fotos de un rollo tuyo.")).toBeVisible();
+    expect(screen.getByText("Se revela: cuando se pueden ver las fotos de un rollo tuyo. Fotos por borrarse: unos días antes de que se borren las fotos en máxima calidad.")).toBeVisible();
     expect(screen.getByText("Cuando alguien acepta tu link de amistad o te manda una solicitud.")).toBeVisible();
     expect(screen.getByText("Cuando alguien destaca, le da me gusta o comenta una foto tuya (o una que comentaste).")).toBeVisible();
     expect(screen.getByText("Un aviso al día, a una hora al azar, para sacar tu foto; y otro cuando alguien del rollo sube la suya.")).toBeVisible();
     // With permission there's no banner.
     expect(screen.queryByText("Las notificaciones están desactivadas")).toBeNull();
+  });
+
+  it("'Fotos por borrarse' saves only originalsExpiring", async () => {
+    permission(true, true, "granted");
+    await renderRouter(testRoutes, { initialUrl: "/notifications" });
+
+    const sw = await screen.findByRole("switch", { name: "Fotos por borrarse" });
+    expect(sw.props.value).toBe(true);
+    await fireEvent(sw, "valueChange", false);
+
+    expect(push.updateNotificationSettings).toHaveBeenCalledWith({ originalsExpiring: false });
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Fotos por borrarse" }).props.value).toBe(false));
   });
 
   it("'Momentos del grupo' saves only momentPosted", async () => {

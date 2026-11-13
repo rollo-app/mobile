@@ -8,12 +8,14 @@ import { mediaSource } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { colors, radius, spacing, type } from "@/ui/theme";
+import { useImageRetry } from "@/ui/use-image-retry";
+import { dateFormatter } from "@/lib/intl";
 
 const THUMB = 56;
 
 /** Capture time "14:32" in the trip's time zone. */
 export function clockTime(takenAt: number, timeZone: string): string {
-  return new Intl.DateTimeFormat("es-AR", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(takenAt);
+  return dateFormatter("es-AR", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(takenAt);
 }
 
 type Props = {
@@ -31,16 +33,19 @@ type Props = {
   token?: string | null;
   /** Tap on a daily moment that shows its real photo: opens it in the viewer instead of the map. */
   onOpenPhoto?: (item: MapItem) => void;
+  /** Events: the groups the photo was sent to ("Familia, Amigos"); null when there is nothing to tell. */
+  groupLabel?: string | null;
 };
 
 /** A native Feed row: who, when, the caption (or what they took) and the blurred photo. */
-export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete, onReport, token, onOpenPhoto }: Props) {
+export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthorPress, onDelete, onReport, token, onOpenPhoto, groupLabel }: Props) {
   const who = item.authorUsername ? formatHandle(item.authorUsername) : item.authorName;
   const when = clockTime(item.takenAt, timeZone);
   const generic = item.type === "video" ? `sacó un video · ${Math.round(item.durationS ?? 0)} s` : "sacó una foto";
   const located = item.lat !== null && item.lng !== null;
   // A moment is visible right away: its real photo replaces the ThumbHash and tapping it opens the viewer.
   const momentSource = item.momentDay && item.thumbPath && token ? mediaSource(item.thumbPath, token) : undefined;
+  const retry = useImageRetry(item.thumbPath ?? undefined);
   const open = momentSource && onOpenPhoto ? () => onOpenPhoto(item) : located && onPress ? () => onPress(item) : undefined;
   const canDelete = !!onDelete && !item.pending;
   const canReport = !!onReport && !item.pending;
@@ -70,6 +75,8 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
           </Text>
           {" · "}
           <Text>{when}</Text>
+          {groupLabel ? " · " : null}
+          {groupLabel ? <Text>{groupLabel}</Text> : null}
         </Text>
         {item.caption ? (
           <Text numberOfLines={3} style={[type.quote, { color: colors.label }]}>
@@ -83,6 +90,9 @@ export const FeedRow = memo(function FeedRow({ item, timeZone, onPress, onAuthor
       {item.momentDay && momentSource ? (
         <View>
           <Image
+            key={retry.retryKey}
+            onError={retry.onError}
+            onLoad={retry.onLoad}
             testID="feed-thumb"
             source={momentSource}
             placeholder={item.thumbhash ? { thumbhash: item.thumbhash } : undefined}

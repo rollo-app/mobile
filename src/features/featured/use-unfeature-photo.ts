@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { errorMessage } from "@/api/client";
+import { feedRootKey } from "@/features/trips/use-feed";
 import { unfeatureMedia, type FeaturedPhoto } from "./actions";
 import { featuredKey } from "./use-featured";
 
@@ -19,7 +20,7 @@ export function useUnfeaturePhoto(userId: string) {
     onSuccess: (_data, mediaId) => {
       client.setQueryData<FeaturedPhoto[]>(featuredKey(userId), (list) => list?.filter((p) => p.mediaId !== mediaId));
       // The roll galleries mark the photo as featured: they refetch.
-      void client.invalidateQueries({ queryKey: ["feed"] });
+      void client.invalidateQueries({ queryKey: feedRootKey });
     },
   });
   const { mutate } = mutation;

@@ -25,7 +25,7 @@ const moderationActions = jest.mocked(moderation);
 const SUR = "11111111-1111-4111-8111-111111111111";
 const DAY = 24 * 60 * 60 * 1000;
 
-const feedItem = (id: string, over: Partial<tripActions.Feed["items"][number]> = {}): tripActions.Feed["items"][number] => ({
+const feedItem = (id: string, over: Partial<tripActions.Feed["items"][number]> = {}): tripActions.Feed["items"][number] => ({ groupIds: [],
   id,
   type: "photo",
   takenAt: Date.parse("2027-01-12T16:10:00Z"),
@@ -42,7 +42,7 @@ const feedItem = (id: string, over: Partial<tripActions.Feed["items"][number]> =
   ...over,
 });
 
-const feed = (items: tripActions.Feed["items"]): tripActions.Feed => ({ revealed: true, revealAt: Date.now() - DAY, items });
+const feed = (items: tripActions.Feed["items"]): tripActions.Feed => ({ revealed: true, revealAt: Date.now() - DAY, items, nextCursor: null });
 
 const comment = (id: string, text: string, over: Partial<actions.Comment> = {}): actions.Comment => ({
   id,
@@ -56,7 +56,7 @@ const comment = (id: string, text: string, over: Partial<actions.Comment> = {}):
 const mine = { userId: "u1", name: "Juani", username: "juani", avatarUrl: null };
 
 beforeEach(async () => {
-  trips.fetchFeed.mockResolvedValue(feed([feedItem("a", { commentCount: 2 }), feedItem("v", { type: "video" })]));
+  trips.fetchFeedPage.mockResolvedValue(feed([feedItem("a", { commentCount: 2 }), feedItem("v", { type: "video" })]));
   trips.fetchTrip.mockReturnValue(new Promise(() => {}));
   comments.fetchComments.mockReset().mockResolvedValue([]);
   comments.addComment.mockReset().mockResolvedValue(comment("new", "hola", { author: mine, canDelete: true }));

@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
 import * as friendActions from "@/features/friends/actions";
@@ -35,7 +36,7 @@ beforeEach(async () => {
   jest.mocked(featuredActions).fetchFeatured.mockResolvedValue([]);
   jest.mocked(tripActions).fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
   jest.mocked(tripActions).fetchTrip.mockReturnValue(new Promise(() => {}));
-  jest.mocked(tripActions).fetchFeed.mockReturnValue(new Promise(() => {}));
+  jest.mocked(tripActions).fetchFeedPage.mockReturnValue(new Promise(() => {}));
   jest.mocked(moderation).unblockUser.mockReset().mockResolvedValue(undefined);
 });
 
@@ -92,7 +93,7 @@ describe("Members", () => {
       isCreator: false,
       blockedByMe,
     });
-    const me = member("m1", "u1", "Juani", "admin", false);
+    const me = { ...member("m1", "u1", "Juani", "admin", false), groupIds: [] };
     jest.mocked(moderation).fetchBlocked.mockResolvedValue([]);
     jest.mocked(tripActions).fetchTrip.mockResolvedValue({
       trip: {
@@ -107,11 +108,16 @@ describe("Members", () => {
         dailyPhotoLimit: 10,
         dailyVideoLimit: 3,
         featuringDisabled: false,
+        maxMembers: 15,
         photoLimitMode: "daily",
         totalPhotoLimit: null,
         momentMode: "off",
         momentWindowStart: 540,
         momentWindowEnd: 1380,
+        originals: keepOriginals,
+        type: "trip",
+        coverUrl: null,
+        groups: [],
         createdBy: null,
       },
       me,
@@ -121,6 +127,7 @@ describe("Members", () => {
     });
     jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
 
     expect(await screen.findByText("Bloqueado")).toBeVisible();
     expect(screen.getByText("Admin")).toBeVisible();

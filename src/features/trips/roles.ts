@@ -1,6 +1,6 @@
 import type { TripDetail } from "./actions";
 
-type Member = TripDetail["me"];
+type Member = TripDetail["members"][number];
 
 export type MemberAction = "makeAdmin" | "removeAdmin" | "remove";
 

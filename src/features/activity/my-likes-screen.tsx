@@ -17,7 +17,7 @@ export function MyLikesScreen() {
   if (!photos) {
     return (
       <Screen grouped>
-        {error && (
+        {!!error && (
           <>
             <ErrorText>{error}</ErrorText>
             <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />

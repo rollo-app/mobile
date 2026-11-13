@@ -1,3 +1,7 @@
+import { keepOriginals } from "@/test/trip";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import * as AppleAuthentication from "expo-apple-authentication";
+import Constants from "expo-constants";
 import * as ImagePicker from "expo-image-picker";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -59,14 +63,19 @@ const tripDetail = (): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u2", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -99,7 +108,7 @@ beforeEach(() => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
   jest.mocked(moderationActions).fetchBlocked.mockResolvedValue([]);
   mocked.fetchTrip.mockResolvedValue(tripDetail());
-  mocked.fetchFeed.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [] });
+  mocked.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [], nextCursor: null });
   mocked.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
   sheet.mockReset();
@@ -108,10 +117,11 @@ beforeEach(() => {
 afterEach(() => alert.mockRestore());
 
 describe("Login", () => {
-  it("without a session the app shows the email step and nothing else", async () => {
+  it("without a session the app shows the welcome screen and nothing else", async () => {
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
+    expect(screen).toHavePathname("/welcome");
     expect(screen.queryByText("Fechas")).toBeNull();
   });
 
@@ -120,9 +130,9 @@ describe("Login", () => {
     await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.press(await screen.findByText("Términos"));
-    expect(open).toHaveBeenLastCalledWith("https://rollo.juanifraga.com/terminos");
+    expect(open).toHaveBeenLastCalledWith("https://rolloproject.com/terms");
     await fireEvent.press(screen.getByText("Política de privacidad"));
-    expect(open).toHaveBeenLastCalledWith("https://rollo.juanifraga.com/privacidad");
+    expect(open).toHaveBeenLastCalledWith("https://rolloproject.com/privacy");
     open.mockRestore();
   });
 
@@ -133,7 +143,7 @@ describe("Login", () => {
       "GET /usernames/juani": json(200, { available: true, username: "juani" }),
       "PATCH /me": json(200, USER),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     const email = await screen.findByLabelText("Tu email");
     expect(email.props.textContentType).toBe("emailAddress");
@@ -165,12 +175,171 @@ describe("Login", () => {
     expect(calls).toEqual(["POST /auth/email/start", "POST /auth/email/verify", "GET /usernames/juani", "PATCH /me"]);
   });
 
+  describe("Continuar con Apple", () => {
+    // Only the production build carries the entitlement (app.config.ts): turn it on for these tests.
+    const config = Constants.expoConfig as { ios?: Record<string, unknown> };
+    const before = config.ios;
+    beforeEach(() => {
+      config.ios = { ...before, usesAppleSignIn: true };
+    });
+    afterEach(() => {
+      config.ios = before;
+    });
+
+    it("a new account goes to Completá tu perfil with the name Apple gave", async () => {
+      jest.mocked(AppleAuthentication.signInAsync).mockResolvedValueOnce({
+        user: "a1",
+        identityToken: "atok",
+        fullName: { givenName: "Lucía", familyName: "Pérez" },
+        email: null,
+        realUserStatus: 1,
+        state: null,
+        authorizationCode: null,
+      } as AppleAuthentication.AppleAuthenticationCredential);
+      const calls = mockApi({
+        "POST /auth/apple": async (req) => {
+          expect(await req.json()).toEqual({ identityToken: "atok", name: "Lucía Pérez" });
+          return json(200, { token: "tok", user: { ...USER, name: "Lucía Pérez", username: null }, isNew: true });
+        },
+      });
+      await renderRouter(routes, { initialUrl: "/email" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
+
+      expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+      expect(screen.getByLabelText("Tu nombre").props.value).toBe("Lucía Pérez");
+      expect(await getSessionToken()).toBe("tok");
+      expect(calls).toEqual(["POST /auth/apple"]);
+    });
+
+    it("canceling Apple's sheet stays on the email step without calling the server", async () => {
+      const calls = mockApi({});
+      await renderRouter(routes, { initialUrl: "/email" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
+
+      await waitFor(() => expect(AppleAuthentication.signInAsync).toHaveBeenCalled());
+      expect(screen.getByLabelText("Tu email")).toBeVisible();
+      expect(screen.queryByText(/No se pudo/)).toBeNull();
+      expect(calls).toEqual([]);
+    });
+
+    it("shows the server's error inline", async () => {
+      jest.mocked(AppleAuthentication.signInAsync).mockResolvedValueOnce({
+        user: "a1",
+        identityToken: "atok",
+        fullName: null,
+        email: null,
+        realUserStatus: 1,
+        state: null,
+        authorizationCode: null,
+      } as AppleAuthentication.AppleAuthenticationCredential);
+      mockApi({ "POST /auth/apple": json(409, { error: "Ya tenés una cuenta con este email. Entrá con el código que te mandamos por mail." }) });
+      await renderRouter(routes, { initialUrl: "/email" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Apple" }));
+
+      expect(await screen.findByText("Ya tenés una cuenta con este email. Entrá con el código que te mandamos por mail.")).toBeVisible();
+    });
+  });
+
+  it("without the Sign in with Apple entitlement (the development build) there is no Apple button", async () => {
+    await renderRouter(routes, { initialUrl: "/email" });
+    expect(await screen.findByRole("button", { name: "Continuar con Google" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Continuar con Apple" })).toBeNull();
+  });
+
+  it("Continuar con Google: a new account goes to Completá tu perfil with the session saved", async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: "Juani", email: "juani@gmail.com", photo: null, familyName: null, givenName: null } },
+    });
+    const calls = mockApi({
+      "POST /auth/google": async (req) => {
+        expect(await req.json()).toEqual({ idToken: "gtok" });
+        return json(200, { token: "tok", user: { ...USER, name: null, username: null }, isNew: true });
+      },
+    });
+    await renderRouter(routes, { initialUrl: "/email" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    expect(await getSessionToken()).toBe("tok");
+    expect(calls).toEqual(["POST /auth/google"]);
+  });
+
+  it("Continuar con Google with a Google photo: the profile step uploads it as the default photo", async () => {
+    const photoUrl = "https://lh3.googleusercontent.com/a/xyz=s512";
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: "Juani", email: "juani@gmail.com", photo: photoUrl, familyName: null, givenName: null } },
+    });
+    mockApi({ "POST /auth/google": json(200, { token: "tok", user: { ...USER, name: "Juani", username: null }, isNew: true }) });
+    const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue({ ...USER, username: null, avatarUrl: "/avatars/u1/a.jpg" });
+    upload.mockClear();
+    const { File } = jest.requireMock("expo-file-system") as { File: { downloadFileAsync: jest.Mock } };
+    File.downloadFileAsync.mockClear();
+    await renderRouter(routes, { initialUrl: "/email" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    await waitFor(() => expect(upload).toHaveBeenCalledWith({ uri: "file:///cache/tmp", width: 512, height: 512 }));
+    expect(File.downloadFileAsync.mock.calls[0]![0]).toBe(photoUrl);
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Cambiar foto")).toBeVisible();
+  });
+
+  it("Continuar con Google without a Google photo leaves the photo empty", async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: "Juani", email: "juani@gmail.com", photo: null, familyName: null, givenName: null } },
+    });
+    mockApi({ "POST /auth/google": json(200, { token: "tok", user: { ...USER, name: "Juani", username: null }, isNew: true }) });
+    const upload = jest.spyOn(profileActions, "uploadAvatar").mockResolvedValue(USER);
+    upload.mockClear();
+    await renderRouter(routes, { initialUrl: "/email" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    expect(await screen.findByText("Completá tu perfil")).toBeVisible();
+    expect(screen.getByText("Agregar foto")).toBeVisible();
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it("closing Google's picker stays on the email step without calling the server", async () => {
+    const calls = mockApi({});
+    await renderRouter(routes, { initialUrl: "/email" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    await waitFor(() => expect(GoogleSignin.signIn).toHaveBeenCalled());
+    expect(screen.getByLabelText("Tu email")).toBeVisible();
+    expect(screen.queryByText(/No se pudo/)).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  it("shows the server's error inline when Google sign-in fails", async () => {
+    jest.mocked(GoogleSignin.signIn).mockResolvedValueOnce({
+      type: "success",
+      data: { idToken: "gtok", serverAuthCode: null, scopes: [], user: { id: "g1", name: null, email: "x@gmail.com", photo: null, familyName: null, givenName: null } },
+    });
+    mockApi({ "POST /auth/google": json(400, { error: "No pudimos verificar tu cuenta de Google. Probá de nuevo." }) });
+    await renderRouter(routes, { initialUrl: "/email" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Continuar con Google" }));
+
+    expect(await screen.findByText("No pudimos verificar tu cuenta de Google. Probá de nuevo.")).toBeVisible();
+    expect(await getSessionToken()).toBeNull();
+  });
+
   it("a returning user with a name goes straight into the app", async () => {
     mockApi({
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(200, { token: "tok", user: USER, isNew: false }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
@@ -179,12 +348,22 @@ describe("Login", () => {
     await waitFor(() => expect(screen).toHavePathname("/roll"));
   });
 
+  it("the login code field shows the generic placeholder", async () => {
+    mockApi({ "POST /auth/email/start": json(204) });
+    await renderRouter(routes, { initialUrl: "/email" });
+
+    await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByPlaceholderText("Ingresar código")).toBe(screen.getByLabelText("Código"));
+  });
+
   it("a user with a name but no username still has to pick one", async () => {
     mockApi({
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(200, { token: "tok", user: { ...USER, username: null }, isNew: true }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
@@ -196,7 +375,7 @@ describe("Login", () => {
 
   it("shows the server's error inline on the email step and keeps what was typed", async () => {
     mockApi({ "POST /auth/email/start": json(429, { error: "Pediste demasiados códigos, esperá un rato" }) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
 
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
@@ -210,7 +389,7 @@ describe("Login", () => {
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(400, { error: "Código incorrecto o vencido" }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -222,7 +401,7 @@ describe("Login", () => {
 
   it("types the code in uppercase and ignores characters it can't have", async () => {
     mockApi({ "POST /auth/email/start": json(204) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -233,7 +412,7 @@ describe("Login", () => {
 
   it("the code field has no native length limit, so iOS AutoFill can insert it", async () => {
     mockApi({ "POST /auth/email/start": json(204) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -252,7 +431,7 @@ describe("Login", () => {
         return json(400, { error: "Código incorrecto o vencido" });
       },
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -274,7 +453,7 @@ describe("Login", () => {
         return json(400, { error: "Código incorrecto o vencido" });
       },
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
@@ -292,7 +471,7 @@ describe("Login", () => {
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(400, { error: "Código incorrecto o vencido" }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
@@ -317,7 +496,7 @@ describe("Login", () => {
         return () => (++n === 1 ? json(204) : json(429, { error: "Pediste demasiados códigos, esperá un rato" }));
       })(),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     await screen.findByLabelText("Código");
@@ -336,7 +515,7 @@ describe("Login", () => {
 
   it("doesn't suggest asking for another code before anything failed", async () => {
     mockApi({ "POST /auth/email/start": json(204) });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
 
@@ -350,7 +529,7 @@ describe("Login", () => {
       "POST /auth/email/start": json(204),
       "POST /auth/email/verify": json(400, { error: "El código venció, pedí uno nuevo" }),
     });
-    await renderRouter(routes, { initialUrl: "/" });
+    await renderRouter(routes, { initialUrl: "/email" });
     await fireEvent.changeText(await screen.findByLabelText("Tu email"), "juani@rollo.test");
     await fireEvent.press(screen.getByRole("button", { name: "Continuar" }));
     await fireEvent.changeText(await screen.findByLabelText("Código"), "K7M4QX");
@@ -378,7 +557,7 @@ describe("Login", () => {
       await jest.requireActual("@/api/query-client").queryClient.invalidateQueries({ queryKey: ["myTrips"] });
     });
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     expect(await getSessionToken()).toBeNull();
   });
 });
@@ -403,7 +582,7 @@ describe("Profile and settings", () => {
     expect(await screen.findByText("Completá tu perfil")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Cerrar sesión" }));
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     expect(calls).toContain("POST /auth/logout");
     expect(await getSessionToken()).toBeNull();
   });
@@ -421,7 +600,7 @@ describe("Profile and settings", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     expect(calls).toContain("POST /auth/logout");
     expect(await getSessionToken()).toBeNull();
     expect(await queue.pending("u1")).toHaveLength(1);
@@ -447,7 +626,7 @@ describe("Profile and settings", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: "Cerrar sesión" })).toBeNull());
     expect(calls.filter((c) => c === "POST /auth/logout")).toHaveLength(1);
     await act(async () => release());
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
     expect(calls.filter((c) => c === "POST /auth/logout")).toHaveLength(1);
   });
 
@@ -470,7 +649,7 @@ describe("Profile and settings", () => {
     await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar sesión" }));
-    await screen.findByLabelText("Tu email");
+    await screen.findByRole("button", { name: "Ya tengo cuenta" });
 
     expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("moment.t1.2027-01-12");
     expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalledWith("other");
@@ -499,8 +678,8 @@ describe("Profile and settings", () => {
     const buttons = alert.mock.calls[0]![2] as { text: string; onPress?: () => void }[];
     await act(async () => buttons.find((b) => b.text === "Borrar cuenta")!.onPress!());
 
-    expect(await screen.findByLabelText("Tu email")).toBeVisible();
-    expect(calls).toEqual(["DELETE /me"]);
+    expect(await screen.findByRole("button", { name: "Ya tengo cuenta" })).toBeVisible();
+    expect(calls).toEqual(["DELETE /me", "GET /config"]);
     expect(await getSessionToken()).toBeNull();
   });
 
@@ -774,11 +953,13 @@ describe("Edit profile", () => {
 describe("Perfil", () => {
   beforeEach(() => signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] }));
 
-  it("shows your handle under your name and the members' under theirs", async () => {
-    await renderRouter(routes, { initialUrl: "/me" });
+  it("shows the members' handles under their names", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    // The board no longer lists the members: their handles show in the members list.
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
 
     expect(await screen.findByText("@fede.s")).toBeVisible();
-    expect(screen.getAllByText("@juani")).toHaveLength(2);
+    expect(screen.getAllByText("@juani")).toHaveLength(1);
   });
 });
 

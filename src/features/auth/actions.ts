@@ -2,6 +2,9 @@ import { ApiError, createApiClient, unwrap, type Schemas } from "@/api/client";
 import { queryClient } from "@/api/query-client";
 import { API_URL } from "@/config";
 import { clearLoginLinkVerifier, getLoginLinkVerifier, setLoginLinkVerifier } from "@/storage/login-link-verifier";
+import { getAppleAccount } from "./apple";
+import { getGoogleAccount } from "./google";
+import { setPendingGooglePhoto } from "./google-photo";
 import { createLinkVerifier } from "./link-verifier";
 import { forgetPushToken } from "@/features/notifications/push-token";
 import { addPendingLogout } from "@/storage/pending-logout";
@@ -67,6 +70,30 @@ export async function verifyMagicLink(email: string, token: string): Promise<{ u
   );
   await clearLoginLinkVerifier();
   return result;
+}
+
+/**
+ * Signs in with the Google account the user picks: Google's ID token goes to the server, which checks it and answers
+ * like the code. Null when the user closed Google's picker (nothing changes).
+ */
+export async function signInWithGoogle(): Promise<{ user: User; isNew: boolean } | null> {
+  const account = await getGoogleAccount();
+  if (!account) return null;
+  const session = await unwrap(createApiClient({ baseUrl: API_URL }).POST("/auth/google", { body: { idToken: account.idToken } }));
+  // An account still without a photo gets the Google one by default in "Completá tu perfil" (set before the gate flips to it).
+  setPendingGooglePhoto(session.isNew && !session.user.avatarUrl ? account.photo : null);
+  return startSession(session);
+}
+
+/**
+ * Signs in with Apple: the identity token (and the name, which Apple gives only on the first sign-in) goes to the server, which
+ * answers like the code. Null when the user canceled Apple's sheet (nothing changes).
+ */
+export async function signInWithApple(): Promise<{ user: User; isNew: boolean } | null> {
+  const account = await getAppleAccount();
+  if (!account) return null;
+  const body = { identityToken: account.identityToken, ...(account.name ? { name: account.name } : {}) };
+  return startSession(await unwrap(createApiClient({ baseUrl: API_URL }).POST("/auth/apple", { body })));
 }
 
 async function startSession({ token, user, isNew }: { token: string; user: User; isNew: boolean }) {

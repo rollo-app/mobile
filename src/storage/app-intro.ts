@@ -11,6 +11,11 @@ export async function markAppIntroPending(): Promise<void> {
   await SecureStore.setItemAsync(PENDING_KEY, "1");
 }
 
+/** True while the intro is queued and will show (doesn't consume it). */
+export async function isAppIntroQueued(): Promise<boolean> {
+  return (await SecureStore.getItemAsync(PENDING_KEY)) === "1" && (await SecureStore.getItemAsync(SEEN_KEY)) !== "1";
+}
+
 /** True once when the intro is queued and wasn't shown before; clears the queue and remembers it was shown. */
 export async function takeAppIntroPending(): Promise<boolean> {
   if ((await SecureStore.getItemAsync(PENDING_KEY)) !== "1") return false;

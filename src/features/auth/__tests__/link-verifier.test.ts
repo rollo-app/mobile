@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { createHash } from "crypto";
 import { base64url, createLinkVerifier } from "../link-verifier";
 

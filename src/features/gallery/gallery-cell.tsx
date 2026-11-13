@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { MomentBadge, momentBadgeCorner } from "@/features/media/moment-badge";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
 import { colors, type } from "@/ui/theme";
+import { useImageRetry } from "@/ui/use-image-retry";
 import { ownPhotoActions } from "./own-photo-actions";
 
 const formatDuration = (seconds: number) =>
@@ -53,6 +54,8 @@ function sameCell(a: CellProps, b: CellProps) {
 }
 
 export const Cell = memo(function Cell({ photo, token, size, selecting, selected, own, onPress, onToggleFeatured, onOwnAction }: CellProps) {
+  // A thumbnail the server refused (429 while scrolling fast) tries again by itself.
+  const retry = useImageRetry(photo.id);
   const cell = (
     <Pressable
       accessibilityRole="button"
@@ -61,8 +64,12 @@ export const Cell = memo(function Cell({ photo, token, size, selecting, selected
       onPress={() => onPress(photo)}
       style={{ width: size, height: size, backgroundColor: colors.latent }}
     >
-      {token && (
+      {!!token && (
         <Image
+          key={retry.retryKey}
+          testID={`gallery-thumb-${photo.id}`}
+          onError={retry.onError}
+          onLoad={retry.onLoad}
           source={mediaSource(photo.thumbPath, token)}
           placeholder={photo.thumbhash ? { thumbhash: photo.thumbhash } : undefined}
           transition={120}
@@ -72,7 +79,7 @@ export const Cell = memo(function Cell({ photo, token, size, selecting, selected
           style={[StyleSheet.absoluteFill, photo.archived && styles.archived]}
         />
       )}
-      {photo.momentDay && <MomentBadge style={momentBadgeCorner} />}
+      {!!photo.momentDay && <MomentBadge style={momentBadgeCorner} />}
       {photo.archived && (
         <View style={styles.archivedBadge}>
           <Text style={[type.caption, styles.archivedText]}>Archivada</Text>

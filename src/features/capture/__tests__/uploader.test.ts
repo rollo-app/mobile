@@ -26,21 +26,33 @@ const item = (overrides: Partial<QueuedMedia> = {}): QueuedMedia => ({
   momentDay: null,
   pairedWith: null,
   ownerUserId: "u1",
+  groupIds: null,
   ...overrides,
 });
 
 const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 
 const registered = (id: string, n = 1) =>
   json(201, {
     id,
     status: "pending",
-    upload: { original: `https://r2.test/${id}/original?v=${n}`, thumb: `https://r2.test/${id}/thumb?v=${n}` },
+    upload: {
+      original: `https://r2.test/${id}/original?v=${n}`,
+      thumb: `https://r2.test/${id}/thumb?v=${n}`,
+    },
     expiresIn: 900,
   });
 
-type Call = { method: string; url: string; body?: unknown; auth: string | null };
+type Call = {
+  method: string;
+  url: string;
+  body?: unknown;
+  auth: string | null;
+};
 
 let queue: Queue;
 let calls: Call[];
@@ -69,22 +81,25 @@ beforeEach(async () => {
   now = NOW;
   putStatus = () => 200;
   routes = [];
-  globalThis.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const req = input instanceof Request ? input : new Request(input as string, init);
-    const text = await req.text();
-    const call: Call = {
-      method: req.method,
-      url: req.url,
-      body: text ? JSON.parse(text) : undefined,
-      auth: req.headers.get("authorization"),
-    };
-    calls.push(call);
-    for (const route of routes) {
-      const res = route(call);
-      if (res) return res;
-    }
-    throw new Error(`sin ruta para ${rest(call)}`);
-  }) as typeof fetch;
+  globalThis.fetch = jest.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req =
+        input instanceof Request ? input : new Request(input as string, init);
+      const text = await req.text();
+      const call: Call = {
+        method: req.method,
+        url: req.url,
+        body: text ? JSON.parse(text) : undefined,
+        auth: req.headers.get("authorization"),
+      };
+      calls.push(call);
+      for (const route of routes) {
+        const res = route(call);
+        if (res) return res;
+      }
+      throw new Error(`sin ruta para ${rest(call)}`);
+    },
+  ) as typeof fetch;
 
   deps = {
     queue,
@@ -97,7 +112,8 @@ beforeEach(async () => {
       if (status instanceof Error) throw status;
       return status;
     },
-    fileSize: async (uri) => (missing.has(uri) ? null : (sizes.get(uri) ?? 1000)),
+    fileSize: async (uri) =>
+      missing.has(uri) ? null : (sizes.get(uri) ?? 1000),
     removeFiles: async (id) => {
       removed.push(id);
     },
@@ -105,10 +121,23 @@ beforeEach(async () => {
   };
 });
 
+const withDisplay = (id: string) =>
+  json(201, {
+    id,
+    status: "pending",
+    upload: {
+      original: `https://r2.test/${id}/original?v=1`,
+      thumb: `https://r2.test/${id}/thumb?v=1`,
+      display: `https://r2.test/${id}/display?v=1`,
+    },
+    expiresIn: 900,
+  });
+
 /** Happy server: registers with URLs and confirms. */
 function happyServer() {
   routes.push((c) => {
-    if (c.method === "POST" && c.url.endsWith(`/trips/${TRIP}/media`)) return registered((c.body as { id: string }).id);
+    if (c.method === "POST" && c.url.endsWith(`/trips/${TRIP}/media`))
+      return registered((c.body as { id: string }).id);
     if (c.method === "POST" && c.url.endsWith("/complete")) {
       return json(200, { id: c.url.split("/").at(-2), status: "uploaded" });
     }
@@ -122,13 +151,65 @@ describe("uploader", () => {
 
     await createUploader(deps).run();
 
-    expect(restCalls()).toEqual([`POST /trips/${TRIP}/media`, `POST /media/${item().id}/complete`]);
+    expect(restCalls()).toEqual([
+      `POST /trips/${TRIP}/media`,
+      `POST /media/${item().id}/complete`,
+    ]);
     expect(puts).toEqual([
-      { uri: item().originalUri, url: `https://r2.test/${item().id}/original?v=1`, contentType: "image/jpeg" },
-      { uri: item().thumbUri, url: `https://r2.test/${item().id}/thumb?v=1`, contentType: "image/jpeg" },
+      {
+        uri: item().originalUri,
+        url: `https://r2.test/${item().id}/original?v=1`,
+        contentType: "image/jpeg",
+      },
+      {
+        uri: item().thumbUri,
+        url: `https://r2.test/${item().id}/thumb?v=1`,
+        contentType: "image/jpeg",
+      },
     ]);
     expect(await queue.pending("u1")).toEqual([]);
     expect(removed).toEqual([item().id]);
+  });
+
+  it("declares displaySizeBytes (the file's size on disk) and PUTs the display after original and thumb", async () => {
+    routes.push((c) => {
+      if (c.method === "POST" && c.url.endsWith(`/trips/${TRIP}/media`)) return withDisplay((c.body as { id: string }).id);
+      if (c.method === "POST" && c.url.endsWith("/complete")) return json(200, { id: item().id, status: "uploaded" });
+    });
+    sizes.set("file:///docs/pending/a/display.jpg", 812_345);
+    await queue.enqueue(item({ displayUri: "file:///docs/pending/a/display.jpg", displaySizeBytes: 1 }));
+
+    await createUploader(deps).run();
+
+    expect(calls[0]!.body).toMatchObject({ sizeBytes: 2_500_000, thumbSizeBytes: 61_234, displaySizeBytes: 812_345 });
+    expect(puts.map((p) => [p.uri, p.url, p.contentType])).toEqual([
+      [item().originalUri, `https://r2.test/${item().id}/original?v=1`, "image/jpeg"],
+      [item().thumbUri, `https://r2.test/${item().id}/thumb?v=1`, "image/jpeg"],
+      ["file:///docs/pending/a/display.jpg", `https://r2.test/${item().id}/display?v=1`, "image/jpeg"],
+    ]);
+    expect(await queue.pending("u1")).toEqual([]);
+  });
+
+  it("an old queued row without display uploads exactly as before: no displaySizeBytes, two PUTs", async () => {
+    happyServer();
+    await queue.enqueue(item());
+
+    await createUploader(deps).run();
+
+    expect(calls[0]!.body).not.toHaveProperty("displaySizeBytes");
+    expect(puts).toHaveLength(2);
+  });
+
+  it("a row whose display file vanished still uploads without it", async () => {
+    happyServer();
+    missing.add("file:///docs/pending/a/display.jpg");
+    await queue.enqueue(item({ displayUri: "file:///docs/pending/a/display.jpg", displaySizeBytes: 1 }));
+
+    await createUploader(deps).run();
+
+    expect(calls[0]!.body).not.toHaveProperty("displaySizeBytes");
+    expect(puts).toHaveLength(2);
+    expect(await queue.pending("u1")).toEqual([]);
   });
 
   it("notifies on every confirmed upload, with the trip, after cleaning the queue", async () => {
@@ -145,11 +226,18 @@ describe("uploader", () => {
   });
 
   it("notifies when it permanently discards a photo, with the trip, after marking it failed", async () => {
-    routes.push((c) => (c.method === "POST" && c.url.endsWith("/media") ? json(409, { error: "El rollo ya se reveló" }) : undefined));
+    routes.push((c) =>
+      c.method === "POST" && c.url.endsWith("/media")
+        ? json(409, { error: "El rollo ya se reveló" })
+        : undefined,
+    );
     await queue.enqueue(item());
     const discarded: Array<{ tripId: string; pending: number }> = [];
     deps.onDiscarded = async (tripId) => {
-      discarded.push({ tripId, pending: await queue.countPendingForTrip("u1", tripId) });
+      discarded.push({
+        tripId,
+        pending: await queue.countPendingForTrip("u1", tripId),
+      });
     };
 
     await createUploader(deps).run();
@@ -193,12 +281,21 @@ describe("uploader", () => {
 
     await createUploader(deps).run();
 
-    expect(calls[0]!.body).toMatchObject({ sizeBytes: 2_400_321, thumbSizeBytes: 70_001 });
+    expect(calls[0]!.body).toMatchObject({
+      sizeBytes: 2_400_321,
+      thumbSizeBytes: 70_001,
+    });
   });
 
   it("uploads videos as video/mp4", async () => {
     happyServer();
-    await queue.enqueue(item({ type: "video", durationS: 9.5, originalUri: "file:///docs/pending/a/original.mp4" }));
+    await queue.enqueue(
+      item({
+        type: "video",
+        durationS: 9.5,
+        originalUri: "file:///docs/pending/a/original.mp4",
+      }),
+    );
 
     await createUploader(deps).run();
 
@@ -212,10 +309,9 @@ describe("uploader", () => {
 
     await createUploader(deps).run();
 
-    expect(calls.filter((c) => c.url.endsWith("/complete")).map((c) => c.url)).toEqual([
-      `${API}/media/a/complete`,
-      `${API}/media/b/complete`,
-    ]);
+    expect(
+      calls.filter((c) => c.url.endsWith("/complete")).map((c) => c.url),
+    ).toEqual([`${API}/media/a/complete`, `${API}/media/b/complete`]);
   });
 
   it("if the server says it was already uploaded, it jumps straight to cleanup", async () => {
@@ -239,7 +335,9 @@ describe("uploader", () => {
 
       await createUploader(deps).run();
 
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ attempts: 1, retryAt: NOW + 1000 })]);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 1, retryAt: NOW + 1000 }),
+      ]);
       expect(removed).toEqual([]);
     });
 
@@ -261,7 +359,9 @@ describe("uploader", () => {
 
       await createUploader(deps).run();
 
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ attempts: 1, retryAt: NOW + 1000 })]);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 1, retryAt: NOW + 1000 }),
+      ]);
     });
 
     it("a 5xx on the PUT is a failed attempt and does not confirm", async () => {
@@ -272,7 +372,9 @@ describe("uploader", () => {
       await createUploader(deps).run();
 
       expect(restCalls()).toEqual([`POST /trips/${TRIP}/media`]);
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ attempts: 1 })]);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 1 }),
+      ]);
       expect(removed).toEqual([]);
     });
 
@@ -283,17 +385,23 @@ describe("uploader", () => {
 
       await createUploader(deps).run();
 
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ attempts: 1 })]);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 1 }),
+      ]);
     });
 
     it("a 5xx on confirm leaves the item to retry", async () => {
-      routes.push((c) => (c.url.endsWith("/complete") ? json(500, { error: "x" }) : undefined));
+      routes.push((c) =>
+        c.url.endsWith("/complete") ? json(500, { error: "x" }) : undefined,
+      );
       happyServer();
       await queue.enqueue(item());
 
       await createUploader(deps).run();
 
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ attempts: 1 })]);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 1 }),
+      ]);
       expect(removed).toEqual([]);
     });
 
@@ -348,7 +456,9 @@ describe("uploader", () => {
       now += 1000;
       await createUploader(deps).run();
 
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ attempts: 2, retryAt: now + 2000 })]);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 2, retryAt: now + 2000 }),
+      ]);
     });
   });
 
@@ -360,7 +470,8 @@ describe("uploader", () => {
           registers += 1;
           return registered(item().id, registers);
         }
-        if (c.url.endsWith("/complete")) return json(200, { id: item().id, status: "uploaded" });
+        if (c.url.endsWith("/complete"))
+          return json(200, { id: item().id, status: "uploaded" });
       });
       putStatus = (url) => (url.endsWith("v=1") ? 403 : 200);
       await queue.enqueue(item());
@@ -379,8 +490,120 @@ describe("uploader", () => {
 
       await createUploader(deps).run();
 
-      expect(calls.filter((c) => c.url.endsWith(`/trips/${TRIP}/media`))).toHaveLength(2);
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ attempts: 1 })]);
+      expect(
+        calls.filter((c) => c.url.endsWith(`/trips/${TRIP}/media`)),
+      ).toHaveLength(2);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 1 }),
+      ]);
+    });
+  });
+
+  describe("429 by rate limit (Retry-After)", () => {
+    const rateLimited = (seconds = 60) =>
+      new Response(
+        JSON.stringify({
+          error: "Estás yendo muy rápido. Probá de nuevo en un minuto.",
+        }),
+        {
+          status: 429,
+          headers: {
+            "content-type": "application/json",
+            "retry-after": String(seconds),
+          },
+        },
+      );
+
+    it("keeps the item pending (not failed) with its next attempt after the Retry-After, and stops the pass", async () => {
+      routes.push(() => rateLimited(60));
+      await queue.enqueue(item({ id: "a", takenAt: 1 }));
+      await queue.enqueue(item({ id: "b", takenAt: 2 }));
+
+      await createUploader(deps).run();
+
+      expect(await queue.failed("u1")).toEqual([]);
+      const pending = await queue.pending("u1");
+      expect(pending).toHaveLength(2);
+      expect(pending.find((m) => m.id === "a")).toEqual(
+        expect.objectContaining({ attempts: 1, retryAt: NOW + 60_000 }),
+      );
+      expect(pending.find((m) => m.id === "b")).toEqual(
+        expect.objectContaining({ attempts: 0, retryAt: null }),
+      );
+      expect(calls).toHaveLength(1);
+      expect(removed).toEqual([]);
+    });
+
+    it("uses the normal backoff when it is longer than the Retry-After", async () => {
+      routes.push(() => rateLimited(1));
+      await queue.enqueue(item());
+      await queue.markAttempt(item().id, NOW);
+      await queue.markAttempt(item().id, NOW);
+      await queue.markAttempt(item().id, NOW);
+
+      await createUploader(deps).run();
+
+      // 4th attempt: backoff 8 s > Retry-After 1 s
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 4, retryAt: NOW + 8000 }),
+      ]);
+    });
+
+    it("a later pass after that time uploads it", async () => {
+      let limited = true;
+      routes.push((c) =>
+        limited && c.url.endsWith(`/trips/${TRIP}/media`)
+          ? rateLimited(60)
+          : undefined,
+      );
+      happyServer();
+      await queue.enqueue(item());
+      const uploader = createUploader(deps);
+
+      await uploader.run();
+      now = NOW + 59_000;
+      await uploader.run();
+      expect(calls).toHaveLength(1);
+
+      limited = false;
+      now = NOW + 60_000;
+      await uploader.run();
+      expect(await queue.pending("u1")).toEqual([]);
+    });
+
+    it("ignoreBackoff (network back) does not retry it before its Retry-After", async () => {
+      let limited = true;
+      routes.push((c) =>
+        limited && c.url.endsWith(`/trips/${TRIP}/media`)
+          ? rateLimited(60)
+          : undefined,
+      );
+      happyServer();
+      await queue.enqueue(item());
+      const uploader = createUploader(deps);
+      await uploader.run();
+
+      limited = false;
+      now = NOW + 10_000;
+      await uploader.run({ ignoreBackoff: true });
+      expect(calls).toHaveLength(1);
+      expect(await queue.pending("u1")).toHaveLength(1);
+
+      now = NOW + 60_000;
+      await uploader.run({ ignoreBackoff: true });
+      expect(await queue.pending("u1")).toEqual([]);
+    });
+
+    it("without Retry-After it is still the quota: failed for good", async () => {
+      routes.push(() => json(429, { error: "Ya usaste tus 5 fotos de hoy" }));
+      await queue.enqueue(item());
+
+      await createUploader(deps).run();
+
+      expect(await queue.pending("u1")).toEqual([]);
+      expect(await queue.failed("u1")).toEqual([
+        expect.objectContaining({ failedReason: "quota" }),
+      ]);
     });
   });
 
@@ -393,7 +616,9 @@ describe("uploader", () => {
       await createUploader(deps).run();
 
       expect(await queue.pending("u1")).toEqual([]);
-      expect(await queue.failed("u1")).toEqual([expect.objectContaining({ id: item().id, failedReason: "quota" })]);
+      expect(await queue.failed("u1")).toEqual([
+        expect.objectContaining({ id: item().id, failedReason: "quota" }),
+      ]);
       expect(calls).toHaveLength(1);
       expect(removed).toEqual([]);
     });
@@ -407,7 +632,9 @@ describe("uploader", () => {
         await createUploader(deps).run();
         await createUploader(deps).run();
 
-        expect(await queue.failed("u1")).toEqual([expect.objectContaining({ failedReason: message })]);
+        expect(await queue.failed("u1")).toEqual([
+          expect.objectContaining({ failedReason: message }),
+        ]);
         expect(calls).toHaveLength(1);
         expect(removed).toEqual([]);
       },
@@ -423,27 +650,41 @@ describe("uploader", () => {
         await createUploader(deps).run();
 
         expect(await queue.pending("u1")).toEqual([]);
-        expect(await queue.failed("u1")).toEqual([expect.objectContaining({ failedReason: message, attempts: 0 })]);
+        expect(await queue.failed("u1")).toEqual([
+          expect.objectContaining({ failedReason: message, attempts: 0 }),
+        ]);
         expect(calls).toHaveLength(1);
         expect(removed).toEqual([]);
       },
     );
 
     it("404 on confirm (the admin deleted it): fails 'deleted' with no retries", async () => {
-      routes.push((c) => (c.url.endsWith("/complete") ? json(404, { error: "No existe" }) : undefined));
+      routes.push((c) =>
+        c.url.endsWith("/complete")
+          ? json(404, { error: "No existe" })
+          : undefined,
+      );
       happyServer();
       await queue.enqueue(item());
 
       await createUploader(deps).run();
 
       expect(await queue.failed("u1")).toEqual([
-        expect.objectContaining({ failedReason: "deleted", attempts: 0, retryAt: null }),
+        expect.objectContaining({
+          failedReason: "deleted",
+          attempts: 0,
+          retryAt: null,
+        }),
       ]);
       expect(removed).toEqual([]);
     });
 
     it("drops a photo whose rollo was deleted without marking it failed (410 on register)", async () => {
-      routes.push((c) => (c.method === "POST" && c.url.endsWith("/media") ? json(410, { error: "Este rollo se borró" }) : undefined));
+      routes.push((c) =>
+        c.method === "POST" && c.url.endsWith("/media")
+          ? json(410, { error: "Este rollo se borró" })
+          : undefined,
+      );
       await queue.enqueue(item());
       const discarded: string[] = [];
       deps.onDiscarded = async (tripId) => {
@@ -459,7 +700,11 @@ describe("uploader", () => {
     });
 
     it("drops a photo whose rollo was deleted without marking it failed (410 on confirm)", async () => {
-      routes.push((c) => (c.url.endsWith("/complete") ? json(410, { error: "Este rollo se borró" }) : undefined));
+      routes.push((c) =>
+        c.url.endsWith("/complete")
+          ? json(410, { error: "Este rollo se borró" })
+          : undefined,
+      );
       happyServer();
       await queue.enqueue(item());
 
@@ -471,18 +716,27 @@ describe("uploader", () => {
     });
 
     it("other 4xx on confirm (file that never arrived) keep being retried", async () => {
-      routes.push((c) => (c.url.endsWith("/complete") ? json(400, { error: "Falta el archivo" }) : undefined));
+      routes.push((c) =>
+        c.url.endsWith("/complete")
+          ? json(400, { error: "Falta el archivo" })
+          : undefined,
+      );
       happyServer();
       await queue.enqueue(item());
 
       await createUploader(deps).run();
 
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ attempts: 1 })]);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ attempts: 1 }),
+      ]);
     });
 
     it("a failed item does not block the other items", async () => {
       routes.push((c) =>
-        c.method === "POST" && (c.body as { id: string } | undefined)?.id === "a" ? json(429, { error: "x" }) : undefined,
+        c.method === "POST" &&
+        (c.body as { id: string } | undefined)?.id === "a"
+          ? json(429, { error: "x" })
+          : undefined,
       );
       happyServer();
       await queue.enqueue(item({ id: "a", takenAt: 1 }));
@@ -506,7 +760,9 @@ describe("uploader", () => {
     });
 
     it("a 401 (session rejected) stops the pass and keeps the photos in the queue", async () => {
-      routes.push(() => json(401, { error: "Sesión inválida, volvé a entrar" }));
+      routes.push(() =>
+        json(401, { error: "Sesión inválida, volvé a entrar" }),
+      );
       await queue.enqueue(item({ id: "a", takenAt: 1 }));
       await queue.enqueue(item({ id: "b", takenAt: 2 }));
 
@@ -531,7 +787,11 @@ describe("uploader", () => {
 
     it("a 428 on complete also keeps the photos in the queue", async () => {
       happyServer();
-      routes.unshift((c) => (c.url.endsWith("/complete") ? json(428, { error: "Completá tu perfil" }) : undefined));
+      routes.unshift((c) =>
+        c.url.endsWith("/complete")
+          ? json(428, { error: "Completá tu perfil" })
+          : undefined,
+      );
       await queue.enqueue(item({ id: "a", takenAt: 1 }));
       await queue.enqueue(item({ id: "b", takenAt: 2 }));
 
@@ -548,23 +808,46 @@ describe("uploader", () => {
 
       await createUploader(deps).run();
 
-      expect(await queue.failed("u1")).toEqual([expect.objectContaining({ failedReason: "mal" })]);
+      expect(await queue.failed("u1")).toEqual([
+        expect.objectContaining({ failedReason: "mal" }),
+      ]);
     });
   });
 
   describe("items that must not jam the queue", () => {
     it("if the thumb is missing it marks missing_file and uploads the next one anyway", async () => {
       happyServer();
-      await queue.enqueue(item({ id: "a", takenAt: 1, thumbUri: "file:///docs/pending/a/thumb.jpg" }));
-      await queue.enqueue(item({ id: "b", takenAt: 2, originalUri: "file:///b/o.jpg", thumbUri: "file:///b/t.jpg" }));
+      await queue.enqueue(
+        item({
+          id: "a",
+          takenAt: 1,
+          thumbUri: "file:///docs/pending/a/thumb.jpg",
+        }),
+      );
+      await queue.enqueue(
+        item({
+          id: "b",
+          takenAt: 2,
+          originalUri: "file:///b/o.jpg",
+          thumbUri: "file:///b/t.jpg",
+        }),
+      );
       missing.add("file:///docs/pending/a/thumb.jpg");
 
       await createUploader(deps).run();
 
-      expect(await queue.failed("u1")).toEqual([expect.objectContaining({ id: "a", failedReason: "missing_file" })]);
+      expect(await queue.failed("u1")).toEqual([
+        expect.objectContaining({ id: "a", failedReason: "missing_file" }),
+      ]);
       expect(await queue.pending("u1")).toEqual([]);
       expect(removed).toEqual(["b"]);
-      expect(calls.some((c) => c.url.includes("/a/") || (c.body as { id?: string } | undefined)?.id === "a")).toBe(false);
+      expect(
+        calls.some(
+          (c) =>
+            c.url.includes("/a/") ||
+            (c.body as { id?: string } | undefined)?.id === "a",
+        ),
+      ).toBe(false);
     });
 
     it("same if the original is missing", async () => {
@@ -574,7 +857,9 @@ describe("uploader", () => {
 
       await createUploader(deps).run();
 
-      expect(await queue.failed("u1")).toEqual([expect.objectContaining({ failedReason: "missing_file" })]);
+      expect(await queue.failed("u1")).toEqual([
+        expect.objectContaining({ failedReason: "missing_file" }),
+      ]);
       expect(removed).toEqual([]);
     });
 
@@ -598,7 +883,9 @@ describe("uploader", () => {
       await uploader.run();
 
       expect(removed).toEqual(["b"]);
-      expect(await queue.pending("u1")).toEqual([expect.objectContaining({ id: "a", attempts: 1, retryAt: NOW + 1000 })]);
+      expect(await queue.pending("u1")).toEqual([
+        expect.objectContaining({ id: "a", attempts: 1, retryAt: NOW + 1000 }),
+      ]);
       expect(warn).toHaveBeenCalled();
       warn.mockRestore();
     });
@@ -724,7 +1011,12 @@ describe("uploader: moments", () => {
   const MAIN = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
   const SELFIE = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
   const moment = (id: string, extra: Partial<QueuedMedia> = {}) =>
-    item({ id, momentDay: "2027-01-12", takenAt: id === MAIN ? 1000 : 2000, ...extra });
+    item({
+      id,
+      momentDay: "2027-01-12",
+      takenAt: id === MAIN ? 1000 : 2000,
+      ...extra,
+    });
 
   it("sends momentDay and pairedMediaId in the register request; a normal photo carries null", async () => {
     happyServer();
@@ -734,10 +1026,24 @@ describe("uploader: moments", () => {
 
     await createUploader(deps).run();
 
-    const bodies = calls.filter((c) => c.url.endsWith("/media")).map((c) => c.body as Record<string, unknown>);
-    expect(bodies[0]).toMatchObject({ id: item().id, momentDay: null, pairedMediaId: null });
-    expect(bodies[1]).toMatchObject({ id: MAIN, momentDay: "2027-01-12", pairedMediaId: null });
-    expect(bodies[2]).toMatchObject({ id: SELFIE, momentDay: "2027-01-12", pairedMediaId: MAIN });
+    const bodies = calls
+      .filter((c) => c.url.endsWith("/media"))
+      .map((c) => c.body as Record<string, unknown>);
+    expect(bodies[0]).toMatchObject({
+      id: item().id,
+      momentDay: null,
+      pairedMediaId: null,
+    });
+    expect(bodies[1]).toMatchObject({
+      id: MAIN,
+      momentDay: "2027-01-12",
+      pairedMediaId: null,
+    });
+    expect(bodies[2]).toMatchObject({
+      id: SELFIE,
+      momentDay: "2027-01-12",
+      pairedMediaId: MAIN,
+    });
   });
 
   it("does not upload the selfie while its main is still in the queue, and does after the main completes", async () => {
@@ -748,16 +1054,26 @@ describe("uploader: moments", () => {
     // The main fails once with a server error: it stays pending.
     let first = true;
     routes.unshift((c) => {
-      if (first && c.method === "POST" && c.url.endsWith("/media") && (c.body as { id: string }).id === MAIN) {
+      if (
+        first &&
+        c.method === "POST" &&
+        c.url.endsWith("/media") &&
+        (c.body as { id: string }).id === MAIN
+      ) {
         first = false;
         return json(500, { error: "boom" });
       }
     });
 
     await createUploader(deps).run();
-    const registeredIds = () => calls.filter((c) => c.url.endsWith("/media")).map((c) => (c.body as { id: string }).id);
+    const registeredIds = () =>
+      calls
+        .filter((c) => c.url.endsWith("/media"))
+        .map((c) => (c.body as { id: string }).id);
     expect(registeredIds()).toEqual([MAIN]);
-    expect((await queue.pending("u1")).map((m) => m.id).sort()).toEqual([MAIN, SELFIE].sort());
+    expect((await queue.pending("u1")).map((m) => m.id).sort()).toEqual(
+      [MAIN, SELFIE].sort(),
+    );
 
     now += 10 * 60_000;
     await createUploader(deps).run();
@@ -768,7 +1084,9 @@ describe("uploader: moments", () => {
 
   it("when the main fails for good, the selfie fails with the same reason and is not uploaded", async () => {
     routes.push((c) =>
-      c.method === "POST" && c.url.endsWith("/media") ? json(409, { error: "Ya sacaste tu momento de hoy" }) : undefined,
+      c.method === "POST" && c.url.endsWith("/media")
+        ? json(409, { error: "Ya sacaste tu momento de hoy" })
+        : undefined,
     );
     await queue.enqueue(moment(MAIN));
     await queue.enqueue(moment(SELFIE, { pairedWith: MAIN }));
@@ -777,7 +1095,9 @@ describe("uploader: moments", () => {
 
     expect(calls.filter((c) => c.url.endsWith("/media"))).toHaveLength(1);
     expect(await queue.pending("u1")).toEqual([]);
-    expect((await queue.failed("u1")).map((f) => [f.id, f.failedReason])).toEqual([
+    expect(
+      (await queue.failed("u1")).map((f) => [f.id, f.failedReason]),
+    ).toEqual([
       [MAIN, "Ya sacaste tu momento de hoy"],
       [SELFIE, "Ya sacaste tu momento de hoy"],
     ]);
@@ -794,12 +1114,21 @@ describe("uploader: moments", () => {
   });
 
   it("a 400 on register (invalid pairing) fails the item for good", async () => {
-    routes.push((c) => (c.method === "POST" && c.url.endsWith("/media") ? json(400, { error: "Emparejado inválido" }) : undefined));
+    routes.push((c) =>
+      c.method === "POST" && c.url.endsWith("/media")
+        ? json(400, { error: "Emparejado inválido" })
+        : undefined,
+    );
     await queue.enqueue(moment(SELFIE, { pairedWith: MAIN }));
 
     await createUploader(deps).run();
 
-    expect(await queue.failed("u1")).toEqual([expect.objectContaining({ id: SELFIE, failedReason: "Emparejado inválido" })]);
+    expect(await queue.failed("u1")).toEqual([
+      expect.objectContaining({
+        id: SELFIE,
+        failedReason: "Emparejado inválido",
+      }),
+    ]);
   });
 });
 
@@ -811,9 +1140,14 @@ describe("uploader per account", () => {
 
     await createUploader(deps).run();
 
-    expect(restCalls()).toEqual([`POST /trips/${TRIP}/media`, "POST /media/mine/complete"]);
+    expect(restCalls()).toEqual([
+      `POST /trips/${TRIP}/media`,
+      "POST /media/mine/complete",
+    ]);
     expect(removed).toEqual(["mine"]);
-    expect(await queue.pending("u2")).toEqual([expect.objectContaining({ id: "theirs", attempts: 0, retryAt: null })]);
+    expect(await queue.pending("u2")).toEqual([
+      expect.objectContaining({ id: "theirs", attempts: 0, retryAt: null }),
+    ]);
     expect(await queue.failed("u2")).toEqual([]);
   });
 
@@ -836,7 +1170,10 @@ describe("uploader per account", () => {
 
     expect(calls).toEqual([]);
     await queue.claimUnowned("u1");
-    expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", attempts: 0 });
+    expect((await queue.pending("u1"))[0]).toMatchObject({
+      id: "old",
+      attempts: 0,
+    });
   });
 
   it("never gives photos without an owner to the account with the session (only their old session claims them)", async () => {
@@ -864,3 +1201,16 @@ describe("uploader per account", () => {
   });
 });
 
+describe("uploader: event groups", () => {
+  it("sends groupIds when present and omits them when null", async () => {
+    happyServer();
+    await queue.enqueue(item({ groupIds: ["g1", "g2"] }));
+    await queue.enqueue(item({ id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", takenAt: 2000 }));
+
+    await createUploader(deps).run();
+
+    const bodies = calls.filter((c) => c.url.endsWith("/media")).map((c) => c.body as Record<string, unknown>);
+    expect(bodies[0]).toMatchObject({ groupIds: ["g1", "g2"] });
+    expect(bodies[1]).not.toHaveProperty("groupIds");
+  });
+});

@@ -1,10 +1,11 @@
+import { OriginalsNotice } from "@/features/trips/originals-notice-text";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  SectionList,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -12,14 +13,17 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
+import { sendableGroups } from "@/features/events/event";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
+import { LoadMoreFooter } from "@/ui/load-more-footer";
 import { colors, spacing, type } from "@/ui/theme";
 import { Cell } from "./gallery-cell";
 import { GalleryToolbar } from "./gallery-toolbar";
-import { authorsOf, chunkRows, filterByAuthor, groupByDay } from "./group";
+import { authorsOf, filterByAuthor, filterByGroup } from "./group";
+import { gridItems, type GridItem } from "./grid-items";
 import { SaveBar } from "./save-bar";
 import { useArchivePhoto } from "./use-archive-photo";
 import { useBulkSave } from "./use-bulk-save";
@@ -30,10 +34,19 @@ import { useSaver } from "./use-saver";
 const COLUMNS = 3;
 const GAP = 2;
 
+const keyExtractor = (item: GridItem) => item.key;
+const getItemType = (item: GridItem) => item.kind;
+// A day header takes the whole row.
+const overrideItemLayout = (layout: { span?: number }, item: GridItem) => {
+  if (item.kind === "header") layout.span = COLUMNS;
+};
+
 /**
  * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
  * its header buttons while it stays mounted behind another view.
  */
+const ENDING_THRESHOLD = 1.5;
+
 export function GalleryScreen({
   tripId,
   toolbar: showToolbar = true,
@@ -47,7 +60,8 @@ export function GalleryScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { photos, token, error, loading, refetch } = useRevealedPhotos(tripId);
+  const { photos, token, error, loading, refetch, loadAll, hasMore, loadingMore, loadMoreError, complete, fetchMore } =
+    useRevealedPhotos(tripId, "lazy");
   const { detail } = useTripDetail(tripId);
   const saver = useSaver(token, detail?.trip.name, detail?.trip.timezone);
   const { toggle: toggleFeatured, error: featureError } = useToggleFeatured();
@@ -59,22 +73,36 @@ export function GalleryScreen({
   useEffect(() => setFeatureErrorDismissed(false), [featureError]);
 
   const [authorId, setAuthorId] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState<string | null>(null);
+  // Only someone who sees more than one group (an organizer, or a guest in several) gets the group filter.
+  const sendable = useMemo(() => (detail ? sendableGroups(detail) : []), [detail]);
+  const groups = sendable.length > 1 ? sendable : [];
 
   const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
-  const authors = useMemo(() => authorsOf(photos), [photos]);
-  const shown = useMemo(() => filterByAuthor(photos, authorId), [photos, authorId]);
-  const sections = useMemo(
-    () =>
-      groupByDay(shown).map((s) => ({
-        title: s.title,
-        data: chunkRows(s.photos, COLUMNS),
-      })),
-    [shown],
-  );
+  // Until every page is in, a member's photos may all be on a page not loaded yet: offer every member so they can still be picked.
+  const members = detail?.members;
+  const authors = useMemo(() => {
+    const loaded = authorsOf(photos);
+    if (complete || !members) return loaded;
+    const known = new Set(loaded.map((a) => a.id));
+    return [...loaded, ...members.filter((m) => !known.has(m.id)).map((m) => ({ id: m.id, name: m.name }))];
+  }, [photos, members, complete]);
+  const shown = useMemo(() => filterByGroup(filterByAuthor(photos, authorId), groupId), [photos, authorId, groupId]);
+  const items = useMemo(() => gridItems(shown, COLUMNS), [shown]);
   const author = authors.find((a) => a.id === authorId);
+  const group = groups.find((g) => g.id === groupId);
 
   const { selecting, selected, allSelected, toggle, toggleAll, start: startSelecting, stop: stopSelecting } =
     useGallerySelection(shown);
+  // The grid loads on scroll, but whatever works on "everyone's photos" needs them all: selecting, filtering by person, and a first page with no photos in it.
+  const needsAll = selecting || authorId !== null || groupId !== null || (!loading && photos.length === 0);
+  useEffect(() => {
+    if (needsAll && hasMore && !loadingMore && !loadMoreError) void fetchMore();
+  }, [needsAll, hasMore, loadingMore, loadMoreError, fetchMore, photos]);
+  const onEndReached = useCallback(() => {
+    if (hasMore && !loadingMore && !loadMoreError) void fetchMore();
+  }, [hasMore, loadingMore, loadMoreError, fetchMore]);
+
   const selectedCount = selecting ? selected.size : null;
   useEffect(() => onSelectionChange?.(selectedCount), [onSelectionChange, selectedCount]);
   useEffect(() => () => onSelectionChange?.(null), [onSelectionChange]);
@@ -82,6 +110,7 @@ export function GalleryScreen({
     saver,
     tripName: detail?.trip.name,
     photos,
+    loadAll,
     onSaved: stopSelecting,
   });
 
@@ -111,6 +140,35 @@ export function GalleryScreen({
     [confirmDelete, setArchived, tripId],
   );
 
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<GridItem>) => {
+      if (item.kind === "header")
+        return (
+          <Text accessibilityRole="header" style={[type.headline, styles.header]}>
+            {item.title}
+          </Text>
+        );
+      const { photo, column } = item;
+      return (
+        <View style={[styles.slot, column === 0 ? styles.slotStart : column === COLUMNS - 1 ? styles.slotEnd : null]}>
+          <Cell
+            photo={photo}
+            token={token}
+            size={size}
+            selecting={selecting}
+            selected={selected.has(photo.id)}
+            own={revealed && !!me && photo.authorUserId === me.id}
+            onPress={onCellPress}
+            onToggleFeatured={onToggleFeatured}
+            onOwnAction={onOwnAction}
+          />
+        </View>
+      );
+    },
+    [token, size, selecting, selected, revealed, me, onCellPress, onToggleFeatured, onOwnAction],
+  );
+  const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
+
   let body;
   if (loading) body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
   else if (error && photos.length === 0)
@@ -120,6 +178,8 @@ export function GalleryScreen({
         <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
       </View>
     );
+  else if (photos.length === 0 && (hasMore || loadingMore) && !loadMoreError)
+    body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
   else if (photos.length === 0)
     body = (
       <View style={styles.center}>
@@ -128,52 +188,53 @@ export function GalleryScreen({
     );
   else
     body = (
-      <SectionList
+      <FlashList
         testID="gallery-list"
-        sections={sections}
-        keyExtractor={(row) => row[0]!.id}
-        stickySectionHeadersEnabled={false}
+        data={items}
+        numColumns={COLUMNS}
+        getItemType={getItemType}
+        overrideItemLayout={overrideItemLayout}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
-        extraData={[selecting, selected, token, revealed, me?.id]}
-        ListHeaderComponent={
-          author ? (
-            <View style={styles.filter}>
-              <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${author.name}`}</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Quitar filtro"
-                hitSlop={10}
-                onPress={() => setAuthorId(null)}
-              >
-                <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
-              </Pressable>
-            </View>
-          ) : undefined
+        extraData={listExtra}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={ENDING_THRESHOLD}
+        ListFooterComponent={
+          <LoadMoreFooter loading={loadingMore} error={loadMoreError} onRetry={() => void fetchMore()} testID="gallery-loading-more" />
         }
-        renderSectionHeader={({ section }) => (
-          <Text accessibilityRole="header" style={[type.headline, styles.header]}>
-            {section.title}
-          </Text>
-        )}
-        renderItem={({ item: row }) => (
-          <View style={styles.row}>
-            {row.map((photo) => (
-              <Cell
-                key={photo.id}
-                photo={photo}
-                token={token}
-                size={size}
-                selecting={selecting}
-                selected={selected.has(photo.id)}
-                own={revealed && !!me && photo.authorUserId === me.id}
-                onPress={onCellPress}
-                onToggleFeatured={onToggleFeatured}
-                onOwnAction={onOwnAction}
-              />
-            ))}
-          </View>
-        )}
+        ListHeaderComponent={
+          <>
+            {detail && <OriginalsNotice originals={detail.trip.originals} timeZone={detail.trip.timezone} style={styles.notice} />}
+            {author && (
+              <View style={styles.filter}>
+                <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${author.name}`}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Quitar filtro"
+                  hitSlop={10}
+                  onPress={() => setAuthorId(null)}
+                >
+                  <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
+                </Pressable>
+              </View>
+            )}
+            {group && (
+              <View style={styles.filter}>
+                <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${group.name}`}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Quitar filtro de grupo"
+                  hitSlop={10}
+                  onPress={() => setGroupId(null)}
+                >
+                  <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
+                </Pressable>
+              </View>
+            )}
+          </>
+        }
         ListEmptyComponent={
           <Text style={[type.body, styles.empty]}>
             {author ? `${author.name} no sacó fotos` : "Este rollo no tiene fotos"}
@@ -191,15 +252,19 @@ export function GalleryScreen({
         <GalleryToolbar
           selecting={selecting}
           allSelected={allSelected}
+          canSelectAll={complete}
           busy={busy}
           hasPhotos={photos.length > 0}
           canSaveAll={canSaveAll}
           authors={authors}
           authorId={authorId}
+          groups={groups}
+          groupId={groupId}
           onToggleAll={toggleAll}
           onStopSelecting={stopSelecting}
           onStartSelecting={startSelecting}
           onSelectAuthor={setAuthorId}
+          onSelectGroup={setGroupId}
           onSaveAll={confirmSaveAll}
         />
       )}
@@ -221,6 +286,7 @@ export function GalleryScreen({
 }
 
 const styles = StyleSheet.create({
+  notice: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   filter: {
     flexDirection: "row",
     alignItems: "center",
@@ -234,7 +300,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
   },
-  row: { flexDirection: "row", gap: GAP, marginBottom: GAP },
+  // Columns split the width evenly; the cell hugs the outer edge in the first and last column and sits centered in the
+  // middle one, which leaves GAP between neighbours and none at the screen edges.
+  slot: { alignItems: "center", paddingBottom: GAP },
+  slotStart: { alignItems: "flex-start" },
+  slotEnd: { alignItems: "flex-end" },
   center: {
     flex: 1,
     alignItems: "center",

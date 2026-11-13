@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
@@ -38,18 +39,23 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   dailyPhotoLimit: 10,
   dailyVideoLimit: 3,
   featuringDisabled: false,
+  maxMembers: 15,
   photoLimitMode: "daily",
   totalPhotoLimit: null,
   momentMode: "off",
   momentWindowStart: 540,
   momentWindowEnd: 1380,
+  originals: keepOriginals,
+  type: "trip",
+  coverUrl: null,
+  groups: [],
   createdBy: null,
   ...overrides,
 });
 
 const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail => ({
   trip: trip(),
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -123,11 +129,17 @@ describe("Roll", () => {
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
-    expect(screen.getByText("Fechas")).toBeVisible();
-    for (const label of ["Empieza", "Termina", "Se revela"]) expect(screen.getByText(label)).toBeVisible();
+    // The board only keeps the reveal; the three dates are in "Ajustes del rollo".
+    expect(screen.getByText("Se revela")).toBeVisible();
+    expect(screen.queryByText("Fechas")).toBeNull();
+    expect(screen.queryByText("Empieza")).toBeNull();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    expect(await screen.findByText("Fechas")).toBeVisible();
+    for (const label of ["Empieza", "Termina"]) expect(screen.getByText(label)).toBeVisible();
+    expect(screen.getAllByText("Se revela").length).toBeGreaterThan(0);
     expect(screen.getByText(when(t.startsAt))).toBeVisible();
     expect(screen.getByText("Empezó")).toBeVisible();
-    expect(screen.getAllByText(when(t.endsAt))).toHaveLength(2);
+    expect(screen.getAllByText(when(t.endsAt)).length).toBeGreaterThanOrEqual(2);
   });
 
   it("before it starts it hides today's quota and counts down to the start", async () => {
@@ -136,8 +148,10 @@ describe("Roll", () => {
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
-    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
-    expect(screen.getByText("en 5 días")).toBeVisible();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    await screen.findByText("Fechas");
+    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getAllByText(when(ms))[0]).toBeVisible();
+    expect(screen.getAllByText("en 5 días")[0]).toBeVisible();
     expect(screen.queryByText("7 de 10")).toBeNull(); // the quota row (Perfil's "Fotos" segment is mounted too)
   });
 
@@ -147,20 +161,23 @@ describe("Roll", () => {
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
-    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    await screen.findByText("Fechas");
+    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getAllByText(when(ms))[0]).toBeVisible();
     expect(screen.getByText("Terminó")).toBeVisible();
-    expect(screen.getByText("en 3 días")).toBeVisible();
+    expect(screen.getAllByText("en 3 días")[0]).toBeVisible();
     expect(screen.queryByText("7 de 10")).toBeNull(); // the quota row (Perfil's "Fotos" segment is mounted too)
   });
 
   it("the contact sheet shows each photo's ThumbHash, newest to oldest", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 2 }));
-    mocked.fetchFeed.mockResolvedValue({
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
       revealed: false,
       revealAt: Date.now() + 9 * DAY,
       items: [
-        { id: "a", type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
-        { id: "b", type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
+        { id: "a", groupIds: [], type: "photo", takenAt: 1, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "vieja", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
+        { id: "b", groupIds: [], type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
       ],
     });
     await renderRouter(routes, { initialUrl: "/roll" });
@@ -238,15 +255,16 @@ describe("Roll with unuploaded photos", () => {
 describe("Roll board · people and settings", () => {
   beforeEach(() => saveTrip(SUR, "Viaje al sur"));
 
-  it("shows the invite code and the members below the dates", async () => {
+  it("shows the invite code and the people row", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("Invitar")).toBeVisible();
     expect(screen.getByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("En el rollo · 2")).toBeVisible();
-    expect(screen.getAllByText("Fede")[0]).toBeVisible();
-    expect(screen.getByText("Admin")).toBeVisible();
+    expect(screen.getByText("Personas")).toBeVisible();
+    expect(screen.getByText("2 de 15")).toBeVisible();
+    // Only the first faces and the count are on the board: the names live in the members list.
+    expect(screen.queryByRole("button", { name: "Fede" })).toBeNull();
   });
 
   it("shares the invitation with the roll's name and code", async () => {
@@ -254,7 +272,7 @@ describe("Roll board · people and settings", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Compartir invitación" }));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ }));
 
     expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo con el código HUB5FT' });
     share.mockRestore();
@@ -275,7 +293,8 @@ describe("Roll board · people and settings", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await screen.findByText("En el rollo · 2");
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
+    await screen.findByRole("button", { name: "Fede" });
     expect(screen.queryByRole("button", { name: /^Juani/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
 
@@ -289,7 +308,7 @@ describe("Roll board · people and settings", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await screen.findByRole("button", { name: "Compartir invitación" });
+    await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ });
     expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
   });
 });
@@ -370,7 +389,7 @@ describe("Me", () => {
   it("in development, 'Ver revelado' in Ajustes opens the reveal screen", async () => {
     await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { revealed: true })] });
     mocked.fetchTrip.mockResolvedValue(detail());
-    mocked.fetchFeed.mockReturnValue(new Promise(() => {})); // stays on the reveal while it loads
+    mocked.fetchFeedPage.mockReturnValue(new Promise(() => {})); // stays on the reveal while it loads
     await renderRouter(routes, { initialUrl: "/settings" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Ver revelado" }));
@@ -504,6 +523,12 @@ describe("Join", () => {
     expect(button).toBeEnabled();
   });
 
+  it("the code field shows the generic placeholder", async () => {
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    expect(await screen.findByPlaceholderText("Ingresar código")).toBe(await screen.findByLabelText("Código del rollo"));
+  });
+
   it("joining goes to the roll", async () => {
     mocked.joinTrip.mockImplementation(async () => {
       await saveTrip(SUR, "Viaje al sur");
@@ -516,7 +541,19 @@ describe("Join", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "hub5ft" });
+    expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" });
+  });
+
+  it("shows the typed code in uppercase and joins with it", async () => {
+    mocked.joinTrip.mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    const field = await screen.findByLabelText("Código del rollo");
+    await fireEvent.changeText(field, "ft7zad");
+
+    expect(screen.getByLabelText("Código del rollo").props.value).toBe("FT7ZAD");
+    await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
+    await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "FT7ZAD" }));
   });
 
   it("shows the server error", async () => {
@@ -527,6 +564,18 @@ describe("Join", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
     expect(await screen.findByText("Código inválido")).toBeVisible();
+    expect(screen).toHavePathname("/join");
+  });
+
+  it("shows the server's 'roll is full' message inline as is", async () => {
+    const full = "Este rollo está lleno (15 de 15). Pedile a quien lo creó que haga lugar.";
+    mocked.joinTrip.mockRejectedValue(new Error(full));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "HUB5FT");
+    await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
+
+    expect(await screen.findByText(full)).toBeVisible();
     expect(screen).toHavePathname("/join");
   });
 });

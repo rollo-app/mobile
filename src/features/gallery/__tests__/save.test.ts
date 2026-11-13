@@ -30,6 +30,8 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   author: { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null },
   thumbPath: `/trips/t/media/${id}/thumb`,
   originalPath: `/trips/t/media/${id}/original`,
+  displayPath: `/trips/t/media/${id}/display`,
+  originalAvailable: true,
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,
@@ -40,6 +42,7 @@ const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => 
   momentDay: null,
   archived: false,
   selfie: null,
+  groupIds: [],
 });
 
 const ctx = {
@@ -95,6 +98,24 @@ describe("createSaver", () => {
       author: "Cami",
     });
     expect(order).toEqual(["embed", "create"]);
+  });
+
+  it("downloads the original while it is available", async () => {
+    const download = jest.spyOn(File, "downloadFileAsync");
+    await createSaver(ctx)(photo("a"));
+    expect(download.mock.calls[0]![0]).toBe("https://api.test/trips/t/media/a/original");
+  });
+
+  it("downloads the display once the original was purged (originalAvailable false), still injecting metadata", async () => {
+    const download = jest.spyOn(File, "downloadFileAsync");
+    await createSaver(ctx)({ ...photo("a"), originalAvailable: false });
+    expect(download.mock.calls[0]![0]).toBe("https://api.test/trips/t/media/a/display");
+    expect(embedMetadataIfMissing).toHaveBeenCalledTimes(1);
+  });
+
+  it("a linked image saves by its own originalAvailable", () => {
+    const main = { ...photo("m"), selfie: { id: "s", thumbPath: "/s/t", originalPath: "/s/o", displayPath: "/s/d", originalAvailable: false, thumbhash: null, width: 1, height: 1 } };
+    expect(withLinkedImages([main])[1]).toMatchObject({ displayPath: "/s/d", originalAvailable: false });
   });
 
   it("passes no location when the photo has none", async () => {
@@ -250,7 +271,7 @@ describe("withLinkedImages", () => {
       ...photo("main"),
       momentDay: "2027-01-12",
       takenAt: 5,
-      selfie: { id: "linked", thumbPath: "/t/linked/thumb", originalPath: "/t/linked/original", thumbhash: null, width: 1080, height: 1440 },
+      selfie: { id: "linked", thumbPath: "/t/linked/thumb", originalPath: "/t/linked/original", displayPath: "/t/linked/display", originalAvailable: false, thumbhash: null, width: 1080, height: 1440 },
     };
     const [a, b, c] = withLinkedImages([photo("x"), main]);
     expect(a!.id).toBe("x");

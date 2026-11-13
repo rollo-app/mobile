@@ -17,8 +17,11 @@ export default function PresentationScreen() {
   const { photos, token, error, loading, refetch } = useRevealedPhotos(trip?.id);
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
+  // The roll tab may have been left on "Rollo": close the modal and land on its gallery view.
+  const openGallery = () => router.dismissTo({ pathname: "/roll", params: { view: "gallery" } });
+
   if (detail && token && photos.length > 0) {
-    return <StoryPlayer photos={photos} token={token} timeZone={detail.trip.timezone} onClose={close} />;
+    return <StoryPlayer photos={photos} token={token} timeZone={detail.trip.timezone} onClose={close} onGallery={openGallery} />;
   }
 
   const waiting = !error && (loading || !detail || !token);

@@ -1,6 +1,7 @@
+import { dateFormatter } from "@/lib/intl";
 /** Local date (YYYY-MM-DD) of an instant in the trip's time zone. The server uses it for the quota. */
 export function localDay(ms: number, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
+  return dateFormatter("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms);
 }
 
 type Today = { date: string; photosLeft: number };

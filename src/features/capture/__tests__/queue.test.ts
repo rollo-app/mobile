@@ -23,6 +23,9 @@ const item = (overrides: Partial<QueuedMedia> = {}): QueuedMedia => ({
   momentDay: null,
   pairedWith: null,
   ownerUserId: "u1",
+  displayUri: null,
+  displaySizeBytes: null,
+  groupIds: null,
   ...overrides,
 });
 
@@ -147,6 +150,40 @@ describe("upload queue", () => {
     await queue.claimUnowned("u1");
 
     expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", attempts: 0, retryAt: null });
+  });
+});
+
+describe("display version columns", () => {
+  it("round-trips the display path and size", async () => {
+    const queue = await createQueue(memoryDb());
+
+    await queue.enqueue(item({ displayUri: "file:///docs/pending/a/display.jpg", displaySizeBytes: 640_000 }));
+
+    expect((await queue.pending("u1"))[0]).toMatchObject({
+      displayUri: "file:///docs/pending/a/display.jpg",
+      displaySizeBytes: 640_000,
+    });
+  });
+
+  it("adds the nullable columns to a database created before them, keeping its rows (without display)", async () => {
+    const db = memoryDb();
+    await db.execAsync(`CREATE TABLE pending_media (
+      id TEXT PRIMARY KEY NOT NULL, trip_id TEXT NOT NULL, type TEXT NOT NULL, taken_at INTEGER NOT NULL,
+      day TEXT NOT NULL, lat REAL, lng REAL, accuracy_m REAL, caption TEXT, duration_s REAL, width INTEGER,
+      height INTEGER, size_bytes INTEGER NOT NULL, original_uri TEXT NOT NULL, thumb_uri TEXT NOT NULL,
+      thumbhash TEXT, attempts INTEGER NOT NULL DEFAULT 0, retry_at INTEGER, failed_reason TEXT,
+      moment_day TEXT, paired_with TEXT, owner_user_id TEXT);`);
+    await db.runAsync(
+      "INSERT INTO pending_media (id, trip_id, type, taken_at, day, size_bytes, original_uri, thumb_uri, owner_user_id) VALUES ('old', 't', 'photo', 1, '2027-01-12', 1, 'o', 't', 'u1')",
+    );
+
+    const queue = await createQueue(db);
+    const columns = (await db.getAllAsync<{ name: string }>("PRAGMA table_info(pending_media)")).map((c) => c.name);
+
+    expect(columns).toEqual(expect.arrayContaining(["display_uri", "display_size_bytes"]));
+    expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", displayUri: null, displaySizeBytes: null });
+    // Creating the queue again (every app start) is harmless.
+    await createQueue(db);
   });
 });
 
@@ -342,5 +379,28 @@ describe("queue per account", () => {
     expect(await queue.pending("u1")).toEqual([]);
     await queue.claimUnowned("u1");
     expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", ownerUserId: "u1" });
+  });
+});
+
+describe("event groups", () => {
+  it("persists group ids and reads them back", async () => {
+    const queue = await createQueue(memoryDb());
+    await queue.enqueue(item({ groupIds: ["g1", "g2"] }));
+
+    expect((await queue.pending("u1"))[0]).toMatchObject({ groupIds: ["g1", "g2"] });
+  });
+
+  it("an old row without the column reads groupIds as null", async () => {
+    const db = memoryDb();
+    await db.execAsync(
+      `CREATE TABLE pending_media (id TEXT PRIMARY KEY NOT NULL, trip_id TEXT NOT NULL, type TEXT NOT NULL, taken_at INTEGER NOT NULL, day TEXT NOT NULL, lat REAL, lng REAL, accuracy_m REAL, caption TEXT, duration_s REAL, width INTEGER, height INTEGER, size_bytes INTEGER NOT NULL, original_uri TEXT NOT NULL, thumb_uri TEXT NOT NULL, thumbhash TEXT, attempts INTEGER NOT NULL DEFAULT 0)`,
+    );
+    await db.runAsync(
+      "INSERT INTO pending_media (id, trip_id, type, taken_at, day, size_bytes, original_uri, thumb_uri) VALUES ('old', 't', 'photo', 1, '2027-01-12', 1, 'o', 't')",
+    );
+    const queue = await createQueue(db);
+    await queue.claimUnowned("u1");
+
+    expect((await queue.pending("u1"))[0]).toMatchObject({ id: "old", groupIds: null });
   });
 });

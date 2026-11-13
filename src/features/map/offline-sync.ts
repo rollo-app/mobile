@@ -3,7 +3,8 @@ import * as Location from "expo-location";
 import * as Network from "expo-network";
 import { Appearance } from "react-native";
 import { queryClient } from "@/api/query-client";
-import { fetchFeed, fetchMyTrips } from "@/features/trips/actions";
+import { isEvent } from "@/features/events/event";
+import { fetchMyTrips, fetchWholeFeed, type FeedPages } from "@/features/trips/actions";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { feedKey } from "@/features/trips/use-feed";
 import { getSessionToken } from "@/storage/session";
@@ -78,6 +79,23 @@ async function cachedOrFetched<T>(key: readonly unknown[], fetcher: () => Promis
   return queryClient.getQueryData<T>(key) ?? null;
 }
 
+/**
+ * The whole feed (every page: the map pack needs every place), cached in the paged shape the screens read. With no connection
+ * (or if it fails) it is whatever pages are cached. A fresh cache isn't trusted here: it may hold only what a screen scrolled to.
+ */
+async function wholeFeed(tripId: string, online: boolean): Promise<FeedPages | null> {
+  if (online) {
+    try {
+      const whole = await fetchWholeFeed(tripId);
+      queryClient.setQueryData(feedKey(tripId), whole);
+      return whole;
+    } catch {
+      // fall through to the cache
+    }
+  }
+  return queryClient.getQueryData<FeedPages>(feedKey(tripId)) ?? null;
+}
+
 type KnownTrip = { trip: PlanTrip; photos: Place[] };
 
 /**
@@ -88,8 +106,8 @@ type KnownTrip = { trip: PlanTrip; photos: Place[] };
 async function loadOpenTrips(trips: PlanTrip[], now: number, online: boolean): Promise<KnownTrip[]> {
   const known: KnownTrip[] = [];
   for (const trip of trips.filter((t) => inDownloadWindow(t, now))) {
-    const feed = await cachedOrFetched(feedKey(trip.tripId), () => fetchFeed(trip.tripId), online);
-    const photos = (feed?.items ?? []).flatMap((i) =>
+    const feed = await wholeFeed(trip.tripId, online);
+    const photos = (feed?.pages.flatMap((p) => p.items) ?? []).flatMap((i) =>
       i.lat === null || i.lng === null ? [] : [{ lat: i.lat, lng: i.lng, takenAt: i.takenAt }],
     );
     known.push({ trip, photos });
@@ -127,8 +145,9 @@ async function run(): Promise<void> {
   const mine = await cachedOrFetched(myTripsKey, fetchMyTrips, net.connected);
   if (!mine) return;
   const saved = mine.trips.map((t) => ({ tripId: t.id }));
-  const planTrips: PlanTrip[] = mine.trips.map((t) => ({ tripId: t.id, startsAt: t.startsAt, endsAt: t.endsAt, revealed: t.revealed }));
-  const endsAtByTrip = new Map(planTrips.map((t) => [t.tripId, t.endsAt]));
+  // Events have no map: nothing to download for them (their feed isn't paged here either).
+  const planTrips: PlanTrip[] = mine.trips.filter((t) => !isEvent(t)).map((t) => ({ tripId: t.id, startsAt: t.startsAt, endsAt: t.endsAt, revealed: t.revealed }));
+  const endsAtByTrip = new Map(mine.trips.map((t) => [t.id, t.endsAt]));
 
   // Housekeeping first: it needs no connection.
   let stored = await readPacks();

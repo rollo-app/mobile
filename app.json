@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rollo",
     "slug": "rollo",
-    "version": "1.2.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -93,7 +93,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "https://rollo-api.juanifraga.com",
+      "apiUrl": "https://api.rolloproject.com",
       "eas": {
         "projectId": "124fc671-d309-4a16-9606-e4e900286752"
       }

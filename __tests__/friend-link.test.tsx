@@ -39,7 +39,7 @@ describe("Opening a friend link", () => {
     it("claims the link, keeps the permission and goes to sign in", async () => {
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
-      await waitFor(() => expect(screen).toHavePathname("/email"));
+      await waitFor(() => expect(screen).toHavePathname("/welcome"));
       expect(friends.claimFriendLink).toHaveBeenCalledWith(CODE);
       expect(friends.redeemFriend).not.toHaveBeenCalled();
       expect(await getPendingFriend()).toEqual({ claimToken: "ct1", creatorName: "Cami" });
@@ -50,7 +50,7 @@ describe("Opening a friend link", () => {
       friends.claimFriendLink.mockResolvedValue(claimed("ct2"));
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
 
-      await waitFor(() => expect(screen).toHavePathname("/email"));
+      await waitFor(() => expect(screen).toHavePathname("/welcome"));
       expect(await getPendingFriend()).toEqual({ claimToken: "ct2", creatorName: "Cami" });
     });
 
@@ -65,7 +65,7 @@ describe("Opening a friend link", () => {
       expect(await getPendingFriend()).toEqual({ claimToken: "old", creatorName: "Tomi" });
 
       await fireEvent.press(screen.getByRole("button", { name: "Ir a Rollo" }));
-      await waitFor(() => expect(screen).toHavePathname("/email"));
+      await waitFor(() => expect(screen).toHavePathname("/welcome"));
     });
 
     it("a malformed code is rejected without asking the server", async () => {
@@ -92,7 +92,7 @@ describe("Opening a friend link", () => {
 
       await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
 
-      await waitFor(() => expect(screen).toHavePathname("/email"));
+      await waitFor(() => expect(screen).toHavePathname("/welcome"));
       expect(friends.claimFriendLink).toHaveBeenCalledTimes(2);
       expect(await getPendingFriend()).toEqual({ claimToken: "ct1", creatorName: "Cami" });
     });
@@ -154,6 +154,14 @@ describe("Opening a friend link", () => {
       await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
     }
 
+    it("the friend code field shows the generic placeholder", async () => {
+      await signInAs({ user: newcomer });
+      await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
+      await waitFor(() => expect(screen).toHavePathname("/profile"));
+
+      expect(screen.getByPlaceholderText("Ingresar código")).toBe(screen.getByLabelText("¿Te invitó un amigo? Código"));
+    });
+
     it("a signed-in account with no profile still keeps the link, and redeems it once the profile is done", async () => {
       await signInAs({ user: newcomer });
       await renderRouter(routes, { initialUrl: `/friends/${CODE}` });
@@ -204,6 +212,15 @@ describe("Opening a friend link", () => {
       expect(friends.claimFriendLink).toHaveBeenCalledWith(CODE);
       await waitFor(() => expect(friends.redeemFriend).toHaveBeenCalledWith({ claimToken: "ct1" }));
       await settle();
+    });
+
+    it("the friend code field shows what is typed in uppercase", async () => {
+      await signInAs({ user: newcomer });
+      await renderRouter(routes, { initialUrl: "/profile" });
+
+      await fireEvent.changeText(await screen.findByLabelText("¿Te invitó un amigo? Código"), "k7m2qx9a");
+
+      expect(screen.getByLabelText("¿Te invitó un amigo? Código").props.value).toBe("K7M2QX9A");
     });
 
     it("a wrong friend code shows the error inline and doesn't save the profile", async () => {

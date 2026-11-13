@@ -3,8 +3,9 @@ import { errorMessage } from "@/api/client";
 import { memo, useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from "react-native";
 import { usePendingItems } from "@/features/capture/use-pending-items";
+import { photoGroupLabel } from "@/features/events/event";
 import { FeedRow } from "@/features/feed/feed-row";
-import { groupByDay, newest, type FeedSection } from "@/features/feed/sections";
+import { groupByDay, type FeedSection } from "@/features/feed/sections";
 import { useReport } from "@/features/moderation/use-report";
 import { useMediaToken } from "@/features/media/revealed";
 import { feedToItems, mergeItems, pendingToItems, type MapItem } from "@/features/map/features";
@@ -14,6 +15,7 @@ import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Footnote } from "@/ui/components";
+import { LoadMoreFooter } from "@/ui/load-more-footer";
 import { colors, spacing, type } from "@/ui/theme";
 
 // Avatar (36) + row margins: the hairline starts where the text starts, like in Messages.
@@ -23,13 +25,11 @@ const Separator = memo(function Separator() {
   return <View style={styles.separator} />;
 });
 
-const PAGE = 30;
-
 const keyExtractor = (item: MapItem) => item.id;
 
 type FeedListProps = {
-  /** Where tapping a row goes: the map, focused on that pin. */
-  onOpenOnMap: (item: MapItem) => void;
+  /** Where tapping a row goes: the map, focused on that pin. Omitted in an event, which has no map. */
+  onOpenOnMap?: (item: MapItem) => void;
   /** Extra padding above the list (for content drawn over it). */
   contentInsetTop?: number;
 };
@@ -38,12 +38,11 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
   const { trip } = useActiveTrip();
   const tripId = trip?.id;
   const { detail } = useTripDetail(tripId);
-  const { feed, error, loading, refetch } = useFeed(tripId);
+  const { feed, error, loading, refetch, hasMore, fetchMore, loadingMore, loadMoreError } = useFeed(tripId, { mode: "lazy", order: "desc" });
   const pending = usePendingItems(tripId);
   const token = useMediaToken(tripId);
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [limit, setLimit] = useState(PAGE);
 
   const timeZone = detail?.trip.timezone ?? "America/Argentina/Buenos_Aires";
   const me = detail?.me;
@@ -54,9 +53,11 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
     return mergeItems(feed ? feedToItems(feed.items) : [], mine);
   }, [feed, pending, me]);
 
-  // The server sends everything at once: show it in batches, newest first, and add more on reaching the end.
-  const sections = useMemo(() => groupByDay(newest(all, limit), timeZone), [all, limit, timeZone]);
-  const loadMore = useCallback(() => setLimit((n) => (n < all.length ? n + PAGE : n)), [all.length]);
+  // The server sends pages newest first and groupByDay sorts: a page appended at the end only adds older rows (or more of the last day).
+  const sections = useMemo(() => groupByDay(all, timeZone), [all, timeZone]);
+  const loadMore = useCallback(() => {
+    if (hasMore && !loadingMore && !loadMoreError) void fetchMore();
+  }, [hasMore, loadingMore, loadMoreError, fetchMore]);
 
   const { mutate: removePhoto } = useRemoveFeedPhoto();
   const remove = useCallback(
@@ -110,9 +111,10 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
         onAuthorPress={openAuthor}
         onDelete={isAdmin ? confirmRemove : undefined}
         onReport={me && item.authorUserId !== me.userId ? reportItem : undefined}
+        groupLabel={detail ? photoGroupLabel(detail, item.groupIds) : null}
       />
     ),
-    [timeZone, onOpenOnMap, token, openPhoto, openAuthor, isAdmin, confirmRemove, me, reportItem],
+    [timeZone, onOpenOnMap, token, openPhoto, openAuthor, isAdmin, confirmRemove, me, reportItem, detail],
   );
 
   const renderSectionHeader = useCallback(
@@ -133,7 +135,7 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
         <Text style={[type.headline, { color: colors.tint }]}>Reintentar</Text>
       </Pressable>
     </View>
-  ) : (
+  ) : hasMore ? undefined : (
     <View style={styles.empty}>
       <Footnote>Todavía no hay fotos. Las que saque cada uno van a aparecer acá.</Footnote>
     </View>
@@ -151,6 +153,7 @@ export function FeedList({ onOpenOnMap, contentInsetTop }: FeedListProps) {
       renderSectionHeader={renderSectionHeader}
       ItemSeparatorComponent={Separator}
       ListEmptyComponent={empty}
+      ListFooterComponent={<LoadMoreFooter loading={loadingMore} error={loadMoreError} onRetry={() => void fetchMore()} testID="feed-loading-more" />}
       onEndReached={loadMore}
       onEndReachedThreshold={0.5}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}

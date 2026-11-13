@@ -1,3 +1,4 @@
+import { keepOriginals } from "@/test/trip";
 import { act } from "@testing-library/react-native";
 import { ActionSheetIOS, Alert, Text } from "react-native";
 import * as sections from "@/features/feed/sections";
@@ -41,14 +42,19 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     dailyPhotoLimit: 10,
     dailyVideoLimit: 3,
     featuringDisabled: false,
+    maxMembers: 15,
     photoLimitMode: "daily",
     totalPhotoLimit: null,
     momentMode: "off",
     momentWindowStart: 540,
     momentWindowEnd: 1380,
+    originals: keepOriginals,
+    type: "trip",
+    coverUrl: null,
+    groups: [],
     createdBy: null,
   },
-  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, isCreator: false, blockedByMe: false },
+  me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, isCreator: false, blockedByMe: false, groupIds: [] },
   members: [
     { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role, isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
@@ -57,7 +63,7 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
   totalUploaded: 3,
 });
 
-const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Feed["items"][number] => ({
+const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Feed["items"][number] => ({ groupIds: [],
   id: "f1",
   type: "photo",
   takenAt: Date.parse("2027-01-12T16:10:00Z"),
@@ -71,7 +77,7 @@ const feedItem = (over: Partial<actions.Feed["items"][number]> = {}): actions.Fe
   ...over,
 });
 
-const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items });
+const feed = (items: actions.Feed["items"]): actions.Feed => ({ revealed: false, revealAt: Date.now() + DAY, items, nextCursor: null });
 
 const queued = (over: Partial<QueuedMedia> = {}): QueuedMedia => ({
   id: "q1",
@@ -106,7 +112,7 @@ jest.mock("expo-haptics", () => ({
 
 beforeEach(async () => {
   mocked.fetchTrip.mockResolvedValue(detail());
-  mocked.fetchFeed.mockResolvedValue(feed([]));
+  mocked.fetchFeedPage.mockResolvedValue(feed([]));
   mocked.deleteMedia.mockResolvedValue(undefined);
   sheet.mockClear();
   alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
@@ -119,7 +125,7 @@ afterEach(() => alert.mockRestore());
 
 describe("Feed", () => {
   it("groups by day, newest to oldest, with the latest of each day first", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([
         feedItem({ id: "a", day: "2027-01-11", takenAt: Date.parse("2027-01-11T15:00:00Z"), caption: "ayer vieja" }),
         feedItem({ id: "b", takenAt: Date.parse("2027-01-12T15:00:00Z"), caption: "temprano" }),
@@ -134,7 +140,7 @@ describe("Feed", () => {
   });
 
   it("names the author by handle, falling back to the name when there is none", async () => {
-    mocked.fetchFeed.mockResolvedValue(
+    mocked.fetchFeedPage.mockResolvedValue(
       feed([
         feedItem({ id: "a", caption: null, author: { id: "m2", userId: "u-m2", name: "Fede", username: "fede.s", avatarUrl: null } }),
         feedItem({ id: "b", caption: null, author: { id: "m3", userId: "u-m3", name: "Cami", username: null, avatarUrl: null } }),
@@ -158,7 +164,7 @@ describe("Feed", () => {
   });
 
   it("tapping a row with a location switches to Mapa centered on that photo", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Fede, / }));
@@ -177,7 +183,7 @@ describe("Feed", () => {
       feedItem({ id: "mo1", momentDay: "2027-01-12", caption: "mi momento", files: { thumb: "/media/mo1/thumb", original: "/media/mo1/original" }, width: 1080, height: 1440, ...over });
 
     it("shows the real photo with the moment badge instead of the thumbhash, and keeps ordinary rows blurry", async () => {
-      mocked.fetchFeed.mockResolvedValue(feed([moment(), feedItem({ id: "n1", caption: "normal", takenAt: Date.parse("2027-01-12T15:00:00Z") })]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([moment(), feedItem({ id: "n1", caption: "normal", takenAt: Date.parse("2027-01-12T15:00:00Z") })]));
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
       const rows = await screen.findAllByTestId("feed-row");
@@ -188,7 +194,7 @@ describe("Feed", () => {
     });
 
     it("tapping a moment opens the viewer for that photo in this roll, not the map", async () => {
-      mocked.fetchFeed.mockResolvedValue(feed([moment()]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([moment()]));
       await renderRouter({ ...routes, "photo/[id]": () => <Text>Foto</Text> }, { initialUrl: "/map?view=feed" });
 
       const row = await screen.findByRole("button", { name: /^Fede, / });
@@ -203,7 +209,7 @@ describe("Feed", () => {
   });
 
   it("tapping the author's photo or name opens their profile instead of the map", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: "/map?view=feed" });
 
     const author = await screen.findByRole("button", { name: "Perfil de Fede" });
@@ -226,7 +232,7 @@ describe("Feed", () => {
   });
 
   it("a row without a location is not tappable", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem({ lat: null, lng: null })]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem({ lat: null, lng: null })]));
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await screen.findByText("el viento no perdona");
@@ -236,17 +242,17 @@ describe("Feed", () => {
   it("pull to refresh requests the feed again", async () => {
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
     await screen.findByText(EMPTY);
-    mocked.fetchFeed.mockClear();
+    mocked.fetchFeedPage.mockClear();
 
     await act(async () => {
       await screen.getByTestId("feed-list").props.refreshControl.props.onRefresh();
     });
 
-    expect(mocked.fetchFeed).toHaveBeenCalledTimes(1);
+    expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(1);
   });
 
   it("does not recompute the grouping on every render", async () => {
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     const group = jest.spyOn(sections, "groupByDay");
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
     await screen.findByText("el viento no perdona");
@@ -261,29 +267,117 @@ describe("Feed", () => {
     group.mockRestore();
   });
 
-  it("shows items in batches and loads more when reaching the end of the list", async () => {
-    const many = Array.from({ length: 70 }, (_, n) => feedItem({ id: `f${n}`, takenAt: 1_800_000_000_000 + n * 60_000 }));
-    mocked.fetchFeed.mockResolvedValue(feed(many));
-    await renderRouter(routes, { initialUrl: "/map?view=feed" });
-    await screen.findByTestId("feed-list");
+  describe("paging (newest first, 30 at a time)", () => {
     // The host does not expose the list props: walk up to the SectionList.
     const list = () => {
       let node: { props: Record<string, any>; parent: any } | null = screen.getByTestId("feed-list");
       while (node && !node.props.onEndReached) node = node.parent;
       return node!.props;
     };
-    const sectionsOf = () => {
-      const p = list();
-      return (p.sections ?? p.data) as { data: unknown[] }[];
-    };
-    const rows = () => sectionsOf().reduce((n, s) => n + s.data.length, 0);
+    const rowIds = () =>
+      ((list().sections ?? list().data) as { data: { id: string }[] }[]).flatMap((s) => s.data.map((i) => i.id));
+    const sectionTitles = () => ((list().sections ?? list().data) as { title: string }[]).map((s) => s.title);
+    const at = (iso: string) => Date.parse(iso);
+    const item = (id: string, iso: string, day: string) => feedItem({ id, takenAt: at(iso), day, caption: `foto ${id}` });
+    beforeEach(() => mocked.fetchFeedPage.mockClear());
+    const descCalls = () => mocked.fetchFeedPage.mock.calls.filter(([, opts]) => opts.order === "desc");
 
-    await waitFor(() => expect(rows()).toBe(30));
-    await act(async () => list().onEndReached());
-    expect(rows()).toBe(60);
-    await act(async () => list().onEndReached());
-    await act(async () => list().onEndReached());
-    expect(rows()).toBe(70);
+    /** Newest first pages for the feed, and the map's own oldest-first walk (empty here). */
+    function serve(pages: Record<string, actions.Feed>) {
+      mocked.fetchFeedPage.mockImplementation(async (_trip, { cursor, order }) => (order === "desc" ? pages[cursor ?? ""]! : feed([])));
+    }
+    const page1 = (nextCursor: string | null = "c1"): actions.Feed => ({
+      ...feed([item("n2", "2027-01-12T20:00:00Z", "2027-01-12"), item("n1", "2027-01-12T15:00:00Z", "2027-01-12")]),
+      nextCursor,
+    });
+    const page2 = (nextCursor: string | null = null): actions.Feed => ({
+      ...feed([item("o2", "2027-01-12T10:00:00Z", "2027-01-12"), item("o1", "2027-01-11T15:00:00Z", "2027-01-11")]),
+      nextCursor,
+    });
+
+    it("asks for newest first, 30 per page, and shows only the first page", async () => {
+      serve({ "": page1(), c1: page2() });
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+
+      await screen.findByText("foto n2");
+      expect(descCalls()).toEqual([[SUR, { cursor: undefined, limit: 30, order: "desc" }]]);
+      expect(rowIds()).toEqual(["n2", "n1"]);
+      expect(screen.queryByText("foto o2")).toBeNull();
+    });
+
+    it("reaching the end loads the next page with the same order and appends it, grouped by day", async () => {
+      serve({ "": page1(), c1: page2() });
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+      await screen.findByText("foto n2");
+
+      await act(async () => list().onEndReached());
+
+      await waitFor(() => expect(rowIds()).toEqual(["n2", "n1", "o2", "o1"]));
+      expect(descCalls().at(-1)).toEqual([SUR, { cursor: "c1", limit: 30, order: "desc" }]);
+      // The second page continues the same day (one section) and then starts an older one.
+      expect(sectionTitles()).toEqual(["Martes 12", "Lunes 11"]);
+      // Nothing more to load: another end reached asks for nothing.
+      const calls = mocked.fetchFeedPage.mock.calls.length;
+      await act(async () => list().onEndReached());
+      expect(mocked.fetchFeedPage.mock.calls.length).toBe(calls);
+    });
+
+    it("shows a spinner at the end while the next page loads", async () => {
+      serve({ "": page1() });
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+      await screen.findByText("foto n2");
+      mocked.fetchFeedPage.mockImplementation(() => new Promise(() => {}));
+
+      await act(async () => list().onEndReached());
+
+      expect(await screen.findByTestId("feed-loading-more")).toBeTruthy();
+    });
+
+    it("a failed next page keeps what is loaded and offers Reintentar at the end", async () => {
+      serve({ "": page1() });
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+      await screen.findByText("foto n2");
+      mocked.fetchFeedPage.mockRejectedValue(new Error("Sin señal"));
+
+      await act(async () => list().onEndReached());
+
+      expect(await screen.findByText("No se pudieron cargar más fotos.")).toBeVisible();
+      expect(screen.getByText("foto n2")).toBeVisible();
+      // While the error stands, reaching the end does not hammer the server.
+      const calls = mocked.fetchFeedPage.mock.calls.length;
+      await act(async () => list().onEndReached());
+      expect(mocked.fetchFeedPage.mock.calls.length).toBe(calls);
+
+      serve({ "": page1(), c1: page2() });
+      await fireEvent.press(within(screen.getByTestId("feed-list")).getByRole("button", { name: "Reintentar" }));
+
+      await waitFor(() => expect(rowIds()).toEqual(["n2", "n1", "o2", "o1"]));
+      expect(screen.queryByText("No se pudieron cargar más fotos.")).toBeNull();
+    });
+
+    it("does not say it is empty while there are more pages", async () => {
+      // An empty first page that still points to a next one (the next page never answers here).
+      mocked.fetchFeedPage.mockImplementation(async (_trip, { cursor, order }) =>
+        order !== "desc" ? feed([]) : cursor ? new Promise<actions.Feed>(() => {}) : { ...feed([]), nextCursor: "c1" },
+      );
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+
+      await waitFor(() => expect(descCalls().length).toBeGreaterThan(0));
+      await waitFor(() => expect(screen.queryByTestId("feed-loading")).toBeNull());
+      expect(screen.queryByText(EMPTY)).toBeNull();
+    });
+
+    it("tapping a row still focuses that pin on the map (which loads oldest first)", async () => {
+      const here = feedItem({ id: "f1", caption: "el viento no perdona" });
+      mocked.fetchFeedPage.mockImplementation(async () => ({ ...feed([here]), nextCursor: null }));
+      await renderRouter(routes, { initialUrl: "/map?view=feed" });
+
+      await fireEvent.press(await screen.findByRole("button", { name: /^Fede, / }));
+
+      await waitFor(() => expect(camera.flyTo).toHaveBeenCalledWith(expect.objectContaining({ center: [-72.89, -49.33], zoom: 15 })));
+      expect(mocked.fetchFeedPage.mock.calls.some(([, o]) => o.order === undefined)).toBe(true);
+      expect(mocked.fetchFeedPage.mock.calls.some(([, o]) => o.order === "desc")).toBe(true);
+    });
   });
 
   describe("reporting", () => {
@@ -296,10 +390,10 @@ describe("Feed", () => {
     afterEach(() => sheet.mockImplementation(() => {}));
 
     it("long-pressing someone else's row reports it and the row disappears", async () => {
-      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
       // Like the server: once reported, the item is gone from the refetched feed too.
       moderation.reportMedia.mockImplementation(async () => {
-        mocked.fetchFeed.mockResolvedValue(feed([]));
+        mocked.fetchFeedPage.mockResolvedValue(feed([]));
       });
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
@@ -312,7 +406,7 @@ describe("Feed", () => {
     });
 
     it("your own rows offer no Denunciar", async () => {
-      mocked.fetchFeed.mockResolvedValue(
+      mocked.fetchFeedPage.mockResolvedValue(
         feed([feedItem({ author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null } })]),
       );
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
@@ -325,7 +419,7 @@ describe("Feed", () => {
 
     it("a member sees Denunciar but not Borrar foto on someone else's row", async () => {
       mocked.fetchTrip.mockResolvedValue(detail("member"));
-      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
 
@@ -336,7 +430,7 @@ describe("Feed", () => {
 
     it("a failed report keeps the row and shows the error HUD", async () => {
       moderation.reportMedia.mockRejectedValue(new Error("sin señal"));
-      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
       pickReport();
@@ -350,10 +444,10 @@ describe("Feed", () => {
 
   describe("admin", () => {
     it("Borrar foto asks for confirmation and, if confirmed, deletes and refetches feed and trip", async () => {
-      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
-      mocked.fetchFeed.mockClear();
+      mocked.fetchFeedPage.mockClear();
       mocked.fetchTrip.mockClear();
 
       await fireEvent(screen.getByLabelText(/^Fede, /), "longPress");
@@ -373,12 +467,12 @@ describe("Feed", () => {
       await act(async () => buttons.find((b) => b.text === "Borrar")!.onPress!());
 
       expect(mocked.deleteMedia).toHaveBeenCalledWith("f1");
-      await waitFor(() => expect(mocked.fetchFeed).toHaveBeenCalled());
+      await waitFor(() => expect(mocked.fetchFeedPage).toHaveBeenCalled());
       await waitFor(() => expect(mocked.fetchTrip).toHaveBeenCalled());
     });
 
     it("if the server rejects, it shows an alert with its message", async () => {
-      mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+      mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
       mocked.deleteMedia.mockRejectedValue(new Error("El viaje ya se reveló"));
       await renderRouter(routes, { initialUrl: "/map?view=feed" });
       await screen.findByText("el viento no perdona");
@@ -403,7 +497,7 @@ describe("Feed", () => {
 
   it("a non-admin member cannot delete", async () => {
     mocked.fetchTrip.mockResolvedValue(detail("member"));
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     await screen.findByText("el viento no perdona");
@@ -417,7 +511,7 @@ describe("Feed", () => {
   });
 
   it("while loading it shows a small indicator, not the empty state", async () => {
-    mocked.fetchFeed.mockReturnValue(new Promise(() => {}));
+    mocked.fetchFeedPage.mockReturnValue(new Promise(() => {}));
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     expect(await screen.findByTestId("feed-loading")).toBeTruthy();
@@ -425,11 +519,11 @@ describe("Feed", () => {
   });
 
   it("if it fails with no cache it shows the error with Reintentar", async () => {
-    mocked.fetchFeed.mockRejectedValueOnce(new Error("Sin conexión"));
+    mocked.fetchFeedPage.mockRejectedValueOnce(new Error("Sin conexión"));
     await renderRouter(routes, { initialUrl: "/map?view=feed" });
 
     expect((await screen.findAllByText("Sin conexión"))[0]).toBeVisible();
-    mocked.fetchFeed.mockResolvedValue(feed([feedItem()]));
+    mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
     await fireEvent.press(screen.getAllByRole("button", { name: "Reintentar" }).at(-1)!);
 
     expect(await screen.findByText("el viento no perdona")).toBeVisible();

@@ -1,0 +1,282 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
+import type { ReactNode } from "react";
+import { feedItem, feedPagesOf } from "@/test/feed";
+import { fetchFeedPage } from "../actions";
+import { feedKey, useFeed } from "../use-feed";
+
+jest.mock("../actions", () => ({ ...jest.requireActual("../actions"), fetchFeedPage: jest.fn() }));
+
+const page = (ids: string[], nextCursor: string | null, extra: Record<string, unknown> = {}) => ({
+  revealed: true,
+  revealAt: 99,
+  items: ids.map((id) => feedItem(id)),
+  nextCursor,
+  ...extra,
+});
+
+/** Three pages: a,b | c,d | e. */
+function serve() {
+  jest.mocked(fetchFeedPage).mockImplementation(async (_trip, { cursor }) => {
+    if (!cursor) return page(["a", "b"], "c1") as never;
+    if (cursor === "c1") return page(["c", "d"], "c2") as never;
+    return page(["e"], null) as never;
+  });
+}
+
+let client: QueryClient;
+afterEach(() => client.clear());
+const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+const ids = (feed: { items: { id: string }[] } | null) => feed?.items.map((i) => i.id);
+
+beforeEach(() => {
+  jest.resetAllMocks();
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } });
+  serve();
+});
+
+describe("useFeed", () => {
+  it("lazy: loads only the first page, with the page size as limit", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    expect(ids(result.current.feed)).toEqual(["a", "b"]);
+    expect(result.current.feed).toMatchObject({ revealed: true, revealAt: 99 });
+    expect(result.current.hasMore).toBe(true);
+    expect(result.current.complete).toBe(false);
+    expect(fetchFeedPage).toHaveBeenCalledTimes(1);
+    expect(fetchFeedPage).toHaveBeenCalledWith("t1", { cursor: undefined, limit: 30 });
+  });
+
+  it("lazy: fetchMore appends the next page, in order, until there is no more", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.fetchMore()));
+    await waitFor(() => expect(ids(result.current.feed)).toEqual(["a", "b", "c", "d"]));
+    expect(fetchFeedPage).toHaveBeenLastCalledWith("t1", { cursor: "c1", limit: 30 });
+    await act(async () => void (await result.current.fetchMore()));
+    await waitFor(() => expect(ids(result.current.feed)).toEqual(["a", "b", "c", "d", "e"]));
+    expect(result.current.hasMore).toBe(false);
+    expect(result.current.complete).toBe(true);
+    expect(result.current.loadingMore).toBe(false);
+  });
+
+  it("lazy: fetchMore does nothing when everything is loaded", async () => {
+    client.setQueryData(feedKey("t1"), feedPagesOf([feedItem("a")]));
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await act(async () => void (await result.current.fetchMore()));
+    expect(fetchFeedPage).not.toHaveBeenCalled();
+  });
+
+  it("all: keeps loading pages by itself until the last one", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(result.current.complete).toBe(true));
+    expect(ids(result.current.feed)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(fetchFeedPage).toHaveBeenCalledTimes(3);
+  });
+
+  it("desc: is its own query under the trip's prefix and asks for desc on every page", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy", order: "desc" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.fetchMore()));
+    await waitFor(() => expect(ids(result.current.feed)).toEqual(["a", "b", "c", "d"]));
+
+    expect(fetchFeedPage).toHaveBeenNthCalledWith(1, "t1", { cursor: undefined, limit: 30, order: "desc" });
+    expect(fetchFeedPage).toHaveBeenNthCalledWith(2, "t1", { cursor: "c1", limit: 30, order: "desc" });
+    expect(client.getQueryData(feedKey("t1", "desc"))).toBeDefined();
+    expect(client.getQueryData(feedKey("t1"))).toBeUndefined();
+    expect(feedKey("t1", "desc").slice(0, 2)).toEqual(feedKey("t1"));
+  });
+
+  it("asc keeps the persisted key and does not send an order", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    expect(feedKey("t1")).toEqual(["feed-pages", "t1"]);
+    expect(feedKey("t1", "asc")).toEqual(["feed-pages", "t1"]);
+    expect(fetchFeedPage).toHaveBeenCalledWith("t1", { cursor: undefined, limit: 30 });
+  });
+
+  it("desc and asc do not share pages", async () => {
+    client.setQueryData(feedKey("t1"), feedPagesOf([feedItem("old")]));
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy", order: "desc" }), { wrapper });
+    await waitFor(() => expect(ids(result.current.feed)).toEqual(["a", "b"]));
+  });
+
+  it("defaults to loading everything", async () => {
+    const { result } = await renderHook(() => useFeed("t1"), { wrapper });
+    await waitFor(() => expect(result.current.complete).toBe(true));
+  });
+
+  it("all: stops on a failed page instead of retrying forever, keeping what arrived", async () => {
+    jest.mocked(fetchFeedPage).mockImplementation(async (_trip, { cursor }) => {
+      if (!cursor) return page(["a"], "c1") as never;
+      throw new Error("sin señal");
+    });
+    const { result } = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(fetchFeedPage).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(fetchFeedPage).toHaveBeenCalledTimes(2);
+    expect(ids(result.current.feed)).toEqual(["a"]);
+    expect(result.current.complete).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  it("both modes share one cache: a lazy screen's pages are not fetched again by an all screen", async () => {
+    const lazy = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(lazy.result.current.feed).not.toBeNull());
+    await act(async () => void (await lazy.result.current.fetchMore()));
+    expect(fetchFeedPage).toHaveBeenCalledTimes(2);
+
+    // The all screen starts from the cached pages (it may already be fetching page 3, so the intermediate state isn't asserted).
+    const all = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(all.result.current.complete).toBe(true));
+    expect(ids(all.result.current.feed)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(fetchFeedPage).toHaveBeenCalledTimes(3);
+    expect(fetchFeedPage).toHaveBeenLastCalledWith("t1", { cursor: "c2", limit: 100 });
+  });
+
+  it("all: the first page is small (fast first paint), every following page is bulk-sized", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(result.current.complete).toBe(true));
+    expect(jest.mocked(fetchFeedPage).mock.calls.map(([, o]) => [o.cursor, o.limit])).toEqual([
+      [undefined, 30],
+      ["c1", 100],
+      ["c2", 100],
+    ]);
+  });
+
+  it("lazy: scrolling (fetchMore) keeps asking for 30 per page, however many times", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.fetchMore()));
+    await act(async () => void (await result.current.fetchMore()));
+    expect(jest.mocked(fetchFeedPage).mock.calls.map(([, o]) => o.limit)).toEqual([30, 30, 30]);
+  });
+
+  it("loadAll from a lazy screen asks for bulk pages for what remains", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.loadAll()));
+    expect(jest.mocked(fetchFeedPage).mock.calls.map(([, o]) => [o.cursor, o.limit])).toEqual([
+      [undefined, 30],
+      ["c1", 100],
+      ["c2", 100],
+    ]);
+  });
+
+  it("a scroll right after a bulk load goes back to 30 (the size is per call, not sticky)", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    await act(async () => void (await result.current.loadAll()));
+    jest.mocked(fetchFeedPage).mockClear();
+    jest.mocked(fetchFeedPage).mockImplementation(async (_t, { cursor }) => (cursor ? (page(["z"], null) as never) : (page(["a"], "c9") as never)));
+    const other = await renderHook(() => useFeed("t2", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(other.result.current.feed).not.toBeNull());
+    await act(async () => void (await other.result.current.fetchMore()));
+    expect(fetchFeedPage).toHaveBeenLastCalledWith("t2", { cursor: "c9", limit: 30 });
+  });
+
+  it("mixed page sizes in one cache neither duplicate nor skip items", async () => {
+    // Keyset server: the cursor is the last item's id; `limit` decides how many come back.
+    const all = Array.from({ length: 250 }, (_, i) => `i${i}`);
+    jest.mocked(fetchFeedPage).mockImplementation(async (_t, { cursor, limit }) => {
+      const start = cursor ? all.indexOf(cursor) + 1 : 0;
+      const slice = all.slice(start, start + limit);
+      return page(slice, start + limit < all.length ? slice[slice.length - 1]! : null) as never;
+    });
+    const lazy = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(lazy.result.current.feed).not.toBeNull());
+    await act(async () => void (await lazy.result.current.fetchMore())); // 30 + 30, then the all screen continues with 100s
+    await waitFor(() => expect(ids(lazy.result.current.feed)).toEqual(all.slice(0, 60)));
+    const allScreen = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(allScreen.result.current.complete).toBe(true));
+    expect(ids(allScreen.result.current.feed)).toEqual(all);
+    expect(ids(lazy.result.current.feed)).toEqual(all);
+  });
+
+  it("refetch re-walks the cached pages without making more requests than pages: first page 30, the rest bulk", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "all" }), { wrapper });
+    await waitFor(() => expect(result.current.complete).toBe(true));
+    jest.mocked(fetchFeedPage).mockClear();
+    await act(async () => void (await result.current.refetch()));
+    expect(jest.mocked(fetchFeedPage).mock.calls.map(([, o]) => [o.cursor, o.limit])).toEqual([
+      [undefined, 30],
+      ["c1", 100],
+      ["c2", 100],
+    ]);
+    expect(ids(result.current.feed)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("keeps the flattened feed's identity while nothing changes", async () => {
+    const { result, rerender } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    const first = result.current.feed;
+    await rerender({});
+    expect(result.current.feed).toBe(first);
+  });
+
+  it("loadAll resolves with every item even from a lazy screen", async () => {
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    let whole: Awaited<ReturnType<typeof result.current.loadAll>> | undefined;
+    await act(async () => {
+      whole = await result.current.loadAll();
+    });
+    expect(ids(whole!.feed)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(whole!.complete).toBe(true);
+    expect(fetchFeedPage).toHaveBeenCalledTimes(3);
+  });
+
+  it("loadAll says it is incomplete when a page fails", async () => {
+    jest.mocked(fetchFeedPage).mockImplementation(async (_trip, { cursor }) => {
+      if (!cursor) return page(["a"], "c1") as never;
+      throw new Error("sin señal");
+    });
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    let whole: Awaited<ReturnType<typeof result.current.loadAll>> | undefined;
+    await act(async () => {
+      whole = await result.current.loadAll();
+    });
+    expect(whole!.complete).toBe(false);
+  });
+
+  it("never lists the same item twice when pages overlap, keeping the first occurrence", async () => {
+    client.setQueryData(feedKey("t1"), feedPagesOf([feedItem("a"), feedItem("b")], [feedItem("b", { takenAt: 9 }), feedItem("c")]));
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    expect(ids(result.current.feed)).toEqual(["a", "b", "c"]);
+    expect(result.current.feed!.items[1]).toMatchObject({ takenAt: 1 });
+  });
+
+  it("lazy: exposes loadMoreError when the next page fails, keeps the data, and fetchMore retries", async () => {
+    let fail = true;
+    jest.mocked(fetchFeedPage).mockImplementation(async (_trip, { cursor }) => {
+      if (!cursor) return page(["a"], "c1") as never;
+      if (fail) throw new Error("sin señal");
+      return page(["b"], null) as never;
+    });
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.feed).not.toBeNull());
+    expect(result.current.loadMoreError).toBe(false);
+    await act(async () => void (await result.current.fetchMore()));
+    await waitFor(() => expect(result.current.loadMoreError).toBe(true));
+    expect(ids(result.current.feed)).toEqual(["a"]);
+    expect(result.current.error).toBeNull();
+    fail = false;
+    await act(async () => void (await result.current.fetchMore()));
+    await waitFor(() => expect(ids(result.current.feed)).toEqual(["a", "b"]));
+    expect(result.current.loadMoreError).toBe(false);
+  });
+
+  it("shows the error only when there is no data at all", async () => {
+    jest.mocked(fetchFeedPage).mockRejectedValue(new Error("sin señal"));
+    const { result } = await renderHook(() => useFeed("t1", { mode: "lazy" }), { wrapper });
+    await waitFor(() => expect(result.current.error).toBe("sin señal"));
+    expect(result.current.feed).toBeNull();
+  });
+
+  it("does nothing without a trip", async () => {
+    const { result } = await renderHook(() => useFeed(undefined), { wrapper });
+    expect(fetchFeedPage).not.toHaveBeenCalled();
+    expect(result.current.feed).toBeNull();
+  });
+});
