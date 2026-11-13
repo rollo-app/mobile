@@ -337,6 +337,7 @@ jest.mock("@expo/ui/swift-ui/modifiers", () => ({
   font: (params: unknown) => ({ font: params }),
   listRowInsets: (params: unknown) => ({ listRowInsets: params }),
   listRowBackground: (color: unknown) => ({ listRowBackground: color }),
+  aspectRatio: (params: unknown) => ({ aspectRatio: params }),
 }));
 
 // Location: native; in tests, no permission and no position (tests that need it override it).

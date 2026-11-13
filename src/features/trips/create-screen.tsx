@@ -1,5 +1,5 @@
 import { Button, Form, Group, Host, Picker, RNHostView, Section, SwipeActions, Text, TextField, Toggle } from "@expo/ui/swift-ui";
-import { accessibilityLabel, foregroundStyle, listRowBackground, listRowInsets, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
+import { accessibilityLabel, aspectRatio, foregroundStyle, listRowBackground, listRowInsets, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
@@ -235,8 +235,16 @@ export function CreateScreen() {
             <Section header={<Text>Portada</Text>} footer={<Text>Opcional. La podés cambiar después desde el tablero.</Text>}>
               {cover && (
                 // The same hero the board and the join screen show, edge to edge in its row: what guests will see.
-                <Group modifiers={[listRowInsets({ top: 0, leading: 0, bottom: 0, trailing: 0 }), listRowBackground("transparent")]}>
-                  <RNHostView matchContents={{ vertical: true }}>
+                // SwiftUI makes the row square (the width comes from the form); the hero fills it. Sizing it from the RN
+                // side left a thin strip: the hosted view was measured before it knew its width.
+                <Group
+                  modifiers={[
+                    listRowInsets({ top: 0, leading: 0, bottom: 0, trailing: 0 }),
+                    listRowBackground("transparent"),
+                    aspectRatio({ ratio: 1, contentMode: "fit" }),
+                  ]}
+                >
+                  <RNHostView>
                     <EventHero name={name.trim() || "Nombre del evento"} coverUrl={cover.uri} />
                   </RNHostView>
                 </Group>
