@@ -1,3 +1,6 @@
+import { act } from "@testing-library/react-native";
+import { router } from "expo-router";
+import { ApiError } from "@/api/client";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
 import { markAppIntroPending } from "@/storage/app-intro";
@@ -128,6 +131,73 @@ describe("Joining an event", () => {
     await renderRouter(routes, { initialUrl: "/join?code=ABC123" });
 
     expect((await screen.findByLabelText("Código del rollo")).props.value).toBe("ABC123");
+  });
+
+  it("looks the code from a link up by itself, once, and shows the groups", async () => {
+    mocked.previewEvent.mockResolvedValue(preview());
+    await renderRouter(routes, { initialUrl: "/join?code=abc123" });
+
+    expect(await screen.findByText("Elegí tus grupos")).toBeVisible();
+    expect(mocked.previewEvent).toHaveBeenCalledTimes(1);
+    expect(mocked.previewEvent).toHaveBeenCalledWith("ABC123");
+    expect(mocked.joinTrip).not.toHaveBeenCalled();
+  });
+
+  it("a link to a regular trip fills the code without joining by itself", async () => {
+    mocked.previewEvent.mockResolvedValue(null);
+    await renderRouter(routes, { initialUrl: "/join?code=HUB5FT" });
+
+    await waitFor(() => expect(mocked.previewEvent).toHaveBeenCalledTimes(1));
+    expect((await screen.findByLabelText("Código del rollo")).props.value).toBe("HUB5FT");
+    expect(mocked.joinTrip).not.toHaveBeenCalled();
+  });
+
+  it("follows the code when the route param changes while mounted", async () => {
+    mocked.previewEvent.mockResolvedValue(null);
+    await renderRouter(routes, { initialUrl: "/join?code=ABC123" });
+    await screen.findByLabelText("Código del rollo");
+
+    await act(async () => router.setParams({ code: "ZZZ999" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Código del rollo").props.value).toBe("ZZZ999"));
+    await waitFor(() => expect(mocked.previewEvent).toHaveBeenLastCalledWith("ZZZ999"));
+  });
+
+  describe("when the preview failed and the server asks to update", () => {
+    const needsUpdate = () => new ApiError(409, "Actualizá Rollo para unirte a este evento.", undefined, "EVENT_NEEDS_UPDATE");
+
+    it("retries the preview once and shows the groups instead of the message", async () => {
+      mocked.previewEvent.mockRejectedValueOnce(new ApiError(429, "Demasiados pedidos")).mockResolvedValueOnce(preview());
+      mocked.joinTrip.mockRejectedValue(needsUpdate());
+      await renderRouter(routes, { initialUrl: "/join" });
+
+      await enterCode();
+
+      expect(await screen.findByText("Elegí tus grupos")).toBeVisible();
+      expect(screen.queryByText(/Actualizá Rollo/)).toBeNull();
+      expect(mocked.previewEvent).toHaveBeenCalledTimes(2);
+    });
+
+    it("shows the server message when the retry fails too", async () => {
+      mocked.previewEvent.mockRejectedValue(new ApiError(429, "Demasiados pedidos"));
+      mocked.joinTrip.mockRejectedValue(needsUpdate());
+      await renderRouter(routes, { initialUrl: "/join" });
+
+      await enterCode();
+
+      expect(await screen.findByText("Actualizá Rollo para unirte a este evento.")).toBeVisible();
+      expect(mocked.previewEvent).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("Cancelar on a cold-start link (nothing to go back to) goes home", async () => {
+    mocked.previewEvent.mockResolvedValue(null);
+    await renderRouter(routes, { initialUrl: "/join?code=ABC123" });
+    await screen.findByLabelText("Código del rollo");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+
+    await waitFor(() => expect(screen).not.toHavePathname("/join"));
   });
 });
 
