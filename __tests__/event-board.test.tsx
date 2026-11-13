@@ -78,7 +78,18 @@ async function open(d: tripActions.TripDetail, row?: string, url = "/roll") {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(EVENT);
   await renderRouter(routes, { initialUrl: url });
-  if (row) await fireEvent.press(await screen.findByRole("button", { name: row }));
+  if (row) {
+    // Everything but the QR lives in "Ajustes del rollo".
+    if (row !== "Código QR") await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    await fireEvent.press(await screen.findByRole("button", { name: row }));
+  }
+}
+
+/** Opens the Rollo tab and then "Ajustes del rollo" with the gear in the header. */
+async function openSettings(d: tripActions.TripDetail, url = "/roll") {
+  await open(d, undefined, url);
+  await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+  await screen.findByText("Fechas");
 }
 
 let alert: jest.SpyInstance;
@@ -103,30 +114,30 @@ afterEach(() => {
 describe("Event board", () => {
   it("an organizer sees Código QR and Grupos and no Sumar amigos", async () => {
     await open(detail(organizer, []));
+    expect(await screen.findByRole("button", { name: "Código QR" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();
+    expect(screen.queryByText("Grupos")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Ajustes del rollo" }));
     expect(await screen.findByText("Grupos")).toBeVisible();
     expect(screen.getByText("Familia")).toBeVisible();
     expect(screen.getByText("Amigos")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Código QR" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Elegir portada" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();
     expect(screen.getByText(ORGANIZER_NOTE)).toBeVisible();
   });
 
   it("a guest sees their groups and Sumarme a otro grupo, and no Código QR", async () => {
-    await open(detail(guest, ["g2"]));
+    await openSettings(detail(guest, ["g2"]));
     expect(await screen.findByText("Grupos")).toBeVisible();
     expect(screen.getByText("Amigos")).toBeVisible();
     expect(screen.queryByText("Familia")).toBeNull();
     expect(screen.getByRole("button", { name: "Sumarme a otro grupo" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Elegir portada" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();
     expect(screen.queryByText(ORGANIZER_NOTE)).toBeNull();
   });
 
   it("hides group management and the cover row after the reveal", async () => {
     await markPresentationSeen(EVENT);
-    await open(detail(organizer, [], { revealed: true, coverUrl: "/covers/x/y.jpg" }), undefined, "/roll?view=roll");
+    await openSettings(detail(organizer, [], { revealed: true, coverUrl: "/covers/x/y.jpg" }), "/roll?view=roll");
     expect(await screen.findByText("Grupos")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Administrar grupos" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Cambiar portada" })).toBeNull();
@@ -135,8 +146,7 @@ describe("Event board", () => {
   it("hides Código QR once the event is revealed", async () => {
     await markPresentationSeen(EVENT);
     await open(detail(organizer, [], { revealed: true }), undefined, "/roll?view=roll");
-    expect(await screen.findByText("Grupos")).toBeVisible();
-    expect(screen.getByRole("button", { name: /^Código .*Compartir invitación$/ })).toBeVisible();
+    expect(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
   });
 
@@ -165,7 +175,7 @@ describe("Cover hero", () => {
   });
 
   it("has no hero without a cover", async () => {
-    await open(detail(organizer, []));
+    await openSettings(detail(organizer, []));
     expect(await screen.findByRole("button", { name: "Elegir portada" })).toBeVisible();
     expect(screen.queryByTestId("event-hero")).toBeNull();
   });
@@ -196,7 +206,7 @@ describe("Cover (organizer)", () => {
     } as ImagePicker.ImagePickerResult);
     await open(detail(organizer, []), "Elegir portada");
     await fireEvent.press(await screen.findByRole("button", { name: "Cancelar" }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname("/roll-settings"));
     expect(trips.uploadCover).not.toHaveBeenCalled();
     pick.mockRestore();
   });

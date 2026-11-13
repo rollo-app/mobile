@@ -953,11 +953,13 @@ describe("Edit profile", () => {
 describe("Perfil", () => {
   beforeEach(() => signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] }));
 
-  it("shows your handle under your name and the members' under theirs", async () => {
-    await renderRouter(routes, { initialUrl: "/me" });
+  it("shows the members' handles under their names", async () => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    // The board no longer lists the members: their handles show in the members list.
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
 
     expect(await screen.findByText("@fede.s")).toBeVisible();
-    expect(screen.getAllByText("@juani")).toHaveLength(2);
+    expect(screen.getAllByText("@juani")).toHaveLength(1);
   });
 });
 

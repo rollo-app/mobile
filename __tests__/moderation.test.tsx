@@ -127,6 +127,7 @@ describe("Members", () => {
     });
     jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
 
     expect(await screen.findByText("Bloqueado")).toBeVisible();
     expect(screen.getByText("Admin")).toBeVisible();

@@ -89,6 +89,7 @@ describe("Rollo: Tus fotos en otros perfiles", () => {
   it("is on by default, with a footnote, on the board before the reveal", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     expect((await screen.findByRole("switch", { name: MINE })).props.value).toBe(true);
     expect(screen.getByText(/Si lo apagás, nadie puede agregar a su perfil las fotos que sacás en este rollo/)).toBeVisible();
@@ -97,6 +98,7 @@ describe("Rollo: Tus fotos en otros perfiles", () => {
   it("shows the saved value", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ allowFeaturing: false }));
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     expect((await screen.findByRole("switch", { name: MINE })).props.value).toBe(false);
   });
@@ -104,6 +106,7 @@ describe("Rollo: Tus fotos en otros perfiles", () => {
   it("turning it off saves it for this rollo and refreshes the rollo", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     await fireEvent(await screen.findByRole("switch", { name: MINE }), "valueChange", false);
 
@@ -115,6 +118,7 @@ describe("Rollo: Tus fotos en otros perfiles", () => {
     featured.setMyFeaturing.mockRejectedValue(new Error("No hay conexión"));
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     await fireEvent(await screen.findByRole("switch", { name: MINE }), "valueChange", false);
 
@@ -126,6 +130,7 @@ describe("Rollo: Tus fotos en otros perfiles", () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: true }));
     mocked.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [], nextCursor: null });
     await renderRouter(routes, { initialUrl: "/roll?view=roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     expect(await screen.findByRole("switch", { name: MINE })).toBeTruthy();
   });
@@ -135,6 +140,7 @@ describe("Rollo privado", () => {
   it("the admin sees the switch off by default and can't be tempted by a member's: members don't see it", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ role: "member" }));
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     await screen.findByRole("switch", { name: MINE });
     expect(screen.queryByRole("switch", { name: PRIVATE })).toBeNull();
@@ -143,6 +149,7 @@ describe("Rollo privado", () => {
   it("an admin who is not the creator doesn't see the switch, only the footnote when private", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ role: "admin", isCreator: false, featuringDisabled: true }));
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     await screen.findByText(/Ninguna foto de este rollo sale a perfiles/);
     expect(screen.queryByRole("switch", { name: PRIVATE })).toBeNull();
@@ -151,6 +158,7 @@ describe("Rollo privado", () => {
   it("the creator sees the switch", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ role: "admin", isCreator: true }));
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     expect(await screen.findByRole("switch", { name: PRIVATE })).toBeVisible();
   });
@@ -158,6 +166,7 @@ describe("Rollo privado", () => {
   it("turning it on asks first, then saves for the whole rollo", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     expect((await screen.findByRole("switch", { name: PRIVATE })).props.value).toBe(false);
     await fireEvent(screen.getByRole("switch", { name: PRIVATE }), "valueChange", true);
@@ -175,6 +184,7 @@ describe("Rollo privado", () => {
   it("cancelling the question saves nothing", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     await fireEvent(await screen.findByRole("switch", { name: PRIVATE }), "valueChange", true);
     expect((alert.mock.calls[0]![2] as { text: string }[]).map((b) => b.text)).toContain("Cancelar");
@@ -184,6 +194,7 @@ describe("Rollo privado", () => {
   it("turning it off needs no question", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ featuringDisabled: true }));
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     await fireEvent(await screen.findByRole("switch", { name: PRIVATE }), "valueChange", false);
 
@@ -194,6 +205,7 @@ describe("Rollo privado", () => {
   it("in a private rollo the member switch is gone and a footnote says why", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ featuringDisabled: true }));
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
 
     await screen.findByRole("switch", { name: PRIVATE });
     expect(screen.queryByRole("switch", { name: MINE })).toBeNull();

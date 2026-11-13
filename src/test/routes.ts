@@ -48,6 +48,7 @@ import PresentationScreen from "../../app/presentation";
 import RevealRoute from "../../app/reveal";
 import IntroRoute from "../../app/intro";
 import RollMembersRoute from "../../app/roll-members";
+import RollSettingsRoute from "../../app/roll-settings";
 import RollStartedScreen from "../../app/roll-started";
 import PhotoRoute from "../../app/photo/[id]";
 import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
@@ -87,6 +88,7 @@ export const routes = {
   "event-groups": EventGroupsRoute,
   "my-groups": MyGroupsRoute,
   "event-qr": EventQrRoute,
+  "roll-settings": RollSettingsRoute,
   "roll-started": RollStartedScreen,
   "photo/[id]": PhotoRoute,
   "comments/[mediaId]": CommentsRoute,

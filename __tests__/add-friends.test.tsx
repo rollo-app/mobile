@@ -199,7 +199,8 @@ describe("Add friends to a roll", () => {
 
     expect(await screen.findByText("Invitar")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Sumar amigos" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Salirme del rollo" })).toBeVisible();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    expect(await screen.findByRole("button", { name: "Salirme del rollo" })).toBeVisible();
   });
 });
 
@@ -212,6 +213,7 @@ describe("Leaving a roll", () => {
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     const leave = await screen.findByRole("button", { name: "Salirme del rollo" });
     jest.mocked(N.cancelScheduledNotificationAsync).mockClear();
     await fireEvent.press(leave);
@@ -234,6 +236,7 @@ describe("Leaving a roll", () => {
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
 
     expect(alert).toHaveBeenCalledTimes(1);
@@ -254,6 +257,7 @@ describe("Leaving a roll", () => {
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
     trips.fetchMyTrips.mockResolvedValue({ trips: [] });
     await confirmLeave();
@@ -267,6 +271,7 @@ describe("Leaving a roll", () => {
   it("the admin can't: the server's message shows inline and the roll stays", async () => {
     friends.leaveTrip.mockRejectedValue(new Error("Sos el admin: no podés salirte del rollo"));
     await renderRouter(routes, { initialUrl: "/roll" });
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
     await confirmLeave();
 

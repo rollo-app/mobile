@@ -129,11 +129,17 @@ describe("Roll", () => {
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
-    expect(screen.getByText("Fechas")).toBeVisible();
-    for (const label of ["Empieza", "Termina", "Se revela"]) expect(screen.getByText(label)).toBeVisible();
+    // The board only keeps the reveal; the three dates are in "Ajustes del rollo".
+    expect(screen.getByText("Se revela")).toBeVisible();
+    expect(screen.queryByText("Fechas")).toBeNull();
+    expect(screen.queryByText("Empieza")).toBeNull();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    expect(await screen.findByText("Fechas")).toBeVisible();
+    for (const label of ["Empieza", "Termina"]) expect(screen.getByText(label)).toBeVisible();
+    expect(screen.getAllByText("Se revela").length).toBeGreaterThan(0);
     expect(screen.getByText(when(t.startsAt))).toBeVisible();
     expect(screen.getByText("Empezó")).toBeVisible();
-    expect(screen.getAllByText(when(t.endsAt))).toHaveLength(2);
+    expect(screen.getAllByText(when(t.endsAt)).length).toBeGreaterThanOrEqual(2);
   });
 
   it("before it starts it hides today's quota and counts down to the start", async () => {
@@ -142,8 +148,10 @@ describe("Roll", () => {
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
-    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
-    expect(screen.getByText("en 5 días")).toBeVisible();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    await screen.findByText("Fechas");
+    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getAllByText(when(ms))[0]).toBeVisible();
+    expect(screen.getAllByText("en 5 días")[0]).toBeVisible();
     expect(screen.queryByText("7 de 10")).toBeNull(); // the quota row (Perfil's "Fotos" segment is mounted too)
   });
 
@@ -153,9 +161,11 @@ describe("Roll", () => {
     await renderRouter(routes, { initialUrl: "/roll" });
 
     await screen.findByLabelText("12 en el rollo");
-    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getByText(when(ms))).toBeVisible();
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+    await screen.findByText("Fechas");
+    for (const ms of [t.startsAt, t.endsAt, t.revealAt]) expect(screen.getAllByText(when(ms))[0]).toBeVisible();
     expect(screen.getByText("Terminó")).toBeVisible();
-    expect(screen.getByText("en 3 días")).toBeVisible();
+    expect(screen.getAllByText("en 3 días")[0]).toBeVisible();
     expect(screen.queryByText("7 de 10")).toBeNull(); // the quota row (Perfil's "Fotos" segment is mounted too)
   });
 
@@ -245,15 +255,16 @@ describe("Roll with unuploaded photos", () => {
 describe("Roll board · people and settings", () => {
   beforeEach(() => saveTrip(SUR, "Viaje al sur"));
 
-  it("shows the invite code and the members below the dates", async () => {
+  it("shows the invite code and the people row", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
     expect(await screen.findByText("Invitar")).toBeVisible();
     expect(screen.getByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("En el rollo · 2 de 15")).toBeVisible();
-    expect(screen.getAllByText("Fede")[0]).toBeVisible();
-    expect(screen.getByText("Admin")).toBeVisible();
+    expect(screen.getByText("Personas")).toBeVisible();
+    expect(screen.getByText("2 de 15")).toBeVisible();
+    // Only the first faces and the count are on the board: the names live in the members list.
+    expect(screen.queryByRole("button", { name: "Fede" })).toBeNull();
   });
 
   it("shares the invitation with the roll's name and code", async () => {
@@ -282,7 +293,8 @@ describe("Roll board · people and settings", () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await screen.findByText("En el rollo · 2 de 15");
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
+    await screen.findByRole("button", { name: "Fede" });
     expect(screen.queryByRole("button", { name: /^Juani/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
 

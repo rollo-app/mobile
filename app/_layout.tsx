@@ -113,6 +113,8 @@ function RootStack() {
           />
           {/* "Ver todos" in a roll's "En el rollo": the full members list, with search. */}
           <Stack.Screen name="roll-members" options={{ title: "Integrantes" }} />
+          {/* The gear in the Rollo tab: name, cover, dates, groups, featuring, archive, leave, delete. */}
+          <Stack.Screen name="roll-settings" options={{ title: "Ajustes del rollo" }} />
           {/* Event board: organizers manage the groups and show the QR; guests change their groups. */}
           <Stack.Screen name="event-groups" options={{ title: "Grupos" }} />
           <Stack.Screen name="my-groups" options={{ title: "Sumarme a otro grupo" }} />

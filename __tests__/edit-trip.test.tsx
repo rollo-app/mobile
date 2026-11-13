@@ -70,11 +70,17 @@ async function openBoard(d: tripActions.TripDetail) {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(SUR);
   await renderRouter(routes, { initialUrl: "/roll" });
-  await screen.findByText(/^En el rollo · /);
+  await screen.findByText("Personas");
+}
+
+async function openSettings(d: tripActions.TripDetail) {
+  await openBoard(d);
+  await fireEvent.press(screen.getByRole("button", { name: "Ajustes del rollo" }));
+  await screen.findByText("Fechas");
 }
 
 async function openEditor(d = detail(admin)) {
-  await openBoard(d);
+  await openSettings(d);
   await fireEvent.press(await screen.findByText("Editar rollo"));
   await screen.findByRole("button", { name: "Guardar" });
 }
@@ -92,17 +98,17 @@ beforeEach(async () => {
 
 describe("Editar rollo row", () => {
   it("shows for an admin of a rollo that has not ended", async () => {
-    await openBoard(detail(admin));
+    await openSettings(detail(admin));
     expect(screen.getByText("Editar rollo")).toBeVisible();
   });
 
   it("does not show for a plain member", async () => {
-    await openBoard(detail(plain));
+    await openSettings(detail(plain));
     expect(screen.queryByText("Editar rollo")).toBeNull();
   });
 
   it("does not show once the rollo ended", async () => {
-    await openBoard(detail(admin, { startsAt: Date.now() - 5 * DAY, endsAt: Date.now() - DAY, revealAt: Date.now() + DAY }));
+    await openSettings(detail(admin, { startsAt: Date.now() - 5 * DAY, endsAt: Date.now() - DAY, revealAt: Date.now() + DAY }));
     expect(screen.queryByText("Editar rollo")).toBeNull();
   });
 });
@@ -158,7 +164,7 @@ describe("Editar rollo screen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => expect(trips.updateTrip).toHaveBeenCalledWith(SUR, { endsAt: newEnd, revealAt: newEnd }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname("/roll-settings"));
     expect(sync.syncMoments).toHaveBeenCalled();
   });
 
@@ -171,7 +177,7 @@ describe("Editar rollo screen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
 
     await waitFor(() => expect(trips.updateTrip).toHaveBeenCalledWith(SUR, { dailyPhotoLimit: 12 }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname("/roll-settings"));
     expect(sync.syncMoments).not.toHaveBeenCalled();
   });
 

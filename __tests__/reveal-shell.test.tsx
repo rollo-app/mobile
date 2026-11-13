@@ -90,7 +90,7 @@ describe("revealed roll", () => {
     await act(async () => {
       await setActiveTripId(SUR);
     });
-    await waitFor(() => expect(screen.queryByText("Fechas")).not.toBeNull());
+    await waitFor(() => expect(screen.queryByText("Personas")).not.toBeNull());
     expect(rollTitle()).toBe("Viaje al sur, cambiar de rollo");
 
     await act(async () => {
@@ -182,7 +182,7 @@ describe("revealed roll", () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    expect(await screen.findByText("Fechas")).toBeVisible();
+    expect(await screen.findByText("Personas")).toBeVisible();
     expect(screen).toHavePathname("/roll");
   });
 });
@@ -201,12 +201,13 @@ describe("revealed roll: Galería | Rollo", () => {
     await markPresentationSeen(SUR);
   };
 
-  it("before the reveal there's no segmented control and the board shows the shared dates", async () => {
+  it("before the reveal there's no segmented control and the board keeps only the reveal date", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
     await renderRouter(testRoutes, { initialUrl: "/roll" });
 
-    expect(await screen.findByText("Fechas")).toBeVisible();
-    expect(jest.mocked(RollDates)).toHaveBeenCalled();
+    expect(await screen.findByText("Se revela")).toBeVisible();
+    expect(screen.queryByText("Fechas")).toBeNull();
+    expect(jest.mocked(RollDates)).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Galería" })).toBeNull();
   });
 
@@ -306,7 +307,7 @@ describe("revealed roll: Galería | Rollo", () => {
   it("before the reveal the header keeps its default look", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
     await renderRouter(testRoutes, { initialUrl: "/roll" });
-    await screen.findByText("Fechas");
+    await screen.findByText("Personas");
 
     const options = navigationRef.getCurrentOptions() as Record<string, unknown>;
     for (const key of ["headerTransparent", "headerStyle", "headerShadowVisible", "headerBlurEffect", "headerLargeTitle"])
@@ -321,7 +322,7 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(screen.queryByRole("menuitem", { name: "Sobre el rollo" })).toBeNull();
   });
 
-  it("'Rollo' shows the summary, the dates, the uploads and the members, without the gallery toolbar", async () => {
+  it("'Rollo' shows the summary, the uploads, the invite and the people row, without the gallery toolbar", async () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: "/roll" });
     await screen.findByTestId("gallery-list");
@@ -331,16 +332,29 @@ describe("revealed roll: Galería | Rollo", () => {
 
     expect(screen).toHaveSearchParams({ view: "roll" });
     expect(await screen.findByText("1 foto · 1 video · 1 persona · 4 días")).toBeVisible();
-    expect(screen.getByText("Fechas")).toBeVisible();
-    expect(screen.getByText("Se reveló")).toBeVisible();
-    expect(jest.mocked(RollDates)).toHaveBeenCalled();
+    expect(screen.queryByText("Fechas")).toBeNull();
+    expect(jest.mocked(RollDates)).not.toHaveBeenCalled();
     expect(jest.mocked(UploadStatusSection)).toHaveBeenCalledWith(expect.objectContaining({ tripId: SUR }), undefined);
     expect(screen.getByText("Invitar")).toBeVisible();
     expect(screen.getByText("HUB5FT")).toBeVisible();
-    expect(screen.getByText("En el rollo · 1 de 15")).toBeVisible();
+    expect(screen.getByText("Personas")).toBeVisible();
+    expect(screen.getByText("1 de 15")).toBeVisible();
     expect(screen.queryByText("Hoy")).toBeNull();
     expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
     expect(screen.queryByRole("menuitem", { name: "Guardar todo en Fotos" })).toBeNull();
+  });
+
+  it("the gear for Ajustes del rollo is in 'Rollo' but not in the gallery view, and opens the settings", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await screen.findByTestId("gallery-list");
+    expect(screen.queryByRole("button", { name: "Ajustes del rollo" })).toBeNull();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Rollo" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll-settings"));
+    expect(await screen.findByText("Fechas")).toBeVisible();
   });
 
   it("going back to 'Galería' keeps the same gallery mounted", async () => {
@@ -384,6 +398,7 @@ describe("revealed roll: Galería | Rollo", () => {
     await markPresentationSeen(SUR);
     await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
 
+    await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
     await fireEvent.press(await screen.findByRole("button", { name: "Fede" }));
 
     await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));

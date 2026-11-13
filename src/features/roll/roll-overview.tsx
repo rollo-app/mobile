@@ -2,20 +2,17 @@ import { StyleSheet, Text } from "react-native";
 import { EventBoardHero } from "@/features/events/event-board-hero";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { useRevealedPhotos } from "@/features/media/revealed";
-import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { OriginalsNotice } from "@/features/trips/originals-notice-text";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Screen } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
-import { RollDates } from "./roll-dates";
-import { RollPeople } from "./roll-people";
+import { RollEssentials } from "./roll-essentials";
 import { rollSummary } from "./summary";
 
 /** The "Rollo" segment of a revealed roll: what the board showed, without today's quota or the contact sheet. */
 export function RollOverview({ tripId }: { tripId: string }) {
   const { detail, error, refetch, isRefetching } = useTripDetail(tripId);
   const { photos } = useRevealedPhotos(tripId);
-  const phase = useRollPhase(detail);
 
   return (
     <Screen grouped testID="roll-overview">
@@ -39,10 +36,9 @@ export function RollOverview({ tripId }: { tripId: string }) {
             })}
           </Text>
           <OriginalsNotice originals={detail.trip.originals} timeZone={detail.trip.timezone} style={styles.notice} />
-          <RollDates detail={detail} phase={phase} />
           <UploadStatusSection tripId={tripId} timeZone={detail.trip.timezone} />
           <BelowUploads>
-            <RollPeople detail={detail} />
+            <RollEssentials detail={detail} />
           </BelowUploads>
         </>
       )}
