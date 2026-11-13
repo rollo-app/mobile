@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { errorMessage } from "@/api/client";
 import type { TripDetail } from "@/features/trips/actions";
+import { isEvent } from "@/features/events/event";
 import { canSave, changedFields, editableFields, lockedNote, revealFollowsEnd, settingsOf, type TripSettings } from "@/features/trips/edit-form";
 import { TripForm, type LimitMode, type RevealMode } from "@/features/trips/trip-form";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
@@ -37,6 +38,7 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
   const [momentEnd, setMomentEnd] = useState(before.momentWindowEnd);
   const update = useUpdateTrip(tripId);
   const error = errorMessage(update.error, "No se pudo guardar el rollo");
+  const event = isEvent(trip);
 
   const after: TripSettings = {
     startsAt,
@@ -93,11 +95,12 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
               start: !editable.start,
               end: !editable.end,
               reveal: !editable.reveal,
-              limitMode: !editable.limitMode,
+              limitMode: event || !editable.limitMode,
               limit: !editable.limit,
               moment: !editable.moment,
             }}
             notes={{ start: lockedNote("start"), limitMode: lockedNote("limitMode") }}
+            hideMoment={event}
             momentFromTomorrow={editable.moment && !editable.start}
             whenFooter={error ? <Text modifiers={[foregroundStyle("red")]}>{error}</Text> : undefined}
           />

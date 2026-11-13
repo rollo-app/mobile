@@ -301,8 +301,9 @@ jest.mock("@expo/ui/swift-ui", () => {
         value: !!isOn,
         onValueChange: onIsOnChange,
       }),
-    Picker: ({ selection, onSelectionChange, children }: any) =>
-      h(
+    Picker: ({ selection, onSelectionChange, children, modifiers }: any) => {
+      const disabled = !!modifiers?.find((m: any) => "disabled" in m)?.disabled;
+      return h(
         View,
         null,
         React.Children.map(children, (child: any) =>
@@ -311,13 +312,15 @@ jest.mock("@expo/ui/swift-ui", () => {
             {
               accessibilityRole: "button",
               accessibilityLabel: child.props.children,
-              accessibilityState: { selected: child.props.modifiers?.[0]?.tag === selection },
+              accessibilityState: { selected: child.props.modifiers?.[0]?.tag === selection, disabled },
+              disabled,
               onPress: () => onSelectionChange(child.props.modifiers?.[0]?.tag),
             },
             h(RNText, null, child.props.children),
           ),
         ),
-      ),
+      );
+    },
   };
 });
 jest.mock("@expo/ui/swift-ui/modifiers", () => ({

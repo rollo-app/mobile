@@ -129,6 +129,19 @@ describe("Editar rollo screen", () => {
     expect(screen.queryByText(/Los cambios valen desde mañana/)).toBeNull();
   });
 
+  it("an event hides the daily moment and locks the quota type to the whole rollo", async () => {
+    await openEditor(detail(admin, { type: "event", photoLimitMode: "total", totalPhotoLimit: 20, startsAt: Date.now() + DAY }));
+    expect(screen.queryByText("Momento del día")).toBeNull();
+    expect(screen.queryByText(/Los cambios valen desde mañana/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Todo el rollo" })).toBeSelected();
+    expect(screen.getByRole("button", { name: "Por día" })).toBeDisabled();
+  });
+
+  it("a regular rollo still shows the daily moment", async () => {
+    await openEditor(detail(admin, { startsAt: Date.now() + DAY }));
+    expect(screen.getByText("Momento del día")).toBeVisible();
+  });
+
   it("keeps Guardar disabled until something changes", async () => {
     await openEditor();
     expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
