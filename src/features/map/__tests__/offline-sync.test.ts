@@ -131,6 +131,13 @@ describe("syncOfflineMaps", () => {
     expect(created().map(([o]) => o.metadata!.name)).toContain("rollo:t1:detail:-50.34,-72.28");
   });
 
+  it("skips events entirely: no feed paging and no tile downloads", async () => {
+    setTrip("t1", { type: "event" });
+    await syncOfflineMaps();
+    expect(fetchWholeFeed).not.toHaveBeenCalled();
+    expect(created()).toHaveLength(0);
+  });
+
   it("downloads one zone at a time", async () => {
     let release!: () => void;
     gate = new Promise((resolve) => (release = resolve));
