@@ -8,7 +8,8 @@ import { PickGroups } from "@/features/events/pick-groups";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
-import { previewEvent, type EventPreview } from "./actions";
+import { usePreviewEvent } from "@/features/events/use-preview-event";
+import type { EventPreview } from "./actions";
 import { useJoinTrip } from "./use-join-trip";
 
 const REVEALED_EVENT = "Este evento ya se reveló.";
@@ -17,37 +18,29 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   const [code, setCode] = useState(initialCode.toUpperCase().slice(0, 6));
   const [event, setEvent] = useState<EventPreview | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const [previewing, setPreviewing] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  const preview = usePreviewEvent();
   const join = useJoinTrip();
-  const error = previewError ?? errorMessage(join.error, "No se pudo entrar al rollo");
+  const error = errorMessage(join.error, "No se pudo entrar al rollo");
 
   const valid = code.trim().length === 6;
-  const busy = previewing || join.isPending;
+  const busy = preview.isPending || join.isPending;
 
   function onSuccess() {
     router.dismissTo("/roll");
     void offerPushAfterJoining();
   }
 
-  async function submit() {
-    setPreviewError(null);
-    setPreviewing(true);
-    let preview: EventPreview | null;
-    try {
-      preview = await previewEvent(code);
-    } catch (e) {
-      setPreviewing(false);
-      setPreviewError(errorMessage(e, "No se pudo entrar al rollo"));
-      return;
-    }
-    setPreviewing(false);
-    if (!preview) {
-      join.mutate({ code }, { onSuccess });
-      return;
-    }
-    setEvent(preview);
-    setSelected([]);
+  function submit() {
+    // A lookup that fails (no signal, server error) never blocks a regular rollo: joining answers for itself.
+    const joinDirectly = () => join.mutate({ code }, { onSuccess });
+    preview.mutate(code, {
+      onSuccess: (found) => {
+        if (!found) return joinDirectly();
+        setEvent(found);
+        setSelected([]);
+      },
+      onError: joinDirectly,
+    });
   }
 
   function enter() {
@@ -95,7 +88,10 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
           <Field
             label="Código del rollo"
             value={code}
-            onChangeText={(value) => setCode(value.toUpperCase())}
+            onChangeText={(value) => {
+              setCode(value.toUpperCase());
+              join.reset();
+            }}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={6}

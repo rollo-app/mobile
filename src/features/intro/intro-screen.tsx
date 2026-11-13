@@ -1,4 +1,6 @@
 import { router } from "expo-router";
+import { openPendingJoin } from "@/features/events/use-pending-join";
+import { setIntroBusy } from "./intro-state";
 import LottieView from "lottie-react-native";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, useColorScheme, View } from "react-native";
@@ -32,6 +34,15 @@ export function IntroScreen() {
   useEffect(() => {
     markWelcomeIntroSeen().catch(() => {});
   }, []);
+
+  // Once the intro is gone, a join link waiting since sign-up can open.
+  useEffect(
+    () => () => {
+      setIntroBusy(false);
+      void openPendingJoin().catch(() => {});
+    },
+    [],
+  );
 
   const { firstLineAt, secondLineAt, buttonAt } = timing;
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as actions from "@/features/trips/actions";
-import { getPendingJoin } from "@/storage/pending-join";
+import { markAppIntroPending } from "@/storage/app-intro";
+import { getPendingJoin, setPendingJoin } from "@/storage/pending-join";
 import { markPushPrimerSeen } from "@/storage/push-primer";
 import { signInAs, USER } from "@/test/account";
 import "@/test/reanimated";
@@ -90,6 +91,28 @@ describe("Joining an event", () => {
     await waitFor(() => expect(screen).toHavePathname("/roll"));
   });
 
+  it("a failing preview still joins a regular trip", async () => {
+    mocked.previewEvent.mockRejectedValue(new Error("Sin conexión"));
+    mocked.joinTrip.mockResolvedValue({} as actions.Trip);
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await enterCode("hub5ft");
+
+    await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("a join error clears when the code changes", async () => {
+    mocked.previewEvent.mockResolvedValue(null);
+    mocked.joinTrip.mockRejectedValue(new Error("Código inválido"));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await enterCode("zzzzzz");
+    expect(await screen.findByText("Código inválido")).toBeVisible();
+    await fireEvent.changeText(screen.getByLabelText("Código del rollo"), "zzzzz");
+    expect(screen.queryByText("Código inválido")).toBeNull();
+  });
+
   it('a revealed event shows "Este evento ya se reveló." and no groups', async () => {
     mocked.previewEvent.mockResolvedValue(preview({ revealed: true }));
     await renderRouter(routes, { initialUrl: "/join" });
@@ -125,5 +148,33 @@ describe("A join link without a session", () => {
     await waitFor(() => expect(screen).toHavePathname("/join"));
     expect((await screen.findByLabelText("Código del rollo")).props.value).toBe("ABC123");
     expect(await getPendingJoin()).toBeNull();
+  });
+});
+
+describe("A pending join and the new-account intro", () => {
+  it("a new account arriving by link sees the intro first and then the join screen", async () => {
+    mocked.fetchMyTrips.mockResolvedValue({ trips: [] });
+    await signInAs({ trips: [] });
+    await markPushPrimerSeen();
+    await markAppIntroPending();
+    await setPendingJoin({ code: "ABC123" });
+    await renderRouter(routes, { initialUrl: "/" });
+
+    expect(await screen.findByText("Sacá la foto.")).toBeVisible();
+    expect(screen).toHavePathname("/intro");
+    expect(await getPendingJoin()).toEqual({ code: "ABC123" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Empezar" }, { timeout: 4000 }));
+    await waitFor(() => expect(screen).toHavePathname("/join"));
+    expect((await screen.findByLabelText("Código del rollo")).props.value).toBe("ABC123");
+    expect(await getPendingJoin()).toBeNull();
+  });
+
+  it("a pending join older than 24 hours is dropped", async () => {
+    const now = Date.now();
+    await setPendingJoin({ code: "ABC123" }, now - 25 * 60 * 60 * 1000);
+    expect(await getPendingJoin(now)).toBeNull();
+    await setPendingJoin({ code: "ABC123" }, now - 60 * 60 * 1000);
+    expect(await getPendingJoin(now)).toEqual({ code: "ABC123" });
   });
 });
