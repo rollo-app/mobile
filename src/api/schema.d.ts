@@ -4359,6 +4359,16 @@ export interface paths {
                         "video/mp4": string;
                     };
                 };
+                /** @description Part of the file, for a single `Range: bytes=...` request (players such as AVPlayer need it for video). `Content-Range` says which bytes and the total size. Several ranges or an invalid one get the whole file with 200. */
+                206: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                        "video/mp4": string;
+                    };
+                };
                 /** @description Missing or invalid session token */
                 401: {
                     headers: {
@@ -4385,6 +4395,13 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["Error"];
                     };
+                };
+                /** @description The requested range starts past the end of the file; `Content-Range: bytes *\/<size>` gives the size */
+                416: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Profile incomplete: set a name and a username first */
                 428: {
