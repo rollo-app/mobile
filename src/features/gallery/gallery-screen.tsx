@@ -1,11 +1,11 @@
 import { OriginalsNotice } from "@/features/trips/originals-notice-text";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  SectionList,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -22,7 +22,8 @@ import { LoadMoreFooter } from "@/ui/load-more-footer";
 import { colors, spacing, type } from "@/ui/theme";
 import { Cell } from "./gallery-cell";
 import { GalleryToolbar } from "./gallery-toolbar";
-import { authorsOf, chunkRows, filterByAuthor, filterByGroup, groupByDay } from "./group";
+import { authorsOf, filterByAuthor, filterByGroup } from "./group";
+import { gridItems, type GridItem } from "./grid-items";
 import { SaveBar } from "./save-bar";
 import { useArchivePhoto } from "./use-archive-photo";
 import { useBulkSave } from "./use-bulk-save";
@@ -32,6 +33,13 @@ import { useSaver } from "./use-saver";
 
 const COLUMNS = 3;
 const GAP = 2;
+
+const keyExtractor = (item: GridItem) => item.key;
+const getItemType = (item: GridItem) => item.kind;
+// A day header takes the whole row.
+const overrideItemLayout = (layout: { span?: number }, item: GridItem) => {
+  if (item.kind === "header") layout.span = COLUMNS;
+};
 
 /**
  * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
@@ -80,14 +88,7 @@ export function GalleryScreen({
     return [...loaded, ...members.filter((m) => !known.has(m.id)).map((m) => ({ id: m.id, name: m.name }))];
   }, [photos, members, complete]);
   const shown = useMemo(() => filterByGroup(filterByAuthor(photos, authorId), groupId), [photos, authorId, groupId]);
-  const sections = useMemo(
-    () =>
-      groupByDay(shown).map((s) => ({
-        title: s.title,
-        data: chunkRows(s.photos, COLUMNS),
-      })),
-    [shown],
-  );
+  const items = useMemo(() => gridItems(shown, COLUMNS), [shown]);
   const author = authors.find((a) => a.id === authorId);
   const group = groups.find((g) => g.id === groupId);
 
@@ -139,6 +140,35 @@ export function GalleryScreen({
     [confirmDelete, setArchived, tripId],
   );
 
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<GridItem>) => {
+      if (item.kind === "header")
+        return (
+          <Text accessibilityRole="header" style={[type.headline, styles.header]}>
+            {item.title}
+          </Text>
+        );
+      const { photo, column } = item;
+      return (
+        <View style={[styles.slot, column === 0 ? styles.slotStart : column === COLUMNS - 1 ? styles.slotEnd : null]}>
+          <Cell
+            photo={photo}
+            token={token}
+            size={size}
+            selecting={selecting}
+            selected={selected.has(photo.id)}
+            own={revealed && !!me && photo.authorUserId === me.id}
+            onPress={onCellPress}
+            onToggleFeatured={onToggleFeatured}
+            onOwnAction={onOwnAction}
+          />
+        </View>
+      );
+    },
+    [token, size, selecting, selected, revealed, me, onCellPress, onToggleFeatured, onOwnAction],
+  );
+  const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
+
   let body;
   if (loading) body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
   else if (error && photos.length === 0)
@@ -158,14 +188,17 @@ export function GalleryScreen({
     );
   else
     body = (
-      <SectionList
+      <FlashList
         testID="gallery-list"
-        sections={sections}
-        keyExtractor={(row) => row[0]!.id}
-        stickySectionHeadersEnabled={false}
+        data={items}
+        numColumns={COLUMNS}
+        getItemType={getItemType}
+        overrideItemLayout={overrideItemLayout}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
-        extraData={[selecting, selected, token, revealed, me?.id]}
+        extraData={listExtra}
         onEndReached={onEndReached}
         onEndReachedThreshold={ENDING_THRESHOLD}
         ListFooterComponent={
@@ -202,29 +235,6 @@ export function GalleryScreen({
             )}
           </>
         }
-        renderSectionHeader={({ section }) => (
-          <Text accessibilityRole="header" style={[type.headline, styles.header]}>
-            {section.title}
-          </Text>
-        )}
-        renderItem={({ item: row }) => (
-          <View style={styles.row}>
-            {row.map((photo) => (
-              <Cell
-                key={photo.id}
-                photo={photo}
-                token={token}
-                size={size}
-                selecting={selecting}
-                selected={selected.has(photo.id)}
-                own={revealed && !!me && photo.authorUserId === me.id}
-                onPress={onCellPress}
-                onToggleFeatured={onToggleFeatured}
-                onOwnAction={onOwnAction}
-              />
-            ))}
-          </View>
-        )}
         ListEmptyComponent={
           <Text style={[type.body, styles.empty]}>
             {author ? `${author.name} no sacó fotos` : "Este rollo no tiene fotos"}
@@ -290,7 +300,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
   },
-  row: { flexDirection: "row", gap: GAP, marginBottom: GAP },
+  // Columns split the width evenly; the cell hugs the outer edge in the first and last column and sits centered in the
+  // middle one, which leaves GAP between neighbours and none at the screen edges.
+  slot: { alignItems: "center", paddingBottom: GAP },
+  slotStart: { alignItems: "flex-start" },
+  slotEnd: { alignItems: "flex-end" },
   center: {
     flex: 1,
     alignItems: "center",

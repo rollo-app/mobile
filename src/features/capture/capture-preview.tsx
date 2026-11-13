@@ -129,7 +129,7 @@ export function CapturePreview(props: {
             disabled={busy}
           />
         )}
-        {props.error && <ErrorText>{props.error}</ErrorText>}
+        {!!props.error && <ErrorText>{props.error}</ErrorText>}
         <View style={styles.sendRow}>
           <Text style={[type.footnote, styles.dim, styles.note]}>Después de mandarla no la ves hasta el revelado</Text>
           <Pressable

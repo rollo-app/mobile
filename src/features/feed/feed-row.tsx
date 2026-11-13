@@ -9,12 +9,13 @@ import { Avatar } from "@/features/profile/avatar";
 import { formatHandle } from "@/features/profile/username";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import { useImageRetry } from "@/ui/use-image-retry";
+import { dateFormatter } from "@/lib/intl";
 
 const THUMB = 56;
 
 /** Capture time "14:32" in the trip's time zone. */
 export function clockTime(takenAt: number, timeZone: string): string {
-  return new Intl.DateTimeFormat("es-AR", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(takenAt);
+  return dateFormatter("es-AR", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(takenAt);
 }
 
 type Props = {

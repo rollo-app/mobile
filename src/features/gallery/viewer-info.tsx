@@ -103,8 +103,8 @@ export function ViewerInfo({
           />
         )}
       </View>
-      {likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
-      {featureError && <Text style={[type.footnote, styles.dim]}>{featureError}</Text>}
+      {!!likeError && <Text style={[type.footnote, styles.dim]}>{likeError}</Text>}
+      {!!featureError && <Text style={[type.footnote, styles.dim]}>{featureError}</Text>}
       {saveState === "failed" && <Text style={[type.footnote, styles.dim]}>No se pudo guardar. Probá de nuevo.</Text>}
       {saveState === "denied" && <PermissionNotice />}
     </View>

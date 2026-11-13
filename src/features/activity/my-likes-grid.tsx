@@ -66,7 +66,7 @@ export function MyLikesGrid({
           onPress={() => onOpen(item)}
           style={{ width: size, height: size, backgroundColor: colors.latent }}
         >
-          {token && <LikedThumb photo={item} token={token} />}
+          {!!token && <LikedThumb photo={item} token={token} />}
           {item.authorUserId !== myId && <AuthorBadge author={item.author} />}
         </Pressable>
       )}

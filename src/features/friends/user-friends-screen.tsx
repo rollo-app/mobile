@@ -17,7 +17,7 @@ export function UserFriendsScreen({ userId }: { userId: string }) {
   return (
     <Screen grouped>
       <Stack.Screen options={{ title: mutual ? "Amigos en común" : "Amigos" }} />
-      {error && (
+      {!!error && (
         <>
           <ErrorText>{error}</ErrorText>
           <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />

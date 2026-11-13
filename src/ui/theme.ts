@@ -30,6 +30,12 @@ export const colors = {
   latent: pick(Color.ios.systemGray5, "#E5E5EA"),
 } as const;
 
+/**
+ * Full-screen backgrounds of the screens that cover the whole window. They live here (not in the
+ * screens) so the root layout can paint them without importing, and so evaluating, those screens at launch.
+ */
+export const screenBackgrounds = { reveal: "#1a0000", crop: "#000000" } as const;
+
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 20, xl: 32 } as const;
 
 /**

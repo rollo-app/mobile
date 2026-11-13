@@ -72,7 +72,7 @@ export function Welcome() {
         <View style={styles.who}>
           <Avatar id={me.id} name={me.name} avatarUrl={me.avatarUrl} size={72} />
           <Text style={[type.headline, { color: colors.label }]}>{me.name}</Text>
-          {me.username && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{formatHandle(me.username)}</Text>}
+          {!!me.username && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{formatHandle(me.username)}</Text>}
         </View>
       )}
       <View style={styles.copy}>
@@ -83,7 +83,7 @@ export function Welcome() {
         </Text>
       </View>
       <View style={styles.actions}>
-        {error && <ErrorText>{error}</ErrorText>}
+        {!!error && <ErrorText>{error}</ErrorText>}
         <Button label="Empezar un nuevo rollo" onPress={() => router.push("/create")} />
         <Button label="Sumarme con un código" variant="secondary" onPress={() => router.push("/join")} />
       </View>

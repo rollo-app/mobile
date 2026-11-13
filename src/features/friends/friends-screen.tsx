@@ -25,7 +25,7 @@ export function FriendsScreen() {
           <FriendRequestsRow />
           <InviteFriend />
 
-          {error && (
+          {!!error && (
             <>
               <ErrorText>{error}</ErrorText>
               <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />

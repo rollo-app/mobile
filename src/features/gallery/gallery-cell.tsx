@@ -64,7 +64,7 @@ export const Cell = memo(function Cell({ photo, token, size, selecting, selected
       onPress={() => onPress(photo)}
       style={{ width: size, height: size, backgroundColor: colors.latent }}
     >
-      {token && (
+      {!!token && (
         <Image
           key={retry.retryKey}
           testID={`gallery-thumb-${photo.id}`}
@@ -79,7 +79,7 @@ export const Cell = memo(function Cell({ photo, token, size, selecting, selected
           style={[StyleSheet.absoluteFill, photo.archived && styles.archived]}
         />
       )}
-      {photo.momentDay && <MomentBadge style={momentBadgeCorner} />}
+      {!!photo.momentDay && <MomentBadge style={momentBadgeCorner} />}
       {photo.archived && (
         <View style={styles.archivedBadge}>
           <Text style={[type.caption, styles.archivedText]}>Archivada</Text>

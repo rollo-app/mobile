@@ -13,7 +13,7 @@ export function FriendRequestsScreen() {
   const { requests, error, refetch, isRefetching } = useFriendRequestsList();
   return (
     <Screen grouped>
-      {error && (
+      {!!error && (
         <>
           <ErrorText>{error}</ErrorText>
           <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
@@ -63,7 +63,7 @@ function RequestRow({ request }: { request: FriendRequest }) {
           <Text style={[type.subhead, { color: colors.label, fontWeight: "600" }]}>Rechazar</Text>
         </Pressable>
       </View>
-      {answer.error && (
+      {!!answer.error && (
         <View style={styles.error}>
           <ErrorText>{answer.error}</ErrorText>
         </View>

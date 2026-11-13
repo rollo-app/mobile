@@ -35,7 +35,7 @@ export function FeaturingSection({ detail }: { detail: TripDetail }) {
           <Section footer="Si lo apagás, nadie puede agregar a su perfil las fotos que sacás en este rollo. Las que ya estaban en un perfil se sacan.">
             <SwitchRow label="Tus fotos en otros perfiles" value={mine.value} onValueChange={mine.set} />
           </Section>
-          {mine.error && <ErrorText>{mine.error}</ErrorText>}
+          {!!mine.error && <ErrorText>{mine.error}</ErrorText>}
         </>
       )}
       {creator ? (

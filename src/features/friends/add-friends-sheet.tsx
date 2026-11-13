@@ -111,7 +111,7 @@ export function AddFriendsSheet() {
           ))}
         </View>
       )}
-      {error && <ErrorText>{error}</ErrorText>}
+      {!!error && <ErrorText>{error}</ErrorText>}
     </Screen>
   );
 }
@@ -141,7 +141,7 @@ function PickRow({
       <Avatar id={friend.id} name={friend.name} avatarUrl={friend.avatarUrl} size={40} />
       <View style={styles.text}>
         <Text style={[type.body, { color: disabled ? colors.secondaryLabel : colors.label }]}>{friend.name}</Text>
-        {friend.username && <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{formatHandle(friend.username)}</Text>}
+        {!!friend.username && <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{formatHandle(friend.username)}</Text>}
       </View>
       {note ? (
         <Text style={[type.body, { color: colors.secondaryLabel }]}>{note}</Text>

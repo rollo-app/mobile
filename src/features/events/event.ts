@@ -1,4 +1,5 @@
 import type { TripDetail } from "@/features/trips/actions";
+import { dateFormatter } from "@/lib/intl";
 
 type Group = { id: string; name: string };
 
@@ -44,5 +45,5 @@ export function photoGroupLabel(detail: TripDetail, groupIds: readonly string[] 
 
 /** The event's day for its cover ("12 de diciembre"), in the event's time zone. */
 export function eventDay(startsAt: number, timeZone: string): string {
-  return new Intl.DateTimeFormat("es-AR", { timeZone, day: "numeric", month: "long" }).format(startsAt);
+  return dateFormatter("es-AR", { timeZone, day: "numeric", month: "long" }).format(startsAt);
 }

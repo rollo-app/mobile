@@ -21,7 +21,7 @@ export function FriendRequestButton({ userId, state }: { userId: string; state: 
           <Button label="Rechazar" variant="secondary" onPress={request.reject} />
         </>
       )}
-      {request.error && <ErrorText>{request.error}</ErrorText>}
+      {!!request.error && <ErrorText>{request.error}</ErrorText>}
     </View>
   );
 }

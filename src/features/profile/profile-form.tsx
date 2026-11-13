@@ -104,10 +104,10 @@ export function ProfileForm({
         )}
         <Text style={[type.subhead, { color: colors.tint }]}>{user.avatarUrl || avatar.localUri ? "Cambiar foto" : "Agregar foto"}</Text>
       </Pressable>
-      {avatar.error && (
+      {!!avatar.error && (
         <View style={styles.photoError}>
           <ErrorText>{avatar.error}</ErrorText>
-          {avatar.localUri && <Button label="Reintentar" variant="secondary" onPress={() => void avatar.retry()} />}
+          {!!avatar.localUri && <Button label="Reintentar" variant="secondary" onPress={() => void avatar.retry()} />}
         </View>
       )}
 
@@ -183,7 +183,7 @@ export function ProfileForm({
         />
       )}
 
-      {error && <ErrorText>{error}</ErrorText>}
+      {!!error && <ErrorText>{error}</ErrorText>}
 
       <Button label={submitLabel} onPress={save} disabled={!valid} loading={saveProfile.isPending} />
     </View>

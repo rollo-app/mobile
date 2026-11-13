@@ -34,7 +34,7 @@ export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, frien
               {name}
             </Text>
           )}
-          {username && (
+          {!!username && (
             <Text testID="profile-username" numberOfLines={1} ellipsizeMode="middle" style={[type.subhead, { color: colors.secondaryLabel }]}>
               {formatHandle(username)}
             </Text>

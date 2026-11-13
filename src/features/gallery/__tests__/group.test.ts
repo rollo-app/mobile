@@ -1,5 +1,5 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
-import { authorsOf, chunkRows, dayTitle, filterByAuthor, filterByGroup, groupByDay } from "../group";
+import { authorsOf, dayTitle, filterByAuthor, filterByGroup, groupByDay } from "../group";
 
 const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedPhoto => ({
   id,
@@ -61,10 +61,5 @@ describe("gallery grouping", () => {
 
   it("lists each author once", () => {
     expect(authorsOf([photo("a", "d", "m1"), photo("b", "d", "m2"), photo("c", "d", "m1")]).map((a) => a.id)).toEqual(["m1", "m2"]);
-  });
-
-  it("splits photos into rows of three", () => {
-    const rows = chunkRows([1, 2, 3, 4, 5, 6, 7], 3);
-    expect(rows).toEqual([[1, 2, 3], [4, 5, 6], [7]]);
   });
 });

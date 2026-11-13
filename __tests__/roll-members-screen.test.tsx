@@ -123,11 +123,18 @@ describe("Personas row on the board", () => {
 });
 
 describe("Integrantes screen", () => {
-  it("lists every member, same badges", async () => {
+  it("lists the members in order with the same badges, drawing only the ones near the screen", async () => {
     await openMembers(detail(creator, big));
     expect(screen.getByRole("button", { name: "Cami, Admin" })).toBeVisible();
+    const drawn = screen.getAllByRole("button", { name: /^Persona \d+/ }).length;
+    expect(drawn).toBeGreaterThan(0);
+    expect(drawn).toBeLessThan(97);
+  });
+
+  it("still reaches a member far down the list through the search", async () => {
+    typed("tomi");
+    await openMembers(detail(creator, big));
     expect(screen.getByRole("button", { name: "Tomi" })).toBeVisible();
-    expect(screen.getAllByRole("button", { name: /^Persona \d+/ })).toHaveLength(97);
   });
 
   it("filters by name without accents", async () => {

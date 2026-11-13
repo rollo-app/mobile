@@ -15,7 +15,7 @@ export function MyGroupsScreen({ tripId }: { tripId: string }) {
 
   return (
     <Screen grouped>
-      {error && (
+      {!!error && (
         <>
           <ErrorText>{error}</ErrorText>
           <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
@@ -41,7 +41,7 @@ export function MyGroupsScreen({ tripId }: { tripId: string }) {
           />
         </>
       )}
-      {save.error && <ErrorText>{errorMessage(save.error, "No se pudieron guardar los grupos")}</ErrorText>}
+      {!!save.error && <ErrorText>{errorMessage(save.error, "No se pudieron guardar los grupos")}</ErrorText>}
     </Screen>
   );
 }

@@ -63,7 +63,7 @@ export function WaitlistForm() {
           </Text>
         </Text>
       </Pressable>
-      {join.error && <ErrorText>{errorMessage(join.error, "No pudimos anotarte")}</ErrorText>}
+      {!!join.error && <ErrorText>{errorMessage(join.error, "No pudimos anotarte")}</ErrorText>}
       <Button label="Avisarme" onPress={submit} disabled={!ready} loading={join.isPending} />
     </View>
   );

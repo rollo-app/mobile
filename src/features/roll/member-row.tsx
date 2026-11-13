@@ -1,5 +1,6 @@
 import { MenuView } from "@expo/ui/community/menu";
 import type { SFSymbol } from "expo-symbols";
+import { memo } from "react";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatHandle } from "@/features/profile/username";
@@ -16,7 +17,7 @@ const ACTION_ICONS: Record<MemberAction, SFSymbol> = { makeAdmin: "person.badge.
  * One member: photo, name, @, role badge. Tapping (not you) opens their profile; long-press (and VoiceOver actions)
  * offer the role changes `me` is allowed. Used by "En el rollo" and the full members list.
  */
-export function MemberRow({ me, member: m, onAction }: { me: Member; member: Member; onAction: (action: MemberAction, m: Member) => void }) {
+export const MemberRow = memo(function MemberRow({ me, member: m, onAction }: { me: Member; member: Member; onAction: (action: MemberAction, m: Member) => void }) {
   const openProfile = useOpenProfile();
   const actions = memberActions(me, m);
   const badge = memberBadge(m);
@@ -46,4 +47,4 @@ export function MemberRow({ me, member: m, onAction }: { me: Member; member: Mem
       {row}
     </MenuView>
   );
-}
+});

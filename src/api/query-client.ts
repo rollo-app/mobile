@@ -16,11 +16,18 @@ const DAY = 24 * 60 * 60 * SECOND;
 export const OWN_DATA_STALE_TIME = 5 * 60 * SECOND;
 
 /**
- * What gets saved on the phone: everything but the server's public config. It decides who can sign up, and a stale
- * saved copy would show a closed (or open) welcome screen to someone offline.
+ * Queries that must not be saved on the phone:
+ * - `config`: the server's public config decides who can sign up, and a stale saved copy would show a
+ *   closed (or open) welcome screen to someone offline.
+ * - `user-search`: throwaway results of what was typed, useless on the next launch.
+ * - `pending`, `pending-items`, `upload-status`: read from the local SQLite capture queue, which is
+ *   already persistent; a saved copy could only be stale (and every screen refetches them on focus).
+ * Everything else (feeds, trips, profile) stays: the app is offline-first and shows it with no signal.
  */
+const NOT_PERSISTED = new Set(["config", "user-search", "pending", "pending-items", "upload-status"]);
+
 export function shouldDehydrateQuery(query: Query): boolean {
-  return defaultShouldDehydrateQuery(query) && query.queryKey[0] !== "config";
+  return defaultShouldDehydrateQuery(query) && !NOT_PERSISTED.has(String(query.queryKey[0]));
 }
 
 /** How long the cache is kept on the phone (also the persister's `maxAge`). */

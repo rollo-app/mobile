@@ -12,12 +12,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, ErrorText } from "@/ui/components";
-import { radius, spacing, type } from "@/ui/theme";
+import { radius, screenBackgrounds, spacing, type } from "@/ui/theme";
 import { cropImage } from "./crop-image";
 import { clampOffset, clampZoom, cropRect, displayedSize, type Offset } from "./crop-math";
 import { cropRequestOptions, cropRequestPhoto, settleCropRequest } from "./crop-request";
 
-export const CROP_BACKGROUND = "#000000";
 const GUTTER = 16;
 
 type Touches = GestureResponderEvent["nativeEvent"]["touches"];
@@ -154,7 +153,7 @@ export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
         Mové y ajustá
       </Text>
       <View style={[styles.toolbar, { paddingBottom: insets.bottom + spacing.md }]}>
-        {error && <ErrorText>{error}</ErrorText>}
+        {!!error && <ErrorText>{error}</ErrorText>}
         <View style={styles.buttons}>
           <Pressable
             accessibilityRole="button"
@@ -176,7 +175,7 @@ export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: CROP_BACKGROUND, overflow: "hidden" },
+  screen: { flex: 1, backgroundColor: screenBackgrounds.crop, overflow: "hidden" },
   ring: { position: "absolute", borderColor: "rgba(0, 0, 0, 0.6)" },
   circle: { position: "absolute", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255, 255, 255, 0.6)" },
   title: { position: "absolute", left: 0, right: 0, textAlign: "center", color: "#FFFFFF" },
