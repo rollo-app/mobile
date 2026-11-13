@@ -659,7 +659,7 @@ describe("Photo viewer", () => {
   });
 
   it("hides Ver en el mapa in an event", async () => {
-    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, type: "event" } });
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur", { type: "event" })] });
     await openViewer("b");
     await screen.findByRole("button", { name: "Guardar en Fotos" });
     expect(screen.queryByRole("button", { name: "Ver en el mapa" })).toBeNull();

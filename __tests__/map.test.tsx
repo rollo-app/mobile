@@ -329,8 +329,19 @@ describe("Map", () => {
       await renderRouter(routes, { initialUrl: "/map" });
 
       await screen.findByTestId("feed-list");
-      expect(screen.queryByRole("button", { name: /^Fede, / })).toBeNull();
-      expect(screen).toHaveSearchParams({});
+      const row = await screen.findByText("el viento no perdona");
+      await fireEvent.press(row);
+
+      expect(screen).toHavePathname("/map");
+      expect(screen).not.toHaveSearchParams({ focus: "f1" });
+      expect(screen.queryByLabelText("mapa")).toBeNull();
+    });
+
+    it("a revealed event on the Feed tab goes to Rollo", async () => {
+      asEvent({ revealed: true, endsAt: Date.now() - DAY });
+      await renderRouter(routes, { initialUrl: "/map" });
+
+      await waitFor(() => expect(screen).toHavePathname("/roll"));
     });
   });
 

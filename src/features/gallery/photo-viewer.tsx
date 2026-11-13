@@ -184,7 +184,7 @@ export function PhotoViewer({
               timeZone={detail?.trip.timezone ?? "America/Argentina/Buenos_Aires"}
               bottomInset={insets.bottom}
               readOnly={readOnly}
-              hasMap={!(detail && isEvent(detail.trip))}
+              hasMap={!(trip && tripId === trip.id ? isEvent(trip) : detail && isEvent(detail.trip))}
               liking={likes.pending.has(photo.id)}
               featuring={featured.pending.has(photo.id)}
               saveState={saveState}

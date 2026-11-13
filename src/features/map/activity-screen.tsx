@@ -1,6 +1,6 @@
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { StyleSheet, useColorScheme } from "react-native";
 import { FeedList } from "@/features/feed/feed-list";
 import type { MapItem } from "@/features/map/features";
@@ -13,7 +13,8 @@ import { spacing, tintHex } from "@/ui/theme";
 const VIEWS = ["Mapa", "Feed"];
 
 /**
- * The Mapa tab (in an event, just the Feed with no map): the roll's map and, before the reveal, its Feed, switched with "Mapa | Feed".
+ * The Mapa tab: the roll's map and, before the reveal, its Feed, switched with "Mapa | Feed".
+ * In an event it is only the Feed (no map, no switch) and, once revealed, it sends you to Rollo.
  * The view lives in the `view` route param ("map" by default, or "feed"). The map is always
  * mounted: the Feed is drawn over it, so going back keeps the camera and the loaded style.
  */
@@ -23,13 +24,20 @@ export function ActivityScreen() {
   const { trip } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const eventTrip = trip ? isEvent(trip) : false;
+  const revealed = detail?.trip.revealed ?? false;
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  const openOnMap = useCallback((item: MapItem) => router.setParams({ view: "map", focus: item.id }), [router]);
+
+  // An event has no map and its tab is hidden once revealed: if the reveal lands while this tab is focused, go to Rollo.
+  const leaveRevealedEvent = eventTrip && revealed;
+  useEffect(() => {
+    if (leaveRevealedEvent) router.navigate("/roll");
+  }, [leaveRevealedEvent, router]);
+
+  if (eventTrip) return leaveRevealedEvent ? null : <FeedList />;
 
   // After the reveal there is no Feed: the photos are in the gallery and the view is always Mapa.
-  const revealed = detail?.trip.revealed ?? false;
   const showFeed = !revealed && view === "feed";
-
-  const openOnMap = useCallback((item: MapItem) => router.setParams({ view: "map", focus: item.id }), [router]);
 
   const segmented = revealed ? undefined : (
     <SegmentedControl
@@ -40,9 +48,6 @@ export function ActivityScreen() {
       onValueChange={(v) => router.setParams({ view: v === "Feed" ? "feed" : "map" })}
     />
   );
-
-  // An event has no map: its tab is only the Feed (and the tab is hidden once it is revealed).
-  if (eventTrip) return detail?.trip.revealed ? null : <FeedList />;
 
   return (
     <RollMap
