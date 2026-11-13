@@ -89,6 +89,7 @@ export function GalleryScreen({
     [shown],
   );
   const author = authors.find((a) => a.id === authorId);
+  const group = groups.find((g) => g.id === groupId);
 
   const { selecting, selected, allSelected, toggle, toggleAll, start: startSelecting, stop: stopSelecting } =
     useGallerySelection(shown);
@@ -181,6 +182,19 @@ export function GalleryScreen({
                   accessibilityLabel="Quitar filtro"
                   hitSlop={10}
                   onPress={() => setAuthorId(null)}
+                >
+                  <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
+                </Pressable>
+              </View>
+            )}
+            {group && (
+              <View style={styles.filter}>
+                <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${group.name}`}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Quitar filtro de grupo"
+                  hitSlop={10}
+                  onPress={() => setGroupId(null)}
                 >
                   <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
                 </Pressable>

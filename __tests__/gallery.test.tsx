@@ -234,6 +234,20 @@ describe("Gallery", () => {
     expect(screen.queryByLabelText("Grupos")).toBeNull();
   });
 
+  it("shows \"Solo <grupo>\" while a group filter is on and a ✕ clears it", async () => {
+    mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "admin", groupIds: [] }));
+    mocked.fetchFeedPage.mockResolvedValue(eventFeed());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByText("Solo Amigos")).toBeNull();
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Amigos" }));
+    expect(screen.getByText("Solo Amigos")).toBeVisible();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(2);
+    await fireEvent.press(screen.getByRole("button", { name: "Quitar filtro de grupo" }));
+    expect(screen.queryByText("Solo Amigos")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
   it("a guest in one group sees no group menu", async () => {
     mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "member", groupIds: ["g1"] }));
     mocked.fetchFeedPage.mockResolvedValue(eventFeed());
