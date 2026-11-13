@@ -6,7 +6,7 @@ import { StyleSheet, Text, useColorScheme, View } from "react-native";
 import { CACHE_MAX_AGE, connectAppState, persister, queryClient, shouldDehydrateQuery } from "@/api/query-client";
 import "@/features/capture/background-upload"; // defines the background task at module level
 import { REVEAL_BACKGROUND } from "@/features/reveal/reveal-screen";
-import { CROP_BACKGROUND } from "@/features/profile/avatar-crop";
+import { CROP_BACKGROUND } from "@/features/crop/photo-crop";
 import { useNotificationResponse } from "@/features/notifications/use-notification-response";
 import { cancelLegacyRevealNotifications } from "@/features/notifications/legacy-reveal";
 import { usePushRegistration } from "@/features/notifications/use-push-registration";
@@ -79,6 +79,11 @@ function RootStack() {
       {/* The profile photo crop: "Completá tu perfil" (login gate) and "Editar perfil" (app) both open it. */}
       <Stack.Screen
         name="crop-avatar"
+        options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: CROP_BACKGROUND } }}
+      />
+      {/* The event cover crop: the board and Crear rollo open it. */}
+      <Stack.Screen
+        name="crop-cover"
         options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: CROP_BACKGROUND } }}
       />
       <Stack.Protected guard={gate === "login" || gate === "profile"}>

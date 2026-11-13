@@ -6,5 +6,5 @@ import { EventHero } from "./event-hero";
 export function EventBoardHero({ detail }: { detail: TripDetail }) {
   const { trip } = detail;
   if (!isEvent(trip) || !trip.coverUrl) return null;
-  return <EventHero name={trip.name} coverUrl={trip.coverUrl} caption={eventDay(trip.startsAt, trip.timezone)} aspectRatio={4 / 3} />;
+  return <EventHero name={trip.name} coverUrl={trip.coverUrl} caption={eventDay(trip.startsAt, trip.timezone)} />;
 }

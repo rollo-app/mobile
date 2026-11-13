@@ -15,7 +15,6 @@ export function EventHero({
   coverUrl,
   eyebrow,
   caption,
-  aspectRatio = 4 / 5,
 }: {
   name: string;
   coverUrl: string;
@@ -23,10 +22,9 @@ export function EventHero({
   eyebrow?: string;
   /** Small line below the name (the day). */
   caption?: string;
-  aspectRatio?: number;
 }) {
   return (
-    <View testID="event-hero" style={[styles.frame, { aspectRatio }]}>
+    <View testID="event-hero" style={styles.frame}>
       <Image source={{ uri: `${API_URL}${coverUrl}` }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} accessibilityIgnoresInvertColors />
       <View style={[StyleSheet.absoluteFill, styles.scrim]} />
       <View style={styles.text}>
@@ -42,7 +40,8 @@ export function EventHero({
 
 const styles = StyleSheet.create({
   // A fixed dark fill while the photo loads, in light and dark mode alike: the text over it is always white.
-  frame: { width: "100%", borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden", backgroundColor: "#1c1c1e", justifyContent: "flex-end" },
+  // Square, like the crop the organizer framed.
+  frame: { width: "100%", aspectRatio: 1, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden", backgroundColor: "#1c1c1e", justifyContent: "flex-end" },
   scrim: { backgroundImage: SCRIM },
   text: { padding: spacing.lg, gap: spacing.xs },
   name: { color: "#fff" },

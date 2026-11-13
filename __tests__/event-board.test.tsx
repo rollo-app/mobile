@@ -16,6 +16,17 @@ import { ORGANIZER_NOTE } from "@/features/events/event-groups-section";
 
 jest.mock("@/features/friends/actions");
 jest.mock("@/features/trips/actions");
+jest.mock("expo-image-manipulator", () => {
+  const saved = { uri: "file:///cache/cover.jpg" };
+  const ctx: Record<string, jest.Mock> = {};
+  ctx.crop = jest.fn(() => ctx);
+  ctx.resize = jest.fn(() => ctx);
+  ctx.renderAsync = jest.fn(async () => ({ saveAsync: jest.fn(async () => saved) }));
+  return { ImageManipulator: { manipulate: jest.fn(() => ctx), __ctx: ctx }, SaveFormat: { JPEG: "jpeg" } };
+});
+const manipulator = jest.requireMock("expo-image-manipulator") as {
+  ImageManipulator: { __ctx: { crop: jest.Mock; resize: jest.Mock } };
+};
 const friends = jest.mocked(friendActions);
 const trips = jest.mocked(tripActions);
 
@@ -168,7 +179,25 @@ describe("Cover (organizer)", () => {
     } as ImagePicker.ImagePickerResult);
     trips.uploadCover.mockResolvedValue("/covers/x/y.jpg");
     await open(detail(organizer, []), "Elegir portada");
-    await waitFor(() => expect(trips.uploadCover).toHaveBeenCalledWith(EVENT, { uri: "file:///p.jpg", width: 4000, height: 3000 }));
+    // The crop screen lets the organizer frame the square; Elegir uploads that square (at most 1600 px).
+    await waitFor(() => expect(screen).toHavePathname("/crop-cover"));
+    expect(trips.uploadCover).not.toHaveBeenCalled();
+    await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
+    await waitFor(() => expect(trips.uploadCover).toHaveBeenCalledWith(EVENT, { uri: "file:///cache/cover.jpg", width: 1600, height: 1600 }));
+    expect(manipulator.ImageManipulator.__ctx.crop).toHaveBeenLastCalledWith({ originX: 500, originY: 0, width: 3000, height: 3000 });
+    expect(manipulator.ImageManipulator.__ctx.resize).toHaveBeenLastCalledWith({ width: 1600, height: 1600 });
+    pick.mockRestore();
+  });
+
+  it("cancelling the crop uploads nothing", async () => {
+    const pick = jest.spyOn(ImagePicker, "launchImageLibraryAsync").mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: "file:///p.jpg", width: 4000, height: 3000 }],
+    } as ImagePicker.ImagePickerResult);
+    await open(detail(organizer, []), "Elegir portada");
+    await fireEvent.press(await screen.findByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(trips.uploadCover).not.toHaveBeenCalled();
     pick.mockRestore();
   });
 
@@ -179,6 +208,7 @@ describe("Cover (organizer)", () => {
     } as ImagePicker.ImagePickerResult);
     trips.uploadCover.mockRejectedValue(new ApiError(409, "Este evento ya se reveló."));
     await open(detail(organizer, []), "Elegir portada");
+    await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
     expect(await screen.findByText("Este evento ya se reveló.")).toBeVisible();
     pick.mockRestore();
   });

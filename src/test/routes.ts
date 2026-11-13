@@ -33,6 +33,7 @@ import MyGroupsRoute from "../../app/my-groups";
 import EditTripRoute from "../../app/edit-trip";
 import WorstCaseRoute from "../../app/dev/worst-case";
 import CropAvatarScreen from "../../app/crop-avatar";
+import CropCoverScreen from "../../app/crop-cover";
 import EditProfileScreen from "../../app/edit-profile";
 import IndexScreen from "../../app/index";
 import InfoRoute from "../../app/info/[topic]";
@@ -65,6 +66,7 @@ export const routes = {
   create: CreateScreen,
   "edit-trip": EditTripRoute,
   "crop-avatar": CropAvatarScreen,
+  "crop-cover": CropCoverScreen,
   trips: TripsScreen,
   "edit-profile": EditProfileScreen,
   settings: SettingsScreen,
