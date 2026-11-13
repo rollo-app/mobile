@@ -1,4 +1,5 @@
 import { localDay } from "@/features/capture/quota";
+import { dateFormatter } from "@/lib/intl";
 
 export type RollPhase = "upcoming" | "active" | "ended" | "revealed";
 
@@ -23,11 +24,11 @@ export function nextPhaseEdge(trip: PhaseTrip, now: number): number | null {
 }
 
 export function formatDate(ms: number, timeZone: string) {
-  return new Date(ms).toLocaleDateString("es-AR", { day: "numeric", month: "long", timeZone });
+  return dateFormatter("es-AR", { day: "numeric", month: "long", timeZone }).format(ms);
 }
 
 export function formatTime(ms: number, timeZone: string) {
-  return new Date(ms).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone });
+  return dateFormatter("es-AR", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone }).format(ms);
 }
 
 /** "hoy a las 19:00" / "mañana" / "en N días", counting calendar days in the trip's zone. */
@@ -39,7 +40,7 @@ export function startsIn(startsAt: number, now: number, timeZone: string) {
 
 /** "29 oct, 19:00" in the trip's zone; "12 ene 2025, 10:00" when the year isn't the current one. */
 export function formatDateTime(ms: number, now: number, timeZone: string) {
-  const day = new Date(ms).toLocaleDateString("es-AR", { day: "numeric", month: "short", timeZone });
+  const day = dateFormatter("es-AR", { day: "numeric", month: "short", timeZone }).format(ms);
   const year = localDay(ms, timeZone).slice(0, 4);
   const sameYear = year === localDay(now, timeZone).slice(0, 4);
   return `${day}${sameYear ? "" : ` ${year}`}, ${formatTime(ms, timeZone)}`;
@@ -58,8 +59,8 @@ export function daysUntil(ms: number, now: number, timeZone: string) {
  */
 export function formatDateRange(startsAt: number, endsAt: number, now: number, timeZone: string) {
   const [start, end] = [localDay(startsAt, timeZone), localDay(endsAt, timeZone)];
-  const day = (ms: number) => new Date(ms).toLocaleDateString("es-AR", { day: "numeric", timeZone });
-  const month = (ms: number) => new Date(ms).toLocaleDateString("es-AR", { month: "short", timeZone }).replace(".", "");
+  const day = (ms: number) => dateFormatter("es-AR", { day: "numeric", timeZone }).format(ms);
+  const month = (ms: number) => dateFormatter("es-AR", { month: "short", timeZone }).format(ms).replace(".", "");
   const withYear = end.slice(0, 4) !== localDay(now, timeZone).slice(0, 4);
   const sameYear = start.slice(0, 4) === end.slice(0, 4);
   const yearOf = (d: string) => (withYear ? ` ${d.slice(0, 4)}` : "");

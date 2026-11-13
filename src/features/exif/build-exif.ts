@@ -1,4 +1,5 @@
 import piexif, { type ExifDict } from "piexifjs";
+import { dateFormatter } from "@/lib/intl";
 
 export type ExifInput = {
   takenAt: number;
@@ -27,7 +28,7 @@ const pad = (n: number, width = 2) => String(n).padStart(width, "0");
 function localParts(ms: number, timeZone: string) {
   const seconds = Math.floor(ms / 1000) * 1000;
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-US", {
+    dateFormatter("en-US", {
       timeZone,
       hourCycle: "h23",
       year: "numeric",
