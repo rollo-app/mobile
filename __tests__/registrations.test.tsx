@@ -38,12 +38,13 @@ describe("Welcome screen", () => {
     mockApi({ "GET /config": OPEN });
     await renderRouter(routes, { initialUrl: "/welcome" });
 
-    expect(await screen.findByText("Rollo")).toBeVisible();
+    expect(await screen.findByText("Rollo Project")).toBeVisible();
     expect(screen.getByText("Sacá fotos con tu grupo y mirálas todas juntas al final, como un rollo.")).toBeVisible();
     expect(screen.queryByLabelText("Tu email")).toBeNull();
     await fireEvent.press(await screen.findByRole("button", { name: "Crear cuenta" }));
     await waitFor(() => expect(screen).toHavePathname("/email"));
     expect(await screen.findByLabelText("Tu email")).toBeVisible();
+    expect(screen.getByText("Rollo Project")).toBeVisible();
 
     await act(() => router.back());
     await fireEvent.press(await screen.findByRole("button", { name: "Ya tengo cuenta" }));
@@ -55,7 +56,7 @@ describe("Welcome screen", () => {
     const dismiss = jest.spyOn(Keyboard, "dismiss");
     await renderRouter(routes, { initialUrl: "/welcome" });
 
-    await fireEvent.press(await screen.findByText("Rollo"));
+    await fireEvent.press(await screen.findByText("Rollo Project"));
     expect(dismiss).toHaveBeenCalled();
     dismiss.mockRestore();
   });
