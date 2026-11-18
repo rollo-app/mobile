@@ -39,7 +39,7 @@ export function WelcomeScreen() {
               progress={1}
             />
           </View>
-          <Text style={[type.largeTitle, styles.center, { color: colors.label }]}>Rollo</Text>
+          <Text style={[type.largeTitle, styles.center, { color: colors.label }]}>Rollo Project</Text>
           {open ? (
             <Text style={[type.body, styles.center, { color: colors.secondaryLabel }]}>
               Sacá fotos con tu grupo y mirálas todas juntas al final, como un rollo.

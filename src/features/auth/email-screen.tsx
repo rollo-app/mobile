@@ -45,7 +45,7 @@ export function EmailScreen({ initialEmail = "" }: { initialEmail?: string }) {
   }
 
   return (
-    <AuthScreen title="Rollo" subtitle="Cada uno saca fotos y nadie las ve hasta el revelado, ni las propias.">
+    <AuthScreen title="Rollo Project" subtitle="Cada uno saca fotos y nadie las ve hasta el revelado, ni las propias.">
       <Field
         label="Tu email"
         value={email}
