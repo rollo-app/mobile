@@ -7,6 +7,7 @@ import { Avatar } from "@/features/profile/avatar";
 import type { TripDetail } from "@/features/trips/actions";
 import { Row, Section } from "@/ui/components";
 import { orderMembers } from "./members-order";
+import { memberTotal } from "@/features/trips/member-total";
 
 const INVITE_NOTE = "Con este código se suman al rollo. Tocalo para compartir la invitación.";
 const FULL_NOTE = "El rollo está lleno. Para sumar a alguien, primero tiene que salir otra persona.";
@@ -15,7 +16,7 @@ const FACES = 3;
 /** The invite (code, QR, add friends) of a roll. Tapping the code shares the invitation. */
 export function RollInvite({ detail }: { detail: TripDetail }) {
   const event = isEvent(detail.trip);
-  const full = detail.memberCount >= detail.trip.maxMembers;
+  const full = memberTotal(detail) >= detail.trip.maxMembers;
   const share = () =>
     Share.share({
       message: event
@@ -49,7 +50,7 @@ export function RollPeopleRow({ detail }: { detail: TripDetail }) {
     <Section>
       <Row
         label="Personas"
-        value={`${detail.memberCount} de ${detail.trip.maxMembers}`}
+        value={`${memberTotal(detail)} de ${detail.trip.maxMembers}`}
         leading={
           <View style={styles.faces}>
             {faces.map((m, i) => (
