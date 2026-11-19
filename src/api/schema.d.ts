@@ -5820,6 +5820,8 @@ export interface components {
             /** @description Path of the cover (prefix the API base URL), null if none */
             coverUrl: string | null;
             revealed: boolean;
+            /** @description Active members including organizers; null when there are fewer than 5 */
+            memberCount: number | null;
             groups: {
                 /** Format: uuid */
                 id: string;

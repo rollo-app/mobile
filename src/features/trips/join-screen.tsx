@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { ApiError, errorMessage } from "@/api/client";
 import { EventHero } from "@/features/events/event-hero";
+import { joinedLine } from "@/features/events/event";
 import { PickGroups } from "@/features/events/pick-groups";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
@@ -20,6 +21,7 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   const [selected, setSelected] = useState<string[]>([]);
   const preview = usePreviewEvent();
   const join = useJoinTrip();
+  const joined = event ? joinedLine(event.memberCount) : null;
   const error = errorMessage(join.error, "No se pudo entrar al rollo");
 
   // A code that arrives from a link (or changes in the route) is looked up by itself, so the guest lands on the groups.
@@ -115,6 +117,7 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
             <ErrorText>{REVEALED_EVENT}</ErrorText>
           ) : (
             <View style={styles.groups}>
+              {joined !== null && <Text style={styles.joined}>{joined}</Text>}
               <Footnote>{event.groups.length > 1 ? "Elegí tus grupos" : "Elegí tu grupo"}</Footnote>
               <PickGroups groups={event.groups} selected={selected} onChange={setSelected} />
             </View>
@@ -146,4 +149,5 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
 const styles = StyleSheet.create({
   name: { ...type.title, color: colors.label, paddingHorizontal: spacing.md },
   groups: { gap: spacing.sm },
+  joined: { ...type.subhead, color: colors.secondaryLabel, fontVariant: ["tabular-nums"], paddingHorizontal: spacing.md },
 });

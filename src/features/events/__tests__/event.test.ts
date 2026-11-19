@@ -1,5 +1,5 @@
 import type { TripDetail } from "@/features/trips/actions";
-import { eventDay, isEvent, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
+import { eventDay, isEvent, joinedLine, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
 
 const GROUPS = [
   { id: "g1", name: "Novios" },
@@ -96,5 +96,20 @@ describe("eventDay", () => {
     expect(eventDay(Date.parse("2026-12-12T21:00:00Z"), "America/Montevideo")).toBe("12 de diciembre");
     // 01:30 UTC on the 13th is still the 12th in Montevideo
     expect(eventDay(Date.parse("2026-12-13T01:30:00Z"), "America/Montevideo")).toBe("12 de diciembre");
+  });
+});
+
+describe("joinedLine", () => {
+  it("says how many people already joined", () => {
+    expect(joinedLine(5)).toBe("5 personas ya se unieron");
+    expect(joinedLine(120)).toBe("120 personas ya se unieron");
+  });
+
+  it("invites to be among the first when the server hides the count", () => {
+    expect(joinedLine(null)).toBe("Sé de los primeros en unirte");
+  });
+
+  it("shows nothing when the field is missing (older API)", () => {
+    expect(joinedLine(undefined)).toBeNull();
   });
 });
