@@ -5820,7 +5820,7 @@ export interface components {
             /** @description Path of the cover (prefix the API base URL), null if none */
             coverUrl: string | null;
             revealed: boolean;
-            /** @description Active members including organizers; null when there are fewer than 5 */
+            /** @description People already in the event: active members (not left, not removed), organizers included — the accounts that will be able to download the photos after the reveal. null below 5, so a near-empty event does not show a tiny number to strangers */
             memberCount: number | null;
             groups: {
                 /** Format: uuid */
