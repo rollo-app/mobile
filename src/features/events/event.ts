@@ -47,3 +47,17 @@ export function photoGroupLabel(detail: TripDetail, groupIds: readonly string[] 
 export function eventDay(startsAt: number, timeZone: string): string {
   return dateFormatter("es-AR", { timeZone, day: "numeric", month: "long" }).format(startsAt);
 }
+
+/**
+ * The line on the public join screen. The server sends the count from 5 people on and null below that ("be among the first");
+ * a missing field (an older API) shows no line at all.
+ */
+export function joinedLine(memberCount: number | null | undefined): string | null {
+  if (memberCount === undefined) return null;
+  return memberCount === null ? "Sé de los primeros en unirte" : `${memberCount} personas ya se unieron`;
+}
+
+/** "1 persona" / "N personas". */
+export function peopleLabel(n: number): string {
+  return `${n} ${n === 1 ? "persona" : "personas"}`;
+}

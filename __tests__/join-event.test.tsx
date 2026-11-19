@@ -20,6 +20,7 @@ const preview = (over: Partial<actions.EventPreview> = {}): actions.EventPreview
   name: "Casamiento de Cami",
   coverUrl: null,
   revealed: false,
+  memberCount: null,
   groups: [
     { id: "g1", name: "Familia" },
     { id: "g2", name: "Amigos" },
@@ -58,6 +59,38 @@ describe("Joining an event", () => {
 
     await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "ABC123", groupIds: ["g2"] }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("shows how many people already joined, or invites to be among the first", async () => {
+    mocked.previewEvent.mockResolvedValue(preview({ memberCount: 12 }));
+    await renderRouter(routes, { initialUrl: "/join" });
+    await enterCode();
+    expect(await screen.findByText("12 personas ya se unieron")).toBeVisible();
+  });
+
+  it("invites to be among the first when the count is hidden", async () => {
+    mocked.previewEvent.mockResolvedValue(preview({ memberCount: null }));
+    await renderRouter(routes, { initialUrl: "/join" });
+    await enterCode();
+    expect(await screen.findByText("Sé de los primeros en unirte")).toBeVisible();
+  });
+
+  it("shows no line when the API does not send the count", async () => {
+    const { memberCount: _omit, ...old } = preview();
+    mocked.previewEvent.mockResolvedValue(old as actions.EventPreview);
+    await renderRouter(routes, { initialUrl: "/join" });
+    await enterCode();
+    await screen.findByText("Elegí tus grupos");
+    expect(screen.queryByText(/ya se unieron|primeros/)).toBeNull();
+  });
+
+  it("shows no count once the event is revealed", async () => {
+    mocked.previewEvent.mockResolvedValue(preview({ revealed: true, memberCount: 12 }));
+    await renderRouter(routes, { initialUrl: "/join" });
+    await enterCode();
+    await screen.findByText("Este evento ya se reveló.");
+    expect(screen.queryByText(/ya se unieron/)).toBeNull();
+    expect(screen.queryByText("Sé de los primeros en unirte")).toBeNull();
   });
 
   it("shows the cover big with the event's name over it", async () => {

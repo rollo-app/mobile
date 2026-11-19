@@ -75,6 +75,7 @@ function tripDetail(photosLeft: number): actions.TripDetail {
     },
     me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
     members: [],
+    memberCount: ([]).length,
     today: { date: localDay(Date.now(), TZ), photosLeft, videosLeft: 3 },
     totalUploaded: 0,
   };

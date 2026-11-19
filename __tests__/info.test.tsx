@@ -30,6 +30,7 @@ const detail = (): actions.TripDetail => ({
   },
   me,
   members: [me],
+  memberCount: ([me]).length,
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 1,
 });

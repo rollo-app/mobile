@@ -65,6 +65,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
   },
   me: { ...me, groupIds: [] },
   members: [creator, adminCami, fede, tomi].map((m) => (m.id === me.id ? me : m)),
+  memberCount: ([creator, adminCami, fede, tomi].map((m) => (m.id === me.id ? me : m))).length,
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
 });
@@ -117,6 +118,11 @@ afterEach(() => {
 
 describe("Roll cap", () => {
   const FULL = "El rollo está lleno. Para sumar a alguien, primero tiene que salir otra persona.";
+
+  it("counts the whole roll, not just the members the viewer can see", async () => {
+    await openBoard({ ...detail(creator, { maxMembers: 50 }), memberCount: 40 });
+    expect(screen.getByText("40 de 50")).toBeVisible();
+  });
 
   it("shows the cap in the people row", async () => {
     await openBoard(detail(creator, { maxMembers: 15 }));

@@ -59,6 +59,7 @@ const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; 
     },
     me,
     members: [me, member("m2", "Fede", role === "admin" ? "member" : "admin")],
+    memberCount: ([me, member("m2", "Fede", role === "admin" ? "member" : "admin")]).length,
     today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
     totalUploaded: 12,
   };

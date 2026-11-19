@@ -43,6 +43,7 @@ function tripDetail(): actions.TripDetail {
     },
     me: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
     members: [],
+    memberCount: ([]).length,
     today: { date: "2027-01-12", photosLeft: 7, videosLeft: 0 },
     totalUploaded: 0,
   };

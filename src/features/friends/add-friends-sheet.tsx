@@ -12,6 +12,7 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 import type { Friend } from "./actions";
 import { useAddFriendsToTrip } from "./use-add-friends-to-trip";
 import { useFriends } from "./use-friends";
+import { memberTotal } from "@/features/trips/member-total";
 
 /** "Sumar amigos" (sheet): pick friends and they join the active roll directly. */
 export function AddFriendsSheet() {
@@ -25,7 +26,7 @@ export function AddFriendsSheet() {
   const error = errorMessage(addFailure, "No se pudo sumar a tus amigos");
 
   const members = new Set(detail?.members.map((m) => m.userId));
-  const rollFull = !!detail && detail.members.length >= detail.trip.maxMembers;
+  const rollFull = !!detail && memberTotal(detail) >= detail.trip.maxMembers;
 
   function toggle(id: string) {
     reset();
@@ -84,7 +85,7 @@ export function AddFriendsSheet() {
         </View>
       )}
       {friends && friends.length > 0 && rollFull && (
-        <Footnote>{`El rollo está lleno (${detail.members.length} de ${detail.trip.maxMembers}).`}</Footnote>
+        <Footnote>{`El rollo está lleno (${memberTotal(detail)} de ${detail.trip.maxMembers}).`}</Footnote>
       )}
       {friends && friends.length > 0 && (
         <View style={styles.group}>

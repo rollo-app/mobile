@@ -122,6 +122,7 @@ describe("Members", () => {
       },
       me,
       members: [me, member("m2", "u2", "Cami", "member", true)],
+      memberCount: 2,
       today: { date: "2027-01-12", photosLeft: 7, videosLeft: 2 },
       totalUploaded: 0,
     });

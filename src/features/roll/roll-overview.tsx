@@ -8,6 +8,7 @@ import { Button, ErrorText, Loading, Screen } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { RollEssentials } from "./roll-essentials";
 import { rollSummary } from "./summary";
+import { memberTotal } from "@/features/trips/member-total";
 
 /** The "Rollo" segment of a revealed roll: what the board showed, without today's quota or the contact sheet. */
 export function RollOverview({ tripId }: { tripId: string }) {
@@ -29,7 +30,7 @@ export function RollOverview({ tripId }: { tripId: string }) {
           <Text style={[type.subhead, styles.summary]}>
             {rollSummary({
               media: photos,
-              people: detail.members.length,
+              people: memberTotal(detail),
               startsAt: detail.trip.startsAt,
               endsAt: detail.trip.endsAt,
               timeZone: detail.trip.timezone,
