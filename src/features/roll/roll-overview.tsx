@@ -29,7 +29,7 @@ export function RollOverview({ tripId }: { tripId: string }) {
           <Text style={[type.subhead, styles.summary]}>
             {rollSummary({
               media: photos,
-              people: detail.members.length,
+              people: detail.memberCount,
               startsAt: detail.trip.startsAt,
               endsAt: detail.trip.endsAt,
               timeZone: detail.trip.timezone,

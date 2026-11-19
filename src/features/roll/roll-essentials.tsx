@@ -15,7 +15,7 @@ const FACES = 3;
 /** The invite (code, QR, add friends) of a roll. Tapping the code shares the invitation. */
 export function RollInvite({ detail }: { detail: TripDetail }) {
   const event = isEvent(detail.trip);
-  const full = detail.members.length >= detail.trip.maxMembers;
+  const full = detail.memberCount >= detail.trip.maxMembers;
   const share = () =>
     Share.share({
       message: event
@@ -49,7 +49,7 @@ export function RollPeopleRow({ detail }: { detail: TripDetail }) {
     <Section>
       <Row
         label="Personas"
-        value={`${detail.members.length} de ${detail.trip.maxMembers}`}
+        value={`${detail.memberCount} de ${detail.trip.maxMembers}`}
         leading={
           <View style={styles.faces}>
             {faces.map((m, i) => (

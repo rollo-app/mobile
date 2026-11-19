@@ -69,6 +69,7 @@ const detail = (me: Member, groupIds: string[], over: Partial<tripActions.Trip> 
   },
   me: { ...me, groupIds },
   members: [organizer, guest],
+  memberCount: ([organizer, guest]).length,
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 0,
 });
@@ -172,7 +173,19 @@ describe("Cover hero", () => {
     await open(detail(guest, ["g1"], { coverUrl: "/covers/x/y.jpg", startsAt: Date.parse("2026-12-12T21:00:00Z") }));
     const hero = await screen.findByTestId("event-hero");
     expect(within(hero).getByText("Casamiento de Cami")).toBeVisible();
-    expect(within(hero).getByText("12 de diciembre")).toBeVisible();
+    expect(within(hero).getByText("12 de diciembre · 2 personas")).toBeVisible();
+  });
+
+  it("a guest sees the whole event's headcount even when their member list is shorter", async () => {
+    await open({ ...detail(guest, ["g1"], { coverUrl: "/covers/x/y.jpg" }), memberCount: 87 });
+    const hero = await screen.findByTestId("event-hero");
+    expect(within(hero).getByText(/· 87 personas$/)).toBeVisible();
+  });
+
+  it("says 1 persona in singular", async () => {
+    await open({ ...detail(organizer, [], { coverUrl: "/covers/x/y.jpg" }), memberCount: 1 });
+    const hero = await screen.findByTestId("event-hero");
+    expect(within(hero).getByText(/· 1 persona$/)).toBeVisible();
   });
 
   it("has no hero without a cover", async () => {

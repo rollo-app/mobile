@@ -52,6 +52,10 @@ const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" =
     { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, isCreator: false, blockedByMe: false },
     { id: "m5", userId: "u5", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
   ],
+  memberCount: ([
+    { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role, isCreator: false, blockedByMe: false },
+    { id: "m5", userId: "u5", name: "Fede", username: "fede.s", avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
+  ]).length,
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 3,
 });

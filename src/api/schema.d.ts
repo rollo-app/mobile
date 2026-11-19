@@ -6416,6 +6416,8 @@ export interface components {
                 groupIds: string[];
             };
             members: components["schemas"]["Member"][];
+            /** @description Active members of the whole rollo (organizers included). In an event `members` only lists who you can see; this is the total */
+            memberCount: number;
             today: {
                 /**
                  * @description Trip's local date

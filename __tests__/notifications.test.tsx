@@ -61,6 +61,7 @@ const detail = (id = SUR, name = "Viaje al sur"): actions.TripDetail => ({
   },
   me: { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false, groupIds: [] },
   members: [],
+  memberCount: ([]).length,
   today: { date: "2027-01-12", photosLeft: 10, videosLeft: 3 },
   totalUploaded: 0,
 });

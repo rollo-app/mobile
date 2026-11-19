@@ -62,6 +62,7 @@ const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail
   ],
   today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
   totalUploaded: 12,
+  memberCount: 2,
   ...overrides,
 });
 

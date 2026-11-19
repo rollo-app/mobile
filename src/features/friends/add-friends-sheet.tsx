@@ -25,7 +25,7 @@ export function AddFriendsSheet() {
   const error = errorMessage(addFailure, "No se pudo sumar a tus amigos");
 
   const members = new Set(detail?.members.map((m) => m.userId));
-  const rollFull = !!detail && detail.members.length >= detail.trip.maxMembers;
+  const rollFull = !!detail && detail.memberCount >= detail.trip.maxMembers;
 
   function toggle(id: string) {
     reset();
@@ -84,7 +84,7 @@ export function AddFriendsSheet() {
         </View>
       )}
       {friends && friends.length > 0 && rollFull && (
-        <Footnote>{`El rollo está lleno (${detail.members.length} de ${detail.trip.maxMembers}).`}</Footnote>
+        <Footnote>{`El rollo está lleno (${detail.memberCount} de ${detail.trip.maxMembers}).`}</Footnote>
       )}
       {friends && friends.length > 0 && (
         <View style={styles.group}>

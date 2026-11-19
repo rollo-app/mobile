@@ -57,6 +57,10 @@ const detail = (): actions.TripDetail => ({
     { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
     { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
   ],
+  memberCount: ([
+    { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null, role: "admin", isCreator: false, blockedByMe: false },
+    { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null, role: "member", isCreator: false, blockedByMe: false },
+  ]).length,
   today: { date: "2027-01-14", photosLeft: 0, videosLeft: 0 },
   totalUploaded: 3,
 });

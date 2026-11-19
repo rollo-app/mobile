@@ -61,6 +61,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
     },
     me: { ...me, groupIds: [] },
     members: [admin, plain].map((m) => (m.id === me.id ? me : m)),
+    memberCount: ([admin, plain].map((m) => (m.id === me.id ? me : m))).length,
     today: { date: "2027-01-05", photosLeft: 7, videosLeft: 2 },
     totalUploaded: 3,
   };

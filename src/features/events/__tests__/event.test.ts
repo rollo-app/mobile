@@ -1,5 +1,5 @@
 import type { TripDetail } from "@/features/trips/actions";
-import { eventDay, isEvent, joinedLine, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
+import { eventDay, isEvent, joinedLine, peopleLabel, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
 
 const GROUPS = [
   { id: "g1", name: "Novios" },
@@ -111,5 +111,13 @@ describe("joinedLine", () => {
 
   it("shows nothing when the field is missing (older API)", () => {
     expect(joinedLine(undefined)).toBeNull();
+  });
+});
+
+describe("peopleLabel", () => {
+  it("pluralizes", () => {
+    expect(peopleLabel(1)).toBe("1 persona");
+    expect(peopleLabel(2)).toBe("2 personas");
+    expect(peopleLabel(0)).toBe("0 personas");
   });
 });

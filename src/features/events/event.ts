@@ -56,3 +56,8 @@ export function joinedLine(memberCount: number | null | undefined): string | nul
   if (memberCount === undefined) return null;
   return memberCount === null ? "Sé de los primeros en unirte" : `${memberCount} personas ya se unieron`;
 }
+
+/** "1 persona" / "N personas". */
+export function peopleLabel(n: number): string {
+  return `${n} ${n === 1 ? "persona" : "personas"}`;
+}
