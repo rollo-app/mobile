@@ -221,6 +221,11 @@ export async function deleteTrip(tripId: string): Promise<void> {
   await unwrap((await authedClient()).DELETE("/trips/{tripId}", { params: { path: { tripId } } }));
 }
 
+/** Reveals the rollo now (creator only; with the contest on the server asks for at least 2 finalists). */
+export async function revealTrip(tripId: string): Promise<void> {
+  await unwrap((await authedClient()).POST("/trips/{tripId}/reveal", { params: { path: { tripId } } }));
+}
+
 /** Changes dates, quota or daily moment of the rollo (any admin; only the fields sent change). */
 export async function updateTrip(tripId: string, body: UpdateTripBody): Promise<Trip> {
   return (await unwrap((await authedClient()).PATCH("/trips/{tripId}", { params: { path: { tripId } }, body }))).trip;

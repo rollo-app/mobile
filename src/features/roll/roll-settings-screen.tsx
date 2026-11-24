@@ -17,6 +17,7 @@ import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { useUpdateTrip } from "@/features/trips/use-update-trip";
 import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
+import { RevealNowSection } from "./reveal-now";
 import { RollDates } from "./roll-dates";
 import { useDeleteTrip } from "./use-delete-trip";
 import { MAX_TRIP_NAME, nextTripName, useRenameTrip } from "./use-rename-trip";
@@ -121,6 +122,8 @@ function Settings({ detail }: { detail: TripDetail }) {
       {event && <EventCover detail={detail} />}
 
       <RollDates detail={detail} phase={phase} />
+
+      <RevealNowSection detail={detail} phase={phase} />
 
       {event && <EventGroupsSection detail={detail} />}
 
