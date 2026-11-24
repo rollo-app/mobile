@@ -143,6 +143,16 @@ describe("ContestScreen voting", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Votar esta" })).toBeTruthy());
   });
 
+  it("swiping to another photo clears the refusal", async () => {
+    voteMock.mockRejectedValue(new ApiError(409, "La votación no está abierta."));
+    await wrap(<ContestScreen tripId="t1" />);
+    const buttons = await screen.findAllByRole("button", { name: "Votar esta" });
+    await fireEvent.press(buttons.find((b) => !b.props.accessibilityState.disabled)!);
+    expect(await screen.findByText("La votación no está abierta.")).toBeTruthy();
+    await fireEvent(screen.getByTestId("finalist-pager"), "momentumScrollEnd", { nativeEvent: { contentOffset: { x: 750, y: 0 } } });
+    await waitFor(() => expect(screen.queryByText("La votación no está abierta.")).toBeNull());
+  });
+
   it("while closing, voting is off", async () => {
     server = contest({ status: "closing", finalists: [finalist("m2", "u2", "Beto")] });
     await wrap(<ContestScreen tripId="t1" />);

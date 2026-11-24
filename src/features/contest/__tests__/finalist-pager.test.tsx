@@ -110,6 +110,13 @@ describe("FinalistPager vote", () => {
   });
 });
 
+describe("FinalistPager error", () => {
+  it("shows the refusal only on the page you're on", async () => {
+    await render(<Harness error="La votación no está abierta." />);
+    expect(screen.getAllByText("La votación no está abierta.")).toHaveLength(1);
+  });
+});
+
 describe("FinalistPager results", () => {
   it("shows the place on top and the votes big", async () => {
     const items: PagerItem[] = [

@@ -32,7 +32,7 @@ export function ContestScreen({ tripId }: { tripId: string }) {
   const { me } = useMe();
   const { contest, error: contestError, refetch: refetchContest } = useContest(tripId, !!detail?.trip.contest?.enabled);
   const token = useMediaToken(tripId);
-  const { vote, error: voteError } = useVote(tripId);
+  const { vote, error: voteError, clearError } = useVote(tripId);
   const { pick, picking, error: pickError } = usePickWinner(tripId);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -134,12 +134,9 @@ export function ContestScreen({ tripId }: { tripId: string }) {
           onVote={vote}
           votingOpen={status === "voting"}
           closesAt={contest.closesAt}
+          error={voteError}
+          onIndexChange={clearError}
         />
-        {!!voteError && (
-          <View pointerEvents="none" style={[styles.voteError, { top: 56 }]}>
-            <ErrorText>{voteError}</ErrorText>
-          </View>
-        )}
       </View>
     );
   }
@@ -214,5 +211,4 @@ const styles = StyleSheet.create({
   sheetBar: { alignItems: "flex-end" },
   large: { flex: 1 },
   pager: { flex: 1 },
-  voteError: { position: "absolute", left: spacing.md, right: spacing.md },
 });
