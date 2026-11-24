@@ -1,7 +1,7 @@
 import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { memo, useCallback, useMemo, type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, type TextStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { mediaSource } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
@@ -65,9 +65,7 @@ const Row = memo(function Row({ item, index, token, tied, canPick, picking, onPi
           style={styles.thumb}
         />
         <View style={styles.rowText}>
-          <Text style={[type.subhead, { color: colors.label }]} numberOfLines={1}>
-            {authorHandle(finalist.author)}
-          </Text>
+          <AuthorNames author={finalist.author} nameStyle={type.subhead} />
           {tied && <Text style={[type.footnote, { color: colors.tint }]}>Empatada</Text>}
           {votes !== null && (
             <View style={styles.track}>
@@ -81,6 +79,22 @@ const Row = memo(function Row({ item, index, token, tied, canPick, picking, onPi
     </View>
   );
 });
+
+/** The person's name, and their @username under it, smaller and dimmer (when they have one). */
+function AuthorNames({ author, nameStyle }: { author: { name: string; username: string | null }; nameStyle: TextStyle }) {
+  return (
+    <>
+      <Text style={[nameStyle, { color: colors.label }]} numberOfLines={1}>
+        {author.name}
+      </Text>
+      {!!author.username && (
+        <Text style={[type.footnote, { color: colors.secondaryLabel }]} numberOfLines={1}>
+          {`@${author.username}`}
+        </Text>
+      )}
+    </>
+  );
+}
 
 /** The contest's results: the winner big on top, then every finalist by votes with a proportional bar. In a tie the tied ones can be picked. */
 export function ResultsList({ ranked, winner, token, tiedIds, canPickWinner = false, picking = false, onPick, onOpen, header }: Props) {
@@ -124,9 +138,7 @@ export function ResultsList({ ranked, winner, token, tiedIds, canPickWinner = fa
               <View style={styles.winnerAuthor}>
                 <Avatar id={winner.author.userId} name={winner.author.name} avatarUrl={winner.author.avatarUrl} size={40} />
                 <View style={styles.rowText}>
-                  <Text style={[type.title, { color: colors.label }]} numberOfLines={1}>
-                    {authorHandle(winner.author)}
-                  </Text>
+                  <AuthorNames author={winner.author} nameStyle={type.title} />
                   {typeof winnerVotes === "number" && <Text style={[type.subhead, styles.votesPlain]}>{votesLabel(winnerVotes)}</Text>}
                 </View>
               </View>

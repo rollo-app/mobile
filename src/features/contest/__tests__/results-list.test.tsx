@@ -28,6 +28,12 @@ describe("ResultsList", () => {
     expect(screen.getByText("0 votos")).toBeTruthy();
   });
 
+  it("shows each person's name with the @username under it", async () => {
+    await render(<ResultsList ranked={rankFinalists(closed)} winner={winner} token="tok" onOpen={jest.fn()} />);
+    expect(screen.getAllByText("ANA").length).toBeGreaterThanOrEqual(2); // the winner on top and her row
+    expect(screen.getAllByText("@ana").length).toBeGreaterThanOrEqual(2);
+  });
+
   it("shows the place with its ordinal sign and labels each row for VoiceOver", async () => {
     await render(<ResultsList ranked={rankFinalists(closed)} winner={winner} token="tok" onOpen={jest.fn()} />);
     expect(screen.getByText("1°")).toBeTruthy();
