@@ -1,4 +1,5 @@
 import { StyleSheet, Text } from "react-native";
+import { ContestCard } from "@/features/contest/contest-card";
 import { EventBoardHero } from "@/features/events/event-board-hero";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { useRevealedPhotos } from "@/features/media/revealed";
@@ -26,6 +27,7 @@ export function RollOverview({ tripId }: { tripId: string }) {
       {!error && !detail && <Loading />}
       {detail && (
         <>
+          <ContestCard tripId={tripId} enabled={!!detail.trip.contest?.enabled} />
           <EventBoardHero detail={detail} />
           <Text style={[type.subhead, styles.summary]}>
             {rollSummary({

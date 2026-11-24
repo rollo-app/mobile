@@ -1,7 +1,9 @@
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StyleSheet, useColorScheme, View } from "react-native";
+import { ContestCard } from "@/features/contest/contest-card";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
+import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { colors, layout, spacing, tintHex } from "@/ui/theme";
 import { RollOverview } from "./roll-overview";
 
@@ -24,6 +26,8 @@ export function RevealedRollScreen({
   onSelectionChange?: (count: number | null) => void;
 }) {
   const router = useRouter();
+  const { detail } = useTripDetail(tripId);
+  const contestEnabled = !!detail?.trip.contest?.enabled;
   const { view } = useLocalSearchParams<{ view?: string }>();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const showRoll = view === "roll";
@@ -48,7 +52,12 @@ export function RevealedRollScreen({
           accessibilityElementsHidden={showRoll}
           importantForAccessibility={showRoll ? "no-hide-descendants" : "auto"}
         >
-          <GalleryScreen tripId={tripId} toolbar={!showRoll} onSelectionChange={onSelectionChange} />
+          <GalleryScreen
+            tripId={tripId}
+            toolbar={!showRoll}
+            onSelectionChange={onSelectionChange}
+            header={<ContestCard tripId={tripId} enabled={contestEnabled} />}
+          />
         </View>
         {showRoll && (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.groupedBackground }]}>

@@ -1,0 +1,65 @@
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { mediaSource, useMediaToken } from "@/features/media/revealed";
+import { colors, spacing, type } from "@/ui/theme";
+import { cardCopy } from "./contest-state";
+import { useContest } from "./use-contest";
+
+/**
+ * "Concurso de fotos" card for the top of the Galería and the Rollo segment: the countdown while voting, the winner once
+ * closed. Nothing for events without a contest or before the voting opens. Tapping opens `/contest`.
+ */
+export function ContestCard({ tripId, enabled }: { tripId: string; enabled: boolean }) {
+  const router = useRouter();
+  const { contest } = useContest(tripId, enabled);
+  const token = useMediaToken(enabled ? tripId : undefined);
+  const copy = enabled ? cardCopy(contest, Date.now()) : null;
+  if (!copy) return null;
+
+  const winnerId = contest?.status === "closed" && contest.winner?.imageAvailable ? contest.winner.mediaId : null;
+  const thumb = winnerId ? contest?.finalists.find((f) => f.mediaId === winnerId) : undefined;
+  const winnerName = contest?.winner?.author.name;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={copy}
+      onPress={() => router.push({ pathname: "/contest", params: { trip: tripId } })}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    >
+      {!!thumb && !!token ? (
+        <Image
+          testID="contest-card-winner"
+          source={mediaSource(thumb.thumbPath, token)}
+          placeholder={thumb.thumbHash ? { thumbhash: thumb.thumbHash } : undefined}
+          contentFit="cover"
+          style={styles.thumb}
+        />
+      ) : (
+        <SymbolView name="trophy" size={24} tintColor={colors.tint as string} />
+      )}
+      <View style={styles.text}>
+        <Text style={[type.headline, { color: colors.label }]}>{copy}</Text>
+        {!!thumb && !!winnerName && <Text style={[type.footnote, { color: colors.secondaryLabel }]}>Tocá para ver los votos</Text>}
+      </View>
+      <SymbolView name="chevron.right" size={14} tintColor={colors.tertiaryLabel as string} />
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    margin: spacing.md,
+    padding: spacing.md,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    backgroundColor: colors.cell,
+  },
+  pressed: { opacity: 0.7 },
+  text: { flex: 1, gap: 2 },
+  thumb: { width: 48, height: 48, borderRadius: 8, borderCurve: "continuous", backgroundColor: colors.latent },
+});

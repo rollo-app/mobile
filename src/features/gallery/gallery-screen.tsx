@@ -2,7 +2,7 @@ import { OriginalsNotice } from "@/features/trips/originals-notice-text";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -51,9 +51,12 @@ export function GalleryScreen({
   tripId,
   toolbar: showToolbar = true,
   onSelectionChange,
+  header,
 }: {
   tripId: string;
   toolbar?: boolean;
+  /** Shown at the very top of the grid (the contest card). */
+  header?: ReactNode;
   /** How many photos are selected while selecting, null otherwise: the screen that owns the header shows it as the title. */
   onSelectionChange?: (count: number | null) => void;
 }) {
@@ -206,6 +209,7 @@ export function GalleryScreen({
         }
         ListHeaderComponent={
           <>
+            {header}
             {detail && <OriginalsNotice originals={detail.trip.originals} timeZone={detail.trip.timezone} style={styles.notice} />}
             {author && (
               <View style={styles.filter}>
