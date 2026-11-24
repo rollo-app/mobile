@@ -33,4 +33,18 @@ describe("TripRow", () => {
     const row = screen.getByRole("button", { name: /Un nombre de rollo muy largo/ });
     expect(StyleSheet.flatten(row.props.style).width).toBe(361);
   });
+
+  it("marks an event with an 'Evento' badge next to its state", async () => {
+    const event = tripSummary("e", "Casamiento", { startsAt: NOW - DAY, endsAt: NOW + DAY, revealAt: NOW + DAY, type: "event" });
+    await render(<TripRow trip={event} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} />);
+    const trailing = within(screen.getByTestId("trip-row-trailing"));
+    expect(trailing.getByText("Evento")).toBeTruthy();
+    expect(trailing.getByText("LIVE")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Casamiento, evento/ })).toBeTruthy();
+  });
+
+  it("a regular rollo has no 'Evento' badge", async () => {
+    await render(<TripRow trip={live} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} />);
+    expect(screen.queryByText("Evento")).toBeNull();
+  });
 });

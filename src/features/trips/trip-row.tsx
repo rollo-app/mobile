@@ -35,6 +35,8 @@ export function TripRow({
   const state = tripRowState(trip, now, timeZone);
   const average = useMemo(() => (trip.coverThumbhash ? thumbHashAverageColor(trip.coverThumbhash) : null), [trip.coverThumbhash]);
   const tint = average ? rowTint(average, scheme) : null;
+  const isEvent = trip.type === "event";
+  const a11yName = isEvent ? `${trip.name}, evento` : trip.name;
   // The long-press menu wraps the row in a native host that sizes to its content, so the row (and its pressed highlight)
   // would end right after the name. Measure the full width outside it and hand it to the row.
   const [width, setWidth] = useState<number | null>(null);
@@ -46,7 +48,7 @@ export function TripRow({
   const row = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={state.stateLabel ? `${trip.name}, ${state.stateLabel}` : trip.name}
+      accessibilityLabel={state.stateLabel ? `${a11yName}, ${state.stateLabel}` : a11yName}
       accessibilityState={{ selected }}
       accessibilityActions={actions.map((id) => ({ name: id, label: ROW_ACTION_TITLES[id] }))}
       onAccessibilityAction={({ nativeEvent }) => onAction?.(nativeEvent.actionName as RowActionId)}
@@ -62,8 +64,9 @@ export function TripRow({
           {state.subtitle}
         </Text>
       </View>
-      {(state.badge || selected) && (
+      {(isEvent || state.badge || selected) && (
         <View testID="trip-row-trailing" style={styles.trailing}>
+          {isEvent && <Badge variant="neutral" label="Evento" />}
           {state.badge && <Badge variant={state.badge === "live" ? "live" : "neutral"} label={BADGE_LABEL[state.badge]} />}
           {selected && <SymbolView name="checkmark" size={16} weight="semibold" tintColor={colors.tint as string} />}
         </View>
