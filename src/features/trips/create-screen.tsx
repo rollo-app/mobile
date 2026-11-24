@@ -2,8 +2,9 @@ import { Button, Form, Group, Host, Picker, RNHostView, Section, SwipeActions, T
 import { accessibilityLabel, aspectRatio, foregroundStyle, listRowBackground, listRowInsets, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { use, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
 import { EventHero } from "@/features/events/event-hero";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
@@ -35,7 +36,8 @@ import {
 import { ContestSection, DescriptionSection } from "@/features/trips/contest-section";
 import { infoHeader, TripForm, type LimitMode, type RevealMode } from "@/features/trips/trip-form";
 import { useCreateTrip } from "@/features/trips/use-create-trip";
-import { colors } from "@/ui/theme";
+import { ErrorText } from "@/ui/components";
+import { colors, spacing } from "@/ui/theme";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -68,6 +70,8 @@ export function CreateScreen() {
   const nextGroupId = useRef(1);
   const [cover, setCover] = useState<CoverPhoto | null>(null);
   const create = useCreateTrip();
+  // Bottom inset for the error bar; tests render without a SafeAreaProvider.
+  const bottomInset = use(SafeAreaInsetsContext)?.bottom ?? 0;
   // Events are enabled per account. Not blocking: until /me says so (or if it fails) this is the regular rollo form.
   const canPickEvent = useMe().me?.canCreateEvents === true;
   const isEvent = canPickEvent && kind === "event";
@@ -320,15 +324,15 @@ export function CreateScreen() {
           <Section header={infoHeader("Privacidad", "privateRollo")} footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
             <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
           </Section>
-
-          {/* Again at the end: the form is long and "Crear" can be tapped from here, with the name's footer off screen. */}
-          {!!error && (
-            <Section>
-              <Text modifiers={[foregroundStyle("red")]}>{error}</Text>
-            </Section>
-          )}
         </Form>
       </Host>
+      {/* Pinned under the form, in RN: the native form doesn't redraw a footer or section that appears after it was laid out,
+          and the form is long, so the name's footer can be off screen when "Crear" is tapped. */}
+      {!!error && (
+        <View style={[styles.errorBar, { paddingBottom: bottomInset + spacing.sm }]}>
+          <ErrorText>{error}</ErrorText>
+        </View>
+      )}
     </View>
   );
 }
@@ -336,4 +340,11 @@ export function CreateScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.groupedBackground },
   form: { flex: 1 },
+  errorBar: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    backgroundColor: colors.groupedBackground,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.separator,
+  },
 });
