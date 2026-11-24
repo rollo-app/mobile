@@ -2,6 +2,7 @@ import { router, Stack } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { ApiError, errorMessage } from "@/api/client";
+import { EventDescription } from "@/features/events/event-description";
 import { EventHero } from "@/features/events/event-hero";
 import { joinedLine } from "@/features/events/event";
 import { PickGroups } from "@/features/events/pick-groups";
@@ -109,9 +110,16 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
           {event.coverUrl ? (
             <EventHero name={event.name} coverUrl={event.coverUrl} eyebrow="Te invitaron a" description={event.description} />
           ) : (
-            <Text accessibilityRole="header" style={styles.name}>
-              {event.name}
-            </Text>
+            <>
+              <Text accessibilityRole="header" style={styles.name}>
+                {event.name}
+              </Text>
+              {!!event.description && (
+                <View style={styles.description}>
+                  <EventDescription text={event.description} />
+                </View>
+              )}
+            </>
           )}
           {event.revealed ? (
             <ErrorText>{REVEALED_EVENT}</ErrorText>
@@ -147,6 +155,7 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
 }
 
 const styles = StyleSheet.create({
+  description: { paddingHorizontal: spacing.md },
   name: { ...type.title, color: colors.label, paddingHorizontal: spacing.md },
   groups: { gap: spacing.sm },
   joined: { ...type.subhead, color: colors.secondaryLabel, fontVariant: ["tabular-nums"], paddingHorizontal: spacing.md },

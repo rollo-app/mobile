@@ -116,6 +116,16 @@ describe("Joining an event", () => {
     expect(screen.queryByTestId("event-hero")).toBeNull();
   });
 
+  it("without a cover the description shows under the name", async () => {
+    mocked.previewEvent.mockResolvedValue(preview({ description: "Premio: una cena" }));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await enterCode();
+
+    expect(await screen.findByText("Premio: una cena")).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+  });
+
   it("asks for a single group when the event has just one", async () => {
     mocked.previewEvent.mockResolvedValue(preview({ groups: [{ id: "g1", name: "Familia" }] }));
     await renderRouter(routes, { initialUrl: "/join" });

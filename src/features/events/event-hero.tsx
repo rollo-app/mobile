@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { API_URL } from "@/config";
+import { EventDescription } from "./event-description";
 import { radius, spacing, type } from "@/ui/theme";
 
 // Darkens only the bottom of the photo, so the white text reads on any cover.
@@ -28,8 +28,6 @@ export function EventHero({
   /** The organizer's text under the name; clamped to 3 lines with "Ver más". Nothing (and no gap) when null. */
   description?: string | null;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [overflows, setOverflows] = useState(false);
   return (
     <View testID="event-hero" style={styles.frame}>
       <Image source={{ uri: coverUrl.startsWith("file:") ? coverUrl : `${API_URL}${coverUrl}` }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} accessibilityIgnoresInvertColors />
@@ -39,22 +37,7 @@ export function EventHero({
         <Text accessibilityRole="header" numberOfLines={3} style={[type.largeTitle, styles.name]}>
           {name}
         </Text>
-        {!!description && (
-          <View testID="event-description" style={styles.description}>
-            <Text
-              numberOfLines={expanded ? undefined : 3}
-              onTextLayout={(e) => setOverflows(e.nativeEvent.lines.length > 3)}
-              style={[type.subhead, styles.secondary]}
-            >
-              {description}
-            </Text>
-            {overflows && !expanded && (
-              <Pressable accessibilityRole="button" accessibilityLabel="Ver más" hitSlop={8} onPress={() => setExpanded(true)}>
-                <Text style={[type.subhead, styles.more]}>Ver más</Text>
-              </Pressable>
-            )}
-          </View>
-        )}
+        {!!description && <EventDescription text={description} onCover />}
         {caption ? <Text style={[type.subhead, styles.secondary]}>{caption}</Text> : null}
       </View>
     </View>
@@ -68,7 +51,5 @@ const styles = StyleSheet.create({
   scrim: { backgroundImage: SCRIM },
   text: { padding: spacing.lg, gap: spacing.xs },
   name: { color: "#fff" },
-  description: { gap: spacing.xs },
-  more: { color: "#fff", fontWeight: "600" },
   secondary: { color: "rgba(255,255,255,0.85)" },
 });
