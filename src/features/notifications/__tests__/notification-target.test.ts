@@ -67,3 +67,17 @@ describe("notificationTarget: moment", () => {
     });
   });
 });
+
+describe("notificationTarget: contest", () => {
+  it("the voting screen keeps its trip in the href and makes that roll active", () => {
+    expect(notificationTarget(response({ url: "/contest?trip=t1" }))).toEqual({ tripId: "t1", tab: false, href: "/contest?trip=t1" });
+  });
+
+  it("the finalists picker keeps its trip in the href and makes that roll active", () => {
+    expect(notificationTarget(response({ url: "/contest-picks?trip=t1" }))).toEqual({
+      tripId: "t1",
+      tab: false,
+      href: "/contest-picks?trip=t1",
+    });
+  });
+});

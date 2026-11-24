@@ -9,6 +9,8 @@ export type NotificationTarget = { tripId: string | null; tab: boolean; href: st
 
 const TAB_PATHS: Record<string, string> = { "/roll": "/roll", "/reveal": "/roll", "/friends": "/friends" };
 
+const KEEPS_TRIP = new Set(["/moment", "/contest", "/contest-picks"]);
+
 export function notificationTarget(response: Notifications.NotificationResponse | null): NotificationTarget | null {
   const url: unknown = response?.notification.request.content.data?.url;
   // Only paths inside the app: never another host.
@@ -20,8 +22,8 @@ export function notificationTarget(response: Notifications.NotificationResponse 
   const tab = TAB_PATHS[pathname];
   if (tab) return { tripId, tab: true, href: tab };
 
-  // The moment camera reads its roll from the href itself, so it keeps `trip`.
-  if (pathname !== "/moment") params.delete("trip");
+  // The moment camera and the contest screens read their roll from the href itself, so they keep `trip`.
+  if (!KEEPS_TRIP.has(pathname)) params.delete("trip");
   const rest = params.toString();
   return { tripId, tab: false, href: rest ? `${pathname}?${rest}` : pathname };
 }

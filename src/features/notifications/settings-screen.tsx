@@ -8,12 +8,13 @@ import { usePushPermission } from "./use-push-permission";
 const GROUPS: { title: string; footer: string; kinds: { kind: NotificationKind; label: string }[] }[] = [
   {
     title: "Rollos",
-    footer: "Se revela: cuando se pueden ver las fotos de un rollo tuyo. Fotos por borrarse: unos días antes de que se borren las fotos en máxima calidad.",
+    footer: "Se revela: cuando se pueden ver las fotos de un rollo tuyo. Fotos por borrarse: unos días antes de que se borren las fotos en máxima calidad. Concurso de fotos: cuando hay que elegir finalistas, votar o ya hay ganadora.",
     kinds: [
       { kind: "addedToTrip", label: "Te suman a un rollo" },
       { kind: "tripStarted", label: "Arranca un rollo" },
       { kind: "tripRevealed", label: "Se revela un rollo" },
       { kind: "originalsExpiring", label: "Fotos por borrarse" },
+      { kind: "contestResult", label: "Concurso de fotos" },
     ],
   },
   {
