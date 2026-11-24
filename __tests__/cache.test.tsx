@@ -108,25 +108,25 @@ describe("Shared trip data", () => {
   });
 
   it("if it fails with no cache it shows the error and Reintentar requests it again", async () => {
-    mocked.fetchTrip.mockRejectedValueOnce(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
-    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
     await renderRouter(routes, { initialUrl: "/roll" });
 
     // Several tabs are mounted at once, and each shows the shared error.
     expect((await screen.findAllByText("Sin conexión. Probá de nuevo cuando tengas señal."))[0]).toBeVisible();
+    mocked.fetchTrip.mockResolvedValue(detail());
     await fireEvent.press(screen.getAllByRole("button", { name: "Reintentar" })[0]!);
 
     expect(await screen.findByText("7 de 10")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
-    expect(mocked.fetchTrip).toHaveBeenCalledTimes(2);
   });
 
   it("Roll offers Reintentar when there is no data", async () => {
-    mocked.fetchTrip.mockRejectedValueOnce(new Error("Sin conexión"));
-    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión"));
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    await fireEvent.press((await screen.findAllByRole("button", { name: "Reintentar" }))[0]!);
+    const retry = (await screen.findAllByRole("button", { name: "Reintentar" }))[0]!;
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await fireEvent.press(retry);
 
     expect(await screen.findByText("HUB5FT")).toBeVisible();
   });

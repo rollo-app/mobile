@@ -5,7 +5,6 @@ import { MomentBanner } from "@/features/moments/moment-banner";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { usePendingCount } from "@/features/capture/use-pending-count";
 import { usePendingItems } from "@/features/capture/use-pending-items";
-import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useFeed } from "@/features/trips/use-feed";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
@@ -16,12 +15,11 @@ import { RevealRow } from "./roll-dates";
 import { RollEssentials } from "./roll-essentials";
 
 /** The Rollo tab before the reveal: contact sheet, today's quota, reveal date, uploads, invite and people. */
-export function RollBoard() {
-  const { trip } = useActiveTrip();
-  const { detail, error, refetch, isRefetching } = useTripDetail(trip?.id);
-  const pending = usePendingCount(trip?.id);
-  const { feed } = useFeed(trip?.id, { mode: "all" });
-  const pendingItems = usePendingItems(trip?.id);
+export function RollBoard({ tripId }: { tripId: string }) {
+  const { detail, error, refetch, isRefetching } = useTripDetail(tripId);
+  const pending = usePendingCount(tripId);
+  const { feed } = useFeed(tripId, { mode: "all" });
+  const pendingItems = usePendingItems(tripId);
   const phase = useRollPhase(detail);
   // Your queued photos are already in the roll, even if they haven't been uploaded yet.
   const total = (detail?.totalUploaded ?? 0) + pending;

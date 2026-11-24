@@ -11,7 +11,7 @@ import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
-import { getActiveTripId } from "@/storage/active-trip";
+import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
 import { markPushPrimerSeen } from "@/storage/push-primer";
 import { signInAs, tripSummary } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
@@ -96,6 +96,43 @@ describe("Home", () => {
     await waitFor(() => expect(screen).toHavePathname("/roll"));
     expect(await screen.findByText("7 de 10")).toBeVisible();
     expect(mocked.fetchTrip).toHaveBeenCalledWith(SUR);
+  });
+});
+
+describe("Roll by id", () => {
+  const TWO = () => signInAs({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(BARILOCHE, "Bariloche")], active: SUR });
+  beforeEach(() => {
+    mocked.fetchTrip.mockImplementation(async (id: string) =>
+      id === BARILOCHE ? detail({ trip: trip({ id: BARILOCHE, name: "Bariloche" }), today: { date: "2027-01-05", photosLeft: 4, videosLeft: 0 } }) : detail(),
+    );
+  });
+
+  it("opening /roll/<id> makes it the active roll", async () => {
+    await TWO();
+    await renderRouter(routes, { initialUrl: `/roll/${BARILOCHE}` });
+
+    expect(await screen.findByText("4 de 10")).toBeVisible();
+    await waitFor(async () => expect(await getActiveTripId()).toBe(BARILOCHE));
+  });
+
+  it("keeps showing its roll when the active roll changes", async () => {
+    await TWO();
+    await renderRouter(routes, { initialUrl: `/roll/${BARILOCHE}` });
+    expect(await screen.findByText("4 de 10")).toBeVisible();
+
+    await act(async () => {
+      await setActiveTripId(SUR);
+    });
+
+    expect(screen.getByText("4 de 10")).toBeVisible();
+    expect(screen.queryByText("7 de 10")).toBeNull();
+  });
+
+  it("an unknown roll goes back to the list", async () => {
+    await TWO();
+    await renderRouter(routes, { initialUrl: "/roll/99999999-9999-4999-8999-999999999999" });
+
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
   });
 });
 

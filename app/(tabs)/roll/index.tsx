@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
-import { RollScreen } from "@/features/roll/roll-screen";
+import { ActiveRollScreen } from "@/features/roll/active-roll-screen";
 
 export default function RollRoute() {
   const { view } = useLocalSearchParams<{ view?: string }>();
-  return <RollScreen view={view} />;
+  return <ActiveRollScreen view={view} />;
 }

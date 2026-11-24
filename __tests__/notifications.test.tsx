@@ -109,7 +109,7 @@ describe("push token", () => {
 
   it("without permission nothing is asked or sent", async () => {
     await renderRouter(testRoutes, { initialUrl: "/roll" });
-    await screen.findAllByLabelText(/cambiar de rollo$/);
+    await screen.findByLabelText(/en el rollo$/);
     await settle();
 
     expect(push.registerPushToken).not.toHaveBeenCalled();
@@ -235,12 +235,13 @@ describe("tapping a push", () => {
 
     await waitFor(async () => expect(await getActiveTripId()).toBe(OTRO));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await screen.findByLabelText(/en el rollo$/);
     await settle();
   });
 
   it("with the app open, a tap goes to its url (a photo leaves its roll active)", async () => {
     await renderRouter(testRoutes, { initialUrl: "/roll" });
-    await screen.findAllByLabelText(/cambiar de rollo$/);
+    await screen.findByLabelText(/en el rollo$/);
     const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)![0];
 
     await act(async () => listener(tapped(`/photo/m1?tripId=${OTRO}`)));
@@ -277,7 +278,7 @@ describe("tapping a push", () => {
           : [],
     }) as never);
     await renderRouter(routes, { initialUrl: "/roll" });
-    await screen.findAllByLabelText(/cambiar de rollo$/);
+    await screen.findByLabelText(/en el rollo$/);
     const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)![0];
 
     await act(async () => listener(tapped(`/photo/mo1?tripId=${OTRO}`)));

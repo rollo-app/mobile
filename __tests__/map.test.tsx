@@ -335,8 +335,8 @@ describe("Map", () => {
       await renderRouter(routes, { initialUrl: "/map" });
 
       await screen.findByTestId("feed-list");
-      // One selector for the Rollo tab (kept mounted) and one for this tab's header.
-      expect(screen.getAllByRole("button", { name: "Casamiento, cambiar de rollo" })).toHaveLength(2);
+      // Only this tab's header has the selector (the roll's own screen shows its name as a plain title).
+      expect(screen.getAllByRole("button", { name: "Casamiento, cambiar de rollo" })).toHaveLength(1);
       // Perfil (also mounted) has its own "Fotos | Mapa" control; any other "Mapa" would be this tab's header title.
       const profileMapa = within(screen.getByTestId("profile-showcase")).queryAllByText("Mapa");
       expect(screen.queryAllByText("Mapa").filter((t) => !profileMapa.includes(t))).toHaveLength(0);

@@ -14,6 +14,7 @@ import MapLayout from "../../app/(tabs)/map/_layout";
 import MapScreen from "../../app/(tabs)/map/index";
 import RollLayout from "../../app/(tabs)/roll/_layout";
 import RollScreen from "../../app/(tabs)/roll/index";
+import RollByIdScreen from "../../app/(tabs)/roll/[tripId]";
 import MeLayout from "../../app/(tabs)/me/_layout";
 import MeActivityScreen from "../../app/(tabs)/me/activity";
 import MeLikesScreen from "../../app/(tabs)/me/likes";
@@ -111,6 +112,7 @@ export const routes = {
   "(tabs)/_layout": TabsLayout,
   "(tabs)/roll/_layout": RollLayout,
   "(tabs)/roll/index": RollScreen,
+  "(tabs)/roll/[tripId]": RollByIdScreen,
   "(tabs)/map/_layout": MapLayout,
   "(tabs)/map/index": MapScreen,
   "(tabs)/camera": CameraTab,
