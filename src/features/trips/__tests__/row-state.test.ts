@@ -1,4 +1,4 @@
-import { tripRowState } from "../row-state";
+import { liveDayLabel, tripRowState } from "../row-state";
 import { tripSummary } from "@/test/account";
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -11,9 +11,16 @@ describe("tripRowState", () => {
     expect(tripRowState(trip, NOW, TZ)).toEqual({ badge: "live", subtitle: "Lo creaste vos", stateLabel: "en vivo" });
   });
 
-  it("is revealed once the server reveals it", () => {
-    const trip = tripSummary("t", "Bariloche", { startsAt: NOW - 9 * DAY, endsAt: NOW - 2 * DAY, revealAt: NOW - DAY, revealed: true, role: "member", isCreator: false });
-    expect(tripRowState(trip, NOW, TZ)).toEqual({ badge: "revealed", subtitle: "Entraste con un código", stateLabel: "revelado" });
+  it("is revealed once the server reveals it, saying when and how many photos", () => {
+    const revealAt = Date.parse("2026-11-02T10:00:00-03:00");
+    const trip = tripSummary("t", "Bariloche", { startsAt: NOW - 9 * DAY, endsAt: NOW - 2 * DAY, revealAt, revealed: true, totalUploaded: 318, role: "member", isCreator: false });
+    expect(tripRowState(trip, NOW, TZ)).toEqual({ badge: "revealed", subtitle: "Se reveló el 2 de nov · 318 fotos", stateLabel: "revelado" });
+  });
+
+  it("says '1 foto' for a single photo", () => {
+    const revealAt = Date.parse("2026-11-02T10:00:00-03:00");
+    const trip = tripSummary("t", "x", { revealAt, revealed: true, totalUploaded: 1 });
+    expect(tripRowState(trip, NOW, TZ).subtitle).toBe("Se reveló el 2 de nov · 1 foto");
   });
 
   it("has no badge and says when it starts before it begins", () => {
@@ -36,5 +43,17 @@ describe("tripRowState", () => {
   it("says the code was used for an admin who did not create the roll", () => {
     const trip = tripSummary("t", "Sur", { role: "admin", isCreator: false, startsAt: NOW - DAY, endsAt: NOW + DAY, revealAt: NOW + DAY });
     expect(tripRowState(trip, NOW, TZ).subtitle).toBe("Entraste con un código");
+  });
+});
+
+describe("liveDayLabel", () => {
+  it("day 1 of 1", () => {
+    const trip = tripSummary("t", "x", { startsAt: NOW - 3600_000, endsAt: NOW + 3600_000 });
+    expect(liveDayLabel(trip, NOW, TZ)).toBe("Día 1 de 1");
+  });
+
+  it("day 3 of 6 in the trip zone", () => {
+    const trip = tripSummary("t", "x", { startsAt: Date.parse("2026-10-20T09:00:00-03:00"), endsAt: Date.parse("2026-10-25T20:00:00-03:00") });
+    expect(liveDayLabel(trip, NOW, TZ)).toBe("Día 3 de 6");
   });
 });

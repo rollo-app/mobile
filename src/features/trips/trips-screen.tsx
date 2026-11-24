@@ -27,7 +27,7 @@ export function TripsScreen() {
 
   const { setArchived } = useArchiveTrip();
   const row = (t: TripSummary) => (
-    <ActionableRow key={t.id} trip={t} selected={t.id === active?.id} now={now} timeZone={timeZone} onPress={() => select(t.id)} setArchived={setArchived} />
+    <ActionableRow key={t.id} trip={t} now={now} timeZone={timeZone} onPress={() => select(t.id)} setArchived={setArchived} />
   );
 
   return (
@@ -60,7 +60,6 @@ function ActionableRow({
   ...rest
 }: {
   trip: TripSummary;
-  selected: boolean;
   now: number;
   timeZone: string;
   onPress: () => void;
