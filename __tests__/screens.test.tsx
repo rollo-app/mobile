@@ -18,6 +18,7 @@ import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
+import * as contestActions from "@/features/contest/actions";
 jest.mock("@/features/friends/actions");
 const mocked = jest.mocked(actions);
 const friends = jest.mocked(friendActions);
@@ -398,6 +399,19 @@ describe("Me", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Ver revelado" }));
 
     await waitFor(() => expect(screen).toHavePathname("/reveal"));
+  });
+
+  it("in development, 'Ver ganadora del concurso' opens the winner reveal of the active event, seen or not", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Casamiento", { revealed: true })] });
+    const base = detail();
+    mocked.fetchTrip.mockResolvedValue(detail({ trip: { ...base.trip, revealed: true, contest: { enabled: true, votingHours: 72 } } }));
+    // The reveal stays on screen while the contest loads (without a winner it would go on to the results).
+    jest.spyOn(contestActions, "fetchContest").mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver ganadora del concurso" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/contest-winner"));
   });
 });
 
