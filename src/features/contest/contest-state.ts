@@ -61,6 +61,19 @@ export function shuffledFinalists<T extends { mediaId: string }>(finalists: read
   return out;
 }
 
+/** "1 voto" / "12 votos". */
+export const votesLabel = (n: number) => `${n} ${n === 1 ? "voto" : "votos"}`;
+
+type Author = Schemas["ContestAuthor"];
+
+/** "@cami", or the name for an account without a username. */
+export const authorHandle = (author: Pick<Author, "username" | "name">) => (author.username ? `@${author.username}` : author.name);
+
+/** The winner reveal's line: "Ganó la foto de @cami", or "¡Ganó tu foto!" for its author. */
+export function winnerLine(author: Pick<Author, "userId" | "username" | "name">, myUserId: string | null | undefined): string {
+  return author.userId === myUserId ? "¡Ganó tu foto!" : `Ganó la foto de ${authorHandle(author)}`;
+}
+
 /** The contest card's line by status; null when there's nothing to show yet (before the voting) or no contest. */
 export function cardCopy(contest: Schemas["Contest"] | null | undefined, now: number): string | null {
   if (!contest) return null;
@@ -72,7 +85,7 @@ export function cardCopy(contest: Schemas["Contest"] | null | undefined, now: nu
     case "tied":
       return "Concurso de fotos · Hay un empate";
     case "closed":
-      return contest.winner ? `Ganó la foto de ${contest.winner.author.username ? `@${contest.winner.author.username}` : contest.winner.author.name}` : null;
+      return contest.winner ? `Ganó la foto de ${authorHandle(contest.winner.author)}` : null;
     case "cancelled":
       return "El concurso se canceló.";
     default:

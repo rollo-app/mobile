@@ -1,7 +1,10 @@
+import { Skia } from "@shopify/react-native-skia";
 import { render } from "@testing-library/react-native";
 import type { SharedValue } from "react-native-reanimated";
 import { DevelopImage } from "../develop-image";
 
+// jest.setup mocks it for screen tests; here it's the real component over a mocked Skia.
+jest.unmock("../develop-image");
 jest.mock("@shopify/react-native-skia", () => {
   const { View } = require("react-native");
   const passthrough = ({ children }: { children?: unknown }) => children ?? null;
@@ -32,9 +35,9 @@ jest.mock("expo-image", () => {
   return { Image: (props: object) => <View testID="plain-image" {...props} /> };
 });
 
-function Harness({ thumbBytes, uri }: { thumbBytes: ArrayBuffer | null; uri: string | null }) {
+function Harness({ thumbBytes, uri, headers }: { thumbBytes: ArrayBuffer | null; uri: string | null; headers?: Record<string, string> }) {
   const progress = { value: 0 } as SharedValue<number>;
-  return <DevelopImage thumbBytes={thumbBytes} uri={uri} progress={progress} size={{ width: 100, height: 100 }} />;
+  return <DevelopImage thumbBytes={thumbBytes} uri={uri} headers={headers} progress={progress} size={{ width: 100, height: 100 }} />;
 }
 
 describe("DevelopImage", () => {
@@ -48,5 +51,17 @@ describe("DevelopImage", () => {
     const { getByTestId, queryByTestId } = await render(<Harness thumbBytes={null} uri="https://x/y.jpg" />);
     expect(getByTestId("plain-image")).toBeTruthy();
     expect(queryByTestId("develop-canvas")).toBeNull();
+  });
+
+  it("falls back to the plain image when the shader doesn't compile", async () => {
+    jest.mocked(Skia.RuntimeEffect.Make).mockReturnValueOnce(null);
+    const { getByTestId, queryByTestId } = await render(<Harness thumbBytes={new ArrayBuffer(8)} uri="https://x/y.jpg" />);
+    expect(getByTestId("plain-image")).toBeTruthy();
+    expect(queryByTestId("develop-canvas")).toBeNull();
+  });
+
+  it("sends the headers with the plain image (media needs the session's Bearer)", async () => {
+    const { getByTestId } = await render(<Harness thumbBytes={null} uri="https://x/y.jpg" headers={{ Authorization: "Bearer t" }} />);
+    expect(getByTestId("plain-image").props.source).toEqual({ uri: "https://x/y.jpg", headers: { Authorization: "Bearer t" } });
   });
 });

@@ -7,14 +7,17 @@ import { Avatar } from "@/features/profile/avatar";
 import { colors, spacing, type } from "@/ui/theme";
 import { cardCopy } from "./contest-state";
 import { useContest } from "./use-contest";
+import { useWinnerReveal } from "./use-winner-reveal";
 
 /**
  * "Concurso de fotos" card for the top of the Galería and the Rollo segment: the countdown while voting, the winner once
- * closed. Nothing for events without a contest or before the voting opens. Tapping opens `/contest`.
+ * closed. Nothing for events without a contest or before the voting opens. Tapping opens `/contest`. The first time it
+ * sees the contest closed it plays the winner reveal (`useWinnerReveal`).
  */
 export function ContestCard({ tripId, enabled, style }: { tripId: string; enabled: boolean; style?: StyleProp<ViewStyle> }) {
   const router = useRouter();
   const { contest } = useContest(tripId, enabled);
+  useWinnerReveal(enabled ? tripId : undefined, contest);
   const token = useMediaToken(enabled ? tripId : undefined);
   const copy = enabled ? cardCopy(contest, Date.now()) : null;
   if (!copy) return null;

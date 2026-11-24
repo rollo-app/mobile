@@ -28,6 +28,7 @@ import CaptureScreen from "../../app/capture";
 import CommentsRoute from "../../app/comments/[mediaId]";
 import ContestRoute from "../../app/contest";
 import ContestPicksRoute from "../../app/contest-picks";
+import ContestWinnerRoute from "../../app/contest-winner";
 import CreateScreen from "../../app/create";
 import EventGroupsRoute from "../../app/event-groups";
 import EventQrRoute from "../../app/event-qr";
@@ -90,6 +91,7 @@ export const routes = {
   "event-groups": EventGroupsRoute,
   contest: ContestRoute,
   "contest-picks": ContestPicksRoute,
+  "contest-winner": ContestWinnerRoute,
   "my-groups": MyGroupsRoute,
   "event-qr": EventQrRoute,
   "roll-settings": RollSettingsRoute,

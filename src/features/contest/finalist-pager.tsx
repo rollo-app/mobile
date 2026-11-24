@@ -31,11 +31,16 @@ export type FinalistPagerProps = {
   onIndexChange?: (index: number) => void;
   /** A refused vote's message, shown above the button on the page you're looking at. */
   error?: string | null;
+  /** Pushes the progress (and the place) down, for a pager shown where the status bar overlaps it (a full-screen modal). */
+  topInset?: number;
 };
 
 // Soft fades so the white text reads on any photo: a short one on top (progress), a longer one behind the author and button.
 const TOP_SCRIM = "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 100%)";
 const BOTTOM_SCRIM = "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%)";
+
+const TOP_SCRIM_HEIGHT = 110;
+const PLACE_TOP = 72;
 
 const votesLabel = (n: number) => `${n} ${n === 1 ? "voto" : "votos"}`;
 const keyExtractor = (item: PagerItem) => item.finalist.mediaId;
@@ -54,7 +59,7 @@ function useNow(ms: number): number {
  * Full-screen finalists, one per page, swiping sideways. A horizontal paged FlashList (not a ScrollView): a contest has
  * no cap on finalists and each page holds a full-size photo, so only the pages around the visible one stay mounted.
  */
-export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, myUserId, onVote, votingOpen = true, closesAt = null, onIndexChange, error = null }: FinalistPagerProps) {
+export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, myUserId, onVote, votingOpen = true, closesAt = null, onIndexChange, error = null, topInset = 0 }: FinalistPagerProps) {
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
   const [box, setBox] = useState({ width: window.width, height: window.height });
@@ -94,10 +99,11 @@ export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, my
         votingOpen={votingOpen}
         countdown={countdown}
         bottomInset={insets.bottom}
+        topInset={topInset}
         onVote={onVote}
       />
     ),
-    [mode, token, box.width, box.height, myUserId, myVote, votingOpen, countdown, insets.bottom, onVote, error, index, items],
+    [mode, token, box.width, box.height, myUserId, myVote, votingOpen, countdown, insets.bottom, topInset, onVote, error, index, items],
   );
   const extra = useMemo(() => ({ myVote, votingOpen, countdown, token, width: box.width, height: box.height, error, index }), [myVote, votingOpen, countdown, token, box.width, box.height, error, index]);
 
@@ -115,8 +121,8 @@ export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, my
         extraData={extra}
         onMomentumScrollEnd={onMomentumScrollEnd}
       />
-      <View pointerEvents="none" style={styles.topScrim} />
-      <View pointerEvents="none" style={[styles.progress, { top: spacing.sm }]}>
+      <View pointerEvents="none" style={[styles.topScrim, { height: TOP_SCRIM_HEIGHT + topInset }]} />
+      <View testID="pager-progress" pointerEvents="none" style={[styles.progress, { top: topInset + spacing.sm }]}>
         <PagerProgress count={items.length} index={index} showTitle={mode === "vote"} />
       </View>
     </View>
@@ -136,10 +142,11 @@ type PageProps = {
   votingOpen: boolean;
   countdown: string;
   bottomInset: number;
+  topInset: number;
   onVote?: (mediaId: string | null) => void;
 };
 
-const Page = memo(function Page({ finalist, place, error, mode, token, width, height, mine, voted, votingOpen, countdown, bottomInset, onVote }: PageProps) {
+const Page = memo(function Page({ finalist, place, error, mode, token, width, height, mine, voted, votingOpen, countdown, bottomInset, topInset, onVote }: PageProps) {
   const source = useMemo(() => mediaSource(finalist.displayPath, token), [finalist.displayPath, token]);
   const { author } = finalist;
   const label = voted ? "Tu voto ✓" : votingOpen ? "Votar esta" : "Cerrando la votación…";
@@ -156,7 +163,7 @@ const Page = memo(function Page({ finalist, place, error, mode, token, width, he
         transition={150}
         style={StyleSheet.absoluteFill}
       />
-      {mode === "results" && !!place && <Text style={[type.title, styles.place]}>{`${place}° puesto`}</Text>}
+      {mode === "results" && !!place && <Text style={[type.title, styles.place, { top: PLACE_TOP + topInset }]}>{`${place}° puesto`}</Text>}
       <View style={[styles.bottom, styles.bottomScrim, { paddingBottom: bottomInset + spacing.md }]}>
         <View style={styles.author}>
           <Avatar id={author.userId} name={author.name} avatarUrl={author.avatarUrl} size={40} />
@@ -192,10 +199,10 @@ const Page = memo(function Page({ finalist, place, error, mode, token, width, he
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000" },
   progress: { position: "absolute", left: spacing.md, right: spacing.md },
-  place: { position: "absolute", top: 72, left: spacing.md, color: colors.onTint, textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 6 },
+  place: { position: "absolute", left: spacing.md, color: colors.onTint, textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 6 },
   bottom: { position: "absolute", left: 0, right: 0, bottom: 0, gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.xl },
   bottomScrim: { backgroundImage: BOTTOM_SCRIM },
-  topScrim: { position: "absolute", top: 0, left: 0, right: 0, height: 110, backgroundImage: TOP_SCRIM },
+  topScrim: { position: "absolute", top: 0, left: 0, right: 0, backgroundImage: TOP_SCRIM },
   error: { color: "#FF9F9A", fontWeight: "600" },
   author: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   onPhoto: { color: colors.onTint, flexShrink: 1 },

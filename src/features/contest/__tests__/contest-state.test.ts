@@ -1,5 +1,5 @@
 import type { Schemas } from "@/api/client";
-import { canPick, cardCopy, countdownLabel, pickCountLabel, pickHint, progressStyle, SUGGESTED_FINALISTS, picksRowVisible, shuffledFinalists } from "../contest-state";
+import { canPick, cardCopy, countdownLabel, pickCountLabel, pickHint, progressStyle, SUGGESTED_FINALISTS, picksRowVisible, shuffledFinalists, votesLabel, winnerLine } from "../contest-state";
 
 describe("pickHint", () => {
   it("only nudges past the suggested count", () => {
@@ -109,5 +109,29 @@ describe("progressStyle", () => {
     expect(progressStyle(1)).toBe("segments");
     expect(progressStyle(20)).toBe("segments");
     expect(progressStyle(21)).toBe("bar");
+  });
+});
+
+describe("winnerLine", () => {
+  const author = (username: string | null) => ({ userId: "u2", name: "Cami", username, avatarUrl: null });
+
+  it("names the winner by @username", () => {
+    expect(winnerLine(author("cami"), "u1")).toBe("Ganó la foto de @cami");
+  });
+
+  it("falls back to the name without a username", () => {
+    expect(winnerLine(author(null), "u1")).toBe("Ganó la foto de Cami");
+  });
+
+  it("tells the author it's theirs", () => {
+    expect(winnerLine(author("cami"), "u2")).toBe("¡Ganó tu foto!");
+  });
+});
+
+describe("votesLabel", () => {
+  it("singular and plural", () => {
+    expect(votesLabel(0)).toBe("0 votos");
+    expect(votesLabel(1)).toBe("1 voto");
+    expect(votesLabel(12)).toBe("12 votos");
   });
 });

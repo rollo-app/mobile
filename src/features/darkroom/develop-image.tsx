@@ -31,6 +31,7 @@ const FALLBACK_BASE = [0.25, 0.22, 0.2];
 export function DevelopImage({
   thumbBytes,
   uri,
+  headers,
   progress,
   size,
   style,
@@ -40,6 +41,8 @@ export function DevelopImage({
   thumbBytes: ArrayBuffer | null;
   /** The photo to show as is when the effect can't be drawn. */
   uri: string | null;
+  /** Sent with `uri` (the session's Bearer: media needs it). */
+  headers?: Record<string, string>;
   progress: SharedValue<number>;
   size: { width: number; height: number };
   style?: ViewStyle;
@@ -52,7 +55,7 @@ export function DevelopImage({
   const box: ViewStyle = { width: size.width, height: size.height, overflow: "hidden", ...style };
 
   if (!image || !effect) {
-    return uri ? <Image source={{ uri }} style={box as ImageStyle} contentFit="cover" /> : null;
+    return uri ? <Image source={{ uri, headers }} style={box as ImageStyle} contentFit="cover" /> : null;
   }
   return (
     <Canvas style={box}>

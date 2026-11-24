@@ -31,7 +31,7 @@ import { DEVELOP_SKSL, GRAIN_SKSL } from "@/features/darkroom/darkroom-shaders";
 import { staggerDelay } from "./stagger";
 import { playShutter, prepareShutter, releaseShutter } from "@/features/darkroom/shutter-sound";
 import { REVEAL_TIMELINE } from "./timeline";
-import type { ThumbBytes } from "./use-thumb-bytes";
+import type { ThumbBytes } from "@/features/darkroom/use-thumb-bytes";
 
 const { developAt: DEVELOP_AT, hitAt: HIT_AT, titleAt: TITLE_AT, cellMs: CELL_MS, totalMs: TOTAL_MS, outroMs: OUTRO_MS, reduced: REDUCED } = REVEAL_TIMELINE;
 const DEVELOP_MS = HIT_AT - DEVELOP_AT;

@@ -176,6 +176,11 @@ function RootStack() {
           <Stack.Screen name="intro" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
           {/* The lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          {/* The photo contest's winner, developed in the darkroom: once per event, over the contest or the gallery. */}
+          <Stack.Screen
+            name="contest-winner"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.reveal } }}
+          />
           <Stack.Screen
             name="reveal"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.reveal } }}

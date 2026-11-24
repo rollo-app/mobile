@@ -12,7 +12,7 @@ import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { DarkroomIntro } from "./darkroom-intro";
 import { REVEAL_MAX_CELLS, sampleEvenly } from "./sample-evenly";
 import { REVEAL_TIMELINE } from "./timeline";
-import { useThumbBytes } from "./use-thumb-bytes";
+import { useThumbBytes } from "@/features/darkroom/use-thumb-bytes";
 
 const NO_CELLS: RevealedPhoto[] = [];
 

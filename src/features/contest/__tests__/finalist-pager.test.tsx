@@ -1,3 +1,4 @@
+import { StyleSheet } from "react-native";
 import { act, fireEvent, render as rtlRender, screen } from "@testing-library/react-native";
 import { useState } from "react";
 import type { Schemas } from "@/api/client";
@@ -129,6 +130,14 @@ describe("FinalistPager results", () => {
     expect(screen.getByText("2° puesto")).toBeTruthy();
     expect(screen.getByText("1 voto")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Votar esta" })).toBeNull();
+  });
+
+  it("topInset pushes the progress and the place below the status bar", async () => {
+    const items: PagerItem[] = [{ finalist: finalist("m2", "u2", "Beto", "beto", 5), place: 1 }];
+    await render(<FinalistPager items={items} token="tok" mode="results" myUserId="u1" topInset={47} />);
+    const progress = screen.getByTestId("pager-progress");
+    expect(StyleSheet.flatten(progress.props.style).top).toBe(47 + 8);
+    expect(StyleSheet.flatten(screen.getByText("1° puesto").props.style).top).toBe(47 + 72);
   });
 });
 

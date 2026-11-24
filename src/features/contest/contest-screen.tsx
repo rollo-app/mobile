@@ -13,12 +13,14 @@ import { shuffledFinalists } from "./contest-state";
 import { rankFinalists } from "./ranking";
 import { ResultsList } from "./results-list";
 import { useContest } from "./use-contest";
+import { useWinnerReveal } from "./use-winner-reveal";
 import { usePickWinner } from "./use-pick-winner";
 import { useVote } from "./use-vote";
 
 /**
  * The photo contest: the finalists in an order that's stable per viewer, vote one by one in the full-screen pager (`voting`/`closing`). While `tied` the
- * organizers pick the winner; once `closed` the winner is on top and every finalist shows its votes.
+ * organizers pick the winner; once `closed` the winner is on top and every finalist shows its votes (the first time,
+ * `useWinnerReveal` plays the winner reveal over it).
  */
 export function ContestScreen({ tripId }: { tripId: string }) {
   const insets = useSafeAreaInsets();
@@ -26,6 +28,7 @@ export function ContestScreen({ tripId }: { tripId: string }) {
   const { me } = useMe();
   const { contest, error: contestError, refetch: refetchContest } = useContest(tripId, !!detail?.trip.contest?.enabled);
   const token = useMediaToken(tripId);
+  useWinnerReveal(tripId, contest);
   const { vote, error: voteError, clearError } = useVote(tripId);
   const { pick, picking, error: pickError } = usePickWinner(tripId);
   // Index (in rank order) of the result opened full screen.
@@ -118,8 +121,8 @@ export function ContestScreen({ tripId }: { tripId: string }) {
       <Modal visible={openIndex !== null} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setOpenIndex(null)}>
         {openIndex !== null && (
           <View style={styles.pager}>
-            <FinalistPager items={resultItems} initialIndex={openIndex} token={token} mode="results" myUserId={userId} />
-            <View style={[styles.close, { top: insets.top + spacing.sm }]}>
+            <FinalistPager items={resultItems} initialIndex={openIndex} token={token} mode="results" myUserId={userId} topInset={insets.top} />
+            <View style={[styles.close, { top: insets.top + spacing.lg }]}>
               <Button label="Cerrar" variant="secondary" size="small" onPress={() => setOpenIndex(null)} />
             </View>
           </View>

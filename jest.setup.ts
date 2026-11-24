@@ -517,6 +517,14 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
       h(View, null, h(Text, null, "Se reveló"), h(Text, null, title), h(Text, null, date)),
   };
 });
+// The developing photo (Skia) of the contest's winner reveal is a marker View; its own test unmocks it.
+jest.mock("@/features/darkroom/develop-image", () => {
+  const { createElement: h } = require("react");
+  const { View } = require("react-native");
+  return { DevelopImage: () => h(View, { testID: "develop-image" }), DevelopLayer: () => null, decodeThumb: () => null };
+});
+// The shutter click (expo-audio, native) does nothing in screen tests; its own test unmocks it.
+jest.mock("@/features/darkroom/shutter-sound", () => ({ prepareShutter: jest.fn(async () => {}), playShutter: jest.fn(), releaseShutter: jest.fn() }));
 // The QR (Skia) is a plain View in tests.
 jest.mock("@/features/events/qr-canvas", () => {
   const { View } = require("react-native");
