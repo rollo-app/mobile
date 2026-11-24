@@ -700,6 +700,17 @@ describe("Gallery: loading page by page", () => {
     expect(screen.getByRole("button", { name: "Juani" }).props.accessibilityState).toMatchObject({ selected: true });
   });
 
+  it("the summary shows the server total while pages are pending and does not change when the next one loads", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), totalUploaded: 4 });
+    serve();
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    expect(screen.getByText(/^4 fotos · /)).toBeVisible();
+    await endReached();
+    await waitFor(() => expect(cells()).toHaveLength(4));
+    expect(screen.getByText(/^4 fotos · /)).toBeVisible();
+  });
+
   it("opens the viewer on a photo from a page loaded later", async () => {
     serve();
     await open();

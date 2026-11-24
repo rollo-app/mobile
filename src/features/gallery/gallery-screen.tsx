@@ -104,7 +104,7 @@ export function GalleryScreen({
   const timeZone = detail?.trip.timezone ?? DEVICE_ZONE;
   const groupsKey = groupId;
   const chapterContext = useMemo<ChapterContext>(() => {
-    if (!detail) return { kind: "trip", startDay: shown[0]?.day ?? "" };
+    if (!detail) return { kind: "trip", startDay: photos[0]?.day ?? "" };
     const { trip } = detail;
     if (!isEvent(trip)) return { kind: "trip", startDay: localDay(trip.startsAt, trip.timezone) };
     return {
@@ -114,19 +114,25 @@ export function GalleryScreen({
       timeZone: trip.timezone,
       multiDay: localDay(trip.startsAt, trip.timezone) !== localDay(trip.endsAt, trip.timezone),
     };
-  }, [detail, sendable, groupsKey, shown]);
+  }, [detail, sendable, groupsKey, photos]);
   const chapters = useMemo(() => buildChapters(shown, chapterContext), [shown, chapterContext]);
   const items = useMemo(() => diaryItems(chapters, COLUMNS), [chapters]);
   const people = useMemo(() => (detail && me ? peopleOrder(detail.members, me.id, authors) : []), [detail, me, authors]);
-  const summary = detail
-    ? rollSummary({
-        media: photos,
-        people: memberTotal(detail),
-        startsAt: detail.trip.startsAt,
-        endsAt: detail.trip.endsAt,
-        timeZone: detail.trip.timezone,
-      })
-    : null;
+  // Until every page is in, the photo count is the server's total, so the line doesn't grow while loading.
+  const summary = useMemo(
+    () =>
+      detail
+        ? rollSummary({
+            media: photos,
+            mediaCount: complete ? undefined : detail.totalUploaded,
+            people: memberTotal(detail),
+            startsAt: detail.trip.startsAt,
+            endsAt: detail.trip.endsAt,
+            timeZone: detail.trip.timezone,
+          })
+        : null,
+    [detail, photos, complete],
+  );
   const author = authors.find((a) => a.id === authorId);
   const group = groups.find((g) => g.id === groupId);
 
