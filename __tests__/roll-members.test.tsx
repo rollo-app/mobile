@@ -57,6 +57,8 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "trip",
     coverUrl: null,
     groups: [],
@@ -233,10 +235,11 @@ describe("Members list: badges and actions", () => {
     expect(alert).toHaveBeenCalledWith("¿Sacar a Fede del rollo?", expect.any(String), expect.any(Array));
   });
 
-  it("tapping a member row still opens their profile", async () => {
+  it("tapping a member row opens their card", async () => {
     await openMembers(detail(adminCami));
     await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
-    await waitFor(() => expect(screen).toHavePathname("/user/u5"));
+    await waitFor(() => expect(screen).toHavePathname("/member"));
+    expect(screen).toHaveSearchParams({ tripId: SUR, memberId: "m5" });
   });
 
   it("shows the failure under the members section and keeps the list", async () => {

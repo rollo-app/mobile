@@ -26,6 +26,9 @@ import BlockedScreen from "../../app/blocked";
 import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
 import CommentsRoute from "../../app/comments/[mediaId]";
+import ContestRoute from "../../app/contest";
+import ContestPicksRoute from "../../app/contest-picks";
+import ContestWinnerRoute from "../../app/contest-winner";
 import CreateScreen from "../../app/create";
 import EventGroupsRoute from "../../app/event-groups";
 import EventQrRoute from "../../app/event-qr";
@@ -47,6 +50,7 @@ import PushPrimerRoute from "../../app/push-primer";
 import PresentationScreen from "../../app/presentation";
 import RevealRoute from "../../app/reveal";
 import IntroRoute from "../../app/intro";
+import MemberRoute from "../../app/member";
 import RollMembersRoute from "../../app/roll-members";
 import RollSettingsRoute from "../../app/roll-settings";
 import RollStartedScreen from "../../app/roll-started";
@@ -84,8 +88,12 @@ export const routes = {
   presentation: PresentationScreen,
   reveal: RevealRoute,
   intro: IntroRoute,
+  member: MemberRoute,
   "roll-members": RollMembersRoute,
   "event-groups": EventGroupsRoute,
+  contest: ContestRoute,
+  "contest-picks": ContestPicksRoute,
+  "contest-winner": ContestWinnerRoute,
   "my-groups": MyGroupsRoute,
   "event-qr": EventQrRoute,
   "roll-settings": RollSettingsRoute,

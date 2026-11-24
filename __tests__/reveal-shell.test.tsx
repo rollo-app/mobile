@@ -50,6 +50,8 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "trip",
     coverUrl: null,
     groups: [],
@@ -381,7 +383,7 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
   });
 
-  it("tapping a member in 'Rollo' opens their profile", async () => {
+  it("tapping a member in 'Rollo' opens their card, and 'Ver perfil' their profile", async () => {
     const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
       user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null, badge: null },
       isFriend: false,
@@ -401,6 +403,8 @@ describe("revealed roll: Galería | Rollo", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
     await fireEvent.press(await screen.findByRole("button", { name: "Fede" }));
+    await waitFor(() => expect(screen).toHavePathname("/member"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver perfil" }));
 
     await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
     expect(await screen.findByText("Este perfil es privado")).toBeVisible();

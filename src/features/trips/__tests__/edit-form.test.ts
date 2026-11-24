@@ -15,6 +15,9 @@ const base: TripSettings = {
   momentMode: "photo",
   momentWindowStart: 540,
   momentWindowEnd: 1380,
+  description: "",
+  contestEnabled: false,
+  contestVotingDays: 3,
 };
 
 const trip = (over: Partial<TripDetail["trip"]> = {}) =>
@@ -31,7 +34,7 @@ describe("settingsOf", () => {
 });
 
 describe("editableFields", () => {
-  const all = (v: boolean) => ({ start: v, end: v, reveal: v, limitMode: v, limit: v, moment: v });
+  const all = (v: boolean) => ({ start: v, end: v, reveal: v, limitMode: v, limit: v, moment: v, description: true, contest: v });
 
   it("allows everything before the rollo starts", () => {
     expect(editableFields(trip(), START - 1)).toEqual(all(true));
@@ -41,9 +44,24 @@ describe("editableFields", () => {
     expect(editableFields(trip(), START + 1)).toEqual({ ...all(true), start: false, limitMode: false });
   });
 
-  it("locks everything once it ended or was revealed", () => {
-    expect(editableFields(trip(), END)).toEqual(all(false));
+  it("keeps the description editable always and the contest until the reveal", () => {
+    expect(editableFields(trip(), END)).toEqual({ ...all(false), contest: true });
     expect(editableFields(trip({ revealed: true }), END + DAY)).toEqual(all(false));
+  });
+});
+
+describe("settingsOf contest and description", () => {
+  it("reads the description and turns the voting hours into days", () => {
+    const s = settingsOf(trip({ description: "Hola", contest: { enabled: true, votingHours: 120 } } as never));
+    expect(s).toMatchObject({ description: "Hola", contestEnabled: true, contestVotingDays: 5 });
+  });
+
+  it("defaults to an empty description and the contest off (3 days)", () => {
+    expect(settingsOf(trip({ description: null, contest: null } as never))).toMatchObject({
+      description: "",
+      contestEnabled: false,
+      contestVotingDays: 3,
+    });
   });
 });
 
@@ -109,6 +127,23 @@ describe("changedFields", () => {
 
   it("never includes featuringDisabled", () => {
     expect("featuringDisabled" in changedFields(base, { ...base, dailyPhotoLimit: 12 }, "end")).toBe(false);
+  });
+});
+
+describe("changedFields description and contest", () => {
+  it("sends the trimmed description, and an empty one to clear it", () => {
+    expect(changedFields(base, { ...base, description: "  Hola  " }, "end")).toEqual({ description: "Hola" });
+    expect(changedFields({ ...base, description: "Hola" }, { ...base, description: "  " }, "end")).toEqual({ description: "" });
+  });
+
+  it("sends the contest switch and the voting days as hours", () => {
+    expect(changedFields(base, { ...base, contestEnabled: true, contestVotingDays: 5 }, "end")).toEqual({
+      contestEnabled: true,
+      contestVotingHours: 120,
+    });
+    expect(changedFields({ ...base, contestEnabled: true }, { ...base, contestEnabled: true, contestVotingDays: 7 }, "end")).toEqual({
+      contestVotingHours: 168,
+    });
   });
 });
 

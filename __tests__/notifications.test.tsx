@@ -54,6 +54,8 @@ const detail = (id = SUR, name = "Viaje al sur"): actions.TripDetail => ({
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "trip",
     coverUrl: null,
     groups: [],
@@ -315,7 +317,7 @@ describe("tapping a push", () => {
 });
 
 describe("Ajustes: Notificaciones", () => {
-  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true, momentPosted: true, originalsExpiring: true };
+  const ALL_ON = { addedToTrip: true, newFriend: true, tripStarted: true, tripRevealed: true, photoFeatured: true, photoLiked: true, photoCommented: true, friendRequest: true, dailyMoment: true, momentPosted: true, originalsExpiring: true, contestResult: true };
   const LABELS = ["Te suman a un rollo", "Nuevos amigos", "Arranca un rollo", "Se revela un rollo", "Destacan tu foto", "Les gusta tu foto", "Comentan tu foto", "Solicitudes de amistad", "Momento del día", "Momentos del grupo", "Fotos por borrarse"];
 
   beforeEach(() => {
@@ -345,7 +347,7 @@ describe("Ajustes: Notificaciones", () => {
     expect(screen.getByRole("switch", { name: "Te suman a un rollo" }).props.value).toBe(true);
     for (const title of ["Rollos", "Amigos", "Tus fotos"]) expect(screen.getByText(title)).toBeVisible();
     expect(screen.getAllByText("Momento del día").length).toBeGreaterThan(1); // group title + switch label
-    expect(screen.getByText("Se revela: cuando se pueden ver las fotos de un rollo tuyo. Fotos por borrarse: unos días antes de que se borren las fotos en máxima calidad.")).toBeVisible();
+    expect(screen.getByText("Se revela: cuando se pueden ver las fotos de un rollo tuyo. Fotos por borrarse: unos días antes de que se borren las fotos en máxima calidad. Concurso de fotos: cuando hay finalistas, empates o ganadora.")).toBeVisible();
     expect(screen.getByText("Cuando alguien acepta tu link de amistad o te manda una solicitud.")).toBeVisible();
     expect(screen.getByText("Cuando alguien destaca, le da me gusta o comenta una foto tuya (o una que comentaste).")).toBeVisible();
     expect(screen.getByText("Un aviso al día, a una hora al azar, para sacar tu foto; y otro cuando alguien del rollo sube la suya.")).toBeVisible();

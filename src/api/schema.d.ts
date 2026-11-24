@@ -443,7 +443,7 @@ export interface paths {
         };
         /**
          * Preview an event by its invite code
-         * @description No token. The name, cover and groups the guest picks from before joining (`POST /trips/join`), and whether the event was already revealed. 404 'Código inválido' if the code does not exist or belongs to a regular trip. Limited per IP (429, 300/min: a venue shares one IP; more than 20 misses (404) a minute block the IP for 60 s, valid codes included). CORS: open to the website (`https://rolloproject.com`, `https://www.rolloproject.com`), GET only.
+         * @description No token. The name, description, cover and groups the guest picks from before joining (`POST /trips/join`), and whether the event was already revealed. 404 'Código inválido' if the code does not exist or belongs to a regular trip. Limited per IP (429, 300/min: a venue shares one IP; more than 20 misses (404) a minute block the IP for 60 s, valid codes included). CORS: open to the website (`https://rolloproject.com`, `https://www.rolloproject.com`), GET only.
          */
         get: {
             parameters: {
@@ -2843,7 +2843,7 @@ export interface paths {
         head?: never;
         /**
          * Edit the trip (admin)
-         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything. An event stays `photoLimitMode: total` with `momentMode: off` (409 otherwise).
+         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` and `description` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything. An event stays `photoLimitMode: total` with `momentMode: off` (409 otherwise).
          */
         patch: {
             parameters: {
@@ -4024,6 +4024,646 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/contest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Photo contest status
+         * @description Status (`pending` before the end, `selecting` until the reveal, `voting`, `closing` (voting over, the cron has not closed it), `tied`, `closed`, `cancelled`), `closesAt`, finalists, your vote and the winner. A guest gets no finalists before the reveal. `votes` is null unless `closed`. Finalists that are deleted, archived, from someone who left, or blocked/reported by you are left out. 404 if the event has no contest.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Contest */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Contest"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/contest/finalists/{mediaId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark a photo as finalist (organizer)
+         * @description Only between the end of the event and the reveal (409 otherwise). The photo must be an uploaded, not deleted photo of the event that is not a moment selfie (400). Idempotent.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Marked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Unmark a finalist (organizer)
+         * @description Same window as marking it (409 otherwise). Idempotent.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    mediaId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Unmarked */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/contest/vote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Vote for a finalist
+         * @description Only while `voting` (409 "La votación no está abierta." otherwise). One vote per person: voting again changes it. 404 if the photo is not a finalist that counts for you (also with a block with its author or a report); 400 for your own photo.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ContestVoteBody"];
+                };
+            };
+            responses: {
+                /** @description Voted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Remove your vote
+         * @description Idempotent: 204 also if you had not voted. Outside the voting window it changes nothing.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Not voting anymore */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/contest/finalists/{mediaId}/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a finalist's file
+         * @description Any active member, from the voting until after the contest closes (organizers also while choosing the finalists), even if they do not share a group with the author. Only for a finalist that counts for you (404 otherwise, also with a block or a report). `display` is the 2048px version (the original for uploads that have none). Streamed from R2 with the same Bearer token; supports `Range`.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                    mediaId: string;
+                    variant: "thumb" | "display";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description File */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/jpeg": string;
+                    };
+                };
+                /** @description Part of the file, for a single `Range: bytes=...` request */
+                206: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The requested range starts past the end of the file */
+                416: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Daily limit or rate limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{tripId}/contest/winner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Break a tie: pick the winner (organizer)
+         * @description Only while `tied` (409 otherwise, also once closed) and only one of `tiedMediaIds` (400). Closes the contest and announces the winner by push, like the cron does at the close.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tripId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ContestWinnerBody"];
+                };
+            };
+            responses: {
+                /** @description Closed with that winner */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid data */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid session token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description The rollo was deleted */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Profile incomplete: set a name and a username first */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -5819,6 +6459,8 @@ export interface components {
             name: string;
             /** @description Path of the cover (prefix the API base URL), null if none */
             coverUrl: string | null;
+            /** @description Cover text set by the organizers; null if none */
+            description: string | null;
             revealed: boolean;
             /** @description People already in the event: active members (not left, not removed), organizers included — the accounts that will be able to download the photos after the reveal. null below 5, so a near-empty event does not show a tiny number to strangers */
             memberCount: number | null;
@@ -6004,6 +6646,8 @@ export interface components {
             momentPosted: boolean;
             /** @description The full-quality originals of a rollo you are in will be deleted in 5 days (the display versions stay) */
             originalsExpiring: boolean;
+            /** @description Photo contest of an event: the organizers can pick the finalists, a reminder, a tie or a cancelled contest (organizers), and the winner (everyone) */
+            contestResult: boolean;
         };
         PrivacySettings: {
             /** @description Others may feature any of your photos on their profile (on by default) */
@@ -6033,6 +6677,8 @@ export interface components {
                 momentPosted?: boolean;
                 /** @description The full-quality originals of a rollo you are in will be deleted in 5 days (the display versions stay) */
                 originalsExpiring?: boolean;
+                /** @description Photo contest of an event: the organizers can pick the finalists, a reminder, a tie or a cancelled contest (organizers), and the winner (everyone) */
+                contestResult?: boolean;
             };
             privacy?: {
                 /** @description Others may feature any of your photos on their profile (on by default) */
@@ -6311,6 +6957,13 @@ export interface components {
                 id: string;
                 name: string;
             }[];
+            /** @description Cover text (up to 300 characters, 6 lines); null if none */
+            description: string | null;
+            /** @description Photo contest settings; null on a regular trip */
+            contest: {
+                enabled: boolean;
+                votingHours: number;
+            } | null;
         };
         Member: {
             /**
@@ -6400,6 +7053,18 @@ export interface components {
              * @enum {string}
              */
             type?: "trip" | "event";
+            /** @description Cover text, trimmed; an empty string clears it (null). Up to 300 characters and 6 lines (400 otherwise). Stored on any trip type; the app shows it for events */
+            description?: string;
+            /**
+             * @description Photo contest (events only; true on a regular trip is a 400). With it on, revealAt must be at least 2 hours after endsAt (409). Editable until the reveal
+             * @default false
+             */
+            contestEnabled?: boolean;
+            /**
+             * @description How long the finalists are voted on after the reveal, in hours (24 to 336, default 72). Editable until the reveal
+             * @default 72
+             */
+            contestVotingHours?: number;
             /** @description Event only (required, 1 to 30 distinct names of 1 to 40 characters); rejected on a regular trip */
             groups?: string[];
         };
@@ -6436,6 +7101,12 @@ export interface components {
         };
         UpdateTripRequest: {
             name?: string;
+            /** @description Cover text, trimmed; an empty string clears it (null). Up to 300 characters and 6 lines (400 otherwise). Stored on any trip type; the app shows it for events Editable at any stage, even after the reveal */
+            description?: string;
+            /** @description Photo contest (events only; true on a regular trip is a 400). With it on, revealAt must be at least 2 hours after endsAt (409). Editable until the reveal. Turning it off deletes the chosen finalists; 409 once revealed */
+            contestEnabled?: boolean;
+            /** @description How long the finalists are voted on after the reveal, in hours (24 to 336, default 72). Editable until the reveal; 409 once revealed */
+            contestVotingHours?: number;
             /** @description Only before the rollo starts; never in the past */
             startsAt?: number;
             /** @description Trip end; must be after startsAt, at most 31 days after it and <= the resulting revealAt. Not once the rollo ended */
@@ -6520,6 +7191,48 @@ export interface components {
              * @example /covers/abc/3f1c2a.jpg
              */
             coverUrl: string;
+        };
+        Contest: {
+            /** @enum {string} */
+            status: "pending" | "selecting" | "voting" | "closing" | "tied" | "closed" | "cancelled";
+            votingHours: number;
+            /** @description When voting ends (epoch ms); null if cancelled. */
+            closesAt: number | null;
+            finalists: components["schemas"]["ContestFinalist"][];
+            myVote: string | null;
+            /** @description The winning photo. Null until closed, and also null in `closed` when the author's account was deleted. */
+            winner: {
+                mediaId: string;
+                author: components["schemas"]["ContestAuthor"];
+                imageAvailable: boolean;
+            } | null;
+            /** @description Only for organizers while `tied`: the finalists sharing the top vote count. Empty otherwise. */
+            tiedMediaIds: string[];
+        };
+        ContestFinalist: {
+            mediaId: string;
+            author: components["schemas"]["ContestAuthor"];
+            thumbHash: string | null;
+            width: number | null;
+            height: number | null;
+            /** @description Path of the thumbnail, served by the contest's own route. */
+            thumbPath: string;
+            /** @description Path of the display image, served by the contest's own route. */
+            displayPath: string;
+            /** @description Null until the contest is closed; never shown while voting. */
+            votes: number | null;
+        };
+        ContestAuthor: {
+            userId: string;
+            name: string;
+            username: string | null;
+            avatarUrl: string | null;
+        };
+        ContestVoteBody: {
+            mediaId: string;
+        };
+        ContestWinnerBody: {
+            mediaId: string;
         };
         MediaRegistered: {
             /** Format: uuid */

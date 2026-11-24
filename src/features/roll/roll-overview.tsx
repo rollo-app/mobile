@@ -1,4 +1,5 @@
 import { StyleSheet, Text } from "react-native";
+import { ContestCard } from "@/features/contest/contest-card";
 import { EventBoardHero } from "@/features/events/event-board-hero";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
 import { useRevealedPhotos } from "@/features/media/revealed";
@@ -11,7 +12,7 @@ import { rollSummary } from "./summary";
 import { memberTotal } from "@/features/trips/member-total";
 
 /** The "Rollo" segment of a revealed roll: what the board showed, without today's quota or the contact sheet. */
-export function RollOverview({ tripId }: { tripId: string }) {
+export function RollOverview({ tripId, focused }: { tripId: string; /** The screen is in view (see `ContestCard`). */ focused: boolean }) {
   const { detail, error, refetch, isRefetching } = useTripDetail(tripId);
   const { photos } = useRevealedPhotos(tripId);
 
@@ -26,6 +27,7 @@ export function RollOverview({ tripId }: { tripId: string }) {
       {!error && !detail && <Loading />}
       {detail && (
         <>
+          <ContestCard tripId={tripId} enabled={!!detail.trip.contest?.enabled} focused={focused} />
           <EventBoardHero detail={detail} />
           <Text style={[type.subhead, styles.summary]}>
             {rollSummary({

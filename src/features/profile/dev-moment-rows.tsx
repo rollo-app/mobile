@@ -12,12 +12,14 @@ import { Row } from "@/ui/components";
 
 /**
  * Dev only: replay the animated moments. "Ver revelado" plays the reveal of the active
- * roll if it's revealed (always, seen or not), or switches to the first revealed one; "Ver candado" opens the lock → camera; "Ver intro" opens the new account's full-screen intro; "Probar momento ahora" schedules a moment notification in 10 s (and replays its intro).
+ * roll if it's revealed (always, seen or not), or switches to the first revealed one; "Ver candado" opens the lock → camera; "Ver intro" opens the new account's full-screen intro; "Ver ganadora del concurso" replays the winner reveal of the active event (seen or not); "Probar momento ahora" schedules a moment notification in 10 s (and replays its intro).
  */
 export function DevMomentRows() {
   const { trip, trips } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const revealed = trip?.revealed ? trip : trips.find((t) => t.revealed);
+  // The active event's photo contest, once revealed: the winner reveal plays only once per phone, this replays it.
+  const contestTripId = trip?.revealed && detail?.trip.contest?.enabled ? trip.id : null;
 
   async function openReveal() {
     if (!revealed) return;
@@ -46,6 +48,10 @@ export function DevMomentRows() {
   return (
     <>
       <Row label={revealed ? "Ver revelado" : "Ver revelado (no hay rollos revelados)"} onPress={revealed ? () => void openReveal() : undefined} />
+      <Row
+        label={contestTripId ? "Ver ganadora del concurso" : "Ver ganadora del concurso (el rollo activo no tiene concurso revelado)"}
+        onPress={contestTripId ? () => router.push(`/contest-winner?trip=${contestTripId}`) : undefined}
+      />
       <Row label="Probar momento ahora" chevron={false} onPress={trip && detail ? () => void testMoment() : undefined} />
       <Row label="Ver candado" onPress={() => router.push("/roll-started")} />
       <Row label="Ver intro" onPress={() => router.push("/intro")} />

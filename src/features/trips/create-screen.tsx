@@ -2,8 +2,9 @@ import { Button, Form, Group, Host, Picker, RNHostView, Section, SwipeActions, T
 import { accessibilityLabel, aspectRatio, foregroundStyle, listRowBackground, listRowInsets, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { use, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
 import { EventHero } from "@/features/events/event-hero";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
@@ -18,6 +19,9 @@ import { tripKey } from "@/features/trips/use-trip-detail";
 import {
   canCreate,
   canCreateEvent,
+  contestRevealDefault,
+  DEFAULT_VOTING_DAYS,
+  revealAllowedWithContest,
   cleanGroups,
   MAX_EVENT_GROUPS,
   MAX_GROUP_NAME,
@@ -29,9 +33,11 @@ import {
   type MomentMode,
   type StartMode,
 } from "@/features/trips/create-form";
+import { ContestSection, DescriptionSection } from "@/features/trips/contest-section";
 import { infoHeader, TripForm, type LimitMode, type RevealMode } from "@/features/trips/trip-form";
 import { useCreateTrip } from "@/features/trips/use-create-trip";
-import { colors } from "@/ui/theme";
+import { ErrorText } from "@/ui/components";
+import { colors, spacing } from "@/ui/theme";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -55,12 +61,17 @@ export function CreateScreen() {
   const [momentMode, setMomentMode] = useState<MomentMode>("photo_selfie");
   const [momentStart, setMomentStart] = useState(DEFAULT_MOMENT_WINDOW.start);
   const [momentEnd, setMomentEnd] = useState(DEFAULT_MOMENT_WINDOW.end);
+  const [description, setDescription] = useState("");
+  const [contestEnabled, setContestEnabled] = useState(false);
+  const [votingDays, setVotingDays] = useState(DEFAULT_VOTING_DAYS);
   const [kind, setKind] = useState<Kind>("trip");
   // Rows have a stable id: the native text fields keep their own text, so removing one must not shift the others.
   const [groups, setGroups] = useState<GroupRow[]>([{ id: 0, name: "" }]);
   const nextGroupId = useRef(1);
   const [cover, setCover] = useState<CoverPhoto | null>(null);
   const create = useCreateTrip();
+  // Bottom inset for the error bar; tests render without a SafeAreaProvider.
+  const bottomInset = use(SafeAreaInsetsContext)?.bottom ?? 0;
   // Events are enabled per account. Not blocking: until /me says so (or if it fails) this is the regular rollo form.
   const canPickEvent = useMe().me?.canCreateEvents === true;
   const isEvent = canPickEvent && kind === "event";
@@ -80,6 +91,15 @@ export function CreateScreen() {
     setRevealMode(mode);
   }
 
+  function chooseContest(on: boolean) {
+    setContestEnabled(on);
+    // The server needs the reveal 2 h after the end with the contest: "Al terminar" can't hold, so propose the next day.
+    if (on && (revealMode === "end" || !revealAllowedWithContest(customReveal, endsAt))) {
+      setCustomReveal(contestRevealDefault(endsAt));
+      setRevealMode("custom");
+    }
+  }
+
   function chooseStart(mode: StartMode) {
     setStartMode(mode);
     // "Now" is at most the moment of submit; with a chosen date the end and the custom reveal must stay after it.
@@ -96,6 +116,8 @@ export function CreateScreen() {
     if (next === "trip") {
       setGroups([{ id: nextGroupId.current++, name: "" }]);
       setCover(null);
+      setDescription("");
+      setContestEnabled(false);
     }
     setKind(next);
   }
@@ -135,6 +157,9 @@ export function CreateScreen() {
           momentMode: "off",
           type: "event",
           groups: cleanGroups(groups.map((g) => g.name)),
+          description: description.trim(),
+          contestEnabled,
+          ...(contestEnabled && { contestVotingHours: votingDays * 24 }),
           ...(isPrivate && { featuringDisabled: true }),
         },
         {
@@ -218,6 +243,8 @@ export function CreateScreen() {
             <TextField placeholder={isEvent ? "Nombre del evento" : "Nombre del rollo"} maxLength={60} onTextChange={setName} />
           </Section>
 
+          {isEvent && <DescriptionSection onChange={setDescription} />}
+
           {isEvent && (
             <Section header={<Text>Grupos</Text>} footer={<Text>Los invitados eligen en cuál están. Deslizá un grupo para borrarlo.</Text>}>
               {groups.map((group) => (
@@ -290,11 +317,22 @@ export function CreateScreen() {
             hideMoment={isEvent}
           />
 
+          {isEvent && (
+            <ContestSection enabled={contestEnabled} votingDays={votingDays} onEnabledChange={chooseContest} onVotingDaysChange={setVotingDays} />
+          )}
+
           <Section header={infoHeader("Privacidad", "privateRollo")} footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
             <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
           </Section>
         </Form>
       </Host>
+      {/* Pinned under the form, in RN: the native form doesn't redraw a footer or section that appears after it was laid out,
+          and the form is long, so the name's footer can be off screen when "Crear" is tapped. */}
+      {!!error && (
+        <View style={[styles.errorBar, { paddingBottom: bottomInset + spacing.sm }]}>
+          <ErrorText>{error}</ErrorText>
+        </View>
+      )}
     </View>
   );
 }
@@ -302,4 +340,11 @@ export function CreateScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.groupedBackground },
   form: { flex: 1 },
+  errorBar: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    backgroundColor: colors.groupedBackground,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.separator,
+  },
 });

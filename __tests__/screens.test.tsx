@@ -18,6 +18,7 @@ import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
+import * as contestActions from "@/features/contest/actions";
 jest.mock("@/features/friends/actions");
 const mocked = jest.mocked(actions);
 const friends = jest.mocked(friendActions);
@@ -46,6 +47,8 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   momentWindowStart: 540,
   momentWindowEnd: 1380,
   originals: keepOriginals,
+  description: null,
+  contest: null,
   type: "trip",
   coverUrl: null,
   groups: [],
@@ -279,7 +282,7 @@ describe("Roll board · people and settings", () => {
     share.mockRestore();
   });
 
-  it("tapping a member opens their profile; your own row isn't tappable", async () => {
+  it("tapping a member opens their card, and Ver perfil their profile; your own row isn't tappable", async () => {
     const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
       user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null, badge: null },
       isFriend: false,
@@ -298,6 +301,7 @@ describe("Roll board · people and settings", () => {
     await screen.findByRole("button", { name: "Fede" });
     expect(screen.queryByRole("button", { name: /^Juani/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver perfil" }));
 
     await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
     expect(await screen.findByText("Este perfil es privado")).toBeVisible();
@@ -396,6 +400,19 @@ describe("Me", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Ver revelado" }));
 
     await waitFor(() => expect(screen).toHavePathname("/reveal"));
+  });
+
+  it("in development, 'Ver ganadora del concurso' opens the winner reveal of the active event, seen or not", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Casamiento", { revealed: true })] });
+    const base = detail();
+    mocked.fetchTrip.mockResolvedValue(detail({ trip: { ...base.trip, revealed: true, contest: { enabled: true, votingHours: 72 } } }));
+    // The reveal stays on screen while the contest loads (without a winner it would go on to the results).
+    jest.spyOn(contestActions, "fetchContest").mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: "/settings" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver ganadora del concurso" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/contest-winner"));
   });
 });
 
@@ -722,7 +739,7 @@ describe("Create roll", () => {
       expect(mocked.createTrip).toHaveBeenCalledWith(
         expect.objectContaining({ momentWindowStart: 1320, momentWindowEnd: 1335 }),
       );
-      expect(await screen.findByText("La franja del momento tiene que durar al menos 30 minutos")).toBeVisible();
+      expect((await screen.findAllByText("La franja del momento tiene que durar al menos 30 minutos"))[0]).toBeVisible();
     });
   });
 
@@ -774,7 +791,7 @@ describe("Create roll", () => {
     expect(mocked.createTrip).toHaveBeenCalledWith(
       expect.objectContaining({ startsAt: end + 5 * HOUR, endsAt: end, revealAt: end - HOUR }),
     );
-    expect(await screen.findByText("El revelado no puede ser antes del fin")).toBeVisible();
+    expect((await screen.findAllByText("El revelado no puede ser antes del fin"))[0]).toBeVisible();
     expect(dateOf("Empieza")).toBe(end + 5 * HOUR);
     expect(dateOf("Se revela")).toBe(end - HOUR);
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
@@ -844,7 +861,7 @@ describe("Create roll", () => {
     await fillNames();
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    expect(await screen.findByText("Nombre demasiado largo")).toBeVisible();
+    expect((await screen.findAllByText("Nombre demasiado largo"))[0]).toBeVisible();
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
   });
 
@@ -856,7 +873,7 @@ describe("Create roll", () => {
     await fireEvent(screen.getByLabelText("10 fotos"), "valueChange", 25);
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    expect(await screen.findByText(message)).toBeVisible();
+    expect((await screen.findAllByText(message))[0]).toBeVisible();
     expect(screen).toHavePathname("/create");
     // "Crear" is only enabled with a name, so the name is still there.
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();

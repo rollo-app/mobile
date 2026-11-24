@@ -39,10 +39,10 @@ export function MembersScreen({ tripId }: { tripId: string }) {
       me ? (
         <View style={[styles.cell, index === 0 && styles.first, index === count - 1 && styles.last]}>
           {index > 0 && <View style={styles.separator} />}
-          <MemberRow me={me} member={item} onAction={onAction} />
+          <MemberRow tripId={tripId} me={me} member={item} onAction={onAction} />
         </View>
       ) : null,
-    [me, count, onAction],
+    [tripId, me, count, onAction],
   );
 
   const showHeader = !!error || (!error && !detail) || (!!detail && count === 0);

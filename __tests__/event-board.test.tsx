@@ -61,6 +61,8 @@ const detail = (me: Member, groupIds: string[], over: Partial<tripActions.Trip> 
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "event",
     coverUrl: null,
     groups: GROUPS,

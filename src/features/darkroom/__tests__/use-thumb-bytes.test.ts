@@ -1,8 +1,7 @@
 import { act, renderHook } from "@testing-library/react-native";
-import type { RevealedPhoto } from "@/features/media/revealed";
 import { useThumbBytes } from "../use-thumb-bytes";
 
-const photo = (id: string) => ({ id, thumbPath: `/m/${id}/thumb` }) as unknown as RevealedPhoto;
+const photo = (id: string) => ({ id, thumbPath: `/m/${id}/thumb` });
 const buf = (n: number) => new ArrayBuffer(n);
 type Deferred = { resolve: (res: object) => void; reject: () => void };
 

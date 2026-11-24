@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { PicksRow } from "@/features/contest/picks-row";
 import { EventBoardHero } from "@/features/events/event-board-hero";
 import { MomentBanner } from "@/features/moments/moment-banner";
 import { BelowUploads, UploadStatusSection } from "@/features/capture/upload-status-section";
@@ -59,6 +60,7 @@ export function RollBoard() {
             )
           )}
 
+          <PicksRow detail={detail} phase={phase} />
           <RevealRow detail={detail} phase={phase} />
 
           <UploadStatusSection tripId={detail.trip.id} timeZone={detail.trip.timezone} />

@@ -1,4 +1,5 @@
-import { render, screen, within } from "@testing-library/react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 import { tripSummary } from "@/test/account";
 import { TripRow } from "../trip-row";
 
@@ -24,5 +25,26 @@ describe("TripRow", () => {
     await render(<TripRow trip={upcoming} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} />);
     expect(screen.queryByText("LIVE")).toBeNull();
     expect(screen.queryByText("Revelado")).toBeNull();
+  });
+
+  it("with a long-press menu, the row (and its pressed highlight) takes the full measured width", async () => {
+    await render(<TripRow trip={live} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} actions={["leave"]} onAction={() => {}} />);
+    await fireEvent(screen.getByTestId("full-width-menu"), "layout", { nativeEvent: { layout: { x: 0, y: 0, width: 361, height: 64 } } });
+    expect(StyleSheet.flatten(screen.getByTestId("full-width-menu-content").props.style).width).toBe(361);
+    expect(screen.getByRole("button", { name: /Un nombre de rollo muy largo/ })).toBeTruthy();
+  });
+
+  it("marks an event with an 'Evento' badge next to its state", async () => {
+    const event = tripSummary("e", "Casamiento", { startsAt: NOW - DAY, endsAt: NOW + DAY, revealAt: NOW + DAY, type: "event" });
+    await render(<TripRow trip={event} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} />);
+    const trailing = within(screen.getByTestId("trip-row-trailing"));
+    expect(trailing.getByText("Evento")).toBeTruthy();
+    expect(trailing.getByText("LIVE")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Casamiento, evento/ })).toBeTruthy();
+  });
+
+  it("a regular rollo has no 'Evento' badge", async () => {
+    await render(<TripRow trip={live} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} />);
+    expect(screen.queryByText("Evento")).toBeNull();
   });
 });

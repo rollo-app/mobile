@@ -63,3 +63,28 @@ export function dateAtMinutes(minutes: number): Date {
   d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
   return d;
 }
+
+/** Caps the server enforces on an event's description. */
+export const MAX_DESCRIPTION = 300;
+export const MAX_DESCRIPTION_LINES = 6;
+
+/** Photo contest: voting lasts 3 days unless the organizer changes it (1 to 14). */
+export const DEFAULT_VOTING_DAYS = 3;
+export const MIN_VOTING_DAYS = 1;
+export const MAX_VOTING_DAYS = 14;
+
+/** With the contest on, the reveal is proposed one day after the end, to leave time to pick the finalists. */
+export function contestRevealDefault(end: number): number {
+  return end + 24 * HOUR;
+}
+
+/** With the contest on the server needs the reveal at least 2 hours after the end. */
+export function revealAllowedWithContest(reveal: number, end: number): boolean {
+  return reveal >= end + 2 * HOUR;
+}
+
+/** True when the text is over the server's caps (`\r\n` counts as one line break). */
+export function descriptionTooLong(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.length > MAX_DESCRIPTION || trimmed.split(/\r\n|\r|\n/).length > MAX_DESCRIPTION_LINES;
+}

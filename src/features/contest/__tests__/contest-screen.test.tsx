@@ -1,0 +1,270 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import { Alert } from "react-native";
+import type { Schemas } from "@/api/client";
+import { ApiError } from "@/api/client";
+import { useMe } from "@/features/auth/use-me";
+import { useTripDetail } from "@/features/trips/use-trip-detail";
+import { deleteVote, fetchContest, putVote, putWinner } from "../actions";
+import { ContestCard } from "../contest-card";
+import { ContestScreen } from "../contest-screen";
+
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  ...jest.requireActual("expo-router"),
+  useRouter: () => ({ push: mockPush }),
+}));
+jest.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
+jest.mock("../actions");
+jest.mock("expo-haptics", () => ({ selectionAsync: jest.fn(async () => {}), notificationAsync: jest.fn(async () => {}), NotificationFeedbackType: { Success: "success" } }));
+jest.mock("@/features/trips/use-trip-detail", () => ({ useTripDetail: jest.fn() }));
+jest.mock("@/features/auth/use-me", () => ({ useMe: jest.fn() }));
+jest.mock("@/features/media/revealed", () => ({
+  ...jest.requireActual("@/features/media/revealed"),
+  useMediaToken: () => "tok",
+}));
+
+const fetchMock = jest.mocked(fetchContest);
+const voteMock = jest.mocked(putVote);
+const unvoteMock = jest.mocked(deleteVote);
+const winnerMock = jest.mocked(putWinner);
+
+const finalist = (mediaId: string, userId: string, name: string, votes: number | null = null): Schemas["ContestFinalist"] => ({
+  mediaId,
+  author: { userId, name, username: null, avatarUrl: null },
+  thumbHash: null,
+  width: null,
+  height: null,
+  thumbPath: `/c/${mediaId}/thumb`,
+  displayPath: `/c/${mediaId}/display`,
+  votes,
+});
+
+const FINALISTS = [finalist("m1", "u1", "Ana"), finalist("m2", "u2", "Beto"), finalist("m3", "u3", "Cami")];
+
+const contest = (over: Partial<Schemas["Contest"]> = {}): Schemas["Contest"] => ({
+  status: "voting",
+  votingHours: 72,
+  closesAt: Date.now() + 2 * 24 * 3_600_000 + 3_600_000,
+  finalists: FINALISTS,
+  myVote: null,
+  winner: null,
+  tiedMediaIds: [],
+  ...over,
+});
+
+function mockDetail(role: "admin" | "member" = "member", enabled = true) {
+  jest.mocked(useTripDetail).mockReturnValue({
+    detail: { trip: { id: "t1", type: "event", contest: enabled ? { enabled: true, votingHours: 72 } : null }, me: { role, groupIds: [] } },
+    error: null,
+    refetch: jest.fn(),
+    isRefetching: false,
+  } as never);
+}
+
+const clients: QueryClient[] = [];
+afterEach(() => {
+  clients.forEach((c) => c.clear());
+  clients.length = 0;
+});
+function wrap(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false, gcTime: 0 } } });
+  clients.push(client);
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
+let server: Schemas["Contest"];
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockDetail();
+  jest.mocked(useMe).mockReturnValue({ me: { id: "u1" } } as never);
+  server = contest();
+  fetchMock.mockImplementation(async () => server);
+  voteMock.mockImplementation(async (_t, id) => void (server = { ...server, myVote: id }));
+  unvoteMock.mockImplementation(async () => void (server = { ...server, myVote: null }));
+  winnerMock.mockResolvedValue(undefined);
+});
+
+describe("ContestScreen without contest", () => {
+  it("says the event has no contest instead of spinning", async () => {
+    mockDetail("member", false);
+    await wrap(<ContestScreen tripId="t1" />);
+    expect(await screen.findByText("Este evento no tiene concurso.")).toBeTruthy();
+  });
+});
+
+describe("ContestScreen voting", () => {
+  // The pager mounts the pages around the visible one; the finalists are shuffled per viewer, so look the author up by name.
+  const voteButtonOf = async (author: string) => {
+    const handle = await screen.findAllByText(author);
+    return handle[0]!;
+  };
+
+  it("shows the finalists one by one with the counter and the countdown", async () => {
+    await wrap(<ContestScreen tripId="t1" />);
+    expect(await screen.findByText("Finalista 1 de 3")).toBeTruthy();
+    expect((await screen.findAllByText("Cierra en 2 días")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /^Foto de/ })).toBeNull();
+  });
+
+  it("voting calls the action and shows 'Tu voto'", async () => {
+    server = contest({ finalists: [finalist("m2", "u2", "Beto")] });
+    await wrap(<ContestScreen tripId="t1" />);
+    await voteButtonOf("Beto");
+    await fireEvent.press(await screen.findByRole("button", { name: "Votar esta" }));
+    await waitFor(() => expect(voteMock).toHaveBeenCalledWith("t1", "m2"));
+    expect(await screen.findByRole("button", { name: "Tu voto ✓" })).toBeTruthy();
+  });
+
+  it("tapping 'Tu voto' takes the vote back", async () => {
+    server = contest({ myVote: "m2", finalists: [finalist("m2", "u2", "Beto")] });
+    await wrap(<ContestScreen tripId="t1" />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Tu voto ✓" }));
+    await waitFor(() => expect(unvoteMock).toHaveBeenCalledWith("t1"));
+    expect(await screen.findByRole("button", { name: "Votar esta" })).toBeTruthy();
+  });
+
+  it("your own photo can't be voted", async () => {
+    server = contest({ finalists: [finalist("m1", "u1", "Ana")] });
+    await wrap(<ContestScreen tripId="t1" />);
+    const button = await screen.findByRole("button", { name: "Votar esta" });
+    expect(button.props.accessibilityState.disabled).toBe(true);
+    expect(button.props.accessibilityHint).toBe("No podés votar tu propia foto");
+    await fireEvent.press(button);
+    expect(voteMock).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's refusal inline and rolls the vote back", async () => {
+    server = contest({ finalists: [finalist("m2", "u2", "Beto")] });
+    voteMock.mockRejectedValue(new ApiError(409, "La votación no está abierta."));
+    await wrap(<ContestScreen tripId="t1" />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Votar esta" }));
+    expect(await screen.findByText("La votación no está abierta.")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Votar esta" })).toBeTruthy());
+  });
+
+  it("swiping to another photo clears the refusal", async () => {
+    voteMock.mockRejectedValue(new ApiError(409, "La votación no está abierta."));
+    await wrap(<ContestScreen tripId="t1" />);
+    const buttons = await screen.findAllByRole("button", { name: "Votar esta" });
+    await fireEvent.press(buttons.find((b) => !b.props.accessibilityState.disabled)!);
+    expect(await screen.findByText("La votación no está abierta.")).toBeTruthy();
+    await fireEvent(screen.getByTestId("finalist-pager"), "momentumScrollEnd", { nativeEvent: { contentOffset: { x: 750, y: 0 } } });
+    await waitFor(() => expect(screen.queryByText("La votación no está abierta.")).toBeNull());
+  });
+
+  it("while closing, voting is off", async () => {
+    server = contest({ status: "closing", finalists: [finalist("m2", "u2", "Beto")] });
+    await wrap(<ContestScreen tripId="t1" />);
+    const button = await screen.findByRole("button", { name: "Cerrando la votación…" });
+    expect(button.props.accessibilityState.disabled).toBe(true);
+  });
+});
+
+describe("ContestScreen tie", () => {
+  const tied = () => contest({ status: "tied", tiedMediaIds: ["m2", "m3", "gone"] });
+
+  it("an organizer picks the winner after confirming", async () => {
+    mockDetail("admin");
+    server = tied();
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await wrap(<ContestScreen tripId="t1" />);
+    const buttons = await screen.findAllByRole("button", { name: "Elegir ganadora" });
+    expect(buttons).toHaveLength(2);
+    await fireEvent.press(buttons[0]!);
+    expect(alert).toHaveBeenCalledTimes(1);
+    const confirm = alert.mock.calls[0]![2]!.find((b) => b.style !== "cancel")!;
+    confirm.onPress!();
+    await waitFor(() => expect(winnerMock).toHaveBeenCalledWith("t1", expect.stringMatching(/^m[23]$/)));
+  });
+
+  it("a guest only sees the note", async () => {
+    server = tied();
+    await wrap(<ContestScreen tripId="t1" />);
+    expect(await screen.findByText("Hay un empate. Los organizadores eligen la ganadora.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Elegir ganadora" })).toBeNull();
+  });
+});
+
+describe("ContestScreen result", () => {
+  const closedContest = () =>
+    contest({
+      status: "closed",
+      finalists: [finalist("m1", "u1", "Ana", 1), finalist("m2", "u2", "Beto", 5), finalist("m3", "u3", "Cami", 0)],
+      winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: "beto", avatarUrl: null }, imageAvailable: true },
+    });
+
+  it("closed: the winner on top and the ranking with the votes of each finalist", async () => {
+    server = closedContest();
+    await wrap(<ContestScreen tripId="t1" />);
+    expect(await screen.findByText("Ganadora")).toBeTruthy();
+    expect(screen.getAllByText("@beto").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("5 votos").length).toBeGreaterThan(0);
+    expect(screen.getByText("1 voto")).toBeTruthy();
+    expect(screen.getByText("0 votos")).toBeTruthy();
+  });
+
+  it("tapping a row opens the pager in results mode at that place", async () => {
+    server = closedContest();
+    await wrap(<ContestScreen tripId="t1" />);
+    await fireEvent.press((await screen.findAllByRole("button", { name: /^2° puesto, Ana/ }))[0]!);
+    expect(await screen.findByText("2° puesto")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Cerrar" }));
+    await waitFor(() => expect(screen.queryByText("2° puesto")).toBeNull());
+  });
+
+  it("tied without counts still lists the finalists", async () => {
+    mockDetail("admin");
+    server = contest({ status: "tied", tiedMediaIds: ["m2", "m3"] });
+    await wrap(<ContestScreen tripId="t1" />);
+    expect((await screen.findAllByRole("button", { name: "Elegir ganadora" })).length).toBe(2);
+    expect(screen.getAllByText("Empatada")).toHaveLength(2);
+    expect(screen.queryByText(/votos?$/)).toBeNull();
+  });
+
+  it("cancelled", async () => {
+    server = contest({ status: "cancelled", closesAt: null, finalists: [] });
+    await wrap(<ContestScreen tripId="t1" />);
+    expect(await screen.findByText("El concurso se canceló.")).toBeTruthy();
+  });
+});
+
+describe("ContestCard", () => {
+  it("voting: opens the contest", async () => {
+    await wrap(<ContestCard tripId="t1" enabled focused />);
+    const card = await screen.findByRole("button", { name: /Concurso de fotos · Cierra en 2 días/ });
+    await fireEvent.press(card);
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/contest", params: { trip: "t1" } });
+  });
+
+  it("closed: the winner's @username and avatar", async () => {
+    server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: "beto", avatarUrl: null }, imageAvailable: true } });
+    await wrap(<ContestCard tripId="t1" enabled focused />);
+    expect(await screen.findByText("Ganó la foto de @beto")).toBeTruthy();
+    expect(screen.getByTestId("avatar", { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it("closed: falls back to the name without a username", async () => {
+    server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: null, avatarUrl: null }, imageAvailable: true } });
+    await wrap(<ContestCard tripId="t1" enabled focused />);
+    expect(await screen.findByText("Ganó la foto de Beto")).toBeTruthy();
+  });
+
+  it("closed: opens the winner reveal only while its screen is in view", async () => {
+    server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: "beto", avatarUrl: null }, imageAvailable: true } });
+    const view = await wrap(<ContestCard tripId="t1" enabled focused={false} />);
+    await screen.findByText("Ganó la foto de @beto");
+    await act(async () => {});
+    expect(mockPush).not.toHaveBeenCalled();
+
+    view.unmount();
+    await wrap(<ContestCard tripId="t1" enabled focused />);
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/contest-winner?trip=t1"));
+  });
+
+  it("nothing for events without a contest", async () => {
+    await wrap(<ContestCard tripId="t1" enabled={false} focused />);
+    expect(screen.queryByText(/Concurso de fotos/)).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

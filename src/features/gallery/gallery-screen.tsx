@@ -2,7 +2,7 @@ import { OriginalsNotice } from "@/features/trips/originals-notice-text";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -51,9 +51,12 @@ export function GalleryScreen({
   tripId,
   toolbar: showToolbar = true,
   onSelectionChange,
+  header,
 }: {
   tripId: string;
   toolbar?: boolean;
+  /** Shown at the very top of the grid (the contest card). */
+  header?: ReactNode;
   /** How many photos are selected while selecting, null otherwise: the screen that owns the header shows it as the title. */
   onSelectionChange?: (count: number | null) => void;
 }) {
@@ -170,21 +173,27 @@ export function GalleryScreen({
   const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
 
   let body;
-  if (loading) body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
+  if (loading) body = <>{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
   else if (error && photos.length === 0)
     body = (
-      <View style={styles.center}>
-        <ErrorText>{error}</ErrorText>
-        <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
-      </View>
+      <>
+        {header}
+        <View style={styles.center}>
+          <ErrorText>{error}</ErrorText>
+          <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
+        </View>
+      </>
     );
   else if (photos.length === 0 && (hasMore || loadingMore) && !loadMoreError)
-    body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
+    body = <>{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
   else if (photos.length === 0)
     body = (
-      <View style={styles.center}>
-        <Text style={[type.body, { color: colors.secondaryLabel }]}>Este rollo no tiene fotos</Text>
-      </View>
+      <>
+        {header}
+        <View style={styles.center}>
+          <Text style={[type.body, { color: colors.secondaryLabel }]}>Este rollo no tiene fotos</Text>
+        </View>
+      </>
     );
   else
     body = (
@@ -206,6 +215,7 @@ export function GalleryScreen({
         }
         ListHeaderComponent={
           <>
+            {header}
             {detail && <OriginalsNotice originals={detail.trip.originals} timeZone={detail.trip.timezone} style={styles.notice} />}
             {author && (
               <View style={styles.filter}>

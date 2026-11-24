@@ -202,9 +202,48 @@ describe("CreateScreen as an event", () => {
     await fillEvent();
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    expect(await screen.findByText(message)).toBeTruthy();
+    // Under the name and again at the end of the long form, where you are when you tap "Crear".
+    expect(await screen.findAllByText(message)).toHaveLength(2);
     expect(router.dismissTo).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText("Nombre del evento")).toHaveDisplayValue("  Casamiento ");
     expect(screen.getByPlaceholderText("Nombre del grupo")).toHaveDisplayValue(" Novios ");
+  });
+
+  it("sends the description and the contest off by default", async () => {
+    await renderScreen();
+    await fillEvent();
+    await fireEvent.changeText(screen.getByPlaceholderText("Descripción"), "  Nos casamos  ");
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    await waitFor(() => expect(createTripMock).toHaveBeenCalledTimes(1));
+    expect(createTripMock.mock.calls[0]![0]).toMatchObject({ description: "Nos casamos", contestEnabled: false });
+    expect(createTripMock.mock.calls[0]![0]).not.toHaveProperty("contestVotingHours");
+  });
+
+  it("turning the contest on sends the voting hours and moves the reveal off Al terminar", async () => {
+    await renderScreen();
+    await fillEvent();
+    expect(screen.getByRole("button", { name: "Al terminar" }).props.accessibilityState.selected).toBe(true);
+    expect(screen.queryByLabelText("Votación de 3 días")).toBeNull();
+
+    await fireEvent(screen.getByLabelText("Concurso de fotos"), "valueChange", true);
+
+    expect(screen.getByLabelText("Votación de 3 días")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Otro momento" }).props.accessibilityState.selected).toBe(true);
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    await waitFor(() => expect(createTripMock).toHaveBeenCalledTimes(1));
+    const input = createTripMock.mock.calls[0]![0];
+    expect(input).toMatchObject({ contestEnabled: true, contestVotingHours: 72 });
+    expect(input.revealAt - input.endsAt).toBe(24 * 60 * 60 * 1000);
+  });
+
+  it("a regular rollo sends no description or contest", async () => {
+    await renderScreen();
+    await fireEvent.changeText(screen.getByPlaceholderText("Nombre del rollo"), "Sur");
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+    await waitFor(() => expect(createTripMock).toHaveBeenCalledTimes(1));
+    expect(createTripMock.mock.calls[0]![0]).not.toHaveProperty("contestEnabled");
+    expect(createTripMock.mock.calls[0]![0]).not.toHaveProperty("description");
   });
 });

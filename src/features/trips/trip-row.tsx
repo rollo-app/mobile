@@ -1,6 +1,6 @@
-import { MenuView } from "@expo/ui/community/menu";
 import { SymbolView } from "expo-symbols";
 import { useMemo } from "react";
+import { FullWidthMenuView } from "@/ui/full-width-menu";
 import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { Badge } from "@/ui/badge";
 import { colors, spacing, type } from "@/ui/theme";
@@ -35,11 +35,13 @@ export function TripRow({
   const state = tripRowState(trip, now, timeZone);
   const average = useMemo(() => (trip.coverThumbhash ? thumbHashAverageColor(trip.coverThumbhash) : null), [trip.coverThumbhash]);
   const tint = average ? rowTint(average, scheme) : null;
+  const isEvent = trip.type === "event";
+  const a11yName = isEvent ? `${trip.name}, evento` : trip.name;
 
   const row = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={state.stateLabel ? `${trip.name}, ${state.stateLabel}` : trip.name}
+      accessibilityLabel={state.stateLabel ? `${a11yName}, ${state.stateLabel}` : a11yName}
       accessibilityState={{ selected }}
       accessibilityActions={actions.map((id) => ({ name: id, label: ROW_ACTION_TITLES[id] }))}
       onAccessibilityAction={({ nativeEvent }) => onAction?.(nativeEvent.actionName as RowActionId)}
@@ -55,8 +57,9 @@ export function TripRow({
           {state.subtitle}
         </Text>
       </View>
-      {(state.badge || selected) && (
+      {(isEvent || state.badge || selected) && (
         <View testID="trip-row-trailing" style={styles.trailing}>
+          {isEvent && <Badge variant="neutral" label="Evento" />}
           {state.badge && <Badge variant={state.badge === "live" ? "live" : "neutral"} label={BADGE_LABEL[state.badge]} />}
           {selected && <SymbolView name="checkmark" size={16} weight="semibold" tintColor={colors.tint as string} />}
         </View>
@@ -65,7 +68,7 @@ export function TripRow({
   );
   if (actions.length === 0) return row;
   return (
-    <MenuView
+    <FullWidthMenuView
       shouldOpenOnLongPress
       actions={actions.map((id) => ({
         id,
@@ -76,7 +79,7 @@ export function TripRow({
       onPressAction={({ nativeEvent }) => onAction?.(nativeEvent.event as RowActionId)}
     >
       {row}
-    </MenuView>
+    </FullWidthMenuView>
   );
 }
 

@@ -52,6 +52,8 @@ const detail = (opts: { role?: "admin" | "member"; featuringDisabled?: boolean; 
       momentWindowStart: 540,
       momentWindowEnd: 1380,
       originals: keepOriginals,
+      description: null,
+      contest: null,
       type: "trip",
       coverUrl: null,
       groups: [],

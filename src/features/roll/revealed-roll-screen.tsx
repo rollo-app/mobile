@@ -1,7 +1,9 @@
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
 import { StyleSheet, useColorScheme, View } from "react-native";
+import { ContestCard } from "@/features/contest/contest-card";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
+import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { colors, layout, spacing, tintHex } from "@/ui/theme";
 import { RollOverview } from "./roll-overview";
 
@@ -24,6 +26,10 @@ export function RevealedRollScreen({
   onSelectionChange?: (count: number | null) => void;
 }) {
   const router = useRouter();
+  // The tabs stay mounted: the contest card only opens the winner reveal while this screen is the one in view.
+  const focused = useIsFocused();
+  const { detail } = useTripDetail(tripId);
+  const contestEnabled = !!detail?.trip.contest?.enabled;
   const { view } = useLocalSearchParams<{ view?: string }>();
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const showRoll = view === "roll";
@@ -48,11 +54,16 @@ export function RevealedRollScreen({
           accessibilityElementsHidden={showRoll}
           importantForAccessibility={showRoll ? "no-hide-descendants" : "auto"}
         >
-          <GalleryScreen tripId={tripId} toolbar={!showRoll} onSelectionChange={onSelectionChange} />
+          <GalleryScreen
+            tripId={tripId}
+            toolbar={!showRoll}
+            onSelectionChange={onSelectionChange}
+            header={<ContestCard tripId={tripId} enabled={contestEnabled} focused={focused} style={{ margin: spacing.md }} />}
+          />
         </View>
         {showRoll && (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.groupedBackground }]}>
-            <RollOverview tripId={tripId} />
+            <RollOverview tripId={tripId} focused={focused} />
           </View>
         )}
       </View>

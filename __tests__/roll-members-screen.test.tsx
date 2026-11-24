@@ -55,6 +55,8 @@ const detail = (me: Member, members: Member[]): tripActions.TripDetail => ({
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "trip",
     coverUrl: null,
     groups: [],
@@ -159,10 +161,11 @@ describe("Integrantes screen", () => {
     expect(screen.getByText("No hay integrantes con ese nombre.")).toBeVisible();
   });
 
-  it("tapping a member opens their profile", async () => {
+  it("tapping a member opens their card", async () => {
     await openMembers(detail(creator, big));
     await fireEvent.press(screen.getByRole("button", { name: "José Gómez" }));
-    await waitFor(() => expect(screen).toHavePathname("/user/u3"));
+    await waitFor(() => expect(screen).toHavePathname("/member"));
+    expect(screen).toHaveSearchParams({ tripId: SUR, memberId: "m3" });
   });
 
   it("keeps the role actions for an admin and applies them", async () => {

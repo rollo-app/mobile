@@ -19,6 +19,7 @@ const mocked = jest.mocked(actions);
 const preview = (over: Partial<actions.EventPreview> = {}): actions.EventPreview => ({
   name: "Casamiento de Cami",
   coverUrl: null,
+  description: null,
   revealed: false,
   memberCount: null,
   groups: [
@@ -112,6 +113,16 @@ describe("Joining an event", () => {
     await enterCode();
 
     expect(await screen.findByText("Casamiento de Cami")).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+  });
+
+  it("without a cover the description shows under the name", async () => {
+    mocked.previewEvent.mockResolvedValue(preview({ description: "Premio: una cena" }));
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await enterCode();
+
+    expect(await screen.findByText("Premio: una cena")).toBeVisible();
     expect(screen.queryByTestId("event-hero")).toBeNull();
   });
 

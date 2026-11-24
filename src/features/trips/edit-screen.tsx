@@ -7,6 +7,8 @@ import { errorMessage } from "@/api/client";
 import type { TripDetail } from "@/features/trips/actions";
 import { isEvent } from "@/features/events/event";
 import { canSave, changedFields, editableFields, lockedNote, revealFollowsEnd, settingsOf, type TripSettings } from "@/features/trips/edit-form";
+import { ContestSection, DescriptionSection } from "@/features/trips/contest-section";
+import { contestRevealDefault, revealAllowedWithContest } from "@/features/trips/create-form";
 import { TripForm, type LimitMode, type RevealMode } from "@/features/trips/trip-form";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { useUpdateTrip } from "@/features/trips/use-update-trip";
@@ -36,6 +38,9 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
   const [momentMode, setMomentMode] = useState(before.momentMode);
   const [momentStart, setMomentStart] = useState(before.momentWindowStart);
   const [momentEnd, setMomentEnd] = useState(before.momentWindowEnd);
+  const [description, setDescription] = useState(before.description);
+  const [contestEnabled, setContestEnabled] = useState(before.contestEnabled);
+  const [votingDays, setVotingDays] = useState(before.contestVotingDays);
   const update = useUpdateTrip(tripId);
   const error = errorMessage(update.error, "No se pudo guardar el rollo");
   const event = isEvent(trip);
@@ -50,12 +55,24 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
     momentMode,
     momentWindowStart: momentStart,
     momentWindowEnd: momentEnd,
+    description: event ? description : before.description,
+    contestEnabled: event ? contestEnabled : before.contestEnabled,
+    contestVotingDays: event ? votingDays : before.contestVotingDays,
   };
   const changes = changedFields(before, after, revealMode);
 
   function chooseReveal(mode: RevealMode) {
     if (mode === "custom") setCustomReveal(Math.max(endsAt, before.revealAt));
     setRevealMode(mode);
+  }
+
+  function chooseContest(on: boolean) {
+    setContestEnabled(on);
+    // With the contest the reveal has to come 2 h after the end: "Al terminar" can't hold (only while the reveal is editable).
+    if (on && editable.reveal && (revealMode === "end" || !revealAllowedWithContest(customReveal, endsAt))) {
+      setCustomReveal(contestRevealDefault(endsAt));
+      setRevealMode("custom");
+    }
   }
 
   return (
@@ -76,6 +93,7 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
       </Stack.Toolbar>
       <Host style={styles.form}>
         <Form>
+          {event && <DescriptionSection initial={before.description} onChange={setDescription} />}
           <TripForm
             values={{ startsAt, endsAt, revealMode, customReveal, limitMode, photos, totalPhotos, momentMode, momentStart, momentEnd }}
             on={{
@@ -104,6 +122,15 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
             momentFromTomorrow={editable.moment && !editable.start}
             whenFooter={error ? <Text modifiers={[foregroundStyle("red")]}>{error}</Text> : undefined}
           />
+          {event && (
+            <ContestSection
+              enabled={contestEnabled}
+              votingDays={votingDays}
+              onEnabledChange={chooseContest}
+              onVotingDaysChange={setVotingDays}
+              locked={!editable.contest}
+            />
+          )}
         </Form>
       </Host>
     </View>

@@ -38,6 +38,10 @@ export async function createTrip(input: {
   /** "event" needs `groups` (names); a regular trip leaves both out. */
   type?: "trip" | "event";
   groups?: string[];
+  /** Events only: cover text (empty = none) and the photo contest. */
+  description?: string;
+  contestEnabled?: boolean;
+  contestVotingHours?: number;
 }): Promise<Trip> {
   const { photoLimit, groups, ...rest } = input;
   const limit =
@@ -215,6 +219,11 @@ export async function renameTrip(tripId: string, name: string): Promise<Trip> {
 /** Deletes the rollo for everyone, photos included (creator only). */
 export async function deleteTrip(tripId: string): Promise<void> {
   await unwrap((await authedClient()).DELETE("/trips/{tripId}", { params: { path: { tripId } } }));
+}
+
+/** Reveals the rollo now (creator only; with the contest on the server asks for at least 2 finalists). */
+export async function revealTrip(tripId: string): Promise<void> {
+  await unwrap((await authedClient()).POST("/trips/{tripId}/reveal", { params: { path: { tripId } } }));
 }
 
 /** Changes dates, quota or daily moment of the rollo (any admin; only the fields sent change). */

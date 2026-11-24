@@ -117,6 +117,10 @@ function RootStack() {
           <Stack.Screen name="event-groups" options={{ title: "Grupos" }} />
           <Stack.Screen name="my-groups" options={{ title: "Sumarme a otro grupo" }} />
           <Stack.Screen name="event-qr" options={{ title: "Código QR" }} />
+          {/* Organizers pick the contest's finalists between the end of the event and the reveal. */}
+          {/* Vote, tie-break and result of the photo contest. */}
+          <Stack.Screen name="contest" options={{ title: "Concurso de fotos" }} />
+          <Stack.Screen name="contest-picks" options={{ title: "Elegí las finalistas" }} />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
           <Stack.Screen name="notifications" options={{ title: "Notificaciones" }} />
           {/* "¿Te avisamos…?", once, after creating or joining a roll. */}
@@ -156,6 +160,15 @@ function RootStack() {
             }}
           />
           <Stack.Screen
+            name="member"
+            options={{
+              headerShown: false,
+              presentation: "formSheet",
+              sheetAllowedDetents: "fitToContents",
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="offline-maps"
             options={{
               title: "Mapa sin señal",
@@ -172,6 +185,11 @@ function RootStack() {
           <Stack.Screen name="intro" options={{ presentation: "fullScreenModal", headerShown: false, gestureEnabled: false }} />
           {/* The lock → camera moment when a roll starts. */}
           <Stack.Screen name="roll-started" options={{ presentation: "fullScreenModal", headerShown: false }} />
+          {/* The photo contest's winner, developed in the darkroom: once per event, over the contest or the gallery. */}
+          <Stack.Screen
+            name="contest-winner"
+            options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.reveal } }}
+          />
           <Stack.Screen
             name="reveal"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.reveal } }}

@@ -1,9 +1,6 @@
 import {
-  Blur,
   Canvas,
   Group,
-  ImageShader,
-  Paint,
   Rect,
   Shader,
   Skia,
@@ -11,7 +8,6 @@ import {
   useClock,
   type SkImage,
   type SkRuntimeEffect,
-  type SkSize,
 } from "@shopify/react-native-skia";
 import { useEffect, useMemo } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
@@ -28,15 +24,14 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import type { RevealedPhoto } from "@/features/media/revealed";
-import { thumbHashAverageColor } from "@/features/trips/thumbhash-color";
 import { easeOut } from "@/ui/motion";
 import { spacing, type } from "@/ui/theme";
-import { cellFill } from "./cell-fill";
-import { DEVELOP_SKSL, GRAIN_SKSL } from "./darkroom-shaders";
+import { DevelopLayer, decodeThumb } from "@/features/darkroom/develop-image";
+import { DEVELOP_SKSL, GRAIN_SKSL } from "@/features/darkroom/darkroom-shaders";
 import { staggerDelay } from "./stagger";
-import { playShutter, prepareShutter, releaseShutter } from "./shutter-sound";
+import { playShutter, prepareShutter, releaseShutter } from "@/features/darkroom/shutter-sound";
 import { REVEAL_TIMELINE } from "./timeline";
-import type { ThumbBytes } from "./use-thumb-bytes";
+import type { ThumbBytes } from "@/features/darkroom/use-thumb-bytes";
 
 const { developAt: DEVELOP_AT, hitAt: HIT_AT, titleAt: TITLE_AT, cellMs: CELL_MS, totalMs: TOTAL_MS, outroMs: OUTRO_MS, reduced: REDUCED } = REVEAL_TIMELINE;
 const DEVELOP_MS = HIT_AT - DEVELOP_AT;
@@ -98,7 +93,7 @@ export function DarkroomIntro({
   const images = useMemo(() => {
     const decoded: Record<string, SkImage> = {};
     for (const [id, buffer] of Object.entries(thumbBytes)) {
-      const image = Skia.Image.MakeImageFromEncoded(Skia.Data.fromBytes(new Uint8Array(buffer)));
+      const image = decodeThumb(buffer);
       if (image) decoded[id] = image;
     }
     return decoded;
@@ -235,6 +230,7 @@ export function DarkroomIntro({
   );
 }
 
+/** One grid cell: its own eased, delayed progress feeding the shared develop layer. */
 function DevelopingCell({
   effect,
   image,
@@ -256,49 +252,11 @@ function DevelopingCell({
   develop: SharedValue<number>;
   clock: SharedValue<number>;
 }) {
-  const avg = thumbhash ? thumbHashAverageColor(thumbhash) : null;
-  const base = avg ? [avg.r / 255, avg.g / 255, avg.b / 255] : [0.25, 0.22, 0.2];
-  const cellSize: SkSize = { width: size, height: size };
-
   const progress = useDerivedValue(() => {
     const p = Math.min(1, Math.max(0, (develop.value * DEVELOP_MS - delay) / CELL_MS));
     return p * p * (3 - 2 * p);
   });
-  const uniforms = useDerivedValue(() => ({
-    size: [cellSize.width, cellSize.height],
-    progress: progress.value,
-    time: clock.value / 1000,
-    base,
-  }));
-  const blur = useDerivedValue(() => 20 * (1 - progress.value));
-  const bounds = rect(0, 0, size, size);
-  const fill = cellFill(!!effect, !!image);
-
-  return (
-    <Group
-      transform={[{ translateX: x }, { translateY: y }]}
-      clip={bounds}
-      layer={
-        <Paint>
-          <Blur blur={blur} mode="clamp" />
-        </Paint>
-      }
-    >
-      {fill === "develop" && image && effect ? (
-        <Rect rect={bounds}>
-          <Shader source={effect} uniforms={uniforms}>
-            <ImageShader image={image} fit="cover" rect={bounds} />
-          </Shader>
-        </Rect>
-      ) : fill === "image" && image ? (
-        <Rect rect={bounds}>
-          <ImageShader image={image} fit="cover" rect={bounds} />
-        </Rect>
-      ) : (
-        <Rect rect={bounds} color={Skia.Color(`rgb(${base.map((c) => Math.round(c * 255)).join(",")})`)} />
-      )}
-    </Group>
-  );
+  return <DevelopLayer effect={effect} image={image} thumbhash={thumbhash} x={x} y={y} size={size} progress={progress} clock={clock} />;
 }
 
 const SERIF = type.quote.fontFamily;

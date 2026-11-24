@@ -8,13 +8,17 @@ import { isEvent } from "@/features/events/event";
 import { FeaturingSection } from "@/features/featured/featuring-section";
 import { useLeaveTrip } from "@/features/friends/use-leave-trip";
 import type { TripDetail } from "@/features/trips/actions";
+import { descriptionTooLong, MAX_DESCRIPTION, MAX_DESCRIPTION_LINES } from "@/features/trips/create-form";
 import { editableFields } from "@/features/trips/edit-form";
 import { canRename } from "@/features/trips/roles";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useArchiveTrip } from "@/features/trips/use-archive-trip";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
+import { useUpdateTrip } from "@/features/trips/use-update-trip";
 import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
+import { descriptionPreview } from "./description-preview";
+import { RevealNowSection } from "./reveal-now";
 import { RollDates } from "./roll-dates";
 import { useDeleteTrip } from "./use-delete-trip";
 import { MAX_TRIP_NAME, nextTripName, useRenameTrip } from "./use-rename-trip";
@@ -47,6 +51,8 @@ function Settings({ detail }: { detail: TripDetail }) {
   const archived = useActiveTrip().trips.find((t) => t.id === detail.trip.id)?.archived ?? false;
   const rename = useRenameTrip(detail.trip.id);
   const [nameTooLong, setNameTooLong] = useState(false);
+  const updateTrip = useUpdateTrip(detail.trip.id);
+  const [descriptionInvalid, setDescriptionInvalid] = useState(false);
 
   const editName = () =>
     Alert.prompt(
@@ -71,15 +77,43 @@ function Settings({ detail }: { detail: TripDetail }) {
       "plain-text",
       detail.trip.name,
     );
+  const editDescription = () =>
+    Alert.prompt(
+      "Descripción",
+      undefined,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Guardar",
+          onPress: (text?: string) => {
+            const next = (text ?? "").trim();
+            if (next === (detail.trip.description ?? "")) return;
+            if (descriptionTooLong(next)) {
+              updateTrip.reset();
+              setDescriptionInvalid(true);
+              return;
+            }
+            setDescriptionInvalid(false);
+            updateTrip.mutate({ description: next });
+          },
+        },
+      ],
+      "plain-text",
+      detail.trip.description ?? "",
+    );
   const failure =
-    (nameTooLong ? `El nombre puede tener hasta ${MAX_TRIP_NAME} caracteres` : null) ?? errorMessage(rename.error, "No se pudo cambiar el nombre");
+    (nameTooLong ? `El nombre puede tener hasta ${MAX_TRIP_NAME} caracteres` : null) ??
+    (descriptionInvalid ? `La descripción puede tener hasta ${MAX_DESCRIPTION} caracteres y ${MAX_DESCRIPTION_LINES} renglones` : null) ??
+    errorMessage(rename.error, "No se pudo cambiar el nombre") ??
+    errorMessage(updateTrip.error, "No se pudo cambiar la descripción");
 
   return (
     <>
       {canRename(detail.me) && (
         <Section>
           <Row label="Nombre" value={detail.trip.name} onPress={editName} />
-          {editableFields(detail.trip, Date.now()).end && (
+          {event && <Row label="Descripción" value={descriptionPreview(detail.trip.description)} onPress={editDescription} />}
+          {(editableFields(detail.trip, Date.now()).end || (event && !detail.trip.revealed)) && (
             <Row label="Editar rollo" onPress={() => router.push({ pathname: "/edit-trip", params: { tripId: detail.trip.id } })} />
           )}
         </Section>
@@ -89,6 +123,8 @@ function Settings({ detail }: { detail: TripDetail }) {
       {event && <EventCover detail={detail} />}
 
       <RollDates detail={detail} phase={phase} />
+
+      <RevealNowSection detail={detail} phase={phase} />
 
       {event && <EventGroupsSection detail={detail} />}
 

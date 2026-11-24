@@ -289,8 +289,9 @@ jest.mock("@expo/ui/swift-ui", () => {
       ),
     // Swipe actions render always visible, so tests can press them directly.
     SwipeActions: Object.assign(Wrap, { Actions: Wrap }),
-    TextField: ({ placeholder, onTextChange, modifiers }: any) =>
-      h(TextInput, { placeholder, onChangeText: onTextChange, accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel }),
+    useNativeState: (value: unknown) => ({ value }),
+    TextField: ({ placeholder, onTextChange, modifiers, text }: any) =>
+      h(TextInput, { placeholder, defaultValue: text?.value, onChangeText: onTextChange, accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel }),
     DatePicker: ({ title, selection, range, modifiers }: any) =>
       h(View, { accessibilityLabel: title, accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled }, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
     Stepper: ({ label, value, modifiers }: any) =>
@@ -516,6 +517,17 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
       h(View, null, h(Text, null, "Se reveló"), h(Text, null, title), h(Text, null, date)),
   };
 });
+// The developing photo (Skia) of the contest's winner reveal is a marker View; its own test unmocks it.
+jest.mock("@/features/darkroom/develop-image", () => {
+  const { createElement: h } = require("react");
+  const { View } = require("react-native");
+  // The label tells a test what it was given: whether the thumb came in, and where the development starts.
+  const DevelopImage = ({ thumbBytes, progress }: { thumbBytes: ArrayBuffer | null; progress: { value: number } }) =>
+    h(View, { testID: "develop-image", accessibilityLabel: `${thumbBytes ? "thumb" : "no thumb"}, progress ${progress.value}` });
+  return { DevelopImage, DevelopLayer: () => null, decodeThumb: () => null };
+});
+// The shutter click (expo-audio, native) does nothing in screen tests; its own test unmocks it.
+jest.mock("@/features/darkroom/shutter-sound", () => ({ prepareShutter: jest.fn(async () => {}), playShutter: jest.fn(), releaseShutter: jest.fn() }));
 // The QR (Skia) is a plain View in tests.
 jest.mock("@/features/events/qr-canvas", () => {
   const { View } = require("react-native");

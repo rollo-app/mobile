@@ -84,6 +84,8 @@ function tripDetail(photosLeft: number, mode: "daily" | "total" = "daily"): acti
       momentWindowStart: 540,
       momentWindowEnd: 1380,
       originals: keepOriginals,
+      description: null,
+      contest: null,
       type: "trip",
       coverUrl: null,
       groups: [],

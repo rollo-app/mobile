@@ -57,6 +57,8 @@ const detail = (id: string, name: string, revealed: boolean): tripActions.TripDe
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "trip",
     coverUrl: null,
     groups: [],
