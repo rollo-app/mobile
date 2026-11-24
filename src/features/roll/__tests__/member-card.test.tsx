@@ -1,7 +1,8 @@
 import { keepOriginals } from "@/test/trip";
 import { Alert } from "react-native";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
+import { queryClient } from "@/api/query-client";
 import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import * as tripActions from "@/features/trips/actions";
@@ -96,6 +97,7 @@ beforeEach(async () => {
   fetchUser = jest.spyOn(profileActions, "fetchUser").mockImplementation(async (id) => profileOf([creator, adminCami, fede, tomi].find((m) => m.userId === id)!, "Me gusta el mate"));
 });
 afterEach(() => {
+  queryClient.clear();
   alert.mockRestore();
   fetchUser.mockRestore();
 });
@@ -149,5 +151,43 @@ describe("Member card", () => {
     expect(screen.getByText("Creador")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Hacer admin" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Sacar del rollo" })).toBeNull();
+  });
+
+  it("closes once after removing: back to Integrantes, not past it", async () => {
+    const withoutFede = { ...detail(adminCami), members: detail(adminCami).members.filter((m) => m.id !== "m5") };
+    trips.fetchTrip.mockResolvedValue(detail(adminCami));
+    trips.removeMember.mockImplementation(async () => {
+      trips.fetchTrip.mockResolvedValue(withoutFede);
+    });
+    await setActiveTripId(SUR);
+    await renderRouter(routes, { initialUrl: `/roll-members?tripId=${SUR}` });
+    await fireEvent.press(await screen.findByRole("button", { name: "Fede" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Sacar del rollo" }));
+    const sacar = alert.mock.calls[0]![2].find((b: { text: string }) => b.text === "Sacar");
+    await act(async () => sacar.onPress());
+    await waitFor(() => expect(trips.removeMember).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen).toHavePathname("/roll-members"));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Fede" })).toBeNull());
+  });
+
+  it("ignores a second tap while an action runs", async () => {
+    let finish!: () => void;
+    trips.makeAdmin.mockImplementation(() => new Promise((resolve) => (finish = () => resolve(fede))));
+    await openCard(adminCami, fede);
+    await fireEvent.press(screen.getByRole("button", { name: "Hacer admin" }));
+    await waitFor(() => expect(trips.makeAdmin).toHaveBeenCalledTimes(1));
+    await fireEvent.press(screen.getByRole("button", { name: "Hacer admin" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Sacar del rollo" }));
+    expect(trips.makeAdmin).toHaveBeenCalledTimes(1);
+    expect(alert).not.toHaveBeenCalled();
+    await act(async () => finish());
+  });
+
+  it("keeps the X and says so when the roll doesn't load", async () => {
+    trips.fetchTrip.mockRejectedValue(new Error("sin red"));
+    await setActiveTripId(SUR);
+    await renderRouter(routes, { initialUrl: `/member?tripId=${SUR}&memberId=m5` });
+    expect(await screen.findByText("No se pudo cargar.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Cerrar" })).toBeVisible();
   });
 });
