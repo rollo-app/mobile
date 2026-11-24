@@ -13,17 +13,26 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
-import { sendableGroups } from "@/features/events/event";
+import { localDay } from "@/features/capture/quota";
+import { isEvent, sendableGroups } from "@/features/events/event";
 import { useToggleFeatured } from "@/features/featured/use-toggle-featured";
 import { useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
+import { rollSummary } from "@/features/roll/summary";
+import { memberTotal } from "@/features/trips/member-total";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText } from "@/ui/components";
 import { LoadMoreFooter } from "@/ui/load-more-footer";
 import { colors, spacing, type } from "@/ui/theme";
+import { buildChapters, type ChapterContext } from "./chapters";
+import { ChapterHeader } from "./chapter-header";
 import { Cell } from "./gallery-cell";
 import { GalleryToolbar } from "./gallery-toolbar";
 import { authorsOf, filterByAuthor, filterByGroup } from "./group";
-import { gridItems, type DayGridItem as GridItem } from "./grid-items";
+import { diaryItems, type GridItem } from "./grid-items";
+import { HeroCell } from "./hero-cell";
+import { peopleOrder } from "./people-order";
+import { PeopleRow } from "./people-row";
+import { QuoteRow } from "./quote-row";
 import { SaveBar } from "./save-bar";
 import { useArchivePhoto } from "./use-archive-photo";
 import { useBulkSave } from "./use-bulk-save";
@@ -36,13 +45,14 @@ const GAP = 2;
 
 const keyExtractor = (item: GridItem) => item.key;
 const getItemType = (item: GridItem) => item.kind;
-// A day header takes the whole row.
+// Chapter headers, heroes and quotes take the whole row.
 const overrideItemLayout = (layout: { span?: number }, item: GridItem) => {
-  if (item.kind === "header") layout.span = COLUMNS;
+  if (item.kind !== "photo") layout.span = COLUMNS;
 };
+const DEVICE_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 /**
- * Revealed roll: grid grouped by day, filter by person, and downloads to Photos. `toolbar` false hides
+ * Revealed roll as a diary (chapters with a hero, quotes and a row of faces to filter by person), and downloads to Photos. `toolbar` false hides
  * its header buttons while it stays mounted behind another view.
  */
 const ENDING_THRESHOLD = 1.5;
@@ -91,7 +101,32 @@ export function GalleryScreen({
     return [...loaded, ...members.filter((m) => !known.has(m.id)).map((m) => ({ id: m.id, name: m.name }))];
   }, [photos, members, complete]);
   const shown = useMemo(() => filterByGroup(filterByAuthor(photos, authorId), groupId), [photos, authorId, groupId]);
-  const items = useMemo(() => gridItems(shown, COLUMNS), [shown]);
+  const timeZone = detail?.trip.timezone ?? DEVICE_ZONE;
+  const groupsKey = groupId;
+  const chapterContext = useMemo<ChapterContext>(() => {
+    if (!detail) return { kind: "trip", startDay: shown[0]?.day ?? "" };
+    const { trip } = detail;
+    if (!isEvent(trip)) return { kind: "trip", startDay: localDay(trip.startsAt, trip.timezone) };
+    return {
+      kind: "event",
+      groups: groupsKey ? sendable.filter((g) => g.id === groupsKey) : sendable,
+      showGroupTitle: sendable.length > 1,
+      timeZone: trip.timezone,
+      multiDay: localDay(trip.startsAt, trip.timezone) !== localDay(trip.endsAt, trip.timezone),
+    };
+  }, [detail, sendable, groupsKey, shown]);
+  const chapters = useMemo(() => buildChapters(shown, chapterContext), [shown, chapterContext]);
+  const items = useMemo(() => diaryItems(chapters, COLUMNS), [chapters]);
+  const people = useMemo(() => (detail && me ? peopleOrder(detail.members, me.id, authors) : []), [detail, me, authors]);
+  const summary = detail
+    ? rollSummary({
+        media: photos,
+        people: memberTotal(detail),
+        startsAt: detail.trip.startsAt,
+        endsAt: detail.trip.endsAt,
+        timeZone: detail.trip.timezone,
+      })
+    : null;
   const author = authors.find((a) => a.id === authorId);
   const group = groups.find((g) => g.id === groupId);
 
@@ -145,13 +180,28 @@ export function GalleryScreen({
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<GridItem>) => {
-      if (item.kind === "header")
+      if (item.kind === "chapter") return <ChapterHeader chapter={item.chapter} />;
+      const { photo } = item;
+      const own = revealed && !!me && photo.authorUserId === me.id;
+      if (item.kind === "quote")
+        return <QuoteRow photo={photo} timeZone={timeZone} selecting={selecting} selected={selected.has(photo.id)} onPress={onCellPress} />;
+      if (item.kind === "hero")
         return (
-          <Text accessibilityRole="header" style={[type.headline, styles.header]}>
-            {item.title}
-          </Text>
+          <View style={styles.hero}>
+            <HeroCell
+              photo={photo}
+              token={token}
+              size={width}
+              selecting={selecting}
+              selected={selected.has(photo.id)}
+              own={own}
+              onPress={onCellPress}
+              onToggleFeatured={onToggleFeatured}
+              onOwnAction={onOwnAction}
+            />
+          </View>
         );
-      const { photo, column } = item;
+      const { column } = item;
       return (
         <View style={[styles.slot, column === 0 ? styles.slotStart : column === COLUMNS - 1 ? styles.slotEnd : null]}>
           <Cell
@@ -160,7 +210,7 @@ export function GalleryScreen({
             size={size}
             selecting={selecting}
             selected={selected.has(photo.id)}
-            own={revealed && !!me && photo.authorUserId === me.id}
+            own={own}
             onPress={onCellPress}
             onToggleFeatured={onToggleFeatured}
             onOwnAction={onOwnAction}
@@ -168,7 +218,7 @@ export function GalleryScreen({
         </View>
       );
     },
-    [token, size, selecting, selected, revealed, me, onCellPress, onToggleFeatured, onOwnAction],
+    [token, size, width, timeZone, selecting, selected, revealed, me, onCellPress, onToggleFeatured, onOwnAction],
   );
   const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
 
@@ -215,21 +265,14 @@ export function GalleryScreen({
         }
         ListHeaderComponent={
           <>
-            {header}
-            {detail && <OriginalsNotice originals={detail.trip.originals} timeZone={detail.trip.timezone} style={styles.notice} />}
-            {author && (
-              <View style={styles.filter}>
-                <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${author.name}`}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Quitar filtro"
-                  hitSlop={10}
-                  onPress={() => setAuthorId(null)}
-                >
-                  <SymbolView name="xmark.circle.fill" size={18} tintColor={colors.tint as string} />
-                </Pressable>
+            {summary !== null && <Text style={[type.subhead, styles.summary]}>{summary}</Text>}
+            {people.length > 0 && (
+              <View style={styles.people}>
+                <PeopleRow people={people} selectedId={authorId} onSelect={setAuthorId} />
               </View>
             )}
+            {header}
+            {detail && <OriginalsNotice originals={detail.trip.originals} timeZone={detail.trip.timezone} style={styles.notice} />}
             {group && (
               <View style={styles.filter}>
                 <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${group.name}`}</Text>
@@ -266,14 +309,11 @@ export function GalleryScreen({
           busy={busy}
           hasPhotos={photos.length > 0}
           canSaveAll={canSaveAll}
-          authors={authors}
-          authorId={authorId}
           groups={groups}
           groupId={groupId}
           onToggleAll={toggleAll}
           onStopSelecting={stopSelecting}
           onStartSelecting={startSelecting}
-          onSelectAuthor={setAuthorId}
           onSelectGroup={setGroupId}
           onSaveAll={confirmSaveAll}
         />
@@ -304,12 +344,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
-  header: {
-    color: colors.label,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
+  summary: { color: colors.secondaryLabel, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+  people: { paddingTop: spacing.md },
+  hero: { paddingBottom: GAP },
   // Columns split the width evenly; the cell hugs the outer edge in the first and last column and sits centered in the
   // middle one, which leaves GAP between neighbours and none at the screen edges.
   slot: { alignItems: "center", paddingBottom: GAP },

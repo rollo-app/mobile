@@ -17,6 +17,10 @@ export type CellProps = {
   photo: RevealedPhoto;
   token: string | null;
   size: number;
+  /** Defaults to `size` (a square); the hero is 4:3. */
+  height?: number;
+  /** The thumbnail's testID is `${testIDPrefix}${photo.id}`. */
+  testIDPrefix?: string;
   selecting: boolean;
   selected: boolean;
   /** Your own photo of the revealed roll: it can be archived or deleted. */
@@ -46,6 +50,8 @@ function sameCell(a: CellProps, b: CellProps) {
     a.onOwnAction === b.onOwnAction &&
     a.token === b.token &&
     a.size === b.size &&
+    a.height === b.height &&
+    a.testIDPrefix === b.testIDPrefix &&
     a.selecting === b.selecting &&
     a.selected === b.selected &&
     a.onPress === b.onPress &&
@@ -53,7 +59,7 @@ function sameCell(a: CellProps, b: CellProps) {
   );
 }
 
-export const Cell = memo(function Cell({ photo, token, size, selecting, selected, own, onPress, onToggleFeatured, onOwnAction }: CellProps) {
+export const Cell = memo(function Cell({ photo, token, size, height = size, testIDPrefix = "gallery-thumb-", selecting, selected, own, onPress, onToggleFeatured, onOwnAction }: CellProps) {
   // A thumbnail the server refused (429 while scrolling fast) tries again by itself.
   const retry = useImageRetry(photo.id);
   const cell = (
@@ -62,12 +68,12 @@ export const Cell = memo(function Cell({ photo, token, size, selecting, selected
       accessibilityLabel={`${photo.type === "video" ? "Video" : "Foto"} de ${photo.author.name}`}
       accessibilityState={selecting ? { selected } : undefined}
       onPress={() => onPress(photo)}
-      style={{ width: size, height: size, backgroundColor: colors.latent }}
+      style={{ width: size, height, backgroundColor: colors.latent }}
     >
       {!!token && (
         <Image
           key={retry.retryKey}
-          testID={`gallery-thumb-${photo.id}`}
+          testID={`${testIDPrefix}${photo.id}`}
           onError={retry.onError}
           onLoad={retry.onLoad}
           source={mediaSource(photo.thumbPath, token)}
@@ -124,7 +130,7 @@ export const Cell = memo(function Cell({ photo, token, size, selecting, selected
   return (
     <MenuView
       shouldOpenOnLongPress
-      style={{ width: size, height: size }}
+      style={{ width: size, height }}
       actions={actions}
       onPressAction={({ nativeEvent }) => {
         const event = nativeEvent.event;
