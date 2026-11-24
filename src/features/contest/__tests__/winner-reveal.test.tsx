@@ -149,9 +149,9 @@ describe("WinnerRevealScreen", () => {
     await wrap(<WinnerRevealScreen tripId="t1" />);
     // Mounted with the downloaded thumb, undeveloped.
     expect((await screen.findByTestId("develop-image", { includeHiddenElements: true })).props.accessibilityLabel).toBe("thumb, progress 0");
-    expect(screen.queryByText("Ganó la foto de @cami")).toBeNull();
+    expect(screen.queryByLabelText("Ganó la foto de @cami")).toBeNull();
     await skipToEnd();
-    expect(screen.getByText("Ganó la foto de @cami")).toBeTruthy();
+    expect(screen.getByLabelText("Ganó la foto de @cami")).toBeTruthy();
     expect(screen.getByText("12 votos")).toBeTruthy();
     expect(screen.getByTestId("avatar", { includeHiddenElements: true })).toBeTruthy();
   });
@@ -172,21 +172,21 @@ describe("WinnerRevealScreen", () => {
     jest.mocked(fetchContest).mockResolvedValue(closed());
     await wrap(<WinnerRevealScreen tripId="t1" />);
     await skipToEnd();
-    expect(screen.getByText("¡Ganó tu foto!")).toBeTruthy();
+    expect(screen.getByLabelText("¡Ganó tu foto!")).toBeTruthy();
   });
 
   it("names the winner without a username", async () => {
     jest.mocked(fetchContest).mockResolvedValue(closed({ username: null }));
     await wrap(<WinnerRevealScreen tripId="t1" />);
     await skipToEnd();
-    expect(screen.getByText("Ganó la foto de Cami")).toBeTruthy();
+    expect(screen.getByLabelText("Ganó la foto de Cami")).toBeTruthy();
   });
 
   it("with Reduce Motion: no shader and no confetti, one success haptic", async () => {
     jest.mocked(useReduceMotion).mockReturnValue(true);
     jest.mocked(fetchContest).mockResolvedValue(closed());
     await wrap(<WinnerRevealScreen tripId="t1" />);
-    expect(await screen.findByText("Ganó la foto de @cami")).toBeTruthy();
+    expect(await screen.findByLabelText("Ganó la foto de @cami")).toBeTruthy();
     expect(screen.queryByTestId("develop-image", { includeHiddenElements: true })).toBeNull();
     expect(screen.queryByTestId("confetti", { includeHiddenElements: true })).toBeNull();
     expect(screen.getByTestId("winner-photo", { includeHiddenElements: true })).toBeTruthy();
@@ -199,7 +199,7 @@ describe("WinnerRevealScreen", () => {
     jest.mocked(fetchContest).mockResolvedValue(closed({ imageAvailable: false }));
     await wrap(<WinnerRevealScreen tripId="t1" />);
     // The quiet path: nothing to skip, no darkroom.
-    expect(await screen.findByText("Ganó la foto de @cami")).toBeTruthy();
+    expect(await screen.findByLabelText("Ganó la foto de @cami")).toBeTruthy();
     expect(screen.queryByTestId("winner-skip")).toBeNull();
     expect(screen.getByRole("button", { name: "Ver resultados" })).toBeTruthy();
     await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1));

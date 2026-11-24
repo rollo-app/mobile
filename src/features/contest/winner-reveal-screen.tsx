@@ -18,7 +18,7 @@ import { easeOut } from "@/ui/motion";
 import { screenBackgrounds, spacing, type } from "@/ui/theme";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import { Confetti } from "./confetti";
-import { votesLabel, winnerLine } from "./contest-state";
+import { authorHandle, votesLabel, winnerLine } from "./contest-state";
 import { useContest } from "./use-contest";
 import { WINNER_TIMELINE } from "./winner-timeline";
 
@@ -119,6 +119,7 @@ export function WinnerRevealScreen({ tripId }: { tripId: string }) {
   return (
     <WinnerReveal
       line={winnerLine(winner.author, me?.id)}
+      mine={winner.author.userId === me?.id}
       votes={finalist && finalist.votes !== null ? votesLabel(finalist.votes) : null}
       author={winner.author}
       photo={showPhoto && display ? { ...display, size: photoSize, thumbBytes: thumbs.bytes[finalist!.mediaId] ?? null, thumbhash: finalist!.thumbHash } : null}
@@ -134,6 +135,7 @@ type RevealPhoto = { uri: string; headers: Record<string, string>; size: { width
 /** The sequence itself, mounted once everything it needs is in (it reads Reduce Motion once). */
 function WinnerReveal({
   line,
+  mine,
   votes,
   author,
   photo,
@@ -142,8 +144,10 @@ function WinnerReveal({
   onDone,
 }: {
   line: string;
+  /** The viewer took the winning photo: "¡Ganó tu foto!" with the avatar, no "Ganó la foto de". */
+  mine: boolean;
   votes: string | null;
-  author: { userId: string; name: string; avatarUrl: string | null };
+  author: { userId: string; name: string; username: string | null; avatarUrl: string | null };
   photo: RevealPhoto | null;
   reduceMotion: boolean;
   bottomInset: number;
@@ -259,11 +263,15 @@ function WinnerReveal({
           </View>
         )}
         <Animated.View style={[styles.text, textStyle]}>
-          <View style={styles.byline}>
-            <Avatar id={author.userId} name={author.name} avatarUrl={author.avatarUrl} size={28} />
-            <Text style={styles.line} numberOfLines={2}>
-              {line}
-            </Text>
+          {/* The avatar goes right next to the @: "Ganó la foto de" on top, then the photo and the handle. Read as one line. */}
+          <View style={styles.headline} accessible accessibilityLabel={line}>
+            {!mine && <Text style={styles.line}>Ganó la foto de</Text>}
+            <View style={styles.byline}>
+              <Avatar id={author.userId} name={author.name} avatarUrl={author.avatarUrl} size={28} />
+              <Text style={styles.line} numberOfLines={2}>
+                {mine ? line : authorHandle(author)}
+              </Text>
+            </View>
           </View>
           {!!votes && <Text style={styles.votes}>{votes}</Text>}
         </Animated.View>
@@ -303,6 +311,7 @@ const styles = StyleSheet.create({
   safelight: { backgroundColor: SAFELIGHT, mixBlendMode: "multiply" },
   flash: { backgroundColor: "#fff" },
   text: { alignItems: "center", gap: spacing.xs },
+  headline: { alignItems: "center", gap: spacing.xs },
   byline: { flexDirection: "row", alignItems: "center", gap: spacing.sm, maxWidth: "100%" },
   line: { fontFamily: SERIF, fontSize: 24, lineHeight: 30, color: "#fff", flexShrink: 1 },
   votes: { ...type.body, color: "rgba(255,255,255,0.75)", fontVariant: ["tabular-nums"] },
