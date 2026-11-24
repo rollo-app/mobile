@@ -23,7 +23,7 @@ import { colors, spacing, type } from "@/ui/theme";
 import { Cell } from "./gallery-cell";
 import { GalleryToolbar } from "./gallery-toolbar";
 import { authorsOf, filterByAuthor, filterByGroup } from "./group";
-import { gridItems, type GridItem } from "./grid-items";
+import { gridItems, type DayGridItem as GridItem } from "./grid-items";
 import { SaveBar } from "./save-bar";
 import { useArchivePhoto } from "./use-archive-photo";
 import { useBulkSave } from "./use-bulk-save";
