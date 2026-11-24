@@ -199,7 +199,7 @@ Decisiones de producto:
 - **Cupo diario o total** (a futuro, mismo diseño): al crear el rollo se elige si el límite es por día (como hoy, 10 por
   persona por día) o total del viaje (por ejemplo 20 por persona en todo el rollo).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
-  **El revelado** es una pantalla propia (`/reveal`, `src/features/reveal/`, fullScreenModal): se abre sola **una vez por
+  **El revelado** es una pantalla propia (`/reveal`, `src/features/reveal/`, fullScreenModal; el efecto de revelado (`DevelopImage`), los shaders y el obturador son compartidos y viven en `src/features/darkroom/`): se abre sola **una vez por
   rollo** la primera vez que entrás a un rollo revelado (`useFirstPresentation`, esperando `loaded` para no disparar en un rollo que no es el
   activo). Dura ~7 s: cuarto oscuro rojo con grano animado ("Revelando {rollo}") → 9–12 fotos que salen de su ThumbHash (shader de
   Skia: umbral de ruido, sepia a color, borroso a nítido) con háptico que crece (`react-native-pulsar`) → golpe (impacto + éxito + clic
