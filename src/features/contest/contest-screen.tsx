@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { Alert, Modal, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
@@ -33,6 +34,18 @@ export function ContestScreen({ tripId }: { tripId: string }) {
   const { pick, picking, error: pickError } = usePickWinner(tripId);
   // Index (in rank order) of the result opened full screen.
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const openProfile = useOpenProfile();
+  // From the results' full-screen Modal: close it first and open the profile once it's gone (a push under a Modal stays hidden).
+  const pendingProfile = useRef<string | null>(null);
+  const openAuthorFromResults = useCallback((authorId: string) => {
+    pendingProfile.current = authorId;
+    setOpenIndex(null);
+  }, []);
+  const onResultsDismiss = useCallback(() => {
+    const authorId = pendingProfile.current;
+    pendingProfile.current = null;
+    if (authorId) openProfile(authorId);
+  }, [openProfile]);
 
   const organizer = !!detail && isOrganizer(detail);
   const userId = me?.id ?? "";
@@ -95,6 +108,7 @@ export function ContestScreen({ tripId }: { tripId: string }) {
           closesAt={contest.closesAt}
           error={voteError}
           onIndexChange={clearError}
+          onOpenAuthor={openProfile}
         />
       </View>
     );
@@ -118,10 +132,10 @@ export function ContestScreen({ tripId }: { tripId: string }) {
           </>
         }
       />
-      <Modal visible={openIndex !== null} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setOpenIndex(null)}>
+      <Modal visible={openIndex !== null} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setOpenIndex(null)} onDismiss={onResultsDismiss}>
         {openIndex !== null && (
           <View style={styles.pager}>
-            <FinalistPager items={resultItems} initialIndex={openIndex} token={token} mode="results" myUserId={userId} topInset={insets.top} />
+            <FinalistPager items={resultItems} initialIndex={openIndex} token={token} mode="results" myUserId={userId} topInset={insets.top} onOpenAuthor={openAuthorFromResults} />
             <View style={[styles.close, { top: insets.top + spacing.lg }]}>
               <Button label="Cerrar" variant="secondary" size="small" onPress={() => setOpenIndex(null)} />
             </View>

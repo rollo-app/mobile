@@ -79,6 +79,13 @@ describe("FinalistPager vote", () => {
     expect(onIndexChange.mock.calls.map((c) => c[0])).toEqual([1, 0]);
   });
 
+  it("tapping the author (avatar or name) opens their profile", async () => {
+    const onOpenAuthor = jest.fn();
+    await render(<Harness onOpenAuthor={onOpenAuthor} />);
+    await fireEvent.press(screen.getByRole("link", { name: "Ver el perfil de Ana" }));
+    expect(onOpenAuthor).toHaveBeenCalledWith("u1");
+  });
+
   it("voting calls onVote with the media id and the page shows 'Tu voto'", async () => {
     const onVote = jest.fn();
     await render(<Harness onVote={onVote} initialIndex={1} />);

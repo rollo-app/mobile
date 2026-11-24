@@ -33,6 +33,8 @@ export type FinalistPagerProps = {
   error?: string | null;
   /** Pushes the progress (and the place) down, for a pager shown where the status bar overlaps it (a full-screen modal). */
   topInset?: number;
+  /** Tapping the author (avatar or name) opens their profile. */
+  onOpenAuthor?: (userId: string) => void;
 };
 
 // Soft fades so the white text reads on any photo: a short one on top (progress), a longer one behind the author and button.
@@ -58,7 +60,7 @@ function useNow(ms: number): number {
  * Full-screen finalists, one per page, swiping sideways. A horizontal paged FlashList (not a ScrollView): a contest has
  * no cap on finalists and each page holds a full-size photo, so only the pages around the visible one stay mounted.
  */
-export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, myUserId, onVote, votingOpen = true, closesAt = null, onIndexChange, error = null, topInset = 0 }: FinalistPagerProps) {
+export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, myUserId, onVote, votingOpen = true, closesAt = null, onIndexChange, error = null, topInset = 0, onOpenAuthor }: FinalistPagerProps) {
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
   const [box, setBox] = useState({ width: window.width, height: window.height });
@@ -116,9 +118,10 @@ export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, my
         topInset={topInset}
         onVote={onVote}
         onStep={step}
+        onOpenAuthor={onOpenAuthor}
       />
     ),
-    [mode, token, box.width, box.height, myUserId, myVote, votingOpen, countdown, insets.bottom, topInset, onVote, step, error, index, items],
+    [mode, token, box.width, box.height, myUserId, myVote, votingOpen, countdown, insets.bottom, topInset, onVote, step, onOpenAuthor, error, index, items],
   );
   const extra = useMemo(() => ({ myVote, votingOpen, countdown, token, width: box.width, height: box.height, error, index }), [myVote, votingOpen, countdown, token, box.width, box.height, error, index]);
 
@@ -161,9 +164,10 @@ type PageProps = {
   topInset: number;
   onVote?: (mediaId: string | null) => void;
   onStep: (dir: -1 | 1) => void;
+  onOpenAuthor?: (userId: string) => void;
 };
 
-const Page = memo(function Page({ finalist, place, error, mode, token, width, height, mine, voted, votingOpen, countdown, bottomInset, topInset, onVote, onStep }: PageProps) {
+const Page = memo(function Page({ finalist, place, error, mode, token, width, height, mine, voted, votingOpen, countdown, bottomInset, topInset, onVote, onStep, onOpenAuthor }: PageProps) {
   const source = useMemo(() => mediaSource(finalist.displayPath, token), [finalist.displayPath, token]);
   const { author } = finalist;
   const label = voted ? "Tu voto ✓" : votingOpen ? "Votar esta" : "Cerrando la votación…";
@@ -188,7 +192,13 @@ const Page = memo(function Page({ finalist, place, error, mode, token, width, he
       />
       {mode === "results" && !!place && <Text pointerEvents="none" style={[type.title, styles.place, { top: PLACE_TOP + topInset }]}>{`${place}° puesto`}</Text>}
       <View style={[styles.bottom, styles.bottomScrim, { paddingBottom: bottomInset + spacing.md }]}>
-        <View style={styles.author}>
+        <Pressable
+          style={styles.author}
+          disabled={!onOpenAuthor}
+          accessibilityRole="link"
+          accessibilityLabel={`Ver el perfil de ${author.name}`}
+          onPress={() => onOpenAuthor?.(author.userId)}
+        >
           <Avatar id={author.userId} name={author.name} avatarUrl={author.avatarUrl} size={40} />
           <View style={styles.names}>
             <Text style={[type.headline, styles.onPhoto]} numberOfLines={1}>
@@ -200,7 +210,7 @@ const Page = memo(function Page({ finalist, place, error, mode, token, width, he
               </Text>
             )}
           </View>
-        </View>
+        </Pressable>
         {mode === "results" ? (
           finalist.votes !== null && <Text style={styles.votes}>{votesLabel(finalist.votes)}</Text>
         ) : (
