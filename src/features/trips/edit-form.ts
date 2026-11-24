@@ -1,5 +1,5 @@
 import type { components } from "@/api/schema";
-import type { MomentMode } from "./create-form";
+import { DEFAULT_VOTING_DAYS, type MomentMode } from "./create-form";
 import type { TripDetail } from "./actions";
 import { rollPhase } from "./phase";
 
@@ -13,6 +13,9 @@ export type TripSettings = {
   momentMode: MomentMode;
   momentWindowStart: number;
   momentWindowEnd: number;
+  description: string;
+  contestEnabled: boolean;
+  contestVotingDays: number;
 };
 
 export type UpdateTripBody = components["schemas"]["UpdateTripRequest"];
@@ -28,6 +31,9 @@ export function settingsOf(trip: TripDetail["trip"]): TripSettings {
     momentMode: trip.momentMode,
     momentWindowStart: trip.momentWindowStart,
     momentWindowEnd: trip.momentWindowEnd,
+    description: trip.description ?? "",
+    contestEnabled: trip.contest?.enabled ?? false,
+    contestVotingDays: trip.contest ? Math.round(trip.contest.votingHours / 24) : DEFAULT_VOTING_DAYS,
   };
 }
 
@@ -35,7 +41,7 @@ export function settingsOf(trip: TripDetail["trip"]): TripSettings {
 export function editableFields(trip: TripDetail["trip"], now: number) {
   const phase = rollPhase(trip, now);
   const open = phase === "upcoming" || phase === "active";
-  return { start: phase === "upcoming", end: open, reveal: open, limitMode: phase === "upcoming", limit: open, moment: open };
+  return { start: phase === "upcoming", end: open, reveal: open, limitMode: phase === "upcoming", limit: open, moment: open, description: true, contest: phase !== "revealed" };
 }
 
 export function lockedNote(field: "start" | "limitMode"): string {
@@ -67,6 +73,9 @@ export function changedFields(before: TripSettings, after: TripSettings, revealM
   if (after.momentMode !== before.momentMode) body.momentMode = after.momentMode;
   if (after.momentWindowStart !== before.momentWindowStart) body.momentWindowStart = after.momentWindowStart;
   if (after.momentWindowEnd !== before.momentWindowEnd) body.momentWindowEnd = after.momentWindowEnd;
+  if (after.description.trim() !== before.description.trim()) body.description = after.description.trim();
+  if (after.contestEnabled !== before.contestEnabled) body.contestEnabled = after.contestEnabled;
+  if (after.contestVotingDays !== before.contestVotingDays) body.contestVotingHours = after.contestVotingDays * 24;
   return body;
 }
 

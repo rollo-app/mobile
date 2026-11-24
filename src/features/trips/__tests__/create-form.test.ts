@@ -2,6 +2,11 @@ import {
   MAX_DAILY_PHOTOS,
   MAX_TOTAL_PHOTOS,
   canCreate,
+  contestRevealDefault,
+  DEFAULT_VOTING_DAYS,
+  MAX_DESCRIPTION,
+  MAX_DESCRIPTION_LINES,
+  revealAllowedWithContest,
   canCreateEvent,
   cleanGroups,
   dateAtMinutes,
@@ -114,4 +119,18 @@ describe("moment window helpers", () => {
 it("exposes the photo caps the server enforces", () => {
   expect(MAX_DAILY_PHOTOS).toBe(30);
   expect(MAX_TOTAL_PHOTOS).toBe(200);
+});
+
+describe("contest helpers", () => {
+  const HOUR = 60 * 60 * 1000;
+  it("exposes the fixed limits", () => {
+    expect([MAX_DESCRIPTION, MAX_DESCRIPTION_LINES, DEFAULT_VOTING_DAYS]).toEqual([300, 6, 3]);
+  });
+  it("proposes the reveal one day after the end", () => {
+    expect(contestRevealDefault(1000)).toBe(1000 + 24 * HOUR);
+  });
+  it("needs the reveal at least 2 hours after the end", () => {
+    expect(revealAllowedWithContest(2 * HOUR, 0)).toBe(true);
+    expect(revealAllowedWithContest(2 * HOUR - 1, 0)).toBe(false);
+  });
 });

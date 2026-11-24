@@ -31,6 +31,13 @@ const topics = {
       "La franja va de \"Desde\" a \"Hasta\", en la hora del rollo. Por defecto, de 9:00 a 23:00.\n\n" +
       "Se ve en el Feed apenas se sube, antes del revelado. El aviso suena aunque no tengas señal.",
   },
+  contest: {
+    id: "contest",
+    title: "Concurso de fotos",
+    body:
+      "Entre el fin del evento y el revelado, quien lo organiza elige de 2 a 10 fotos finalistas. Cuando se revela, todos votan la que más les gusta.\n\n" +
+      "La votación dura los días que elijas y no se puede votar la foto propia. Gana la más votada. Para que dé tiempo a elegir, el revelado tiene que ser al menos 2 horas después del fin.",
+  },
   privateRollo: {
     id: "privateRollo",
     title: "Rollo privado",

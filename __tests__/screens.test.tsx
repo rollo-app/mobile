@@ -46,6 +46,8 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   momentWindowStart: 540,
   momentWindowEnd: 1380,
   originals: keepOriginals,
+  description: null,
+  contest: null,
   type: "trip",
   coverUrl: null,
   groups: [],

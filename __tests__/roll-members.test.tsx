@@ -57,6 +57,8 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "trip",
     coverUrl: null,
     groups: [],

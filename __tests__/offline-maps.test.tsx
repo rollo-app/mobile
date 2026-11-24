@@ -16,6 +16,8 @@ const detail = (): actions.TripDetail => ({
     startsAt: Date.now() - DAY, endsAt: Date.now() + DAY, revealAt: Date.now() + DAY, revealed: false,
     dailyPhotoLimit: 10, dailyVideoLimit: 3, featuringDisabled: false, maxMembers: 15, photoLimitMode: "daily", totalPhotoLimit: null, momentMode: "off", momentWindowStart: 540, momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "trip",
     coverUrl: null,
     groups: [],

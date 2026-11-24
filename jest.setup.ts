@@ -289,8 +289,9 @@ jest.mock("@expo/ui/swift-ui", () => {
       ),
     // Swipe actions render always visible, so tests can press them directly.
     SwipeActions: Object.assign(Wrap, { Actions: Wrap }),
-    TextField: ({ placeholder, onTextChange, modifiers }: any) =>
-      h(TextInput, { placeholder, onChangeText: onTextChange, accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel }),
+    useNativeState: (value: unknown) => ({ value }),
+    TextField: ({ placeholder, onTextChange, modifiers, text }: any) =>
+      h(TextInput, { placeholder, defaultValue: text?.value, onChangeText: onTextChange, accessibilityLabel: modifiers?.find((m: any) => m.accessibilityLabel)?.accessibilityLabel }),
     DatePicker: ({ title, selection, range, modifiers }: any) =>
       h(View, { accessibilityLabel: title, accessibilityState: { disabled: !!modifiers?.find((m: any) => "disabled" in m)?.disabled }, accessibilityValue: { text: String(selection?.getTime()) }, testID: range?.start ? String(range.start.getTime()) : undefined }),
     Stepper: ({ label, value, modifiers }: any) =>

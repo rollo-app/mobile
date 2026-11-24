@@ -7,5 +7,12 @@ import { memberTotal } from "@/features/trips/member-total";
 export function EventBoardHero({ detail }: { detail: TripDetail }) {
   const { trip } = detail;
   if (!isEvent(trip) || !trip.coverUrl) return null;
-  return <EventHero name={trip.name} coverUrl={trip.coverUrl} caption={`${eventDay(trip.startsAt, trip.timezone)} · ${peopleLabel(memberTotal(detail))}`} />;
+  return (
+    <EventHero
+      name={trip.name}
+      coverUrl={trip.coverUrl}
+      caption={`${eventDay(trip.startsAt, trip.timezone)} · ${peopleLabel(memberTotal(detail))}`}
+      description={trip.description}
+    />
+  );
 }

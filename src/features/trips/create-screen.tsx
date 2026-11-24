@@ -18,6 +18,9 @@ import { tripKey } from "@/features/trips/use-trip-detail";
 import {
   canCreate,
   canCreateEvent,
+  contestRevealDefault,
+  DEFAULT_VOTING_DAYS,
+  revealAllowedWithContest,
   cleanGroups,
   MAX_EVENT_GROUPS,
   MAX_GROUP_NAME,
@@ -29,6 +32,7 @@ import {
   type MomentMode,
   type StartMode,
 } from "@/features/trips/create-form";
+import { ContestSection, DescriptionSection } from "@/features/trips/contest-section";
 import { infoHeader, TripForm, type LimitMode, type RevealMode } from "@/features/trips/trip-form";
 import { useCreateTrip } from "@/features/trips/use-create-trip";
 import { colors } from "@/ui/theme";
@@ -55,6 +59,9 @@ export function CreateScreen() {
   const [momentMode, setMomentMode] = useState<MomentMode>("photo_selfie");
   const [momentStart, setMomentStart] = useState(DEFAULT_MOMENT_WINDOW.start);
   const [momentEnd, setMomentEnd] = useState(DEFAULT_MOMENT_WINDOW.end);
+  const [description, setDescription] = useState("");
+  const [contestEnabled, setContestEnabled] = useState(false);
+  const [votingDays, setVotingDays] = useState(DEFAULT_VOTING_DAYS);
   const [kind, setKind] = useState<Kind>("trip");
   // Rows have a stable id: the native text fields keep their own text, so removing one must not shift the others.
   const [groups, setGroups] = useState<GroupRow[]>([{ id: 0, name: "" }]);
@@ -80,6 +87,15 @@ export function CreateScreen() {
     setRevealMode(mode);
   }
 
+  function chooseContest(on: boolean) {
+    setContestEnabled(on);
+    // The server needs the reveal 2 h after the end with the contest: "Al terminar" can't hold, so propose the next day.
+    if (on && (revealMode === "end" || !revealAllowedWithContest(customReveal, endsAt))) {
+      setCustomReveal(contestRevealDefault(endsAt));
+      setRevealMode("custom");
+    }
+  }
+
   function chooseStart(mode: StartMode) {
     setStartMode(mode);
     // "Now" is at most the moment of submit; with a chosen date the end and the custom reveal must stay after it.
@@ -96,6 +112,8 @@ export function CreateScreen() {
     if (next === "trip") {
       setGroups([{ id: nextGroupId.current++, name: "" }]);
       setCover(null);
+      setDescription("");
+      setContestEnabled(false);
     }
     setKind(next);
   }
@@ -135,6 +153,9 @@ export function CreateScreen() {
           momentMode: "off",
           type: "event",
           groups: cleanGroups(groups.map((g) => g.name)),
+          description: description.trim(),
+          contestEnabled,
+          ...(contestEnabled && { contestVotingHours: votingDays * 24 }),
           ...(isPrivate && { featuringDisabled: true }),
         },
         {
@@ -218,6 +239,8 @@ export function CreateScreen() {
             <TextField placeholder={isEvent ? "Nombre del evento" : "Nombre del rollo"} maxLength={60} onTextChange={setName} />
           </Section>
 
+          {isEvent && <DescriptionSection onChange={setDescription} />}
+
           {isEvent && (
             <Section header={<Text>Grupos</Text>} footer={<Text>Los invitados eligen en cuál están. Deslizá un grupo para borrarlo.</Text>}>
               {groups.map((group) => (
@@ -289,6 +312,10 @@ export function CreateScreen() {
             locks={isEvent ? { limitMode: true } : undefined}
             hideMoment={isEvent}
           />
+
+          {isEvent && (
+            <ContestSection enabled={contestEnabled} votingDays={votingDays} onEnabledChange={chooseContest} onVotingDaysChange={setVotingDays} />
+          )}
 
           <Section header={infoHeader("Privacidad", "privateRollo")} footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
             <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />

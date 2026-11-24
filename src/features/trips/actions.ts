@@ -38,6 +38,10 @@ export async function createTrip(input: {
   /** "event" needs `groups` (names); a regular trip leaves both out. */
   type?: "trip" | "event";
   groups?: string[];
+  /** Events only: cover text (empty = none) and the photo contest. */
+  description?: string;
+  contestEnabled?: boolean;
+  contestVotingHours?: number;
 }): Promise<Trip> {
   const { photoLimit, groups, ...rest } = input;
   const limit =

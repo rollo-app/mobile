@@ -50,6 +50,8 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     momentWindowStart: 540,
     momentWindowEnd: 1380,
     originals: keepOriginals,
+    description: null,
+    contest: null,
     type: "trip",
     coverUrl: null,
     groups: [],

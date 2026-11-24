@@ -19,6 +19,7 @@ const mocked = jest.mocked(actions);
 const preview = (over: Partial<actions.EventPreview> = {}): actions.EventPreview => ({
   name: "Casamiento de Cami",
   coverUrl: null,
+  description: null,
   revealed: false,
   memberCount: null,
   groups: [

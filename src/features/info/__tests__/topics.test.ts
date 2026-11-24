@@ -37,7 +37,7 @@ describe("info topics", () => {
   it("covers every place that shows an info button", () => {
     expect(Object.keys(INFO_TOPICS).sort()).toEqual(
       [
-        "dates", "reveal", "quota", "moment", "privateRollo",
+        "dates", "reveal", "quota", "moment", "contest", "privateRollo",
         "publicProfile", "othersProfiles", "offlineMap", "inviteCode",
       ].sort(),
     );

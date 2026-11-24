@@ -107,7 +107,7 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
       {event ? (
         <>
           {event.coverUrl ? (
-            <EventHero name={event.name} coverUrl={event.coverUrl} eyebrow="Te invitaron a" />
+            <EventHero name={event.name} coverUrl={event.coverUrl} eyebrow="Te invitaron a" description={event.description} />
           ) : (
             <Text accessibilityRole="header" style={styles.name}>
               {event.name}
