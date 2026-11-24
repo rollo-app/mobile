@@ -724,7 +724,7 @@ describe("Create roll", () => {
       expect(mocked.createTrip).toHaveBeenCalledWith(
         expect.objectContaining({ momentWindowStart: 1320, momentWindowEnd: 1335 }),
       );
-      expect(await screen.findByText("La franja del momento tiene que durar al menos 30 minutos")).toBeVisible();
+      expect((await screen.findAllByText("La franja del momento tiene que durar al menos 30 minutos"))[0]).toBeVisible();
     });
   });
 
@@ -776,7 +776,7 @@ describe("Create roll", () => {
     expect(mocked.createTrip).toHaveBeenCalledWith(
       expect.objectContaining({ startsAt: end + 5 * HOUR, endsAt: end, revealAt: end - HOUR }),
     );
-    expect(await screen.findByText("El revelado no puede ser antes del fin")).toBeVisible();
+    expect((await screen.findAllByText("El revelado no puede ser antes del fin"))[0]).toBeVisible();
     expect(dateOf("Empieza")).toBe(end + 5 * HOUR);
     expect(dateOf("Se revela")).toBe(end - HOUR);
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
@@ -846,7 +846,7 @@ describe("Create roll", () => {
     await fillNames();
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    expect(await screen.findByText("Nombre demasiado largo")).toBeVisible();
+    expect((await screen.findAllByText("Nombre demasiado largo"))[0]).toBeVisible();
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();
   });
 
@@ -858,7 +858,7 @@ describe("Create roll", () => {
     await fireEvent(screen.getByLabelText("10 fotos"), "valueChange", 25);
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    expect(await screen.findByText(message)).toBeVisible();
+    expect((await screen.findAllByText(message))[0]).toBeVisible();
     expect(screen).toHavePathname("/create");
     // "Crear" is only enabled with a name, so the name is still there.
     expect(screen.getByRole("button", { name: "Crear" })).toBeEnabled();

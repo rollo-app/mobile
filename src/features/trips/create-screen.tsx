@@ -320,6 +320,13 @@ export function CreateScreen() {
           <Section header={infoHeader("Privacidad", "privateRollo")} footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
             <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
           </Section>
+
+          {/* Again at the end: the form is long and "Crear" can be tapped from here, with the name's footer off screen. */}
+          {!!error && (
+            <Section>
+              <Text modifiers={[foregroundStyle("red")]}>{error}</Text>
+            </Section>
+          )}
         </Form>
       </Host>
     </View>

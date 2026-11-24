@@ -202,7 +202,8 @@ describe("CreateScreen as an event", () => {
     await fillEvent();
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    expect(await screen.findByText(message)).toBeTruthy();
+    // Under the name and again at the end of the long form, where you are when you tap "Crear".
+    expect(await screen.findAllByText(message)).toHaveLength(2);
     expect(router.dismissTo).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText("Nombre del evento")).toHaveDisplayValue("  Casamiento ");
     expect(screen.getByPlaceholderText("Nombre del grupo")).toHaveDisplayValue(" Novios ");
