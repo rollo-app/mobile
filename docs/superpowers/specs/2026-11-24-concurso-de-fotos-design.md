@@ -103,3 +103,13 @@ Los novios quieren dar un **premio a la mejor foto** del casamiento para que los
 - Cómo se ven las pantallas, dentro del estilo actual de eventos.
 - El orden de las finalistas en la votación (sugerencia: al azar por persona, para no favorecer la primera).
 - Partir el trabajo backend/app en workers.
+
+## Iteración 2: pulido (24/11, después de probarlo en el iPhone)
+
+Juani lo probó de punta a punta y pidió pulirlo. Decidido con maquetas:
+
+1. **Revelado de la ganadora (opción "A con un poco de confeti").** Pantalla completa propia, una sola vez por persona por concurso (SecureStore `rollo.contestWinnerSeen.<tripId>`), al abrir el concurso ya cerrado (desde la tarjeta, la pantalla del concurso o la notificación). Cuarto oscuro rojo → la foto ganadora sale de su ThumbHash, de sepia a color y de difuso a nítido (el mismo efecto del revelado del rollo) con háptico que crece → golpe de luz blanca + háptico de éxito + clic de obturador → **"Ganó la foto de @cami"** con el círculo de su foto de perfil y "12 votos" → un confeti chico en **cobalto y blanco** (no multicolor). Si la ganadora es tuya: "¡Ganó tu foto!". Tocar saltea al final. Con "Reducir movimiento": fundido simple y solo el háptico de éxito. Al terminar, "Ver resultados" lleva a la pantalla del concurso.
+2. **Votar: una por una (opción B).** En vez de la grilla, las finalistas a pantalla completa como las historias: segmentos de progreso arriba ("Finalista 2 de 12"), deslizar para pasar, abajo foto de perfil + **@usuario** del autor, "Cierra en 2 días" y un botón grande "Votar esta" / "Tu voto ✓" (deshabilitado en tus fotos). Orden al azar fijo por persona, como hoy. Se entra directo desde la tarjeta del concurso.
+3. **Resultados: ganadora + ranking (opción A).** Arriba la ganadora grande con el sello "Ganadora", su @ y foto de perfil y sus votos. Abajo todas las finalistas **ordenadas por votos** (empates comparten puesto), con miniatura, @usuario, una barra proporcional al máximo y "N votos". Tocar una la abre a pantalla completa en orden de puesto ("2° puesto · 9 votos"). El empate para organizadores usa esta misma lista, con "Elegir ganadora" en las empatadas.
+4. **Sin tope de finalistas.** El organizador elige todas las que quiera (mínimo 2 para revelar). El contador dice "N elegidas" y, pasadas 15, "16 elegidas · te sugerimos hasta 15" (aviso, no bloquea). El backend deja de cortar en 10.
+5. **@usuario en el concurso:** la respuesta de `GET /contest` suma `username` al autor de cada finalista y de la ganadora (aditivo).
