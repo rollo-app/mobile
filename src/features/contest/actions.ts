@@ -9,7 +9,7 @@ export async function fetchContest(tripId: string): Promise<Contest> {
   return unwrap((await authedClient()).GET("/trips/{tripId}/contest", { params: { path: { tripId } } }));
 }
 
-/** Marks a photo as a finalist (organizers, between the end and the reveal; 409 past 10). */
+/** Marks a photo as a finalist (organizers, between the end and the reveal; 409 outside the window). */
 export async function putFinalist(tripId: string, mediaId: string): Promise<void> {
   await unwrap((await authedClient()).PUT("/trips/{tripId}/contest/finalists/{mediaId}", { params: { path: { tripId, mediaId } } }));
 }

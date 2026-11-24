@@ -10,6 +10,7 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import type { ContestFinalist } from "./actions";
+import { FinalistPager } from "./finalist-pager";
 import { shuffledFinalists } from "./contest-state";
 import { useContest } from "./use-contest";
 import { usePickWinner } from "./use-pick-winner";
@@ -21,7 +22,7 @@ const keyExtractor = (f: ContestFinalist) => f.mediaId;
 const votesLabel = (n: number) => `${n} ${n === 1 ? "voto" : "votos"}`;
 
 /**
- * The photo contest: the finalists in an order that's stable per viewer, tap one to see it big and vote. While `tied` the
+ * The photo contest: the finalists in an order that's stable per viewer, vote one by one in the full-screen pager (`voting`/`closing`). While `tied` the
  * organizers pick the winner; once `closed` the winner is on top and every finalist shows its votes.
  */
 export function ContestScreen({ tripId }: { tripId: string }) {
@@ -31,7 +32,7 @@ export function ContestScreen({ tripId }: { tripId: string }) {
   const { me } = useMe();
   const { contest, error: contestError, refetch: refetchContest } = useContest(tripId, !!detail?.trip.contest?.enabled);
   const token = useMediaToken(tripId);
-  const { vote, error: voteError, clearError } = useVote(tripId);
+  const { vote, error: voteError } = useVote(tripId);
   const { pick, picking, error: pickError } = usePickWinner(tripId);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -41,6 +42,7 @@ export function ContestScreen({ tripId }: { tripId: string }) {
   // Ids the server lists that this viewer can't see (hidden by blocks) are ignored.
   const tiedIds = useMemo(() => new Set(contest?.tiedMediaIds ?? []), [contest]);
   const size = Math.floor((width - spacing.md * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
+  const pagerItems = useMemo(() => ordered.map((finalist) => ({ finalist })), [ordered]);
   const open = ordered.find((f) => f.mediaId === openId) ?? null;
 
   const confirmWinner = useCallback(
@@ -66,7 +68,6 @@ export function ContestScreen({ tripId }: { tripId: string }) {
           accessibilityLabel={`Foto de ${item.author.name}`}
           accessibilityState={{ selected: contest?.myVote === item.mediaId }}
           onPress={() => {
-            clearError();
             setOpenId(item.mediaId);
           }}
           style={{ width: size, height: size, borderRadius: 10, borderCurve: "continuous", overflow: "hidden", backgroundColor: colors.latent }}
@@ -93,7 +94,7 @@ export function ContestScreen({ tripId }: { tripId: string }) {
       </View>
       </View>
     ),
-    [size, token, contest?.myVote, canPickWinner, tiedIds, picking, confirmWinner, clearError],
+    [size, token, contest?.myVote, canPickWinner, tiedIds, picking, confirmWinner],
   );
   const listExtra = useMemo(() => ({ token, mine: contest?.myVote, tiedIds, picking, canPickWinner }), [token, contest?.myVote, tiedIds, picking, canPickWinner]);
 
@@ -120,7 +121,28 @@ export function ContestScreen({ tripId }: { tripId: string }) {
     );
 
   const winner = closed && contest.winner ? contest.finalists.find((f) => f.mediaId === contest.winner!.mediaId) : undefined;
-  const votingOpen = status === "voting";
+  if (status === "voting" || status === "closing") {
+    if (!token) return <Loading />;
+    return (
+      <View style={styles.pager}>
+        <FinalistPager
+          items={pagerItems}
+          token={token}
+          mode="vote"
+          myVote={contest.myVote}
+          myUserId={userId}
+          onVote={vote}
+          votingOpen={status === "voting"}
+          closesAt={contest.closesAt}
+        />
+        {!!voteError && (
+          <View pointerEvents="none" style={[styles.voteError, { top: 56 }]}>
+            <ErrorText>{voteError}</ErrorText>
+          </View>
+        )}
+      </View>
+    );
+  }
   return (
     <>
       <FlashList
@@ -134,8 +156,6 @@ export function ContestScreen({ tripId }: { tripId: string }) {
         contentContainerStyle={{ paddingHorizontal: spacing.md, paddingBottom: insets.bottom + spacing.lg }}
         ListHeaderComponent={
           <View style={styles.header}>
-            {status === "closing" && <Text style={[type.title, { color: colors.label }]}>Cerrando la votación…</Text>}
-            {votingOpen && <Text style={[type.footnote, { color: colors.secondaryLabel }]}>Tocá una foto para verla en grande y votar. Un voto por persona.</Text>}
             {tied && !organizer && <Text style={[type.body, styles.note]}>Hay un empate. Los organizadores eligen la ganadora.</Text>}
             {canPickWinner && <Text style={[type.body, styles.note]}>Hay un empate. Elegí la ganadora entre las empatadas.</Text>}
             {!!pickError && <ErrorText>{pickError}</ErrorText>}
@@ -172,50 +192,10 @@ export function ContestScreen({ tripId }: { tripId: string }) {
             )}
             <Text style={[type.headline, { color: colors.label }]}>{`Foto de ${open.author.name}`}</Text>
             {open.votes !== null && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{votesLabel(open.votes)}</Text>}
-            {!!voteError && <ErrorText>{voteError}</ErrorText>}
-            {(votingOpen || status === "closing") && (
-              <VoteButton
-                finalist={open}
-                mine={open.author.userId === userId}
-                voted={contest.myVote === open.mediaId}
-                enabled={votingOpen}
-                onVote={vote}
-              />
-            )}
           </View>
         )}
       </Modal>
     </>
-  );
-}
-
-function VoteButton({
-  finalist,
-  mine,
-  voted,
-  enabled,
-  onVote,
-}: {
-  finalist: ContestFinalist;
-  mine: boolean;
-  voted: boolean;
-  enabled: boolean;
-  onVote: (mediaId: string | null) => void;
-}) {
-  const disabled = mine || !enabled;
-  const label = voted ? "Tu voto ✓" : "Votar esta";
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityHint={mine ? "No podés votar tu propia foto" : voted ? "Tocá para sacar tu voto" : undefined}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={() => onVote(voted ? null : finalist.mediaId)}
-      style={[styles.vote, { backgroundColor: voted ? colors.fill : colors.tint, opacity: disabled ? 0.35 : 1 }]}
-    >
-      <Text style={[type.headline, { color: voted ? colors.label : colors.onTint }]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -233,5 +213,6 @@ const styles = StyleSheet.create({
   sheet: { flex: 1, gap: spacing.sm, padding: spacing.md, backgroundColor: colors.background },
   sheetBar: { alignItems: "flex-end" },
   large: { flex: 1 },
-  vote: { alignItems: "center", justifyContent: "center", height: 50, borderRadius: 14, borderCurve: "continuous" },
+  pager: { flex: 1 },
+  voteError: { position: "absolute", left: spacing.md, right: spacing.md },
 });

@@ -79,3 +79,6 @@ export function cardCopy(contest: Schemas["Contest"] | null | undefined, now: nu
       return null;
   }
 }
+
+/** Segments in the pager's progress up to 20 finalists (each is wide enough to read); a continuous bar past that. */
+export const progressStyle = (count: number): "segments" | "bar" => (count <= 20 ? "segments" : "bar");

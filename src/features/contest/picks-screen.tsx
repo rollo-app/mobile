@@ -113,6 +113,7 @@ export function PicksScreen({ tripId }: { tripId: string }) {
     );
 
   const group = groups.find((g) => g.id === groupId);
+  const hint = pickHint(contest.finalists.length);
   return (
     <>
       <FlashList
@@ -130,9 +131,7 @@ export function PicksScreen({ tripId }: { tripId: string }) {
             <Text style={[type.footnote, { color: colors.secondaryLabel }]}>
               Tocá las fotos que van al concurso. Después del revelado, todos votan entre ellas.
             </Text>
-            {!!pickHint(contest.finalists.length) && (
-              <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{pickHint(contest.finalists.length)}</Text>
-            )}
+            {!!hint && <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{hint}</Text>}
             {group && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${group.name}`}</Text>}
             {!!toggleError && <ErrorText>{toggleError}</ErrorText>}
           </View>

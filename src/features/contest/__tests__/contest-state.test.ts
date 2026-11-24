@@ -1,5 +1,5 @@
 import type { Schemas } from "@/api/client";
-import { canPick, cardCopy, countdownLabel, pickCountLabel, pickHint, SUGGESTED_FINALISTS, picksRowVisible, shuffledFinalists } from "../contest-state";
+import { canPick, cardCopy, countdownLabel, pickCountLabel, pickHint, progressStyle, SUGGESTED_FINALISTS, picksRowVisible, shuffledFinalists } from "../contest-state";
 
 describe("pickHint", () => {
   it("only nudges past the suggested count", () => {
@@ -101,5 +101,13 @@ describe("cardCopy", () => {
     expect(cardCopy({ ...base, status: "selecting" }, 1_000_000)).toBeNull();
     expect(cardCopy({ ...base, status: "closed" }, 1_000_000)).toBeNull();
     expect(cardCopy(null, 1_000_000)).toBeNull();
+  });
+});
+
+describe("progressStyle", () => {
+  it("segments up to 20 finalists, a bar past that", () => {
+    expect(progressStyle(1)).toBe("segments");
+    expect(progressStyle(20)).toBe("segments");
+    expect(progressStyle(21)).toBe("bar");
   });
 });

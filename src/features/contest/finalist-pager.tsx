@@ -1,0 +1,189 @@
+import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
+import { Image } from "expo-image";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { mediaSource } from "@/features/media/revealed";
+import { Avatar } from "@/features/profile/avatar";
+import { colors, spacing, type } from "@/ui/theme";
+import type { ContestFinalist } from "./actions";
+import { countdownLabel } from "./contest-state";
+import { PagerProgress } from "./pager-progress";
+
+/** One page of the pager. `place` (1 = winner) is only used in `results` mode. */
+export type PagerItem = { finalist: ContestFinalist; place?: number };
+
+export type FinalistPagerProps = {
+  /** In the order to show them (the screen shuffles for voting and sorts by place for the results). */
+  items: PagerItem[];
+  initialIndex?: number;
+  token: string;
+  /** `vote`: countdown + vote button. `results`: "{p}° puesto" on top and the votes big at the bottom. */
+  mode: "vote" | "results";
+  myVote?: string | null;
+  myUserId: string;
+  /** A finalist's `mediaId` to vote it, `null` to take the vote back. */
+  onVote?: (mediaId: string | null) => void;
+  /** False while the contest is `closing`: the button reads "Cerrando la votación…" and does nothing. */
+  votingOpen?: boolean;
+  /** Epoch ms when the voting closes (for "Cierra en …"). */
+  closesAt?: number | null;
+  onIndexChange?: (index: number) => void;
+};
+
+const votesLabel = (n: number) => `${n} ${n === 1 ? "voto" : "votos"}`;
+const keyExtractor = (item: PagerItem) => item.finalist.mediaId;
+
+/** Re-renders every `ms` so the countdown moves while the screen stays open. */
+function useNow(ms: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), ms);
+    return () => clearInterval(id);
+  }, [ms]);
+  return now;
+}
+
+/**
+ * Full-screen finalists, one per page, swiping sideways. A horizontal paged FlashList (not a ScrollView): a contest has
+ * no cap on finalists and each page holds a full-size photo, so only the pages around the visible one stay mounted.
+ */
+export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, myUserId, onVote, votingOpen = true, closesAt = null, onIndexChange }: FinalistPagerProps) {
+  const insets = useSafeAreaInsets();
+  const window = useWindowDimensions();
+  const [box, setBox] = useState({ width: window.width, height: window.height });
+  const start = Math.min(Math.max(initialIndex, 0), Math.max(items.length - 1, 0));
+  const [index, setIndex] = useState(start);
+  const now = useNow(30_000);
+  const widthRef = useRef(box.width);
+  widthRef.current = box.width;
+
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    if (width > 0 && height > 0) setBox((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
+  }, []);
+
+  const onMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = Math.min(Math.max(Math.round(e.nativeEvent.contentOffset.x / widthRef.current), 0), items.length - 1);
+      setIndex(next);
+      onIndexChange?.(next);
+    },
+    [items.length, onIndexChange],
+  );
+
+  const countdown = countdownLabel(closesAt, now);
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<PagerItem>) => (
+      <Page
+        item={item}
+        mode={mode}
+        token={token}
+        width={box.width}
+        height={box.height}
+        mine={item.finalist.author.userId === myUserId}
+        voted={myVote === item.finalist.mediaId}
+        votingOpen={votingOpen}
+        countdown={countdown}
+        bottomInset={insets.bottom}
+        onVote={onVote}
+      />
+    ),
+    [mode, token, box.width, box.height, myUserId, myVote, votingOpen, countdown, insets.bottom, onVote],
+  );
+  const extra = useMemo(() => ({ myVote, votingOpen, countdown, token, width: box.width, height: box.height }), [myVote, votingOpen, countdown, token, box.width, box.height]);
+
+  return (
+    <View style={styles.root} onLayout={onLayout}>
+      <FlashList
+        testID="finalist-pager"
+        data={items}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        initialScrollIndex={start}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        extraData={extra}
+        onMomentumScrollEnd={onMomentumScrollEnd}
+      />
+      <View pointerEvents="none" style={[styles.progress, { top: spacing.sm }]}>
+        <PagerProgress count={items.length} index={index} showTitle={mode === "vote"} />
+      </View>
+    </View>
+  );
+}
+
+type PageProps = {
+  item: PagerItem;
+  mode: "vote" | "results";
+  token: string;
+  width: number;
+  height: number;
+  mine: boolean;
+  voted: boolean;
+  votingOpen: boolean;
+  countdown: string;
+  bottomInset: number;
+  onVote?: (mediaId: string | null) => void;
+};
+
+function Page({ item, mode, token, width, height, mine, voted, votingOpen, countdown, bottomInset, onVote }: PageProps) {
+  const { finalist, place } = item;
+  const { author } = finalist;
+  const label = voted ? "Tu voto ✓" : votingOpen ? "Votar esta" : "Cerrando la votación…";
+  const disabled = mine || !votingOpen;
+  const handle = author.username ? `@${author.username}` : author.name;
+  return (
+    <View style={{ width, height, backgroundColor: colors.latent }}>
+      <Image
+        testID={`finalist-image-${finalist.mediaId}`}
+        source={mediaSource(finalist.displayPath, token)}
+        placeholder={finalist.thumbHash ? { thumbhash: finalist.thumbHash } : undefined}
+        contentFit="cover"
+        recyclingKey={finalist.mediaId}
+        transition={150}
+        style={StyleSheet.absoluteFill}
+      />
+      {mode === "results" && !!place && <Text style={[type.title, styles.place]}>{`${place}° puesto`}</Text>}
+      <View style={[styles.bottom, { paddingBottom: bottomInset + spacing.md }]}>
+        <View style={styles.author}>
+          <Avatar id={author.userId} name={author.name} avatarUrl={author.avatarUrl} size={40} />
+          <Text style={[type.headline, styles.onPhoto]} numberOfLines={1}>
+            {handle}
+          </Text>
+        </View>
+        {mode === "results" ? (
+          finalist.votes !== null && <Text style={styles.votes}>{votesLabel(finalist.votes)}</Text>
+        ) : (
+          <>
+            {!!countdown && votingOpen && <Text style={[type.footnote, styles.onPhoto]}>{countdown}</Text>}
+            {mine && <Text style={[type.footnote, styles.onPhoto]}>No podés votar tu propia foto</Text>}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              accessibilityHint={mine ? "No podés votar tu propia foto" : voted ? "Tocá para sacar tu voto" : undefined}
+              accessibilityState={{ disabled }}
+              disabled={disabled}
+              onPress={() => onVote?.(voted ? null : finalist.mediaId)}
+              style={[styles.vote, { backgroundColor: voted ? "rgba(255,255,255,0.25)" : colors.tint, opacity: disabled && !voted ? 0.5 : 1 }]}
+            >
+              <Text style={[type.headline, { color: colors.onTint }]}>{label}</Text>
+            </Pressable>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#000" },
+  progress: { position: "absolute", left: spacing.md, right: spacing.md },
+  place: { position: "absolute", top: 72, left: spacing.md, color: colors.onTint, textShadowColor: "rgba(0,0,0,0.5)", textShadowRadius: 6 },
+  bottom: { position: "absolute", left: 0, right: 0, bottom: 0, gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.xl, backgroundColor: "rgba(0,0,0,0.35)" },
+  author: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  onPhoto: { color: colors.onTint, flexShrink: 1 },
+  votes: { color: colors.onTint, fontSize: 44, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  vote: { alignItems: "center", justifyContent: "center", height: 54, borderRadius: 14, borderCurve: "continuous" },
+});

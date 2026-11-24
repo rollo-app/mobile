@@ -85,10 +85,6 @@ beforeEach(() => {
   winnerMock.mockResolvedValue(undefined);
 });
 
-const open = async (author: string) => {
-  await fireEvent.press(await screen.findByRole("button", { name: `Foto de ${author}` }));
-};
-
 describe("ContestScreen without contest", () => {
   it("says the event has no contest instead of spinning", async () => {
     mockDetail("member", false);
@@ -98,26 +94,39 @@ describe("ContestScreen without contest", () => {
 });
 
 describe("ContestScreen voting", () => {
-  it("voting calls the action and shows 'Tu voto'", async () => {
+  // The pager mounts the pages around the visible one; the finalists are shuffled per viewer, so look the author up by name.
+  const voteButtonOf = async (author: string) => {
+    const handle = await screen.findAllByText(author);
+    return handle[0]!;
+  };
+
+  it("shows the finalists one by one with the counter and the countdown", async () => {
     await wrap(<ContestScreen tripId="t1" />);
-    await open("Beto");
+    expect(await screen.findByText("Finalista 1 de 3")).toBeTruthy();
+    expect((await screen.findAllByText("Cierra en 2 días")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /^Foto de/ })).toBeNull();
+  });
+
+  it("voting calls the action and shows 'Tu voto'", async () => {
+    server = contest({ finalists: [finalist("m2", "u2", "Beto")] });
+    await wrap(<ContestScreen tripId="t1" />);
+    await voteButtonOf("Beto");
     await fireEvent.press(await screen.findByRole("button", { name: "Votar esta" }));
     await waitFor(() => expect(voteMock).toHaveBeenCalledWith("t1", "m2"));
     expect(await screen.findByRole("button", { name: "Tu voto ✓" })).toBeTruthy();
   });
 
   it("tapping 'Tu voto' takes the vote back", async () => {
-    server = contest({ myVote: "m2" });
+    server = contest({ myVote: "m2", finalists: [finalist("m2", "u2", "Beto")] });
     await wrap(<ContestScreen tripId="t1" />);
-    await open("Beto");
     await fireEvent.press(await screen.findByRole("button", { name: "Tu voto ✓" }));
     await waitFor(() => expect(unvoteMock).toHaveBeenCalledWith("t1"));
     expect(await screen.findByRole("button", { name: "Votar esta" })).toBeTruthy();
   });
 
   it("your own photo can't be voted", async () => {
+    server = contest({ finalists: [finalist("m1", "u1", "Ana")] });
     await wrap(<ContestScreen tripId="t1" />);
-    await open("Ana");
     const button = await screen.findByRole("button", { name: "Votar esta" });
     expect(button.props.accessibilityState.disabled).toBe(true);
     expect(button.props.accessibilityHint).toBe("No podés votar tu propia foto");
@@ -126,20 +135,19 @@ describe("ContestScreen voting", () => {
   });
 
   it("shows the server's refusal inline and rolls the vote back", async () => {
+    server = contest({ finalists: [finalist("m2", "u2", "Beto")] });
     voteMock.mockRejectedValue(new ApiError(409, "La votación no está abierta."));
     await wrap(<ContestScreen tripId="t1" />);
-    await open("Beto");
     await fireEvent.press(await screen.findByRole("button", { name: "Votar esta" }));
     expect(await screen.findByText("La votación no está abierta.")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Votar esta" })).toBeTruthy());
   });
 
   it("while closing, voting is off", async () => {
-    server = contest({ status: "closing" });
+    server = contest({ status: "closing", finalists: [finalist("m2", "u2", "Beto")] });
     await wrap(<ContestScreen tripId="t1" />);
-    expect(await screen.findByText("Cerrando la votación…")).toBeTruthy();
-    await open("Beto");
-    expect((await screen.findByRole("button", { name: "Votar esta" })).props.accessibilityState.disabled).toBe(true);
+    const button = await screen.findByRole("button", { name: "Cerrando la votación…" });
+    expect(button.props.accessibilityState.disabled).toBe(true);
   });
 });
 

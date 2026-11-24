@@ -8,7 +8,7 @@ import { contestKey } from "./use-contest";
 type Target = { add: true; finalist: ContestFinalist } | { add: false; mediaId: string };
 
 /**
- * Marks or unmarks a finalist. Optimistic on `["contest", tripId]`; if the server refuses (10 already, outside the window)
+ * Marks or unmarks a finalist. Optimistic on `["contest", tripId]`; if the server refuses (outside the window)
  * the previous list comes back and the server's message is in `error`.
  */
 export function useToggleFinalist(tripId: string) {

@@ -147,13 +147,13 @@ describe("PicksScreen", () => {
   });
 
   it("shows the server's error inline and rolls the pick back", async () => {
-    putMock.mockRejectedValue(new ApiError(409, "Ya hay 10 finalistas."));
+    putMock.mockRejectedValue(new ApiError(409, "Las finalistas se eligen entre el fin del evento y el revelado."));
     await wrap(<PicksScreen tripId="t1" />);
     await screen.findByText("1 elegida");
 
     await fireEvent.press(screen.getByRole("button", { name: "Foto de Beto" }));
 
-    expect(await screen.findByText("Ya hay 10 finalistas.")).toBeTruthy();
+    expect(await screen.findByText("Las finalistas se eligen entre el fin del evento y el revelado.")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Foto de Beto" }).props.accessibilityState).toEqual({ selected: false }));
     expect(screen.getByText("1 elegida")).toBeTruthy();
   });
