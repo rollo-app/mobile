@@ -124,6 +124,7 @@ export function ContestScreen({ tripId }: { tripId: string }) {
         picking={picking}
         onPick={confirmWinner}
         onOpen={setOpenIndex}
+        onOpenAuthor={openProfile}
         header={
           <>
             {tied && !organizer && <Text style={[type.body, styles.note]}>Hay un empate. Los organizadores eligen la ganadora.</Text>}

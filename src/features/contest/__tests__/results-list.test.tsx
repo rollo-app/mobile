@@ -34,6 +34,13 @@ describe("ResultsList", () => {
     expect(screen.getAllByText("@ana").length).toBeGreaterThanOrEqual(2);
   });
 
+  it("tapping the winner's avatar or name opens her profile", async () => {
+    const onOpenAuthor = jest.fn();
+    await render(<ResultsList ranked={rankFinalists(closed)} winner={winner} token="tok" onOpen={jest.fn()} onOpenAuthor={onOpenAuthor} />);
+    await fireEvent.press(screen.getByRole("link", { name: "Ver el perfil de ANA" }));
+    expect(onOpenAuthor).toHaveBeenCalledWith("u-a");
+  });
+
   it("shows the place with its ordinal sign and labels each row for VoiceOver", async () => {
     await render(<ResultsList ranked={rankFinalists(closed)} winner={winner} token="tok" onOpen={jest.fn()} />);
     expect(screen.getByText("1°")).toBeTruthy();

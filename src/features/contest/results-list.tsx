@@ -26,6 +26,8 @@ type Props = {
   onPick?: (finalist: ContestFinalist) => void;
   /** Index in `ranked` of the tapped row. */
   onOpen: (index: number) => void;
+  /** Tapping the winner's avatar or name opens their profile (the rows open the photo). */
+  onOpenAuthor?: (userId: string) => void;
   /** Notes / errors above the winner. */
   header?: ReactNode;
 };
@@ -97,7 +99,7 @@ function AuthorNames({ author, nameStyle }: { author: { name: string; username: 
 }
 
 /** The contest's results: the winner big on top, then every finalist by votes with a proportional bar. In a tie the tied ones can be picked. */
-export function ResultsList({ ranked, winner, token, tiedIds, canPickWinner = false, picking = false, onPick, onOpen, header }: Props) {
+export function ResultsList({ ranked, winner, token, tiedIds, canPickWinner = false, picking = false, onPick, onOpen, onOpenAuthor, header }: Props) {
   const insets = useSafeAreaInsets();
   const winnerFinalist = useMemo(() => (winner ? ranked.find((r) => r.finalist.mediaId === winner.mediaId)?.finalist : undefined), [ranked, winner]);
   const winnerVotes = winnerFinalist?.votes;
@@ -135,13 +137,19 @@ export function ResultsList({ ranked, winner, token, tiedIds, canPickWinner = fa
                 />
               )}
               <Text style={[type.footnote, styles.seal]}>Ganadora</Text>
-              <View style={styles.winnerAuthor}>
+              <Pressable
+                style={styles.winnerAuthor}
+                disabled={!onOpenAuthor}
+                accessibilityRole="link"
+                accessibilityLabel={`Ver el perfil de ${winner.author.name}`}
+                onPress={() => onOpenAuthor?.(winner.author.userId)}
+              >
                 <Avatar id={winner.author.userId} name={winner.author.name} avatarUrl={winner.author.avatarUrl} size={40} />
                 <View style={styles.rowText}>
                   <AuthorNames author={winner.author} nameStyle={type.title} />
                   {typeof winnerVotes === "number" && <Text style={[type.subhead, styles.votesPlain]}>{votesLabel(winnerVotes)}</Text>}
                 </View>
-              </View>
+              </Pressable>
             </View>
           )}
         </View>
