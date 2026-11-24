@@ -4125,7 +4125,7 @@ export interface paths {
         get?: never;
         /**
          * Mark a photo as finalist (organizer)
-         * @description Only between the end of the event and the reveal (409 otherwise). The photo must be an uploaded, not deleted photo of the event that is not a moment selfie (400). At most 10 (409). Idempotent.
+         * @description Only between the end of the event and the reveal (409 otherwise). The photo must be an uploaded, not deleted photo of the event that is not a moment selfie (400). Idempotent.
          */
         put: {
             parameters: {
@@ -7200,6 +7200,7 @@ export interface components {
             closesAt: number | null;
             finalists: components["schemas"]["ContestFinalist"][];
             myVote: string | null;
+            /** @description The winning photo. Null until closed, and also null in `closed` when the author's account was deleted. */
             winner: {
                 mediaId: string;
                 author: components["schemas"]["ContestAuthor"];
@@ -7224,6 +7225,7 @@ export interface components {
         ContestAuthor: {
             userId: string;
             name: string;
+            username: string | null;
             avatarUrl: string | null;
         };
         ContestVoteBody: {
