@@ -26,6 +26,7 @@ import BlockedScreen from "../../app/blocked";
 import AddFriendsScreen from "../../app/add-friends";
 import CaptureScreen from "../../app/capture";
 import CommentsRoute from "../../app/comments/[mediaId]";
+import ContestPicksRoute from "../../app/contest-picks";
 import CreateScreen from "../../app/create";
 import EventGroupsRoute from "../../app/event-groups";
 import EventQrRoute from "../../app/event-qr";
@@ -86,6 +87,7 @@ export const routes = {
   intro: IntroRoute,
   "roll-members": RollMembersRoute,
   "event-groups": EventGroupsRoute,
+  "contest-picks": ContestPicksRoute,
   "my-groups": MyGroupsRoute,
   "event-qr": EventQrRoute,
   "roll-settings": RollSettingsRoute,

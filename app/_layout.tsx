@@ -117,6 +117,8 @@ function RootStack() {
           <Stack.Screen name="event-groups" options={{ title: "Grupos" }} />
           <Stack.Screen name="my-groups" options={{ title: "Sumarme a otro grupo" }} />
           <Stack.Screen name="event-qr" options={{ title: "Código QR" }} />
+          {/* Organizers pick the contest's finalists between the end of the event and the reveal. */}
+          <Stack.Screen name="contest-picks" options={{ title: "Elegí las finalistas" }} />
           <Stack.Screen name="settings" options={{ title: "Ajustes" }} />
           <Stack.Screen name="notifications" options={{ title: "Notificaciones" }} />
           {/* "¿Te avisamos…?", once, after creating or joining a roll. */}
