@@ -56,7 +56,7 @@ export function RevealedRollScreen({
             tripId={tripId}
             toolbar={!showRoll}
             onSelectionChange={onSelectionChange}
-            header={<ContestCard tripId={tripId} enabled={contestEnabled} />}
+            header={<ContestCard tripId={tripId} enabled={contestEnabled} style={{ margin: spacing.md }} />}
           />
         </View>
         {showRoll && (

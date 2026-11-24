@@ -17,6 +17,7 @@ import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { useUpdateTrip } from "@/features/trips/use-update-trip";
 import { Button, ErrorText, Loading, Row, Screen, Section } from "@/ui/components";
+import { descriptionPreview } from "./description-preview";
 import { RevealNowSection } from "./reveal-now";
 import { RollDates } from "./roll-dates";
 import { useDeleteTrip } from "./use-delete-trip";
@@ -111,7 +112,7 @@ function Settings({ detail }: { detail: TripDetail }) {
       {canRename(detail.me) && (
         <Section>
           <Row label="Nombre" value={detail.trip.name} onPress={editName} />
-          {event && <Row label="Descripción" value={detail.trip.description ?? undefined} onPress={editDescription} />}
+          {event && <Row label="Descripción" value={descriptionPreview(detail.trip.description)} onPress={editDescription} />}
           {(editableFields(detail.trip, Date.now()).end || (event && !detail.trip.revealed)) && (
             <Row label="Editar rollo" onPress={() => router.push({ pathname: "/edit-trip", params: { tripId: detail.trip.id } })} />
           )}

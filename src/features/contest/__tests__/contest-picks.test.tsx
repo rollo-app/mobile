@@ -154,6 +154,12 @@ describe("PicksScreen", () => {
     expect(await screen.findByText("No hay fotos para elegir")).toBeTruthy();
   });
 
+  it("says the event has no contest instead of spinning", async () => {
+    mockDetail({ contestEnabled: false });
+    await wrap(<PicksScreen tripId="t1" />);
+    expect(await screen.findByText("Este evento no tiene concurso.")).toBeTruthy();
+  });
+
   it("does not let a guest pick", async () => {
     mockDetail({ role: "member" });
     await wrap(<PicksScreen tripId="t1" />);

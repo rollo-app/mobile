@@ -1,12 +1,13 @@
+import { isEvent } from "@/features/events/event";
 import type { TripDetail } from "@/features/trips/actions";
 import type { RollPhase } from "@/features/trips/phase";
 import { ErrorText, Row, Section } from "@/ui/components";
 import { useRevealTrip } from "./use-reveal-trip";
 
-/** "Revelar ahora": only the creator, once the roll ended and before it is revealed. */
+/** "Revelar ahora": only for events, only the creator, once the roll ended and before it is revealed. */
 export function RevealNowSection({ detail, phase }: { detail: TripDetail; phase: RollPhase | null }) {
   const reveal = useRevealTrip(detail.trip.id, detail.trip.name, !!detail.trip.contest?.enabled);
-  if (!detail.me.isCreator || phase !== "ended") return null;
+  if (!isEvent(detail.trip) || !detail.me.isCreator || phase !== "ended") return null;
   return (
     <>
       <Section>

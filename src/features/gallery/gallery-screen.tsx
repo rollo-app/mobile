@@ -173,21 +173,27 @@ export function GalleryScreen({
   const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
 
   let body;
-  if (loading) body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
+  if (loading) body = <>{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
   else if (error && photos.length === 0)
     body = (
-      <View style={styles.center}>
-        <ErrorText>{error}</ErrorText>
-        <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
-      </View>
+      <>
+        {header}
+        <View style={styles.center}>
+          <ErrorText>{error}</ErrorText>
+          <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
+        </View>
+      </>
     );
   else if (photos.length === 0 && (hasMore || loadingMore) && !loadMoreError)
-    body = <ActivityIndicator style={{ marginTop: spacing.xl }} />;
+    body = <>{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
   else if (photos.length === 0)
     body = (
-      <View style={styles.center}>
-        <Text style={[type.body, { color: colors.secondaryLabel }]}>Este rollo no tiene fotos</Text>
-      </View>
+      <>
+        {header}
+        <View style={styles.center}>
+          <Text style={[type.body, { color: colors.secondaryLabel }]}>Este rollo no tiene fotos</Text>
+        </View>
+      </>
     );
   else
     body = (

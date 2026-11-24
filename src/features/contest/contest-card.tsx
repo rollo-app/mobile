@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { mediaSource, useMediaToken } from "@/features/media/revealed";
 import { colors, spacing, type } from "@/ui/theme";
 import { cardCopy } from "./contest-state";
@@ -11,7 +11,7 @@ import { useContest } from "./use-contest";
  * "Concurso de fotos" card for the top of the Galería and the Rollo segment: the countdown while voting, the winner once
  * closed. Nothing for events without a contest or before the voting opens. Tapping opens `/contest`.
  */
-export function ContestCard({ tripId, enabled }: { tripId: string; enabled: boolean }) {
+export function ContestCard({ tripId, enabled, style }: { tripId: string; enabled: boolean; style?: StyleProp<ViewStyle> }) {
   const router = useRouter();
   const { contest } = useContest(tripId, enabled);
   const token = useMediaToken(enabled ? tripId : undefined);
@@ -26,7 +26,7 @@ export function ContestCard({ tripId, enabled }: { tripId: string; enabled: bool
       accessibilityRole="button"
       accessibilityLabel={copy}
       onPress={() => router.push({ pathname: "/contest", params: { trip: tripId } })}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.card, style, pressed && styles.pressed]}
     >
       {!!thumb && !!token ? (
         <Image
@@ -53,7 +53,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    margin: spacing.md,
     padding: spacing.md,
     borderRadius: 14,
     borderCurve: "continuous",

@@ -85,6 +85,12 @@ export function PicksScreen({ tripId }: { tripId: string }) {
         <Button label="Reintentar" variant="secondary" onPress={() => void Promise.all([refetchDetail(), refetchContest(), refetchFeed()])} />
       </View>
     );
+  if (detail && !detail.trip.contest?.enabled)
+    return (
+      <View style={styles.center}>
+        <Text style={[type.body, styles.note]}>Este evento no tiene concurso.</Text>
+      </View>
+    );
   if (!detail || !contest || feedLoading || (filesPending && feedRefetching)) return <Loading />;
   if (organizer && filesPending && canPick(contest, organizer))
     return (

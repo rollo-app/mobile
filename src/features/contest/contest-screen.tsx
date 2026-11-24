@@ -58,7 +58,8 @@ export function ContestScreen({ tripId }: { tripId: string }) {
   const canPickWinner = organizer && tied;
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<ContestFinalist>) => (
+    ({ item, index }: ListRenderItemInfo<ContestFinalist>) => (
+      <View style={[styles.slot, index % COLUMNS === 0 ? styles.slotStart : index % COLUMNS === COLUMNS - 1 ? styles.slotEnd : null]}>
       <View style={[styles.cell, { width: size }]}>
         <Pressable
           accessibilityRole="button"
@@ -90,6 +91,7 @@ export function ContestScreen({ tripId }: { tripId: string }) {
           <Button label="Elegir ganadora" size="small" loading={picking} onPress={() => confirmWinner(item)} />
         )}
       </View>
+      </View>
     ),
     [size, token, contest?.myVote, canPickWinner, tiedIds, picking, confirmWinner, clearError],
   );
@@ -101,6 +103,12 @@ export function ContestScreen({ tripId }: { tripId: string }) {
       <View style={styles.center}>
         <ErrorText>{failure}</ErrorText>
         <Button label="Reintentar" variant="secondary" onPress={() => void Promise.all([refetchDetail(), refetchContest()])} />
+      </View>
+    );
+  if (detail && !detail.trip.contest?.enabled)
+    return (
+      <View style={styles.center}>
+        <Text style={[type.body, styles.note]}>Este evento no tiene concurso.</Text>
       </View>
     );
   if (!detail || !contest) return <Loading />;
@@ -213,7 +221,11 @@ function VoteButton({
 
 const styles = StyleSheet.create({
   header: { gap: spacing.sm, paddingVertical: spacing.md },
-  cell: { gap: 2, paddingBottom: spacing.md, marginRight: GAP },
+  // Columns split the width evenly; the cell hugs the outer edge in the first and last column, leaving GAP between neighbours.
+  slot: { alignItems: "center" },
+  slotStart: { alignItems: "flex-start" },
+  slotEnd: { alignItems: "flex-end" },
+  cell: { gap: 2, paddingBottom: spacing.md },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, padding: spacing.lg },
   note: { color: colors.secondaryLabel },
   winner: { gap: spacing.sm },

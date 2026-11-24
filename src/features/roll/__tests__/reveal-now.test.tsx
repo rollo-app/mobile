@@ -15,10 +15,10 @@ afterEach(() => {
   clients.length = 0;
 });
 
-function show(phase: RollPhase, { isCreator = true, contest = false } = {}) {
+function show(phase: RollPhase, { isCreator = true, contest = false, type = "event" } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false, gcTime: 0 } } });
   clients.push(client);
-  const detail = { trip: { id: "t1", name: "Boda", contest: contest ? { enabled: true, votingHours: 72 } : null }, me: { isCreator } };
+  const detail = { trip: { id: "t1", name: "Boda", type, contest: contest ? { enabled: true, votingHours: 72 } : null }, me: { isCreator } };
   return render(
     <QueryClientProvider client={client}>
       <RevealNowSection detail={detail as never} phase={phase} />
@@ -35,6 +35,11 @@ describe("RevealNowSection", () => {
       expect(screen.queryByText("Revelar ahora")).toBeNull();
       await view.unmount();
     }
+  });
+
+  it("is hidden for a regular trip", async () => {
+    await show("ended", { type: "trip" });
+    expect(screen.queryByText("Revelar ahora")).toBeNull();
   });
 
   it("confirms with an alert and reveals", async () => {

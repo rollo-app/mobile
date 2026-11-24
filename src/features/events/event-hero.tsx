@@ -9,7 +9,7 @@ const SCRIM = "linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.6) 100
 
 /**
  * An event's cover as the hero of the screen: the photo large, with the event's name (and an eyebrow or a day) over a
- * dark fade at the bottom. Used when joining, at the top of the event's board and as the preview in Crear evento; without a cover, nothing.
+ * dark fade at the bottom. Used when joining, at the top of the event's board and as the preview in Crear evento. Needs a cover: the board shows only the description without one.
  */
 export function EventHero({
   name,

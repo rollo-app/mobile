@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { contestKey } from "@/features/contest/use-contest";
 import { syncMoments } from "@/features/moments/moment-sync";
 import { updateTrip } from "./actions";
 import type { UpdateTripBody } from "./edit-form";
@@ -14,7 +15,9 @@ export function useUpdateTrip(tripId: string) {
     mutationFn: (body: UpdateTripBody) => updateTrip(tripId, body),
     onSuccess: (_trip, body) => {
       if (MOMENT_FIELDS.some((field) => field in body)) void syncMoments();
-      return Promise.all([client.invalidateQueries({ queryKey: tripKey(tripId) }), client.invalidateQueries({ queryKey: myTripsKey })]);
+      const refreshes = [client.invalidateQueries({ queryKey: tripKey(tripId) }), client.invalidateQueries({ queryKey: myTripsKey })];
+      if ("contestEnabled" in body || "contestVotingHours" in body) refreshes.push(client.invalidateQueries({ queryKey: contestKey(tripId) }));
+      return Promise.all(refreshes);
     },
   });
 }

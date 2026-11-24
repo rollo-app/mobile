@@ -53,9 +53,9 @@ const contest = (over: Partial<Schemas["Contest"]> = {}): Schemas["Contest"] => 
   ...over,
 });
 
-function mockDetail(role: "admin" | "member" = "member") {
+function mockDetail(role: "admin" | "member" = "member", enabled = true) {
   jest.mocked(useTripDetail).mockReturnValue({
-    detail: { trip: { id: "t1", type: "event", contest: { enabled: true, votingHours: 72 } }, me: { role, groupIds: [] } },
+    detail: { trip: { id: "t1", type: "event", contest: enabled ? { enabled: true, votingHours: 72 } : null }, me: { role, groupIds: [] } },
     error: null,
     refetch: jest.fn(),
     isRefetching: false,
@@ -88,6 +88,14 @@ beforeEach(() => {
 const open = async (author: string) => {
   await fireEvent.press(await screen.findByRole("button", { name: `Foto de ${author}` }));
 };
+
+describe("ContestScreen without contest", () => {
+  it("says the event has no contest instead of spinning", async () => {
+    mockDetail("member", false);
+    await wrap(<ContestScreen tripId="t1" />);
+    expect(await screen.findByText("Este evento no tiene concurso.")).toBeTruthy();
+  });
+});
 
 describe("ContestScreen voting", () => {
   it("voting calls the action and shows 'Tu voto'", async () => {
