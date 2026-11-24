@@ -187,17 +187,39 @@ describe("ContestScreen tie", () => {
 });
 
 describe("ContestScreen result", () => {
-  it("closed: the winner on top and the votes of each finalist", async () => {
-    server = contest({
+  const closedContest = () =>
+    contest({
       status: "closed",
       finalists: [finalist("m1", "u1", "Ana", 1), finalist("m2", "u2", "Beto", 5), finalist("m3", "u3", "Cami", 0)],
-      winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: null, avatarUrl: null }, imageAvailable: true },
+      winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: "beto", avatarUrl: null }, imageAvailable: true },
     });
+
+  it("closed: the winner on top and the ranking with the votes of each finalist", async () => {
+    server = closedContest();
     await wrap(<ContestScreen tripId="t1" />);
-    expect(await screen.findByText("Ganó la foto de Beto")).toBeTruthy();
-    expect(screen.getByText("5 votos")).toBeTruthy();
+    expect(await screen.findByText("Ganadora")).toBeTruthy();
+    expect(screen.getAllByText("@beto").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("5 votos").length).toBeGreaterThan(0);
     expect(screen.getByText("1 voto")).toBeTruthy();
     expect(screen.getByText("0 votos")).toBeTruthy();
+  });
+
+  it("tapping a row opens the pager in results mode at that place", async () => {
+    server = closedContest();
+    await wrap(<ContestScreen tripId="t1" />);
+    await fireEvent.press((await screen.findAllByRole("button", { name: "Foto de Ana" }))[0]!);
+    expect(await screen.findByText("2° puesto")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Cerrar" }));
+    await waitFor(() => expect(screen.queryByText("2° puesto")).toBeNull());
+  });
+
+  it("tied without counts still lists the finalists", async () => {
+    mockDetail("admin");
+    server = contest({ status: "tied", tiedMediaIds: ["m2", "m3"] });
+    await wrap(<ContestScreen tripId="t1" />);
+    expect((await screen.findAllByRole("button", { name: "Elegir ganadora" })).length).toBe(2);
+    expect(screen.getAllByText("Empatada")).toHaveLength(2);
+    expect(screen.queryByText(/votos?$/)).toBeNull();
   });
 
   it("cancelled", async () => {
@@ -215,7 +237,14 @@ describe("ContestCard", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/contest", params: { trip: "t1" } });
   });
 
-  it("closed: the winner's name", async () => {
+  it("closed: the winner's @username and avatar", async () => {
+    server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: "beto", avatarUrl: null }, imageAvailable: true } });
+    await wrap(<ContestCard tripId="t1" enabled />);
+    expect(await screen.findByText("Ganó la foto de @beto")).toBeTruthy();
+    expect(screen.getByTestId("avatar", { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it("closed: falls back to the name without a username", async () => {
     server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: null, avatarUrl: null }, imageAvailable: true } });
     await wrap(<ContestCard tripId="t1" enabled />);
     expect(await screen.findByText("Ganó la foto de Beto")).toBeTruthy();

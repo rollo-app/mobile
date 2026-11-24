@@ -72,7 +72,7 @@ export function cardCopy(contest: Schemas["Contest"] | null | undefined, now: nu
     case "tied":
       return "Concurso de fotos · Hay un empate";
     case "closed":
-      return contest.winner ? `Ganó la foto de ${contest.winner.author.name}` : null;
+      return contest.winner ? `Ganó la foto de ${contest.winner.author.username ? `@${contest.winner.author.username}` : contest.winner.author.name}` : null;
     case "cancelled":
       return "El concurso se canceló.";
     default:

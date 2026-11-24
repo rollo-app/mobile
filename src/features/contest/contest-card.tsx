@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { mediaSource, useMediaToken } from "@/features/media/revealed";
+import { Avatar } from "@/features/profile/avatar";
 import { colors, spacing, type } from "@/ui/theme";
 import { cardCopy } from "./contest-state";
 import { useContest } from "./use-contest";
@@ -20,7 +21,7 @@ export function ContestCard({ tripId, enabled, style }: { tripId: string; enable
 
   const winnerId = contest?.status === "closed" && contest.winner?.imageAvailable ? contest.winner.mediaId : null;
   const thumb = winnerId ? contest?.finalists.find((f) => f.mediaId === winnerId) : undefined;
-  const winnerName = contest?.winner?.author.name;
+  const winnerAuthor = contest?.status === "closed" ? contest.winner?.author : undefined;
   return (
     <Pressable
       accessibilityRole="button"
@@ -41,7 +42,12 @@ export function ContestCard({ tripId, enabled, style }: { tripId: string; enable
       )}
       <View style={styles.text}>
         <Text style={[type.headline, { color: colors.label }]}>{copy}</Text>
-        {!!thumb && !!winnerName && <Text style={[type.footnote, { color: colors.secondaryLabel }]}>Tocá para ver los votos</Text>}
+        {!!winnerAuthor && (
+          <View style={styles.byline}>
+            <Avatar id={winnerAuthor.userId} name={winnerAuthor.name} avatarUrl={winnerAuthor.avatarUrl} size={22} />
+            <Text style={[type.footnote, { color: colors.secondaryLabel }]}>Tocá para ver los votos</Text>
+          </View>
+        )}
       </View>
       <SymbolView name="chevron.right" size={14} tintColor={colors.tertiaryLabel as string} />
     </Pressable>
@@ -60,5 +66,6 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.7 },
   text: { flex: 1, gap: 2 },
+  byline: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   thumb: { width: 48, height: 48, borderRadius: 8, borderCurve: "continuous", backgroundColor: colors.latent },
 });
