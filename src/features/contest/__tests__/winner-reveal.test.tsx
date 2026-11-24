@@ -113,6 +113,23 @@ describe("useWinnerReveal", () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it("doesn't open (nor spend the key) if focus was lost while the keychain answered", async () => {
+    let release: (v: boolean) => void = () => {};
+    jest.spyOn(require("@/storage/contest-winner-seen"), "hasSeenContestWinner").mockImplementationOnce(() => new Promise<boolean>((r) => (release = r)));
+    function Focus({ active }: { active: boolean }) {
+      useWinnerReveal("t1", closed(), active);
+      return null;
+    }
+    const view = await render(<Focus active />);
+    await view.rerender(<Focus active={false} />);
+    await act(async () => release(false));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(await hasSeenContestWinner("t1")).toBe(false);
+    // Refocus: it opens then.
+    await view.rerender(<Focus active />);
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/contest-winner?trip=t1"));
+  });
+
   it("doesn't open when it was already seen", async () => {
     await markContestWinnerSeen("t1");
     await render(<Opener contest={closed()} />);
@@ -181,8 +198,11 @@ describe("WinnerRevealScreen", () => {
   it("a hidden winner (blocked or reported by you): no photo, only the line and the avatar", async () => {
     jest.mocked(fetchContest).mockResolvedValue(closed({ imageAvailable: false }));
     await wrap(<WinnerRevealScreen tripId="t1" />);
-    await skipToEnd();
-    expect(screen.getByText("Ganó la foto de @cami")).toBeTruthy();
+    // The quiet path: nothing to skip, no darkroom.
+    expect(await screen.findByText("Ganó la foto de @cami")).toBeTruthy();
+    expect(screen.queryByTestId("winner-skip")).toBeNull();
+    expect(screen.getByRole("button", { name: "Ver resultados" })).toBeTruthy();
+    await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1));
     expect(screen.queryByTestId("develop-image", { includeHiddenElements: true })).toBeNull();
     expect(screen.queryByTestId("winner-photo", { includeHiddenElements: true })).toBeNull();
     expect(screen.getByTestId("avatar", { includeHiddenElements: true })).toBeTruthy();

@@ -151,16 +151,18 @@ function WinnerReveal({
 }) {
   // Develops with the shader only when the thumb came in; otherwise the photo just fades in at the flash.
   const developing = !reduceMotion && !!photo?.thumbBytes;
-  const [finished, setFinished] = useState(reduceMotion);
+  // No photo to develop (hidden from this viewer) or Reduce Motion: the quiet path, plain fades and one success haptic.
+  const quick = reduceMotion || !photo;
+  const [finished, setFinished] = useState(quick);
   const [confetti, setConfetti] = useState(false);
 
-  const progress = useSharedValue(reduceMotion ? 1 : 0);
-  const room = useSharedValue(reduceMotion ? 0 : 1);
-  const safelight = useSharedValue(reduceMotion ? 0 : 0.8);
+  const progress = useSharedValue(quick ? 1 : 0);
+  const room = useSharedValue(quick ? 0 : 1);
+  const safelight = useSharedValue(quick ? 0 : 0.8);
   const flash = useSharedValue(0);
   const sharp = useSharedValue(0);
   const text = useSharedValue(0);
-  const button = useSharedValue(reduceMotion ? 0 : 1);
+  const button = useSharedValue(quick ? 0 : 1);
 
   const haptics = usePatternComposer(DEVELOP_HAPTICS);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -176,13 +178,15 @@ function WinnerReveal({
     const at = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
     const enter = easeOut();
 
-    if (reduceMotion) {
+    if (quick) {
       // Plain fades that must still play: Reanimated's default (ReduceMotion.System) would jump them to the end.
       const fade = { duration: WINNER_TIMELINE.reducedFadeMs, easing: enter, reduceMotion: ReduceMotion.Never };
       sharp.value = withTiming(1, fade);
       text.value = withTiming(1, fade);
       button.value = withTiming(1, fade);
       success();
+      // Confetti still plays when motion isn't reduced (a hidden winner), once the text is in.
+      if (!reduceMotion) at(WINNER_TIMELINE.reducedFadeMs, () => setConfetti(true));
       return () => timers.current.forEach(clearTimeout);
     }
 

@@ -8,11 +8,10 @@ import { Avatar } from "@/features/profile/avatar";
 import { Button } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import type { Contest, ContestFinalist } from "./actions";
+import { authorHandle, votesLabel } from "./contest-state";
 import type { RankedFinalist } from "./ranking";
 
-const votesLabel = (n: number) => `${n} ${n === 1 ? "voto" : "votos"}`;
 const keyExtractor = (item: RankedFinalist) => item.finalist.mediaId;
-const handleOf = (author: ContestFinalist["author"]) => (author.username ? `@${author.username}` : author.name);
 
 type Props = {
   /** Sorted by place (see `rankFinalists`). */
@@ -45,15 +44,17 @@ type RowProps = {
 const Row = memo(function Row({ item, index, token, tied, canPick, picking, onPick, onOpen }: RowProps) {
   const { finalist, place, share } = item;
   const votes = finalist.votes;
+  const handle = authorHandle(finalist.author);
+  const label = votes !== null ? `${place}° puesto, ${handle}, ${votesLabel(votes)}` : tied ? `${handle}, empatada` : handle;
   return (
     <View style={styles.row}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Foto de ${handleOf(finalist.author)}`}
+        accessibilityLabel={label}
         onPress={() => onOpen(index)}
         style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}
       >
-        {votes !== null && <Text style={[type.headline, styles.place]}>{place}</Text>}
+        {votes !== null && <Text style={[type.headline, styles.place]}>{`${place}°`}</Text>}
         <Image
           testID={`contest-thumb-${finalist.mediaId}`}
           source={mediaSource(finalist.thumbPath, token)}
@@ -65,7 +66,7 @@ const Row = memo(function Row({ item, index, token, tied, canPick, picking, onPi
         />
         <View style={styles.rowText}>
           <Text style={[type.subhead, { color: colors.label }]} numberOfLines={1}>
-            {handleOf(finalist.author)}
+            {authorHandle(finalist.author)}
           </Text>
           {tied && <Text style={[type.footnote, { color: colors.tint }]}>Empatada</Text>}
           {votes !== null && (
@@ -124,7 +125,7 @@ export function ResultsList({ ranked, winner, token, tiedIds, canPickWinner = fa
                 <Avatar id={winner.author.userId} name={winner.author.name} avatarUrl={winner.author.avatarUrl} size={40} />
                 <View style={styles.rowText}>
                   <Text style={[type.title, { color: colors.label }]} numberOfLines={1}>
-                    {handleOf(winner.author)}
+                    {authorHandle(winner.author)}
                   </Text>
                   {typeof winnerVotes === "number" && <Text style={[type.subhead, styles.votesPlain]}>{votesLabel(winnerVotes)}</Text>}
                 </View>

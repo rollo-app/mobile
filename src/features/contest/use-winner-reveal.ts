@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { hasSeenContestWinner, markContestWinnerSeen } from "@/storage/contest-winner-seen";
 import type { Contest } from "./actions";
 
@@ -16,6 +16,8 @@ const checking = new Set<string>();
  */
 export function useWinnerReveal(tripId: string | undefined, contest: Pick<Contest, "status" | "winner"> | null | undefined, active = true) {
   const router = useRouter();
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const due = active && !!tripId && contest?.status === "closed" && !!contest.winner;
 
   useEffect(() => {
@@ -24,6 +26,8 @@ export function useWinnerReveal(tripId: string | undefined, contest: Pick<Contes
     void (async () => {
       try {
         if (await hasSeenContestWinner(tripId)) return;
+        // Focus may have moved while the keychain answered (e.g. the roll reveal took over): leave it for the refocus.
+        if (!activeRef.current) return;
         await markContestWinnerSeen(tripId);
         router.push(`/contest-winner?trip=${tripId}`);
       } catch {

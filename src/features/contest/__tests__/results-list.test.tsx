@@ -28,10 +28,16 @@ describe("ResultsList", () => {
     expect(screen.getByText("0 votos")).toBeTruthy();
   });
 
+  it("shows the place with its ordinal sign and labels each row for VoiceOver", async () => {
+    await render(<ResultsList ranked={rankFinalists(closed)} winner={winner} token="tok" onOpen={jest.fn()} />);
+    expect(screen.getByText("1°")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "1° puesto, @ana, 9 votos" })).toBeTruthy();
+  });
+
   it("opens the tapped row by its index in rank order", async () => {
     const onOpen = jest.fn();
     await render(<ResultsList ranked={rankFinalists(closed)} winner={winner} token="tok" onOpen={onOpen} />);
-    await fireEvent.press(screen.getByRole("button", { name: "Foto de @beto" }));
+    await fireEvent.press(screen.getByRole("button", { name: "2° puesto, @beto, 1 voto" }));
     expect(onOpen).toHaveBeenCalledWith(1);
   });
 
@@ -49,6 +55,7 @@ describe("ResultsList", () => {
   it("tie: a guest sees them marked but no button", async () => {
     await render(<ResultsList ranked={tied} winner={null} token="tok" tiedIds={new Set(["a", "b"])} onOpen={jest.fn()} />);
     expect(screen.getAllByText("Empatada")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "@ana, empatada" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Elegir ganadora" })).toBeNull();
   });
 });

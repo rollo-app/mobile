@@ -143,7 +143,7 @@ describe("PicksScreen", () => {
     expect(screen.queryByText("te sugerimos hasta 15")).toBeNull();
 
     for (const i of [11, 12, 13, 14, 15]) await fireEvent.press(screen.getAllByRole("button", { name: "Foto de Ana" })[i]!);
-    expect(await screen.findByText("te sugerimos hasta 15")).toBeTruthy();
+    expect(await screen.findByText("16 elegidas · te sugerimos hasta 15")).toBeTruthy();
   });
 
   it("shows the server's error inline and rolls the pick back", async () => {

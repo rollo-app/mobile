@@ -207,7 +207,7 @@ describe("ContestScreen result", () => {
   it("tapping a row opens the pager in results mode at that place", async () => {
     server = closedContest();
     await wrap(<ContestScreen tripId="t1" />);
-    await fireEvent.press((await screen.findAllByRole("button", { name: "Foto de Ana" }))[0]!);
+    await fireEvent.press((await screen.findAllByRole("button", { name: /^2° puesto, Ana/ }))[0]!);
     expect(await screen.findByText("2° puesto")).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Cerrar" }));
     await waitFor(() => expect(screen.queryByText("2° puesto")).toBeNull());

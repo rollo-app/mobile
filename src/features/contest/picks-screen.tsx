@@ -127,11 +127,10 @@ export function PicksScreen({ tripId }: { tripId: string }) {
         contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={[type.title, { color: colors.label }]}>{pickCountLabel(contest.finalists.length)}</Text>
+            <Text style={[type.title, { color: colors.label }]}>{`${pickCountLabel(contest.finalists.length)}${hint ? ` · ${hint}` : ""}`}</Text>
             <Text style={[type.footnote, { color: colors.secondaryLabel }]}>
               Tocá las fotos que van al concurso. Después del revelado, todos votan entre ellas.
             </Text>
-            {!!hint && <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{hint}</Text>}
             {group && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${group.name}`}</Text>}
             {!!toggleError && <ErrorText>{toggleError}</ErrorText>}
           </View>

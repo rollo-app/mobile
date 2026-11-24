@@ -7,7 +7,7 @@ import { mediaSource } from "@/features/media/revealed";
 import { Avatar } from "@/features/profile/avatar";
 import { colors, spacing, type } from "@/ui/theme";
 import type { ContestFinalist } from "./actions";
-import { countdownLabel } from "./contest-state";
+import { authorHandle, countdownLabel, votesLabel } from "./contest-state";
 import { PagerProgress } from "./pager-progress";
 
 /** One page of the pager. `place` (1 = winner) is only used in `results` mode. */
@@ -42,7 +42,6 @@ const BOTTOM_SCRIM = "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.
 const TOP_SCRIM_HEIGHT = 110;
 const PLACE_TOP = 72;
 
-const votesLabel = (n: number) => `${n} ${n === 1 ? "voto" : "votos"}`;
 const keyExtractor = (item: PagerItem) => item.finalist.mediaId;
 
 /** Re-renders every `ms` so the countdown moves while the screen stays open. */
@@ -151,7 +150,7 @@ const Page = memo(function Page({ finalist, place, error, mode, token, width, he
   const { author } = finalist;
   const label = voted ? "Tu voto ✓" : votingOpen ? "Votar esta" : "Cerrando la votación…";
   const disabled = mine || !votingOpen;
-  const handle = author.username ? `@${author.username}` : author.name;
+  const handle = authorHandle(author);
   return (
     <View style={{ width, height, backgroundColor: colors.latent }}>
       <Image
