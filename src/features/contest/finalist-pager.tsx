@@ -1,4 +1,4 @@
-import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
+import { FlashList, type FlashListRef, type ListRenderItemInfo } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
@@ -67,6 +67,21 @@ export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, my
   const now = useNow(30_000);
   const widthRef = useRef(box.width);
   widthRef.current = box.width;
+  const listRef = useRef<FlashListRef<PagerItem>>(null);
+  const indexRef = useRef(start);
+  indexRef.current = index;
+
+  // Tapping the photo moves like the stories: right side → next, left third → previous.
+  const step = useCallback(
+    (dir: -1 | 1) => {
+      const next = indexRef.current + dir;
+      if (next < 0 || next >= items.length) return;
+      listRef.current?.scrollToIndex({ index: next, animated: true });
+      setIndex(next);
+      onIndexChange?.(next);
+    },
+    [items.length, onIndexChange],
+  );
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -100,15 +115,17 @@ export function FinalistPager({ items, initialIndex = 0, token, mode, myVote, my
         bottomInset={insets.bottom}
         topInset={topInset}
         onVote={onVote}
+        onStep={step}
       />
     ),
-    [mode, token, box.width, box.height, myUserId, myVote, votingOpen, countdown, insets.bottom, topInset, onVote, error, index, items],
+    [mode, token, box.width, box.height, myUserId, myVote, votingOpen, countdown, insets.bottom, topInset, onVote, step, error, index, items],
   );
   const extra = useMemo(() => ({ myVote, votingOpen, countdown, token, width: box.width, height: box.height, error, index }), [myVote, votingOpen, countdown, token, box.width, box.height, error, index]);
 
   return (
     <View style={styles.root} onLayout={onLayout}>
       <FlashList
+        ref={listRef}
         testID="finalist-pager"
         data={items}
         horizontal
@@ -143,9 +160,10 @@ type PageProps = {
   bottomInset: number;
   topInset: number;
   onVote?: (mediaId: string | null) => void;
+  onStep: (dir: -1 | 1) => void;
 };
 
-const Page = memo(function Page({ finalist, place, error, mode, token, width, height, mine, voted, votingOpen, countdown, bottomInset, topInset, onVote }: PageProps) {
+const Page = memo(function Page({ finalist, place, error, mode, token, width, height, mine, voted, votingOpen, countdown, bottomInset, topInset, onVote, onStep }: PageProps) {
   const source = useMemo(() => mediaSource(finalist.displayPath, token), [finalist.displayPath, token]);
   const { author } = finalist;
   const label = voted ? "Tu voto ✓" : votingOpen ? "Votar esta" : "Cerrando la votación…";
@@ -162,13 +180,26 @@ const Page = memo(function Page({ finalist, place, error, mode, token, width, he
         transition={150}
         style={StyleSheet.absoluteFill}
       />
-      {mode === "results" && !!place && <Text style={[type.title, styles.place, { top: PLACE_TOP + topInset }]}>{`${place}° puesto`}</Text>}
+      <Pressable
+        testID={`finalist-tap-${finalist.mediaId}`}
+        style={StyleSheet.absoluteFill}
+        accessible={false}
+        onPress={(e) => onStep(e.nativeEvent.locationX < width / 3 ? -1 : 1)}
+      />
+      {mode === "results" && !!place && <Text pointerEvents="none" style={[type.title, styles.place, { top: PLACE_TOP + topInset }]}>{`${place}° puesto`}</Text>}
       <View style={[styles.bottom, styles.bottomScrim, { paddingBottom: bottomInset + spacing.md }]}>
         <View style={styles.author}>
           <Avatar id={author.userId} name={author.name} avatarUrl={author.avatarUrl} size={40} />
-          <Text style={[type.headline, styles.onPhoto]} numberOfLines={1}>
-            {handle}
-          </Text>
+          <View style={styles.names}>
+            <Text style={[type.headline, styles.onPhoto]} numberOfLines={1}>
+              {author.name}
+            </Text>
+            {!!author.username && (
+              <Text style={[type.footnote, styles.username]} numberOfLines={1} accessibilityLabel={handle}>
+                {`@${author.username}`}
+              </Text>
+            )}
+          </View>
         </View>
         {mode === "results" ? (
           finalist.votes !== null && <Text style={styles.votes}>{votesLabel(finalist.votes)}</Text>
@@ -205,6 +236,8 @@ const styles = StyleSheet.create({
   error: { color: "#FF9F9A", fontWeight: "600" },
   author: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   onPhoto: { color: colors.onTint, flexShrink: 1 },
+  names: { flexShrink: 1 },
+  username: { color: "rgba(255,255,255,0.7)" },
   votes: { color: colors.onTint, fontSize: 44, fontWeight: "700", fontVariant: ["tabular-nums"] },
   vote: { alignItems: "center", justifyContent: "center", height: 54, borderRadius: 14, borderCurve: "continuous" },
 });

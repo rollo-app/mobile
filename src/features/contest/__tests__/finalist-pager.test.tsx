@@ -65,6 +65,20 @@ describe("FinalistPager vote", () => {
     expect(onIndexChange).toHaveBeenCalledWith(1);
   });
 
+  it("tapping the right side goes to the next photo and the left third to the previous one", async () => {
+    const onIndexChange = jest.fn();
+    await render(<Harness onIndexChange={onIndexChange} />);
+    // The test window is 750 wide: past a third is "next".
+    await fireEvent.press(screen.getByTestId("finalist-tap-m1"), { nativeEvent: { locationX: 600 } });
+    expect(screen.getByText("Finalista 2 de 3")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("finalist-tap-m2"), { nativeEvent: { locationX: 50 } });
+    expect(screen.getByText("Finalista 1 de 3")).toBeTruthy();
+    // Nothing before the first one.
+    await fireEvent.press(screen.getByTestId("finalist-tap-m1"), { nativeEvent: { locationX: 50 } });
+    expect(screen.getByText("Finalista 1 de 3")).toBeTruthy();
+    expect(onIndexChange.mock.calls.map((c) => c[0])).toEqual([1, 0]);
+  });
+
   it("voting calls onVote with the media id and the page shows 'Tu voto'", async () => {
     const onVote = jest.fn();
     await render(<Harness onVote={onVote} initialIndex={1} />);
