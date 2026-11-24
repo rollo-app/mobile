@@ -174,12 +174,13 @@ const Page = memo(function Page({ finalist, place, error, mode, token, width, he
   const disabled = mine || !votingOpen;
   const handle = authorHandle(author);
   return (
-    <View style={{ width, height, backgroundColor: colors.latent }}>
+    // The whole photo, never cropped (judging a photo needs all of it): letterboxed on black.
+    <View style={{ width, height, backgroundColor: "#000" }}>
       <Image
         testID={`finalist-image-${finalist.mediaId}`}
         source={source}
         placeholder={finalist.thumbHash ? { thumbhash: finalist.thumbHash } : undefined}
-        contentFit="cover"
+        contentFit="contain"
         recyclingKey={finalist.mediaId}
         transition={150}
         style={StyleSheet.absoluteFill}

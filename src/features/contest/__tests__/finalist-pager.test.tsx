@@ -86,6 +86,11 @@ describe("FinalistPager vote", () => {
     expect(onOpenAuthor).toHaveBeenCalledWith("u1");
   });
 
+  it("shows the whole photo in its own proportion, never cropped", async () => {
+    await render(<Harness />);
+    expect(screen.getByTestId("finalist-image-m1").props.contentFit).toBe("contain");
+  });
+
   it("voting calls onVote with the media id and the page shows 'Tu voto'", async () => {
     const onVote = jest.fn();
     await render(<Harness onVote={onVote} initialIndex={1} />);
