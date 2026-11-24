@@ -88,6 +88,18 @@ describe("diaryItems", () => {
     expect(items[0]!.key).toBe("chapter:c1");
   });
 
+  it("a 2-photo chapter with 2 captions shows one quote", () => {
+    const items = diaryItems([chapter("c1", [rp("a", { caption: "x" }), rp("b", { caption: "y" })])], 3);
+    expect(items.filter((i) => i.kind === "quote")).toHaveLength(1);
+  });
+
+  it("a hero plus a 3-photo grid with 3 captions never has two quotes in a row", () => {
+    const photos = ids(4).map((id) => rp(id, { caption: "c", likeCount: id === "p1" ? 9 : 0 }));
+    const kinds = diaryItems([chapter("c1", photos)], 3).map((i) => i.kind);
+    expect(kinds.filter((k) => k === "quote")).toHaveLength(1);
+    kinds.forEach((k, n) => expect(k === "quote" && kinds[n + 1] === "quote").toBe(false));
+  });
+
   it("returns nothing for no chapters", () => {
     expect(diaryItems([], 3)).toEqual([]);
   });

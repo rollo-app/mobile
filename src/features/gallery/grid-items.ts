@@ -24,7 +24,7 @@ export type GridItem =
   | { kind: "quote"; key: string; photo: RevealedPhoto }
   | { kind: "photo"; key: string; photo: RevealedPhoto; column: number };
 
-/** The diary as one flat list: per chapter a header, its hero, then the photos with up to two full-width quotes between rows. */
+/** The diary as one flat list: per chapter a header, its hero, then the photos with up to two full-width quotes between rows (the second is dropped unless a full row of photos separates it from the first). */
 export function diaryItems(chapters: Chapter[], columns: number): GridItem[] {
   const items: GridItem[] = [];
   for (const chapter of chapters) {
@@ -34,10 +34,10 @@ export function diaryItems(chapters: Chapter[], columns: number): GridItem[] {
     const grid = hero ? chapter.photos.filter((p) => p.id !== hero.id) : chapter.photos;
     const quotes = pickQuotes(chapter.photos);
 
-    // Positions are counts of photos placed before the quote; a quote with no room goes after the last photo.
+    // Positions are counts of photos placed before the quote; the first quote with no room goes after the last photo; -1 drops a quote.
     const first = Math.min(columns, grid.length);
     const middleRowEnd = (Math.floor(Math.floor(grid.length / 2) / columns) + 1) * columns;
-    const second = middleRowEnd >= first + columns ? Math.min(middleRowEnd, grid.length) : grid.length;
+    const second = middleRowEnd >= first + columns && middleRowEnd <= grid.length ? middleRowEnd : -1;
     const at = [first, second];
 
     let column = 0;
