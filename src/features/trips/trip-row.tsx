@@ -1,7 +1,7 @@
-import { MenuView } from "@expo/ui/community/menu";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, useColorScheme, View, type LayoutChangeEvent } from "react-native";
+import { useMemo } from "react";
+import { FullWidthMenuView } from "@/ui/full-width-menu";
+import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { Badge } from "@/ui/badge";
 import { colors, spacing, type } from "@/ui/theme";
 import type { TripSummary } from "./active";
@@ -37,13 +37,6 @@ export function TripRow({
   const tint = average ? rowTint(average, scheme) : null;
   const isEvent = trip.type === "event";
   const a11yName = isEvent ? `${trip.name}, evento` : trip.name;
-  // The long-press menu wraps the row in a native host that sizes to its content, so the row (and its pressed highlight)
-  // would end right after the name. Measure the full width outside it and hand it to the row.
-  const [width, setWidth] = useState<number | null>(null);
-  const onLayout = useCallback((e: LayoutChangeEvent) => {
-    const next = Math.round(e.nativeEvent.layout.width);
-    setWidth((prev) => (prev === next ? prev : next));
-  }, []);
 
   const row = (
     <Pressable
@@ -53,7 +46,7 @@ export function TripRow({
       accessibilityActions={actions.map((id) => ({ name: id, label: ROW_ACTION_TITLES[id] }))}
       onAccessibilityAction={({ nativeEvent }) => onAction?.(nativeEvent.actionName as RowActionId)}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, width !== null && actions.length > 0 && { width }, pressed && { backgroundColor: colors.fill }]}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.fill }]}
     >
       {tint && <Gradient color={tint} />}
       <View style={styles.text}>
@@ -75,20 +68,18 @@ export function TripRow({
   );
   if (actions.length === 0) return row;
   return (
-    <View testID="trip-row-measure" onLayout={onLayout}>
-      <MenuView
-        shouldOpenOnLongPress
-        actions={actions.map((id) => ({
-          id,
-          title: ROW_ACTION_TITLES[id],
-          image: id === "leave" ? "trash" : id === "archive" ? "archivebox" : "tray.and.arrow.up",
-          ...(id === "leave" && { attributes: { destructive: true } }),
-        }))}
-        onPressAction={({ nativeEvent }) => onAction?.(nativeEvent.event as RowActionId)}
-      >
-        {row}
-      </MenuView>
-    </View>
+    <FullWidthMenuView
+      shouldOpenOnLongPress
+      actions={actions.map((id) => ({
+        id,
+        title: ROW_ACTION_TITLES[id],
+        image: id === "leave" ? "trash" : id === "archive" ? "archivebox" : "tray.and.arrow.up",
+        ...(id === "leave" && { attributes: { destructive: true } }),
+      }))}
+      onPressAction={({ nativeEvent }) => onAction?.(nativeEvent.event as RowActionId)}
+    >
+      {row}
+    </FullWidthMenuView>
   );
 }
 

@@ -1,6 +1,6 @@
-import { MenuView } from "@expo/ui/community/menu";
 import { router } from "expo-router";
 import { useState } from "react";
+import { FullWidthMenuView } from "@/ui/full-width-menu";
 import { Alert } from "react-native";
 import { errorMessage } from "@/api/client";
 import { formatDateRange } from "@/features/trips/phase";
@@ -78,13 +78,13 @@ export function FriendSections({ userId, name }: { userId: string; name: string 
             />
           ))}
           {addable.length > 0 && (
-            <MenuView
+            <FullWidthMenuView
               title="Sumar a un rollo"
               actions={addable.map((t) => ({ id: t.id, title: t.name, attributes: { disabled: adding } }))}
               onPressAction={({ nativeEvent }) => addTo(nativeEvent.event)}
             >
               <Row label="Sumar a un rollo" tone="tint" loading={adding} />
-            </MenuView>
+            </FullWidthMenuView>
           )}
         </Section>
       )}

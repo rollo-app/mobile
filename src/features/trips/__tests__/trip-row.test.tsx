@@ -29,9 +29,9 @@ describe("TripRow", () => {
 
   it("with a long-press menu, the row (and its pressed highlight) takes the full measured width", async () => {
     await render(<TripRow trip={live} selected={false} now={NOW} timeZone={TZ} onPress={() => {}} actions={["leave"]} onAction={() => {}} />);
-    await fireEvent(screen.getByTestId("trip-row-measure"), "layout", { nativeEvent: { layout: { x: 0, y: 0, width: 361, height: 64 } } });
-    const row = screen.getByRole("button", { name: /Un nombre de rollo muy largo/ });
-    expect(StyleSheet.flatten(row.props.style).width).toBe(361);
+    await fireEvent(screen.getByTestId("full-width-menu"), "layout", { nativeEvent: { layout: { x: 0, y: 0, width: 361, height: 64 } } });
+    expect(StyleSheet.flatten(screen.getByTestId("full-width-menu-content").props.style).width).toBe(361);
+    expect(screen.getByRole("button", { name: /Un nombre de rollo muy largo/ })).toBeTruthy();
   });
 
   it("marks an event with an 'Evento' badge next to its state", async () => {

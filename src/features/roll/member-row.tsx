@@ -1,6 +1,6 @@
-import { MenuView } from "@expo/ui/community/menu";
 import type { SFSymbol } from "expo-symbols";
 import { memo } from "react";
+import { FullWidthMenuView } from "@/ui/full-width-menu";
 import { Avatar } from "@/features/profile/avatar";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { formatHandle } from "@/features/profile/username";
@@ -34,7 +34,7 @@ export const MemberRow = memo(function MemberRow({ me, member: m, onAction }: { 
   );
   if (actions.length === 0) return row;
   return (
-    <MenuView
+    <FullWidthMenuView
       shouldOpenOnLongPress
       actions={actions.map((id) => ({
         id,
@@ -45,6 +45,6 @@ export const MemberRow = memo(function MemberRow({ me, member: m, onAction }: { 
       onPressAction={({ nativeEvent }) => onAction(nativeEvent.event as MemberAction, m)}
     >
       {row}
-    </MenuView>
+    </FullWidthMenuView>
   );
 });
