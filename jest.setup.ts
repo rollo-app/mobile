@@ -521,7 +521,10 @@ jest.mock("@/features/reveal/darkroom-intro", () => {
 jest.mock("@/features/darkroom/develop-image", () => {
   const { createElement: h } = require("react");
   const { View } = require("react-native");
-  return { DevelopImage: () => h(View, { testID: "develop-image" }), DevelopLayer: () => null, decodeThumb: () => null };
+  // The label tells a test what it was given: whether the thumb came in, and where the development starts.
+  const DevelopImage = ({ thumbBytes, progress }: { thumbBytes: ArrayBuffer | null; progress: { value: number } }) =>
+    h(View, { testID: "develop-image", accessibilityLabel: `${thumbBytes ? "thumb" : "no thumb"}, progress ${progress.value}` });
+  return { DevelopImage, DevelopLayer: () => null, decodeThumb: () => null };
 });
 // The shutter click (expo-audio, native) does nothing in screen tests; its own test unmocks it.
 jest.mock("@/features/darkroom/shutter-sound", () => ({ prepareShutter: jest.fn(async () => {}), playShutter: jest.fn(), releaseShutter: jest.fn() }));

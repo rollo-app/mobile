@@ -199,7 +199,7 @@ Decisiones de producto:
 - **Cupo diario o total** (a futuro, mismo diseño): al crear el rollo se elige si el límite es por día (como hoy, 10 por
   persona por día) o total del viaje (por ejemplo 20 por persona en todo el rollo).
 - **Después del revelado:** galería, mapa con fotos, timeline por día, descarga y export para fotolibro.
-  **El revelado** es una pantalla propia (`/reveal`, `src/features/reveal/`, fullScreenModal; el efecto de revelado (`DevelopImage`), los shaders el obturador y la descarga de miniaturas (`useThumbBytes`) son compartidos y viven en `src/features/darkroom/`; también los usa el revelado de la ganadora del concurso): se abre sola **una vez por
+  **El revelado** es una pantalla propia (`/reveal`, `src/features/reveal/`, fullScreenModal; el efecto de revelado (`DevelopImage`), los shaders, el obturador y la descarga de miniaturas (`useThumbBytes`) son compartidos y viven en `src/features/darkroom/`; también los usa el revelado de la ganadora del concurso): se abre sola **una vez por
   rollo** la primera vez que entrás a un rollo revelado (`useFirstPresentation`, esperando `loaded` para no disparar en un rollo que no es el
   activo). Dura ~7 s: cuarto oscuro rojo con grano animado ("Revelando {rollo}") → 9–12 fotos que salen de su ThumbHash (shader de
   Skia: umbral de ruido, sepia a color, borroso a nítido) con háptico que crece (`react-native-pulsar`) → golpe (impacto + éxito + clic
@@ -337,7 +337,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 - `expo-notifications` es nativo: agregarlo pidió `npx expo prebuild --clean` + rebuild.
 - Claves de SecureStore del revelado (no se renombran): `rollo.presentation-seen.<tripId>` (se abrió solo el revelado),
   `rollo.revealIntroSeen.<tripId>` (se vio) y `rollo.rollStartedSeen.<tripId>` ("Arrancó el rollo" visto).
-- Claves de SecureStore de eventos (no se renombran): `rollo.pendingJoin` (código del link de evento pendiente, 24 h) y `rollo.lastGroups.<tripId>` (últimos grupos elegidos al sacar fotos) y `rollo.contestWinnerSeen.<tripId>` (se vio el revelado de la ganadora del concurso).
+- Claves de SecureStore de eventos (no se renombran): `rollo.pendingJoin` (código del link de evento pendiente, 24 h), `rollo.lastGroups.<tripId>` (últimos grupos elegidos al sacar fotos) y `rollo.contestWinnerSeen.<tripId>` (se vio el revelado de la ganadora del concurso).
 - Clave de SecureStore de la cuenta (no se renombra): `rollo.sessionUserId` (id del usuario con sesión; la cola offline la usa para saber de quién es cada foto).
 - Clave de SecureStore de la cámara (no se renombra): `rollo.cameraGrid` (`"1"`/`"0"`, cuadrícula prendida; ajuste del celular).
 - `ios/` es generado (`npx expo prebuild`) y está en `.gitignore`. La config nativa va en `app.json`; `app.config.ts` solo cambia nombre y

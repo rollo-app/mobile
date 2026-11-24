@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import type { Schemas } from "@/api/client";
 import { useMe } from "@/features/auth/use-me";
 import { hasSeenContestWinner, markContestWinnerSeen } from "@/storage/contest-winner-seen";
+import { useThumbBytes } from "@/features/darkroom/use-thumb-bytes";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import "@/test/reanimated";
 import { fetchContest } from "../actions";
@@ -16,11 +17,14 @@ jest.mock("expo-router", () => ({
   ...jest.requireActual("expo-router"),
   useRouter: () => ({ push: mockPush, dismissTo: mockDismissTo, replace: jest.fn() }),
 }));
+// Reanimated's real module needs the native worklets runtime and throws on import under Jest: an empty object that
+// `@/test/reanimated` (imported above) fills with the hooks these screens use. Route suites get it from
+// expo-router/testing-library, which this unit test doesn't load.
 jest.mock("react-native-reanimated", () => ({}));
 jest.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
 jest.mock("expo-haptics", () => ({ notificationAsync: jest.fn(async () => {}), NotificationFeedbackType: { Success: "success" } }));
 // The develop effect (Skia) is a marker View with testID "develop-image" (jest.setup).
-jest.mock("@/features/darkroom/use-thumb-bytes", () => ({ useThumbBytes: () => ({ bytes: { m2: new ArrayBuffer(8) }, settled: true }) }));
+jest.mock("@/features/darkroom/use-thumb-bytes", () => ({ useThumbBytes: jest.fn() }));
 jest.mock("@/ui/use-reduce-motion", () => ({ useReduceMotion: jest.fn(() => false) }));
 jest.mock("../actions");
 jest.mock("@/features/auth/use-me", () => ({ useMe: jest.fn() }));
@@ -68,6 +72,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useMe).mockReturnValue({ me: { id: "u1" } } as never);
   jest.mocked(useReduceMotion).mockReturnValue(false);
+  jest.mocked(useThumbBytes).mockReturnValue({ bytes: { m2: new ArrayBuffer(8) }, settled: true });
 });
 
 function Opener({ contest }: { contest: Schemas["Contest"] | null }) {
@@ -125,12 +130,24 @@ describe("WinnerRevealScreen", () => {
   it("develops the winning photo and names its author with the votes", async () => {
     jest.mocked(fetchContest).mockResolvedValue(closed());
     await wrap(<WinnerRevealScreen tripId="t1" />);
-    expect(await screen.findByTestId("develop-image", { includeHiddenElements: true })).toBeTruthy();
+    // Mounted with the downloaded thumb, undeveloped.
+    expect((await screen.findByTestId("develop-image", { includeHiddenElements: true })).props.accessibilityLabel).toBe("thumb, progress 0");
     expect(screen.queryByText("Ganó la foto de @cami")).toBeNull();
     await skipToEnd();
     expect(screen.getByText("Ganó la foto de @cami")).toBeTruthy();
     expect(screen.getByText("12 votos")).toBeTruthy();
     expect(screen.getByTestId("avatar", { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it("waits for the winner's thumb before developing it (never the sharp photo first)", async () => {
+    jest.mocked(useThumbBytes).mockReturnValue({ bytes: {}, settled: false });
+    jest.mocked(fetchContest).mockResolvedValue(closed());
+    await wrap(<WinnerRevealScreen tripId="t1" />);
+    await waitFor(() => expect(fetchContest).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.getByTestId("winner-loading")).toBeTruthy();
+    expect(screen.queryByTestId("develop-image", { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByTestId("winner-photo", { includeHiddenElements: true })).toBeNull();
   });
 
   it("tells the author it's their photo", async () => {

@@ -10,11 +10,13 @@ const checking = new Set<string>();
 /**
  * Opens the winner reveal (`/contest-winner`) the first time this phone sees the contest closed with a winner,
  * once per event (`rollo.contestWinnerSeen.<tripId>`). It's marked as seen as it opens, so closing it midway
- * doesn't bring it back. Mounted by `ContestCard` and `ContestScreen`.
+ * doesn't bring it back. Mounted by `ContestCard` and `ContestScreen`. `active` false holds it (the card's screen isn't
+ * the one in view: another tab, or a modal over the tabs), so a refetch in the background never opens it over
+ * something else and spends the key.
  */
-export function useWinnerReveal(tripId: string | undefined, contest: Pick<Contest, "status" | "winner"> | null | undefined) {
+export function useWinnerReveal(tripId: string | undefined, contest: Pick<Contest, "status" | "winner"> | null | undefined, active = true) {
   const router = useRouter();
-  const due = !!tripId && contest?.status === "closed" && !!contest.winner;
+  const due = active && !!tripId && contest?.status === "closed" && !!contest.winner;
 
   useEffect(() => {
     if (!due || !tripId || checking.has(tripId)) return;

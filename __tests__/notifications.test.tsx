@@ -347,7 +347,7 @@ describe("Ajustes: Notificaciones", () => {
     expect(screen.getByRole("switch", { name: "Te suman a un rollo" }).props.value).toBe(true);
     for (const title of ["Rollos", "Amigos", "Tus fotos"]) expect(screen.getByText(title)).toBeVisible();
     expect(screen.getAllByText("Momento del día").length).toBeGreaterThan(1); // group title + switch label
-    expect(screen.getByText("Se revela: cuando se pueden ver las fotos de un rollo tuyo. Fotos por borrarse: unos días antes de que se borren las fotos en máxima calidad.")).toBeVisible();
+    expect(screen.getByText("Se revela: cuando se pueden ver las fotos de un rollo tuyo. Fotos por borrarse: unos días antes de que se borren las fotos en máxima calidad. Concurso de fotos: cuando hay finalistas, empates o ganadora.")).toBeVisible();
     expect(screen.getByText("Cuando alguien acepta tu link de amistad o te manda una solicitud.")).toBeVisible();
     expect(screen.getByText("Cuando alguien destaca, le da me gusta o comenta una foto tuya (o una que comentaste).")).toBeVisible();
     expect(screen.getByText("Un aviso al día, a una hora al azar, para sacar tu foto; y otro cuando alguien del rollo sube la suya.")).toBeVisible();

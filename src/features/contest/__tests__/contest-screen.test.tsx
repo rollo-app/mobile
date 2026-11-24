@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import type { Schemas } from "@/api/client";
 import { ApiError } from "@/api/client";
@@ -231,7 +231,7 @@ describe("ContestScreen result", () => {
 
 describe("ContestCard", () => {
   it("voting: opens the contest", async () => {
-    await wrap(<ContestCard tripId="t1" enabled />);
+    await wrap(<ContestCard tripId="t1" enabled focused />);
     const card = await screen.findByRole("button", { name: /Concurso de fotos · Cierra en 2 días/ });
     await fireEvent.press(card);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/contest", params: { trip: "t1" } });
@@ -239,19 +239,31 @@ describe("ContestCard", () => {
 
   it("closed: the winner's @username and avatar", async () => {
     server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: "beto", avatarUrl: null }, imageAvailable: true } });
-    await wrap(<ContestCard tripId="t1" enabled />);
+    await wrap(<ContestCard tripId="t1" enabled focused />);
     expect(await screen.findByText("Ganó la foto de @beto")).toBeTruthy();
     expect(screen.getByTestId("avatar", { includeHiddenElements: true })).toBeTruthy();
   });
 
   it("closed: falls back to the name without a username", async () => {
     server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: null, avatarUrl: null }, imageAvailable: true } });
-    await wrap(<ContestCard tripId="t1" enabled />);
+    await wrap(<ContestCard tripId="t1" enabled focused />);
     expect(await screen.findByText("Ganó la foto de Beto")).toBeTruthy();
   });
 
+  it("closed: opens the winner reveal only while its screen is in view", async () => {
+    server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: "beto", avatarUrl: null }, imageAvailable: true } });
+    const view = await wrap(<ContestCard tripId="t1" enabled focused={false} />);
+    await screen.findByText("Ganó la foto de @beto");
+    await act(async () => {});
+    expect(mockPush).not.toHaveBeenCalled();
+
+    view.unmount();
+    await wrap(<ContestCard tripId="t1" enabled focused />);
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/contest-winner?trip=t1"));
+  });
+
   it("nothing for events without a contest", async () => {
-    await wrap(<ContestCard tripId="t1" enabled={false} />);
+    await wrap(<ContestCard tripId="t1" enabled={false} focused />);
     expect(screen.queryByText(/Concurso de fotos/)).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
