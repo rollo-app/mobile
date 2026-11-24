@@ -77,7 +77,10 @@ beforeEach(async () => {
 });
 
 describe("revealed roll", () => {
-  it("the header title follows the active trip when it switches to a revealed one", async () => {
+  // The roll's header is native: its title is the stack screen's `title` option (plain trip name).
+  const headerOptions = () => navigationRef.getCurrentOptions() as { title?: string; headerTitle?: unknown };
+
+  it("the header title is the trip's name and follows a switch made through /roll", async () => {
     const upcoming = detail({ revealed: false, startsAt: Date.now() + DAY, endsAt: Date.now() + 2 * DAY, revealAt: Date.now() + 3 * DAY });
     mocked.fetchTrip.mockImplementation(async (id: string) =>
       id === SUR ? upcoming : detail({ id: OTRO, name: "Bariloche" }),
@@ -85,23 +88,32 @@ describe("revealed roll", () => {
     await markPresentationSeen(OTRO);
     await setActiveTripId(OTRO);
     await renderRouter(testRoutes, { initialUrl: "/roll" });
-    // The Rollo tab's header comes first in the tree (the Mapa tab has its own title).
-    const rollTitle = () => screen.getAllByLabelText(/, cambiar de rollo$/)[0]?.props.accessibilityLabel;
     // Open the revealed trip first so its detail is cached and the switch back to it is instant.
     await screen.findByText("Este rollo no tiene fotos");
+    await waitFor(() => expect(headerOptions().title).toBe("Bariloche"));
+    expect(headerOptions().headerTitle).toBeUndefined();
 
     await act(async () => {
       await setActiveTripId(SUR);
     });
     await waitFor(() => expect(screen.queryByText("Personas")).not.toBeNull());
-    expect(rollTitle()).toBe("Viaje al sur, cambiar de rollo");
+    expect(headerOptions().title).toBe("Viaje al sur");
 
     await act(async () => {
       await setActiveTripId(OTRO);
     });
 
     await waitFor(() => expect(screen.queryByText("Este rollo no tiene fotos")).not.toBeNull());
-    expect(rollTitle()).toBe("Bariloche, cambiar de rollo");
+    expect(headerOptions().title).toBe("Bariloche");
+  });
+
+  it("opening a roll by id titles the header with that roll's name", async () => {
+    mocked.fetchTrip.mockImplementation(async (id: string) => (id === OTRO ? detail({ id: OTRO, name: "Bariloche" }) : detail()));
+    await markPresentationSeen(OTRO);
+    await renderRouter(testRoutes, { initialUrl: `/roll/${OTRO}` });
+
+    await screen.findByText("Este rollo no tiene fotos");
+    await waitFor(() => expect(headerOptions().title).toBe("Bariloche"));
   });
 
   it("while selecting in the gallery the header shows how many are selected instead of the trip", async () => {
@@ -127,11 +139,14 @@ describe("revealed roll", () => {
     await screen.findByRole("button", { name: "Seleccionar" });
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
     await waitFor(() => expect(screen.getByRole("header", { name: "Seleccioná fotos" })).toBeTruthy());
+    expect(headerOptions().headerTitle).toEqual(expect.any(Function));
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar todo" }));
     await waitFor(() => expect(screen.getByRole("header", { name: "2 seleccionadas" })).toBeTruthy());
 
     await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
     await waitFor(() => expect(screen.queryByRole("header", { name: /seleccion/i })).toBeNull());
+    expect(headerOptions().title).toBe("Viaje al sur");
+    expect(headerOptions().headerTitle).toBeUndefined();
   });
 
   it("opens the reveal automatically the first time, and only once", async () => {

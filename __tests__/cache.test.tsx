@@ -107,28 +107,44 @@ describe("Shared trip data", () => {
     await waitFor(() => expect(mocked.fetchTrip).toHaveBeenCalledTimes(2));
   });
 
+  // Waits for the error to show and for every request (the first one and its retry) to settle, so that
+  // whatever comes next can only come from pressing the roll's own Reintentar.
+  const failedAndQuiet = async () => {
+    await screen.findByTestId("roll-board-retry");
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+  };
+
   it("if it fails with no cache it shows the error and Reintentar requests it again", async () => {
     mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
     await renderRouter(routes, { initialUrl: "/roll" });
 
     // Several tabs are mounted at once, and each shows the shared error.
     expect((await screen.findAllByText("Sin conexión. Probá de nuevo cuando tengas señal."))[0]).toBeVisible();
+    await failedAndQuiet();
     mocked.fetchTrip.mockResolvedValue(detail());
-    await fireEvent.press(screen.getAllByRole("button", { name: "Reintentar" })[0]!);
+    const calls = mocked.fetchTrip.mock.calls.length;
+    expect(screen.queryByText("7 de 10")).toBeNull();
+
+    await fireEvent.press(screen.getByTestId("roll-board-retry"));
 
     expect(await screen.findByText("7 de 10")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
+    expect(mocked.fetchTrip.mock.calls.length).toBeGreaterThan(calls);
+    expect(screen.queryByTestId("roll-board-retry")).toBeNull();
   });
 
   it("Roll offers Reintentar when there is no data", async () => {
     mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión"));
     await renderRouter(routes, { initialUrl: "/roll" });
 
-    const retry = (await screen.findAllByRole("button", { name: "Reintentar" }))[0]!;
+    await failedAndQuiet();
     mocked.fetchTrip.mockResolvedValue(detail());
-    await fireEvent.press(retry);
+    const calls = mocked.fetchTrip.mock.calls.length;
+    expect(screen.queryByText("HUB5FT")).toBeNull();
+
+    await fireEvent.press(screen.getByTestId("roll-board-retry"));
 
     expect(await screen.findByText("HUB5FT")).toBeVisible();
+    expect(mocked.fetchTrip.mock.calls.length).toBeGreaterThan(calls);
   });
 
   it("with saved data and no signal it shows the saved data, no error", async () => {

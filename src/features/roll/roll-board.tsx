@@ -29,7 +29,7 @@ export function RollBoard({ tripId }: { tripId: string }) {
       {error ? (
         <>
           <ErrorText>{error}</ErrorText>
-          <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
+          <Button label="Reintentar" testID="roll-board-retry" variant="secondary" onPress={() => void refetch()} loading={isRefetching} />
         </>
       ) : !detail ? (
         <Loading />

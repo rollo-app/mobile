@@ -2,7 +2,7 @@ import { keepOriginals } from "@/test/trip";
 import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
-import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import "@/test/reanimated";
 import { ApiError } from "@/api/client";
 import { queryClient } from "@/api/query-client";
@@ -101,7 +101,9 @@ describe("Home", () => {
 
 describe("Roll by id", () => {
   const TWO = () => signInAs({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(BARILOCHE, "Bariloche")], active: SUR });
+  const BOTH = { trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(BARILOCHE, "Bariloche")] };
   beforeEach(() => {
+    mocked.fetchMyTrips.mockResolvedValue(BOTH);
     mocked.fetchTrip.mockImplementation(async (id: string) =>
       id === BARILOCHE ? detail({ trip: trip({ id: BARILOCHE, name: "Bariloche" }), today: { date: "2027-01-05", photosLeft: 4, videosLeft: 0 } }) : detail(),
     );
@@ -126,6 +128,29 @@ describe("Roll by id", () => {
 
     expect(screen.getByText("4 de 10")).toBeVisible();
     expect(screen.queryByText("7 de 10")).toBeNull();
+  });
+
+  it("a roll missing from a stale list refetches before giving up", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")], active: SUR });
+    await renderRouter(routes, { initialUrl: `/roll/${BARILOCHE}` });
+
+    expect(await screen.findByText("4 de 10")).toBeVisible();
+    expect(mocked.fetchMyTrips).toHaveBeenCalled();
+    expect(screen).toHavePathname(`/roll/${BARILOCHE}`);
+  });
+
+  it("if the list can't be refetched it offers Reintentar instead of leaving", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")], active: SUR });
+    mocked.fetchMyTrips.mockRejectedValue(new Error("Sin conexión"));
+    await renderRouter(routes, { initialUrl: `/roll/${BARILOCHE}` });
+
+    // Other mounted tabs may show their own "Reintentar": this one is the roll's.
+    const retry = within(await screen.findByTestId("roll-lookup-error")).getByRole("button", { name: "Reintentar" });
+    expect(screen).toHavePathname(`/roll/${BARILOCHE}`);
+    mocked.fetchMyTrips.mockResolvedValue(BOTH);
+    await fireEvent.press(retry);
+
+    expect(await screen.findByText("4 de 10")).toBeVisible();
   });
 
   it("an unknown roll goes back to the list", async () => {
