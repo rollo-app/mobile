@@ -1,11 +1,20 @@
 import type { Schemas } from "@/api/client";
-import { canPick, cardCopy, countdownLabel, MAX_FINALISTS, pickCountLabel, picksRowVisible, shuffledFinalists } from "../contest-state";
+import { canPick, cardCopy, countdownLabel, pickCountLabel, pickHint, SUGGESTED_FINALISTS, picksRowVisible, shuffledFinalists } from "../contest-state";
+
+describe("pickHint", () => {
+  it("only nudges past the suggested count", () => {
+    expect(pickHint(15)).toBeNull();
+    expect(pickHint(16)).toBe("te sugerimos hasta 15");
+  });
+});
 
 describe("pickCountLabel", () => {
   it("counts the picks over the maximum", () => {
-    expect(pickCountLabel(4)).toBe("4 de 10");
-    expect(pickCountLabel(0)).toBe("0 de 10");
-    expect(MAX_FINALISTS).toBe(10);
+    expect(pickCountLabel(0)).toBe("0 elegidas");
+    expect(pickCountLabel(1)).toBe("1 elegida");
+    expect(pickCountLabel(4)).toBe("4 elegidas");
+    expect(pickCountLabel(16)).toBe("16 elegidas");
+    expect(SUGGESTED_FINALISTS).toBe(15);
   });
 });
 
@@ -84,7 +93,7 @@ describe("cardCopy", () => {
     expect(cardCopy({ ...base, status: "tied" }, 1_000_000)).toBe("Concurso de fotos · Hay un empate");
     expect(cardCopy({ ...base, status: "cancelled" }, 1_000_000)).toBe("El concurso se canceló.");
     expect(
-      cardCopy({ ...base, status: "closed", winner: { mediaId: "m", author: { userId: "u", name: "Ana", avatarUrl: null }, imageAvailable: true } }, 1_000_000),
+      cardCopy({ ...base, status: "closed", winner: { mediaId: "m", author: { userId: "u", name: "Ana", username: null, avatarUrl: null }, imageAvailable: true } }, 1_000_000),
     ).toBe("Ganó la foto de Ana");
   });
   it("nothing before the voting or without a contest", () => {

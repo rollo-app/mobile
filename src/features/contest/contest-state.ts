@@ -1,11 +1,14 @@
 import type { Schemas } from "@/api/client";
 import type { RollPhase } from "@/features/trips/phase";
 
-/** The most finalists an event can have. */
-export const MAX_FINALISTS = 10;
+/** Past this many finalists the picks screen nudges (the server has no cap). */
+export const SUGGESTED_FINALISTS = 15;
 
-/** "4 de 10". */
-export const pickCountLabel = (n: number) => `${n} de ${MAX_FINALISTS}`;
+/** "1 elegida" / "4 elegidas". */
+export const pickCountLabel = (n: number) => `${n} ${n === 1 ? "elegida" : "elegidas"}`;
+
+/** "te sugerimos hasta 15" once past the suggested count; null otherwise. */
+export const pickHint = (n: number): string | null => (n > SUGGESTED_FINALISTS ? `te sugerimos hasta ${SUGGESTED_FINALISTS}` : null);
 
 /** Organizers choose the finalists while the contest is in `selecting` (from the end of the event to the reveal). */
 export function canPick(contest: Pick<Schemas["Contest"], "status"> | null | undefined, isOrganizer: boolean): boolean {

@@ -46,7 +46,7 @@ const photo = (id: string, name = "Ana", groupIds: string[] = []) => ({
 
 const finalist = (mediaId: string): Schemas["ContestFinalist"] => ({
   mediaId,
-  author: { userId: "u1", name: "Ana", avatarUrl: null },
+  author: { userId: "u1", name: "Ana", username: null, avatarUrl: null },
   thumbHash: null,
   width: null,
   height: null,
@@ -109,34 +109,53 @@ beforeEach(() => {
 describe("PicksScreen", () => {
   it("shows the count and marks the finalists", async () => {
     await wrap(<PicksScreen tripId="t1" />);
-    expect(await screen.findByText("1 de 10")).toBeTruthy();
+    expect(await screen.findByText("1 elegida")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Foto de Ana" }).props.accessibilityState).toEqual({ selected: true });
     expect(screen.getByRole("button", { name: "Foto de Beto" }).props.accessibilityState).toEqual({ selected: false });
   });
 
   it("tapping an unmarked photo picks it and tapping a marked one drops it", async () => {
     await wrap(<PicksScreen tripId="t1" />);
-    await screen.findByText("1 de 10");
+    await screen.findByText("1 elegida");
 
     await fireEvent.press(screen.getByRole("button", { name: "Foto de Beto" }));
     await waitFor(() => expect(putMock).toHaveBeenCalledWith("t1", "p2"));
-    expect(await screen.findByText("2 de 10")).toBeTruthy();
+    expect(await screen.findByText("2 elegidas")).toBeTruthy();
 
     await fireEvent.press(screen.getByRole("button", { name: "Foto de Ana" }));
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("t1", "p1"));
-    expect(await screen.findByText("1 de 10")).toBeTruthy();
+    expect(await screen.findByText("1 elegida")).toBeTruthy();
+  });
+
+  it("lets you mark an 11th photo and only hints past 15", async () => {
+    const many = Array.from({ length: 16 }, (_, i) => `p${i + 1}`);
+    mockFeed(many.map((id) => photo(id)));
+    const server = new Set(many.slice(0, 10));
+    fetchContestMock.mockImplementation(async () => contest([...server]));
+    putMock.mockImplementation(async (_t, id) => void server.add(id));
+    await wrap(<PicksScreen tripId="t1" />);
+    expect(await screen.findByText("10 elegidas")).toBeTruthy();
+    expect(screen.queryByText("te sugerimos hasta 15")).toBeNull();
+
+    await fireEvent.press(screen.getAllByRole("button", { name: "Foto de Ana" })[10]!);
+    await waitFor(() => expect(putMock).toHaveBeenCalledWith("t1", "p11"));
+    expect(await screen.findByText("11 elegidas")).toBeTruthy();
+    expect(screen.queryByText("te sugerimos hasta 15")).toBeNull();
+
+    for (const i of [11, 12, 13, 14, 15]) await fireEvent.press(screen.getAllByRole("button", { name: "Foto de Ana" })[i]!);
+    expect(await screen.findByText("te sugerimos hasta 15")).toBeTruthy();
   });
 
   it("shows the server's error inline and rolls the pick back", async () => {
     putMock.mockRejectedValue(new ApiError(409, "Ya hay 10 finalistas."));
     await wrap(<PicksScreen tripId="t1" />);
-    await screen.findByText("1 de 10");
+    await screen.findByText("1 elegida");
 
     await fireEvent.press(screen.getByRole("button", { name: "Foto de Beto" }));
 
     expect(await screen.findByText("Ya hay 10 finalistas.")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Foto de Beto" }).props.accessibilityState).toEqual({ selected: false }));
-    expect(screen.getByText("1 de 10")).toBeTruthy();
+    expect(screen.getByText("1 elegida")).toBeTruthy();
   });
 
   it("waits for the refetch when the cached feed has photos without files, instead of saying there are none", async () => {
@@ -145,7 +164,7 @@ describe("PicksScreen", () => {
     await wrap(<PicksScreen tripId="t1" />);
     await waitFor(() => expect(fetchContestMock).toHaveBeenCalled());
     expect(screen.queryByText("No hay fotos para elegir")).toBeNull();
-    expect(screen.queryByText("1 de 10")).toBeNull();
+    expect(screen.queryByText("1 elegida")).toBeNull();
   });
 
   it("says there are no photos only when the feed has no photo items", async () => {
@@ -171,7 +190,7 @@ describe("PicksScreen", () => {
 describe("PicksRow", () => {
   it("shows 'Elegí las finalistas' with the count and opens the picks screen", async () => {
     await wrap(<PicksRow detail={mockDetail()} phase="ended" />);
-    const button = await screen.findByRole("button", { name: "Elegí las finalistas, 1 de 10" });
+    const button = await screen.findByRole("button", { name: "Elegí las finalistas, 1 elegida" });
     await fireEvent.press(button);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/contest-picks", params: { trip: "t1" } });
   });

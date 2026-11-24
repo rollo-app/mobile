@@ -10,7 +10,7 @@ import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
-import { canPick, pickCountLabel } from "./contest-state";
+import { canPick, pickCountLabel, pickHint } from "./contest-state";
 import { PickCell } from "./pick-cell";
 import { useContest } from "./use-contest";
 import { useToggleFinalist } from "./use-toggle-finalist";
@@ -21,7 +21,7 @@ const keyExtractor = (photo: RevealedPhoto) => photo.id;
 
 /**
  * "Elegí las finalistas" (organizers, between the end of the event and the reveal): every photo of the event in a grid,
- * tap to mark or unmark, with the count on top. The server's refusal (a 11th pick) shows inline.
+ * tap to mark or unmark, with the count on top. There's no cap: past 15 a hint suggests fewer. The server's refusals show inline.
  */
 export function PicksScreen({ tripId }: { tripId: string }) {
   const insets = useSafeAreaInsets();
@@ -51,7 +51,7 @@ export function PicksScreen({ tripId }: { tripId: string }) {
           add: true,
           finalist: {
             mediaId: photo.id,
-            author: { userId: photo.authorUserId, name: photo.author.name, avatarUrl: photo.author.avatarUrl ?? null },
+            author: { userId: photo.authorUserId, name: photo.author.name, username: photo.author.username ?? null, avatarUrl: photo.author.avatarUrl ?? null },
             thumbHash: photo.thumbhash,
             width: photo.width,
             height: photo.height,
@@ -130,6 +130,9 @@ export function PicksScreen({ tripId }: { tripId: string }) {
             <Text style={[type.footnote, { color: colors.secondaryLabel }]}>
               Tocá las fotos que van al concurso. Después del revelado, todos votan entre ellas.
             </Text>
+            {!!pickHint(contest.finalists.length) && (
+              <Text style={[type.footnote, { color: colors.secondaryLabel }]}>{pickHint(contest.finalists.length)}</Text>
+            )}
             {group && <Text style={[type.subhead, { color: colors.secondaryLabel }]}>{`Solo ${group.name}`}</Text>}
             {!!toggleError && <ErrorText>{toggleError}</ErrorText>}
           </View>

@@ -31,7 +31,7 @@ const winnerMock = jest.mocked(putWinner);
 
 const finalist = (mediaId: string, userId: string, name: string, votes: number | null = null): Schemas["ContestFinalist"] => ({
   mediaId,
-  author: { userId, name, avatarUrl: null },
+  author: { userId, name, username: null, avatarUrl: null },
   thumbHash: null,
   width: null,
   height: null,
@@ -173,7 +173,7 @@ describe("ContestScreen result", () => {
     server = contest({
       status: "closed",
       finalists: [finalist("m1", "u1", "Ana", 1), finalist("m2", "u2", "Beto", 5), finalist("m3", "u3", "Cami", 0)],
-      winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", avatarUrl: null }, imageAvailable: true },
+      winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: null, avatarUrl: null }, imageAvailable: true },
     });
     await wrap(<ContestScreen tripId="t1" />);
     expect(await screen.findByText("Ganó la foto de Beto")).toBeTruthy();
@@ -198,7 +198,7 @@ describe("ContestCard", () => {
   });
 
   it("closed: the winner's name", async () => {
-    server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", avatarUrl: null }, imageAvailable: true } });
+    server = contest({ status: "closed", winner: { mediaId: "m2", author: { userId: "u2", name: "Beto", username: null, avatarUrl: null }, imageAvailable: true } });
     await wrap(<ContestCard tripId="t1" enabled />);
     expect(await screen.findByText("Ganó la foto de Beto")).toBeTruthy();
   });
