@@ -29,7 +29,7 @@ export function PicksScreen({ tripId }: { tripId: string }) {
   const { detail, error: detailError, refetch: refetchDetail } = useTripDetail(tripId);
   const organizer = !!detail && isOrganizer(detail);
   const { contest, error: contestError, refetch: refetchContest } = useContest(tripId, !!detail?.trip.contest?.enabled);
-  const { feed, error: feedError, loading: feedLoading, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
+  const { feed, error: feedError, loading: feedLoading, refetch: refetchFeed, isRefetching: feedRefetching } = useFeed(tripId, { mode: "all" });
   const token = useMediaToken(tripId);
   const { toggle, error: toggleError } = useToggleFinalist(tripId);
 
@@ -37,6 +37,8 @@ export function PicksScreen({ tripId }: { tripId: string }) {
   const groups = useMemo(() => (detail ? sendableGroups(detail) : []), [detail]);
   // Photos only: videos can't be finalists.
   const photos = useMemo(() => toRevealedPhotos(feed?.items ?? []).filter((p) => p.type === "photo"), [feed]);
+  // A feed cached before the preview window has photo items without files: wait for the refetch instead of calling it empty.
+  const filesPending = photos.length === 0 && (feed?.items ?? []).some((i) => i.type === "photo");
   const shown = useMemo(() => filterByGroup(photos, groupId), [photos, groupId]);
   const picked = useMemo(() => new Set(contest?.finalists.map((f) => f.mediaId)), [contest]);
   const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
@@ -83,7 +85,14 @@ export function PicksScreen({ tripId }: { tripId: string }) {
         <Button label="Reintentar" variant="secondary" onPress={() => void Promise.all([refetchDetail(), refetchContest(), refetchFeed()])} />
       </View>
     );
-  if (!detail || !contest || feedLoading) return <Loading />;
+  if (!detail || !contest || feedLoading || (filesPending && feedRefetching)) return <Loading />;
+  if (organizer && filesPending && canPick(contest, organizer))
+    return (
+      <View style={styles.center}>
+        <ErrorText>No se pudieron cargar las fotos.</ErrorText>
+        <Button label="Reintentar" variant="secondary" onPress={() => void refetchFeed()} />
+      </View>
+    );
   if (!organizer)
     return (
       <View style={styles.center}>

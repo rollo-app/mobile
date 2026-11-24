@@ -65,8 +65,8 @@ const contest = (finalists: string[]): Schemas["Contest"] => ({
   tiedMediaIds: [],
 });
 
-function mockFeed(items: unknown[]) {
-  jest.mocked(useFeed).mockReturnValue({ feed: { items }, error: null, loading: false, refetch: jest.fn() } as never);
+function mockFeed(items: unknown[], isRefetching = false) {
+  jest.mocked(useFeed).mockReturnValue({ feed: { items }, error: null, loading: false, refetch: jest.fn(), isRefetching } as never);
 }
 
 function mockDetail(over: { role?: "admin" | "member"; contestEnabled?: boolean; groups?: { id: string; name: string }[] } = {}) {
@@ -83,8 +83,15 @@ function mockDetail(over: { role?: "admin" | "member"; contestEnabled?: boolean;
   return detail as TripDetail;
 }
 
+const clients: QueryClient[] = [];
+afterEach(() => {
+  clients.forEach((c) => c.clear());
+  clients.length = 0;
+});
+
 function wrap(ui: React.ReactElement) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false, gcTime: 0 } } });
+  clients.push(client);
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
@@ -130,6 +137,21 @@ describe("PicksScreen", () => {
     expect(await screen.findByText("Ya hay 10 finalistas.")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Foto de Beto" }).props.accessibilityState).toEqual({ selected: false }));
     expect(screen.getByText("1 de 10")).toBeTruthy();
+  });
+
+  it("waits for the refetch when the cached feed has photos without files, instead of saying there are none", async () => {
+    const stale = { id: "p1", type: "photo", takenAt: 1, day: "2027-01-12", author, groupIds: [] };
+    mockFeed([stale], true);
+    await wrap(<PicksScreen tripId="t1" />);
+    await waitFor(() => expect(fetchContestMock).toHaveBeenCalled());
+    expect(screen.queryByText("No hay fotos para elegir")).toBeNull();
+    expect(screen.queryByText("1 de 10")).toBeNull();
+  });
+
+  it("says there are no photos only when the feed has no photo items", async () => {
+    mockFeed([]);
+    await wrap(<PicksScreen tripId="t1" />);
+    expect(await screen.findByText("No hay fotos para elegir")).toBeTruthy();
   });
 
   it("does not let a guest pick", async () => {
