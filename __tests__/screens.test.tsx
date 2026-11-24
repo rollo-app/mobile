@@ -282,7 +282,7 @@ describe("Roll board · people and settings", () => {
     share.mockRestore();
   });
 
-  it("tapping a member opens their profile; your own row isn't tappable", async () => {
+  it("tapping a member opens their card, and Ver perfil their profile; your own row isn't tappable", async () => {
     const fetchUser = jest.spyOn(profileActions, "fetchUser").mockResolvedValue({
       user: { id: "u-m2", name: "Fede", username: "fede", avatarUrl: null, bio: null, badge: null },
       isFriend: false,
@@ -301,6 +301,7 @@ describe("Roll board · people and settings", () => {
     await screen.findByRole("button", { name: "Fede" });
     expect(screen.queryByRole("button", { name: /^Juani/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver perfil" }));
 
     await waitFor(() => expect(screen).toHavePathname("/user/u-m2"));
     expect(await screen.findByText("Este perfil es privado")).toBeVisible();

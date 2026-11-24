@@ -9,7 +9,7 @@ import { useRemoveMember } from "./use-remove-member";
 type Member = TripDetail["members"][number];
 
 /**
- * Role changes and removal for the members list (shared by "En el rollo" and the full list). Only the latest
+ * Role changes and removal (`run`'s optional `onDone` fires once the change succeeded) for the members list (shared by "En el rollo" and the full list). Only the latest
  * action's error shows: starting one clears the others, and the `others` mutations (e.g. renaming).
  */
 export function useMemberActions(tripId: string, others: { reset: () => void }[] = []) {
@@ -21,7 +21,7 @@ export function useMemberActions(tripId: string, others: { reset: () => void }[]
   const start = (keep?: { reset: () => void }) => {
     for (const m of [...mine, ...others]) if (m !== keep) m.reset();
   };
-  const confirmRemove = (m: Member) =>
+  const confirmRemove = (m: Member, onDone?: () => void) =>
     Alert.alert(`¿Sacar a ${m.name} del rollo?`, "Sus fotos se quedan. Solo un admin lo puede volver a sumar.", [
       { text: "Cancelar", style: "cancel" },
       {
@@ -29,18 +29,18 @@ export function useMemberActions(tripId: string, others: { reset: () => void }[]
         style: "destructive",
         onPress: () => {
           start(removeMember);
-          removeMember.mutate(m.id);
+          removeMember.mutate(m.id, { onSuccess: onDone });
         },
       },
     ]);
-  const run = (action: MemberAction, m: Member) => {
+  const run = (action: MemberAction, m: Member, onDone?: () => void) => {
     if (action === "makeAdmin") {
       start(makeAdmin);
-      makeAdmin.mutate(m.id);
+      makeAdmin.mutate(m.id, { onSuccess: onDone });
     } else if (action === "removeAdmin") {
       start(removeAdmin);
-      removeAdmin.mutate(m.id);
-    } else confirmRemove(m);
+      removeAdmin.mutate(m.id, { onSuccess: onDone });
+    } else confirmRemove(m, onDone);
   };
   const failure =
     errorMessage(makeAdmin.error, "No se pudo hacer admin") ??

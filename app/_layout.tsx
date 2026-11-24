@@ -160,6 +160,15 @@ function RootStack() {
             }}
           />
           <Stack.Screen
+            name="member"
+            options={{
+              headerShown: false,
+              presentation: "formSheet",
+              sheetAllowedDetents: "fitToContents",
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="offline-maps"
             options={{
               title: "Mapa sin señal",

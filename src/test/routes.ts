@@ -50,6 +50,7 @@ import PushPrimerRoute from "../../app/push-primer";
 import PresentationScreen from "../../app/presentation";
 import RevealRoute from "../../app/reveal";
 import IntroRoute from "../../app/intro";
+import MemberRoute from "../../app/member";
 import RollMembersRoute from "../../app/roll-members";
 import RollSettingsRoute from "../../app/roll-settings";
 import RollStartedScreen from "../../app/roll-started";
@@ -87,6 +88,7 @@ export const routes = {
   presentation: PresentationScreen,
   reveal: RevealRoute,
   intro: IntroRoute,
+  member: MemberRoute,
   "roll-members": RollMembersRoute,
   "event-groups": EventGroupsRoute,
   contest: ContestRoute,
