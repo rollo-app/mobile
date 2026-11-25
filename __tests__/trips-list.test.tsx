@@ -9,7 +9,7 @@ import { localDay } from "@/features/capture/quota";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { getActiveTripId } from "@/storage/active-trip";
 import type { TripSummary } from "@/features/trips/active";
-import { signInAs, tripSummary } from "@/test/account";
+import { signInAs, tripSummary, stubOwnProfile } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
@@ -46,6 +46,12 @@ async function signInWith(list: TripSummary[], active: string | null = null) {
 }
 
 const items = () => screen.queryAllByRole("menuitem").map((m) => m.props.accessibilityLabel as string);
+
+
+// The Profile tab is always mounted and asks for GET /users/{id}: leave it pending (as develop does in other suites).
+beforeEach(() => {
+  stubOwnProfile();
+});
 
 describe("Rollos list", () => {
   it("the app opens on Rollos", async () => {
