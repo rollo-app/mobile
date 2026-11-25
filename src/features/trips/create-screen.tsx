@@ -26,6 +26,7 @@ import { use, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
+import * as Burnt from "burnt";
 import { EventHero } from "@/features/events/event-hero";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
 import { PRIVATE_ROLLO_NOTE } from "@/features/featured/featuring-section";
@@ -173,7 +174,12 @@ export function CreateScreen() {
         queryClient.invalidateQueries({ queryKey: myTripsKey }),
       ]);
     } catch {
-      // Not blocking, and never creates the rollo again: it can be set later from the settings.
+      // The rollo stays created (and is never created again); the cover is set later from the settings.
+      Burnt.alert({
+        title: "No se pudo subir la portada",
+        message: "Podés elegirla desde Ajustes del rollo.",
+        preset: "error",
+      });
     }
   }
 

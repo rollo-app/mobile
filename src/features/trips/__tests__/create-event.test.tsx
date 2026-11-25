@@ -5,6 +5,7 @@ import { CreateScreen } from "../create-screen";
 import { createTrip, uploadCover } from "../actions";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
+import * as Burnt from "burnt";
 import { ApiError } from "@/api/client";
 import { useMe } from "@/features/auth/use-me";
 
@@ -23,6 +24,7 @@ jest.mock("@/features/notifications/offer-push", () => ({
 jest.mock("@/features/events/use-upload-cover", () => ({
   pickCoverPhoto: jest.fn(),
 }));
+jest.mock("burnt", () => ({ alert: jest.fn() }));
 jest.mock("@/features/auth/use-me", () => ({ useMe: jest.fn() }));
 jest.mock("@/features/friends/actions", () => ({
   fetchFriends: jest.fn(async () => [{ id: "f1" }]),
@@ -284,5 +286,10 @@ describe("CreateScreen as an event", () => {
     await waitFor(() => expect(uploadCoverMock).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(router.dismissTo).toHaveBeenCalledWith("/roll"));
     expect(createTripMock).toHaveBeenCalledTimes(1);
+    expect(Burnt.alert).toHaveBeenCalledWith({
+      title: "No se pudo subir la portada",
+      message: "Podés elegirla desde Ajustes del rollo.",
+      preset: "error",
+    });
   });
 });
