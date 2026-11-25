@@ -1,5 +1,5 @@
 import type { TripDetail } from "@/features/trips/actions";
-import { eventDay, heroSubtitle, isEvent, joinedLine, peopleLabel, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
+import { eventDay, heroSubtitle, isEvent, joinedLine, peopleLabel, isOrganizer, myGroups, photoGroupLabel, sendableGroups, tripDates } from "../event";
 
 const GROUPS = [
   { id: "g1", name: "Novios" },
@@ -146,5 +146,27 @@ describe("heroSubtitle", () => {
   it("uses the trip's zone, not the device's", () => {
     // 02:00 UTC on the 4th is still the 3rd in Buenos Aires.
     expect(sub({ type: "trip", startsAt: Date.parse("2027-01-04T02:00:00Z"), endsAt: Date.parse("2027-01-08T15:00:00Z") })).toBe("3 al 8 de enero · 8 personas");
+  });
+});
+
+describe("tripDates", () => {
+  const tz = "America/Argentina/Buenos_Aires";
+  const at = (m: number, d: number) => Date.UTC(2026, m, d, 15);
+
+  it("spells the range out in the trip's own words", () => {
+    expect(tripDates(at(0, 3), at(0, 8), tz)).toBe("3 al 8 de enero");
+    expect(tripDates(at(11, 28), at(0, 3) + 365 * 86_400_000, tz)).toBe("28 de diciembre al 3 de enero");
+    expect(tripDates(at(0, 3), at(0, 3), tz)).toBe("3 de enero");
+  });
+
+  it("does not depend on typed parts (Hermes returns only literals)", () => {
+    const spy = jest
+      .spyOn(Intl.DateTimeFormat.prototype, "formatToParts")
+      .mockReturnValue([{ type: "literal", value: " de " }]);
+    try {
+      expect(tripDates(Date.UTC(2026, 10, 25, 15), Date.UTC(2026, 10, 27, 15), "America/Argentina/Cordoba")).toBe("25 al 27 de noviembre");
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

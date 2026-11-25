@@ -63,17 +63,15 @@ export function peopleLabel(n: number): string {
   return `${n} ${n === 1 ? "persona" : "personas"}`;
 }
 
-const part = (parts: Intl.DateTimeFormatPart[], type: "day" | "month") => parts.find((p) => p.type === type)?.value ?? "";
-
 /**
  * A trip's dates in its own zone, spelled out for the cover and the join preview ("3 al 8 de enero", "28 de diciembre al 3 de enero",
  * "3 de enero" for a single day). It reads as a sentence, so it has its own wording instead of the compact "3 – 12 ene" of `formatDateRange` (phase.ts), made for list rows.
  */
 export function tripDates(startsAt: number, endsAt: number, timeZone: string): string {
-  const long = dateFormatter("es-AR", { timeZone, day: "numeric", month: "long" });
-  const from = long.formatToParts(startsAt);
-  const to = long.formatToParts(endsAt);
-  const [fromDay, fromMonth, toDay, toMonth] = [part(from, "day"), part(from, "month"), part(to, "day"), part(to, "month")];
+  // Plain `.format()` calls: Hermes' `formatToParts` can come back without typed parts (the month went missing on the device).
+  const day = dateFormatter("es-AR", { timeZone, day: "numeric" });
+  const month = dateFormatter("es-AR", { timeZone, month: "long" });
+  const [fromDay, fromMonth, toDay, toMonth] = [day.format(startsAt), month.format(startsAt), day.format(endsAt), month.format(endsAt)];
   if (fromMonth === toMonth) return fromDay === toDay ? `${toDay} de ${toMonth}` : `${fromDay} al ${toDay} de ${toMonth}`;
   return `${fromDay} de ${fromMonth} al ${toDay} de ${toMonth}`;
 }
