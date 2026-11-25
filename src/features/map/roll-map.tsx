@@ -22,7 +22,6 @@ import { writeStyleFile } from "@/features/map/style-file";
 import { resolveTap } from "@/features/map/tap";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { rollPhase } from "@/features/trips/phase";
-import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { useFeed } from "@/features/trips/use-feed";
@@ -201,7 +200,7 @@ export function RollMap({ focus, rowStart, cover }: RollMapProps = {}) {
         options={{
           headerTransparent: true,
           headerShadowVisible: false,
-          ...(trip ? { headerTitle: () => <TripSwitcher name={trip.name} /> } : {}),
+          ...(trip ? { title: trip.name } : {}),
         }}
       />
       {/* While covered, VoiceOver skips the map: it is not what is on screen. */}

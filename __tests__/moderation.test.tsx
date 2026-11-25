@@ -121,6 +121,7 @@ describe("Members", () => {
         contest: null,
         type: "trip",
         coverUrl: null,
+        coverFocusY: null,
         groups: [],
         createdBy: null,
       },
@@ -131,7 +132,7 @@ describe("Members", () => {
       totalUploaded: 0,
     });
     jest.spyOn(Alert, "alert").mockImplementation(() => {});
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
 
     expect(await screen.findByText("Bloqueado")).toBeVisible();

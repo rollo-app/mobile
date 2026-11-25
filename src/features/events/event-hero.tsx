@@ -46,8 +46,8 @@ export function EventHero({
 
 const styles = StyleSheet.create({
   // A fixed dark fill while the photo loads, in light and dark mode alike: the text over it is always white.
-  // Square, like the crop the organizer framed.
-  frame: { width: "100%", aspectRatio: 1, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden", backgroundColor: "#1c1c1e", justifyContent: "flex-end" },
+  // Vertical 3:4, like the crop the organizer framed.
+  frame: { width: "100%", aspectRatio: 3 / 4, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden", backgroundColor: "#1c1c1e", justifyContent: "flex-end" },
   scrim: { backgroundImage: SCRIM },
   text: { padding: spacing.lg, gap: spacing.xs },
   name: { color: "#fff" },

@@ -113,6 +113,8 @@ function RootStack() {
               ...groupedSheet([0.5, 1]),
             }}
           />
+          {/* Admins drag a band over the cover to pick the part the Rollos list shows (after a new cover and from Ajustes). */}
+          <Stack.Screen name="cover-focus" options={{ title: "Ajustar banner", presentation: "modal" }} />
           <Stack.Screen
             name="add-friends"
             options={{

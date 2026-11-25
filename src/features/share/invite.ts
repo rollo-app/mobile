@@ -32,9 +32,5 @@ export function inviteSwatches(thumbhashes: (string | null)[], max = 16): RGB[] 
 
 export const inviteLink = (detail: TripDetail): string => joinLinkUrl(detail.trip.joinCode);
 
-/** The invitation text shared as a message: the link always leads to the roll; a regular roll also names the code. */
-export function inviteMessage(detail: TripDetail): string {
-  const { trip } = detail;
-  const link = joinLinkUrl(trip.joinCode);
-  return isEvent(trip) ? `Sumate a "${trip.name}" en Rollo: ${link}` : `Sumate a "${trip.name}" en Rollo con el código ${trip.joinCode}: ${link}`;
-}
+/** The invitation text shared as a message: the link leads to the roll's join screen (any roll). */
+export const inviteMessage = (detail: TripDetail): string => `Sumate a "${detail.trip.name}" en Rollo: ${inviteLink(detail)}`;

@@ -57,6 +57,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
       contest: null,
       type: "trip",
       coverUrl: null,
+      coverFocusY: null,
       groups: [],
       createdBy: { userId: "u1", name: "Juani" },
       ...over,
@@ -72,7 +73,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
 async function openBoard(d: tripActions.TripDetail) {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(SUR);
-  await renderRouter(routes, { initialUrl: "/roll" });
+  await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
   await screen.findByText("Personas");
 }
 
@@ -116,6 +117,18 @@ describe("Editar rollo row", () => {
   });
 });
 
+describe("Portada row in Ajustes del rollo", () => {
+  it("Ajustes del rollo offers the cover for a regular rollo until the reveal", async () => {
+    await openSettings(detail(admin));
+    expect(screen.getByText("Elegir portada")).toBeVisible();
+  });
+
+  it("does not offer it to a plain member nor after the reveal", async () => {
+    await openSettings(detail(plain));
+    expect(screen.queryByText("Elegir portada")).toBeNull();
+  });
+});
+
 describe("Editar rollo screen", () => {
   it("loads the current values and locks the start of a rollo that already began", async () => {
     const d = detail(admin);
@@ -149,6 +162,16 @@ describe("Editar rollo screen", () => {
   it("a regular rollo still shows the daily moment", async () => {
     await openEditor(detail(admin, { startsAt: Date.now() + DAY }));
     expect(screen.getByText("Momento del día")).toBeVisible();
+  });
+
+  it("editing a regular rollo changes its description", async () => {
+    const d = detail(admin);
+    trips.updateTrip.mockResolvedValue(d.trip);
+    await openEditor(d);
+    await fireEvent.changeText(screen.getByPlaceholderText("Descripción"), "Dos semanas");
+    await fireEvent.press(screen.getByRole("button", { name: "Guardar" }));
+
+    await waitFor(() => expect(trips.updateTrip).toHaveBeenCalledWith(SUR, { description: "Dos semanas" }));
   });
 
   it("keeps Guardar disabled until something changes", async () => {

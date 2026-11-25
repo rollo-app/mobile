@@ -1,7 +1,10 @@
 import type { TripSummary } from "./active";
+import { rollPhase } from "./phase";
 
 export type TripGroups = {
-  /** Live, upcoming and ended-but-unrevealed rolls, in the server's order. */
+  /** Rolls in progress (shooting is open), in the server's order: they get a big card of their own. */
+  live: TripSummary[];
+  /** Upcoming and ended-but-unrevealed rolls, in the server's order. */
   top: TripSummary[];
   /** Revealed within the last 3 months, newest reveal first. */
   revealed: TripSummary[];
@@ -15,19 +18,20 @@ export type TripGroups = {
   archivedExpandedByDefault: boolean;
 };
 
-/** Splits the list of "Tus rollos" into sections at `now`. Exactly 3 months ago still counts as recent. */
+/** Splits the Rollos list into sections at `now`. Exactly 3 months ago still counts as recent. */
 export function groupTrips(trips: TripSummary[], now: number, activeId: string | null): TripGroups {
   const cutoff = new Date(now);
   cutoff.setUTCMonth(cutoff.getUTCMonth() - 3);
   const limit = cutoff.getTime();
 
+  const live: TripSummary[] = [];
   const top: TripSummary[] = [];
   const revealed: TripSummary[] = [];
   const older: TripSummary[] = [];
   const archived: TripSummary[] = [];
   for (const t of trips) {
     if (t.archived) archived.push(t);
-    else if (!t.revealed) top.push(t);
+    else if (!t.revealed) (rollPhase(t, now) === "active" ? live : top).push(t);
     else if (t.revealAt >= limit) revealed.push(t);
     else older.push(t);
   }
@@ -36,6 +40,7 @@ export function groupTrips(trips: TripSummary[], now: number, activeId: string |
   older.sort(newestFirst);
   archived.sort(newestFirst);
   return {
+    live,
     top,
     revealed,
     older,

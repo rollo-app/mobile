@@ -2,7 +2,8 @@ import { keepOriginals } from "@/test/trip";
 import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
-import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { router } from "expo-router";
+import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import "@/test/reanimated";
 import { ApiError } from "@/api/client";
 import { queryClient } from "@/api/query-client";
@@ -12,9 +13,9 @@ import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
-import { getActiveTripId } from "@/storage/active-trip";
+import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
 import { markPushPrimerSeen } from "@/storage/push-primer";
-import { signInAs, tripSummary } from "@/test/account";
+import { signInAs, tripSummary, stubOwnProfile } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -52,6 +53,7 @@ const trip = (overrides: Partial<actions.Trip> = {}): actions.Trip => ({
   contest: null,
   type: "trip",
   coverUrl: null,
+  coverFocusY: null,
   groups: [],
   createdBy: null,
   ...overrides,
@@ -72,6 +74,12 @@ const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail
 
 const saveTrip = (tripId: string, tripName: string) => signInAs({ trips: [tripSummary(tripId, tripName)] });
 
+
+// The Profile tab is always mounted and asks for GET /users/{id}: leave it pending (as develop does in other suites).
+beforeEach(() => {
+  stubOwnProfile();
+});
+
 describe("Home", () => {
   it("with no trips it invites you to start a roll or join", async () => {
     await signInAs({ trips: [] });
@@ -89,14 +97,76 @@ describe("Home", () => {
     expect(screen).toHavePathname("/join");
   });
 
-  it("with saved trips it opens the roll of the last one you opened", async () => {
+  it("with saved trips it opens on the list of your rolls, without opening any", async () => {
     await saveTrip(SUR, "Viaje al sur");
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: "/" });
 
+    expect(await screen.findByRole("button", { name: "Viaje al sur" })).toBeVisible();
+    expect(screen).toHavePathname("/roll");
+    expect(screen.queryByText("7 de 10")).toBeNull();
+  });
+});
+
+describe("Roll by id", () => {
+  const TWO = () => signInAs({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(BARILOCHE, "Bariloche")], active: SUR });
+  const BOTH = { trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(BARILOCHE, "Bariloche")] };
+  beforeEach(() => {
+    mocked.fetchMyTrips.mockResolvedValue(BOTH);
+    mocked.fetchTrip.mockImplementation(async (id: string) =>
+      id === BARILOCHE ? detail({ trip: trip({ id: BARILOCHE, name: "Bariloche" }), today: { date: "2027-01-05", photosLeft: 4, videosLeft: 0 } }) : detail(),
+    );
+  });
+
+  it("opening /roll/<id> makes it the active roll", async () => {
+    await TWO();
+    await renderRouter(routes, { initialUrl: `/roll/${BARILOCHE}` });
+
+    expect(await screen.findByText("4 de 10")).toBeVisible();
+    await waitFor(async () => expect(await getActiveTripId()).toBe(BARILOCHE));
+  });
+
+  it("keeps showing its roll when the active roll changes", async () => {
+    await TWO();
+    await renderRouter(routes, { initialUrl: `/roll/${BARILOCHE}` });
+    expect(await screen.findByText("4 de 10")).toBeVisible();
+
+    await act(async () => {
+      await setActiveTripId(SUR);
+    });
+
+    expect(screen.getByText("4 de 10")).toBeVisible();
+    expect(screen.queryByText("7 de 10")).toBeNull();
+  });
+
+  it("a roll missing from a stale list refetches before giving up", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")], active: SUR });
+    await renderRouter(routes, { initialUrl: `/roll/${BARILOCHE}` });
+
+    expect(await screen.findByText("4 de 10")).toBeVisible();
+    expect(mocked.fetchMyTrips).toHaveBeenCalled();
+    expect(screen).toHavePathname(`/roll/${BARILOCHE}`);
+  });
+
+  it("if the list can't be refetched it offers Reintentar instead of leaving", async () => {
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")], active: SUR });
+    mocked.fetchMyTrips.mockRejectedValue(new Error("Sin conexión"));
+    await renderRouter(routes, { initialUrl: `/roll/${BARILOCHE}` });
+
+    // Other mounted tabs may show their own "Reintentar": this one is the roll's.
+    const retry = within(await screen.findByTestId("roll-lookup-error")).getByRole("button", { name: "Reintentar" });
+    expect(screen).toHavePathname(`/roll/${BARILOCHE}`);
+    mocked.fetchMyTrips.mockResolvedValue(BOTH);
+    await fireEvent.press(retry);
+
+    expect(await screen.findByText("4 de 10")).toBeVisible();
+  });
+
+  it("an unknown roll goes back to the list", async () => {
+    await TWO();
+    await renderRouter(routes, { initialUrl: "/roll/99999999-9999-4999-8999-999999999999" });
+
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(await screen.findByText("7 de 10")).toBeVisible();
-    expect(mocked.fetchTrip).toHaveBeenCalledWith(SUR);
   });
 });
 
@@ -105,7 +175,7 @@ describe("Roll", () => {
 
   it("shows how much is in the roll, what you have left today and when it is revealed", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByLabelText("12 en el rollo")).toBeVisible();
     expect(screen.getByText("7 de 10")).toBeVisible();
@@ -117,7 +187,7 @@ describe("Roll", () => {
     mocked.fetchTrip.mockResolvedValue(
       detail({ trip: trip({ photoLimitMode: "total", totalPhotoLimit: 20 }), today: { date: "2027-01-05", photosLeft: 13, videosLeft: 0 } }),
     );
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await screen.findByLabelText("12 en el rollo");
     expect(screen.getByText("Te quedan")).toBeVisible();
@@ -131,7 +201,7 @@ describe("Roll", () => {
   it("while active it shows today's quota above the three dates, with when it ends and is revealed", async () => {
     const t = trip();
     mocked.fetchTrip.mockResolvedValue(detail({ trip: t }));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await screen.findByLabelText("12 en el rollo");
     // The board only keeps the reveal; the three dates are in "Ajustes del rollo".
@@ -150,7 +220,7 @@ describe("Roll", () => {
   it("before it starts it hides today's quota and counts down to the start", async () => {
     const t = trip({ startsAt: Date.now() + 5 * DAY, endsAt: Date.now() + 9 * DAY, revealAt: Date.now() + 10 * DAY });
     mocked.fetchTrip.mockResolvedValue(detail({ trip: t }));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await screen.findByLabelText("12 en el rollo");
     await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
@@ -163,7 +233,7 @@ describe("Roll", () => {
   it("once it ended it keeps the three dates, marks it ended and counts down to the reveal", async () => {
     const t = trip({ startsAt: Date.now() - 9 * DAY, endsAt: Date.now() - DAY, revealAt: Date.now() + 3 * DAY });
     mocked.fetchTrip.mockResolvedValue(detail({ trip: t }));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await screen.findByLabelText("12 en el rollo");
     await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
@@ -185,7 +255,7 @@ describe("Roll", () => {
         { id: "b", groupIds: [], type: "photo", takenAt: 2, day: "2027-01-01", lat: null, lng: null, caption: null, thumbhash: "nueva", durationS: null, author: { id: "m", userId: "u-m", name: "Fede", username: null, avatarUrl: null } },
       ],
     });
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await screen.findByLabelText("2 en el rollo");
     const frames = await screen.findAllByTestId(/^thumbhash-/);
@@ -195,7 +265,7 @@ describe("Roll", () => {
 
   it("if loading fails it shows the error", async () => {
     mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect((await screen.findAllByText("Sin conexión. Probá de nuevo cuando tengas señal."))[0]).toBeVisible();
   });
@@ -232,7 +302,7 @@ describe("Roll with unuploaded photos", () => {
   it("counts your photos in the queue besides the server's", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 1 }));
     await queue.enqueue(queued());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByLabelText("2 en el rollo")).toBeVisible();
     expect(screen.getByText("2")).toBeVisible();
@@ -241,7 +311,7 @@ describe("Roll with unuploaded photos", () => {
   it("once uploaded it stays at 2: the server adds it and the queue drops it, without double counting", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ totalUploaded: 1 }));
     await queue.enqueue(queued());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     expect(await screen.findByLabelText("2 en el rollo")).toBeVisible();
 
     // Same as the uploader does: remove it from the queue, then notify.
@@ -262,7 +332,7 @@ describe("Roll board · people and settings", () => {
 
   it("shows the invite code and the people row", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("Invitar")).toBeVisible();
     expect(screen.getByText("HUB5FT")).toBeVisible();
@@ -272,14 +342,14 @@ describe("Roll board · people and settings", () => {
     expect(screen.queryByRole("button", { name: "Fede" })).toBeNull();
   });
 
-  it("shares the invitation with the roll's name and code", async () => {
+  it("shares the invitation with the roll's name and join link", async () => {
     const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ }));
 
-    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo con el código HUB5FT: ' + joinLinkUrl('HUB5FT') });
+    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo: https://rolloproject.com/join/HUB5FT' });
     share.mockRestore();
   });
 
@@ -298,7 +368,7 @@ describe("Roll board · people and settings", () => {
       friendRequest: "none",
     });
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
     await screen.findByRole("button", { name: "Fede" });
@@ -314,7 +384,7 @@ describe("Roll board · people and settings", () => {
 
   it("has no 'Tus rollos' row", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ });
     expect(screen.queryByRole("button", { name: /^Tus rollos/ })).toBeNull();
@@ -419,112 +489,6 @@ describe("Me", () => {
   });
 });
 
-describe("Trip picker", () => {
-  it("lists your trips and choosing one makes it the active one", async () => {
-    mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
-    await signInAs({ trips: [tripSummary(BARILOCHE, "Bariloche"), tripSummary(SUR, "Viaje al sur")], active: SUR });
-    await renderRouter(routes, { initialUrl: "/trips" });
-
-    await fireEvent.press(await screen.findByRole("button", { name: "Bariloche" }));
-
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(await getActiveTripId()).toBe(BARILOCHE);
-  });
-
-  it("shows each roll's state: LIVE, Revelado, or when it starts", async () => {
-    mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
-    const now = Date.now();
-    const day = 24 * 60 * 60 * 1000;
-    await signInAs({
-      trips: [
-        tripSummary(SUR, "Sur (prueba)", { startsAt: now - day, endsAt: now + day, revealAt: now + day, coverThumbhash: "1QcSHQRnh493V4dIh4eXh1h4kJUI" }),
-        tripSummary(BARILOCHE, "Bariloche", { startsAt: now - 9 * day, endsAt: now - 2 * day, revealAt: now - day, revealed: true }),
-        tripSummary("44444444-4444-4444-8444-444444444444", "Tandil", { startsAt: now + 10 * day, endsAt: now + 12 * day, revealAt: now + 12 * day }),
-      ],
-      active: SUR,
-    });
-    await renderRouter(routes, { initialUrl: "/trips" });
-
-    expect(await screen.findByRole("button", { name: "Sur (prueba), en vivo" })).toBeVisible();
-    expect(screen.getByText("LIVE")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Bariloche, revelado" })).toBeVisible();
-    expect(screen.getByText("Revelado")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Tandil" })).toBeVisible();
-    expect(screen.getByText(/^Empieza en \d+ días$/)).toBeVisible();
-    expect(screen.getAllByText(/^(LIVE|Revelado)$/)).toHaveLength(2);
-  });
-
-  describe("grouping", () => {
-    const OLD = "55555555-5555-4555-8555-555555555555";
-    const revealedAgo = (id: string, name: string, days: number) => {
-      const now = Date.now();
-      return tripSummary(id, name, { startsAt: now - (days + 8) * DAY, endsAt: now - (days + 1) * DAY, revealAt: now - days * DAY, revealed: true });
-    };
-
-    it("shows recent revealed rolls under 'Revelados' and keeps the old ones collapsed", async () => {
-      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
-      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10), revealedAgo(OLD, "Mendoza", 200)], active: BARILOCHE });
-      await renderRouter(routes, { initialUrl: "/trips" });
-
-      expect(await screen.findByText("Revelados")).toBeVisible();
-      expect(screen.getByRole("button", { name: "Bariloche, revelado" })).toBeVisible();
-      expect(screen.getByText("Anteriores · 1")).toBeVisible();
-      expect(screen.getByRole("button", { name: "Anteriores, 1" }).props.accessibilityState).toMatchObject({ expanded: false });
-      expect(screen.queryByRole("button", { name: "Mendoza, revelado" })).toBeNull();
-    });
-
-    it("expands the old rolls inline when you tap 'Anteriores' and collapses them again", async () => {
-      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
-      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10), revealedAgo(OLD, "Mendoza", 200)], active: BARILOCHE });
-      await renderRouter(routes, { initialUrl: "/trips" });
-
-      await fireEvent.press(await screen.findByRole("button", { name: "Anteriores, 1" }));
-      expect(screen.getByRole("button", { name: "Mendoza, revelado" })).toBeVisible();
-
-      await fireEvent.press(screen.getByRole("button", { name: "Anteriores, 1" }));
-      expect(screen.queryByRole("button", { name: "Mendoza, revelado" })).toBeNull();
-    });
-
-    it("starts expanded when the active roll is an old one", async () => {
-      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
-      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10), revealedAgo(OLD, "Mendoza", 200)], active: OLD });
-      await renderRouter(routes, { initialUrl: "/trips" });
-
-      expect(await screen.findByRole("button", { name: "Mendoza, revelado" })).toBeVisible();
-      expect(screen.getByRole("button", { name: "Mendoza, revelado" }).props.accessibilityState).toMatchObject({ selected: true });
-    });
-
-    it("has no 'Anteriores' row without old rolls", async () => {
-      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
-      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10)], active: BARILOCHE });
-      await renderRouter(routes, { initialUrl: "/trips" });
-
-      await screen.findByText("Revelados");
-      expect(screen.queryByText(/^Anteriores/)).toBeNull();
-    });
-
-    it("choosing an old roll makes it the active one", async () => {
-      mocked.fetchTrip.mockReturnValue(new Promise(() => {}));
-      await signInAs({ trips: [revealedAgo(BARILOCHE, "Bariloche", 10), revealedAgo(OLD, "Mendoza", 200)], active: BARILOCHE });
-      await renderRouter(routes, { initialUrl: "/trips" });
-
-      await fireEvent.press(await screen.findByRole("button", { name: "Anteriores, 1" }));
-      await fireEvent.press(screen.getByRole("button", { name: "Mendoza, revelado" }));
-
-      await waitFor(() => expect(screen).toHavePathname("/roll"));
-      expect(await getActiveTripId()).toBe(OLD);
-    });
-  });
-
-  it("has shortcuts to start a roll or join", async () => {
-    await saveTrip(SUR, "Viaje al sur");
-    await renderRouter(routes, { initialUrl: "/trips" });
-
-    await fireEvent.press(await screen.findByRole("button", { name: "Empezar un nuevo rollo" }));
-    expect(screen).toHavePathname("/create");
-  });
-});
-
 describe("Join", () => {
   // The one-time notifications primer has its own tests (notifications.test.tsx).
   beforeEach(async () => {
@@ -550,7 +514,7 @@ describe("Join", () => {
     expect(await screen.findByPlaceholderText("Ingresar código")).toBe(await screen.findByLabelText("Código del rollo"));
   });
 
-  it("joining goes to the roll", async () => {
+  it("joining opens the roll over the list", async () => {
     mocked.joinTrip.mockImplementation(async () => {
       await saveTrip(SUR, "Viaje al sur");
       return trip();
@@ -561,7 +525,7 @@ describe("Join", () => {
     await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "hub5ft");
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" });
   });
 
@@ -630,6 +594,21 @@ describe("Create roll", () => {
     await fireEvent.changeText(await screen.findByPlaceholderText("Nombre del rollo"), "Sur 2027");
   };
 
+  it("creating a roll opens it over the list", async () => {
+    mocked.createTrip.mockImplementation(async () => {
+      await saveTrip(SUR, "Sur 2027");
+      return trip();
+    });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/create" });
+    await fillNames();
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
+    await act(async () => router.back());
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
   it("needs the roll name before it can be created", async () => {
     await renderRouter(routes, { initialUrl: "/create" });
     const button = await screen.findByRole("button", { name: "Crear" });
@@ -671,7 +650,7 @@ describe("Create roll", () => {
     expect(screen.getByLabelText("25 fotos")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mocked.createTrip).toHaveBeenCalledWith({
       name: "Sur 2027",
       startsAt: start,
@@ -904,15 +883,15 @@ describe("Create roll", () => {
       await waitFor(() => expect(screen).toHavePathname("/add-friends"));
       expect(await screen.findByText("Cami")).toBeVisible();
       await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
-      expect(screen).toHavePathname("/roll");
+      expect(screen).toHavePathname(`/roll/${SUR}`);
     });
 
     it("with no friends, just lands on the roll", async () => {
       await create();
 
-      await waitFor(() => expect(screen).toHavePathname("/roll"));
+      await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
       await act(async () => {});
-      expect(screen).toHavePathname("/roll");
+      expect(screen).toHavePathname(`/roll/${SUR}`);
     });
 
     it("if the friends can't be loaded, lands on the roll without an error", async () => {
@@ -921,7 +900,7 @@ describe("Create roll", () => {
 
       await waitFor(() => expect(friends.fetchFriends).toHaveBeenCalled());
       await act(async () => {});
-      expect(screen).toHavePathname("/roll");
+      expect(screen).toHavePathname(`/roll/${SUR}`);
       expect(screen.queryByText("Sin señal")).toBeNull();
     });
   });

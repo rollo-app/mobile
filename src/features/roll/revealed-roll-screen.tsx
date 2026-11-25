@@ -10,11 +10,11 @@ import { RollOverview } from "./roll-overview";
 const VIEWS = ["Galería", "Rollo"];
 
 /**
- * The Rollo tab once the roll is revealed: "Galería | Rollo", like the Mapa tab's "Mapa | Feed".
+ * The roll screen (`/roll/[tripId]`) once the roll is revealed: "Galería | Rollo", like the Mapa tab's "Mapa | Feed".
  * The view lives in the `view` route param ("gallery" by default, or "roll"). The gallery is always
  * mounted (Rollo is drawn over it), so going back keeps its scroll; its toolbar only shows in Galería.
  *
- * The tab's header is solid here (set by the route) with the same background as the row, so the row
+ * The screen's header is solid here (set by the route) with the same background as the row, so the row
  * just goes first in the flow and the views start below it.
  */
 export function RevealedRollScreen({
@@ -26,7 +26,7 @@ export function RevealedRollScreen({
   onSelectionChange?: (count: number | null) => void;
 }) {
   const router = useRouter();
-  // The tabs stay mounted: the contest card only opens the winner reveal while this screen is the one in view.
+  // The two views stay mounted: the contest card only opens the winner reveal while this screen is the one in view.
   const focused = useIsFocused();
   const { detail } = useTripDetail(tripId);
   const contestEnabled = !!detail?.trip.contest?.enabled;

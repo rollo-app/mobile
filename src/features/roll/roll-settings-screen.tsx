@@ -112,7 +112,7 @@ function Settings({ detail }: { detail: TripDetail }) {
       {canRename(detail.me) && (
         <Section>
           <Row label="Nombre" value={detail.trip.name} onPress={editName} />
-          {event && <Row label="Descripción" value={descriptionPreview(detail.trip.description)} onPress={editDescription} />}
+          <Row label="Descripción" value={descriptionPreview(detail.trip.description)} onPress={editDescription} />
           {(editableFields(detail.trip, Date.now()).end || (event && !detail.trip.revealed)) && (
             <Row label="Editar rollo" onPress={() => router.push({ pathname: "/edit-trip", params: { tripId: detail.trip.id } })} />
           )}
@@ -120,7 +120,7 @@ function Settings({ detail }: { detail: TripDetail }) {
       )}
       {!!failure && <ErrorText>{failure}</ErrorText>}
 
-      {event && <EventCover detail={detail} />}
+      <EventCover detail={detail} />
 
       <RollDates detail={detail} phase={phase} />
 

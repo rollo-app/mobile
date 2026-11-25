@@ -97,6 +97,20 @@ afterEach(() => {
   (require("@/api/query-client") as typeof import("@/api/query-client")).queryClient.clear();
 });
 
+// Unmounting a screen hands its queries a gc timer of 7 days (real, not fake: TanStack's timeoutManager), and Testing
+// Library unmounts after the hooks above, so those timers outlive the test file and the process never exits. In tests
+// they don't hold the process open.
+(require("@tanstack/query-core") as typeof import("@tanstack/query-core")).timeoutManager.setTimeoutProvider({
+  setTimeout: (callback, delay) => {
+    const timer = setTimeout(callback, delay);
+    (timer as unknown as { unref?: () => void }).unref?.();
+    return timer;
+  },
+  clearTimeout: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+  setInterval: (callback, delay) => setInterval(callback, delay),
+  clearInterval: (timer) => clearInterval(timer as ReturnType<typeof setInterval>),
+});
+
 // MapLibre is native: in tests the map and its parts are empty views and there are no offline regions.
 jest.mock("@maplibre/maplibre-react-native", () => {
   const React = require("react");
@@ -624,3 +638,11 @@ jest.mock("react-native-share", () => ({
 jest.mock("expo-clipboard", () => ({
   setStringAsync: jest.fn(async () => true),
 }));
+
+// expo-router's renderRouter turns on fake timers and never turns them off, and Testing Library unmounts the screens
+// after every hook with those timers on: React Native's StatusBar, for one, schedules a setImmediate when it unmounts.
+// Left pending, the file never exited and, in CI, the Jest worker that ran it never finished its next file (the run hung).
+afterAll(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
+});

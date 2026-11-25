@@ -32,8 +32,8 @@ describe("shareKind", () => {
 });
 
 describe("inviteMessage", () => {
-  it("links a regular roll with its code", () => {
-    expect(inviteMessage(detail())).toBe(`Sumate a "Viaje al sur" en Rollo con el código HUB5FT: ${LINK}`);
+  it("links a regular roll", () => {
+    expect(inviteMessage(detail())).toBe(`Sumate a "Viaje al sur" en Rollo: ${LINK}`);
   });
   it("links an event", () => {
     expect(inviteMessage(detail({ type: "event" }))).toBe(`Sumate a "Viaje al sur" en Rollo: ${LINK}`);

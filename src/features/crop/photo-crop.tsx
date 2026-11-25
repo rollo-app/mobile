@@ -14,10 +14,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, ErrorText } from "@/ui/components";
 import { radius, screenBackgrounds, spacing, type } from "@/ui/theme";
 import { cropImage } from "./crop-image";
-import { clampOffset, clampZoom, cropRect, displayedSize, type Offset } from "./crop-math";
+import { clampOffset, clampZoom, cropRect, displayedSize, portraitFrame, type Offset, type Size } from "./crop-math";
 import { cropRequestOptions, cropRequestPhoto, settleCropRequest } from "./crop-request";
 
 const GUTTER = 16;
+// Room kept for the title above and the buttons below a portrait frame, besides the safe areas.
+const CHROME = 200;
 
 type Touches = GestureResponderEvent["nativeEvent"]["touches"];
 const midpoint = (t: Touches) => ({
@@ -27,8 +29,9 @@ const midpoint = (t: Touches) => ({
 const distance = (t: Touches) => Math.hypot(t[0]!.pageX - t[1]!.pageX, t[0]!.pageY - t[1]!.pageY);
 
 /**
- * Square photo crop (like Contacts): the photo behind a circle (profile photo) or a rounded square (event cover), pinch to
- * zoom and drag to move, always covering the frame. "Elegir" hands the square JPEG back to whoever opened the crop.
+ * Photo crop (like Contacts): the photo behind a circle (profile photo), a rounded square or a rounded vertical 3:4
+ * frame (the rollo's cover), pinch to zoom and drag to move, always covering the frame. "Elegir" hands the cropped
+ * JPEG (same shape as the frame) back to whoever opened the crop.
  */
 export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
   // Read once: after "Elegir" the request is gone, and the screen must not react to that while it closes.
@@ -36,7 +39,10 @@ export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
   const [options] = useState(() => cropRequestOptions(requestId));
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const diameter = width - 2 * GUTTER;
+  const frame: Size =
+    options.shape === "portrait"
+      ? portraitFrame(width, height - insets.top - insets.bottom - CHROME, GUTTER)
+      : { width: width - 2 * GUTTER, height: width - 2 * GUTTER };
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
   const [saving, setSaving] = useState(false);
@@ -82,7 +88,7 @@ export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
         const nextOffset = clampOffset(
           { x: s.offset.x * ratio + mid.x - s.mid.x, y: s.offset.y * ratio + mid.y - s.mid.y },
           photo,
-          diameter,
+          frame,
           nextZoom,
         );
         live.current = { zoom: nextZoom, offset: nextOffset };
@@ -90,21 +96,21 @@ export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
         setOffset(nextOffset);
       },
     });
-  }, [photo, diameter]);
+  }, [photo, frame.width, frame.height]);
 
   if (!photo) return <View style={styles.screen} />;
 
-  const shown = displayedSize(photo, diameter, zoom);
+  const shown = displayedSize(photo, frame, zoom);
   // A huge border around a transparent frame dims everything but the frame.
   const ring = Math.max(width, height);
-  const corner = options.shape === "circle" ? diameter / 2 : radius.lg;
+  const corner = options.shape === "circle" ? frame.width / 2 : radius.lg;
 
   async function choose() {
     if (!photo) return;
     setError(null);
     setSaving(true);
     try {
-      const cropped = await cropImage(photo.uri, cropRect(photo, diameter, zoom, offset), options.size);
+      const cropped = await cropImage(photo.uri, cropRect(photo, frame, zoom, offset), options.size);
       settleCropRequest(requestId, cropped);
       router.back();
     } catch {
@@ -132,10 +138,10 @@ export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
           style={[
             styles.ring,
             {
-              width: diameter + 2 * ring,
-              height: diameter + 2 * ring,
-              left: width / 2 - diameter / 2 - ring,
-              top: height / 2 - diameter / 2 - ring,
+              width: frame.width + 2 * ring,
+              height: frame.height + 2 * ring,
+              left: width / 2 - frame.width / 2 - ring,
+              top: height / 2 - frame.height / 2 - ring,
               borderWidth: ring,
               borderRadius: corner + ring,
             },
@@ -145,7 +151,7 @@ export function PhotoCrop({ requestId }: { requestId: string | undefined }) {
           pointerEvents="none"
           style={[
             styles.circle,
-            { width: diameter, height: diameter, borderRadius: corner, left: GUTTER, top: height / 2 - diameter / 2 },
+            { width: frame.width, height: frame.height, borderRadius: corner, left: width / 2 - frame.width / 2, top: height / 2 - frame.height / 2 },
           ]}
         />
       </View>

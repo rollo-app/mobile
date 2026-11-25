@@ -3,19 +3,20 @@ import { Animated, StyleSheet, Text, View } from "react-native";
 import { colors } from "./theme";
 import { useReduceMotion } from "./use-reduce-motion";
 
-type Variant = "live" | "neutral";
+type Variant = "live" | "neutral" | "overlay";
 
 /**
  * Small state capsule. `live` is system red with a pulsing white dot (still with Reduce Motion);
- * `neutral` is a translucent gray capsule with just the label. The hairline white border keeps it
+ * `neutral` is a translucent gray capsule with just the label; `overlay` is a translucent white capsule
+ * with a white label, for use over a photo or a dark card. The hairline white border keeps it
  * readable over a tinted row.
  */
 export function Badge({ variant, label }: { variant: Variant; label: string }) {
   const live = variant === "live";
   return (
-    <View style={[styles.badge, live ? styles.live : styles.neutral]}>
+    <View style={[styles.badge, styles[variant]]}>
       {live && <PulsingDot />}
-      <Text style={[styles.label, { color: live ? "#FFFFFF" : colors.secondaryLabel }]}>{label}</Text>
+      <Text style={[styles.label, { color: variant === "neutral" ? colors.secondaryLabel : "#FFFFFF" }]}>{label}</Text>
     </View>
   );
 }
@@ -58,6 +59,7 @@ const styles = StyleSheet.create({
   },
   live: { backgroundColor: colors.danger },
   neutral: { backgroundColor: colors.fill },
+  overlay: { backgroundColor: "rgba(255,255,255,0.2)" },
   label: { fontSize: 11, fontWeight: "600", letterSpacing: 0.2 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#FFFFFF" },
 });

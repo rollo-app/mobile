@@ -10,19 +10,22 @@ const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : 
  */
 export function rollSummary({
   media,
+  mediaCount,
   people,
   startsAt,
   endsAt,
   timeZone,
 }: {
   media: { type: string }[];
+  /** The roll's real total when `media` is only what has loaded so far. */
+  mediaCount?: number;
   people: number;
   startsAt: number;
   endsAt: number;
   timeZone: string;
 }) {
   const videos = media.filter((m) => m.type === "video").length;
-  const photos = media.length - videos;
+  const photos = (mediaCount ?? media.length) - videos;
   const days = Math.round((Date.parse(localDay(endsAt, timeZone)) - Date.parse(localDay(startsAt, timeZone))) / DAY) + 1;
   return [
     count(photos, "foto", "fotos"),

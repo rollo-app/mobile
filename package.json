@@ -93,6 +93,7 @@
   "jest": {
     "preset": "jest-expo",
     "maxWorkers": 2,
+    "workerIdleMemoryLimit": "1GB",
     "setupFilesAfterEnv": [
       "./jest.setup.ts"
     ],

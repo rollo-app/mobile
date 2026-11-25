@@ -22,6 +22,15 @@ jest.mock("@/features/trips/actions");
 jest.mock("@/features/featured/actions");
 jest.mock("@/features/likes/actions");
 jest.mock("@/features/moderation/actions");
+const mockGeocode = jest.fn();
+jest.mock("expo-location", () => ({
+  getForegroundPermissionsAsync: jest.fn(async () => ({ granted: false })),
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: false })),
+  getLastKnownPositionAsync: jest.fn(async () => null),
+  getCurrentPositionAsync: jest.fn(async () => null),
+  Accuracy: { Balanced: 3, High: 5 },
+  reverseGeocodeAsync: (...args: unknown[]) => mockGeocode(...args),
+}));
 jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn(),
   NotificationFeedbackType: { Success: "success" },
@@ -85,6 +94,7 @@ const detail = (): actions.TripDetail => ({
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
   },
@@ -132,6 +142,7 @@ const galleryRoutes = {
 let alert: jest.SpyInstance;
 
 beforeEach(async () => {
+  mockGeocode.mockReset().mockResolvedValue([]);
   mockSaveOpts.mockReset();
   jest.mocked(requestPermissionsAsync).mockClear();
   mockSaveOne.mockReset().mockResolvedValue(undefined);
@@ -171,28 +182,119 @@ const two = () =>
   ]);
 
 describe("Gallery", () => {
-  it("groups by day with a header", async () => {
+  it("shows a chapter per day with DÍA N and the count", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), trip: { ...detail().trip, startsAt: Date.parse("2027-01-11T15:00:00Z") } });
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     expect(await screen.findByText("Martes 12 de enero")).toBeVisible();
     expect(screen.getByText("Miércoles 13 de enero")).toBeVisible();
+    expect(screen.getByText("DÍA 2")).toBeVisible();
+    expect(screen.getByText("DÍA 3")).toBeVisible();
+    expect(screen.getByText("2 fotos")).toBeVisible();
+    expect(screen.getByText("1 foto")).toBeVisible();
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
     expect(screen.getByText("0:12")).toBeVisible();
   });
 
-  it("filters by person", async () => {
+  it("shows the place of a day under its title", async () => {
+    mockGeocode.mockResolvedValue([{ city: "El Bolsón" }]);
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    expect(await screen.findByText("2 fotos · El Bolsón")).toBeVisible();
+  });
+
+  it("shows the roll summary above the faces", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    expect(await screen.findByText("2 fotos · 1 video · 2 personas · 8 días")).toBeVisible();
+  });
+
+  const four = () =>
+    feed(
+      ["a", "b", "c", "d"].map((id, n) =>
+        item(id, { takenAt: Date.parse("2027-01-12T15:00:00Z") + n * 60_000, likeCount: id === "c" ? 5 : 0 }),
+      ),
+    );
+
+  it("shows the most liked photo as the hero", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(four());
+    await open();
+    expect(await screen.findByTestId("gallery-hero-c")).toBeTruthy();
+    expect(screen.queryByTestId("gallery-thumb-c")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(4);
+  });
+
+  it("opens the hero photo when pressed and toggles it while selecting", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(four());
+    await open();
+    await screen.findByTestId("gallery-hero-c");
+    await fireEvent.press(screen.getByTestId("gallery-hero-c"));
+    await waitFor(() => expect(screen).toHavePathname("/photo/c"));
+  });
+
+  it("selecting a hero counts it", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(four());
+    await open();
+    await screen.findByTestId("gallery-hero-c");
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    await fireEvent.press(screen.getByTestId("gallery-hero-c"));
+    expect(screen.getByRole("button", { name: "Guardar (1)" })).toBeVisible();
+  });
+
+  it("shows a caption as a quote and opens its photo", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    const quote = await screen.findByRole("button", { name: /^Cita: el glaciar, de Juani, \d{2}:\d{2}$/ });
+    expect(within(quote).getByText("el glaciar")).toBeVisible();
+    expect(within(quote).getByText(/^Juani · \d{2}:\d{2}$/)).toBeVisible();
+    await fireEvent.press(quote);
+    await waitFor(() => expect(screen).toHavePathname("/photo/b"));
+  });
+
+  it("filters by tapping a face and back with Todos", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
-    expect(screen.queryByText("Solo Juani")).toBeNull();
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Juani" }));
+    expect(screen.getByRole("button", { name: "Todos" }).props.accessibilityState).toMatchObject({ selected: true });
+    await fireEvent.press(screen.getByRole("button", { name: "Juani" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(1);
     expect(screen.queryByText("Miércoles 13 de enero")).toBeNull();
-    expect(screen.getByText("Solo Juani")).toBeVisible();
-    expect(screen.getByRole("menuitem", { name: "Juani" }).props.accessibilityState).toMatchObject({ checked: true });
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Todos" }));
-    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
     expect(screen.queryByText("Solo Juani")).toBeNull();
+    expect(screen.getByRole("button", { name: "Juani" }).props.accessibilityState).toMatchObject({ selected: true });
+    await fireEvent.press(screen.getByRole("button", { name: "Todos" }));
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("tapping the selected face again goes back to Todos", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("button", { name: "Juani" }));
+    expect(screen.getByRole("button", { name: "Juani" }).props.accessibilityState).toMatchObject({ selected: true });
+    await fireEvent.press(screen.getByRole("button", { name: "Juani" }));
+    expect(screen.getByRole("button", { name: "Todos" }).props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("filtering by a face does not geocode the chapter again", async () => {
+    mockGeocode.mockResolvedValue([{ city: "El Bolsón" }]);
+    mocked.fetchFeedPage.mockResolvedValue(
+      feed([
+        item("a", { lat: -49.33, lng: -72.89, takenAt: Date.parse("2027-01-12T15:00:00Z") }),
+        item("b", {
+          lat: -41.13,
+          lng: -71.31,
+          takenAt: Date.parse("2027-01-12T16:00:00Z"),
+          author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null },
+        }),
+      ]),
+    );
+    await open();
+    expect(await screen.findByText("2 fotos · El Bolsón")).toBeVisible();
+    expect(mockGeocode).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole("button", { name: "Juani" }));
+    expect(await screen.findByText("1 foto · El Bolsón")).toBeVisible();
+    expect(mockGeocode).toHaveBeenCalledTimes(1);
   });
 
   const eventDetail = (me: Partial<actions.TripDetail["me"]>): actions.TripDetail => {
@@ -214,13 +316,13 @@ describe("Gallery", () => {
     mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "admin", groupIds: [] }));
     mocked.fetchFeedPage.mockResolvedValue(eventFeed());
     await open();
-    await screen.findByText("Martes 12 de enero");
+    await screen.findByRole("header", { name: "Novios" });
     expect(screen.getByLabelText("Grupos")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
     await fireEvent.press(screen.getByRole("menuitem", { name: "Amigos" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(2);
     expect(screen.getByRole("menuitem", { name: "Amigos" }).props.accessibilityState).toMatchObject({ checked: true });
-    await fireEvent.press(screen.getAllByRole("menuitem", { name: "Todos" })[1]!  /* second "Todos": the groups menu, after the people one */);
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Todos" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
   });
 
@@ -244,7 +346,7 @@ describe("Gallery", () => {
     mocked.fetchTrip.mockResolvedValue(eventDetail({ role: "admin", groupIds: [] }));
     mocked.fetchFeedPage.mockResolvedValue(eventFeed());
     await open();
-    await screen.findByText("Martes 12 de enero");
+    await screen.findByRole("header", { name: "Novios" });
     expect(screen.queryByText("Solo Amigos")).toBeNull();
     await fireEvent.press(screen.getByRole("menuitem", { name: "Amigos" }));
     expect(screen.getByText("Solo Amigos")).toBeVisible();
@@ -263,17 +365,6 @@ describe("Gallery", () => {
     expect(screen.queryByRole("menuitem", { name: "Amigos" })).toBeNull();
   });
 
-  it("the ✕ on the active filter goes back to everyone", async () => {
-    mocked.fetchFeedPage.mockResolvedValue(two());
-    await open();
-    await screen.findByText("Martes 12 de enero");
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
-    expect(screen.getByText("Solo Fede")).toBeVisible();
-    await fireEvent.press(screen.getByRole("button", { name: "Quitar filtro" }));
-    expect(screen.queryByText("Solo Fede")).toBeNull();
-    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
-  });
-
   it("the header title is Galería, not the route name", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
@@ -283,14 +374,29 @@ describe("Gallery", () => {
     expect(screen.queryByLabelText(/cambiar de rollo/)).toBeNull();
   });
 
-  it("the ⋯ menu offers the filter and saving everything", async () => {
+  it("the menu no longer has Filtrar por persona", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
-    expect(screen.getByLabelText("Filtrar por persona")).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Todos" }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.queryByLabelText("Filtrar por persona")).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Guardar todo en Fotos" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Guardar todo" })).toBeNull();
+  });
+
+  it("an event shows group chapters and Otras fotos", async () => {
+    const base = eventDetail({ role: "admin", groupIds: [] });
+    mocked.fetchTrip.mockResolvedValue(base);
+    mocked.fetchFeedPage.mockResolvedValue(
+      feed([
+        item("a", { takenAt: Date.parse("2027-01-12T15:00:00Z"), groupIds: ["g1"] }),
+        item("b", { takenAt: Date.parse("2027-01-12T16:00:00Z"), groupIds: ["g2"] }),
+        item("c", { takenAt: Date.parse("2027-01-12T17:00:00Z"), groupIds: [] }),
+      ]),
+    );
+    await open();
+    expect(await screen.findByRole("header", { name: "Novios" })).toBeVisible();
+    expect(screen.getByRole("header", { name: "Amigos" })).toBeVisible();
+    expect(screen.getByRole("header", { name: "Otras fotos" })).toBeVisible();
   });
 
   it("has Seleccionar and the ⋯ menu together in the header toolbar", async () => {
@@ -319,7 +425,7 @@ describe("Gallery", () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Fede" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Fede" }));
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar todo" }));
     expect(screen.getByRole("button", { name: "Guardar (2)" })).toBeVisible();
@@ -621,10 +727,21 @@ describe("Gallery: loading page by page", () => {
     );
     await open();
     await waitFor(() => expect(cells()).toHaveLength(2));
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Juani" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Juani" }));
     await waitFor(() => expect(mocked.fetchFeedPage).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(cells()).toHaveLength(1));
-    expect(screen.getByText("Solo Juani")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Juani" }).props.accessibilityState).toMatchObject({ selected: true });
+  });
+
+  it("the summary shows the server total while pages are pending and does not change when the next one loads", async () => {
+    mocked.fetchTrip.mockResolvedValue({ ...detail(), totalUploaded: 4 });
+    serve();
+    await open();
+    await waitFor(() => expect(cells()).toHaveLength(2));
+    expect(screen.getByText(/^4 fotos · /)).toBeVisible();
+    await endReached();
+    await waitFor(() => expect(cells()).toHaveLength(4));
+    expect(screen.getByText(/^4 fotos · /)).toBeVisible();
   });
 
   it("opens the viewer on a photo from a page loaded later", async () => {

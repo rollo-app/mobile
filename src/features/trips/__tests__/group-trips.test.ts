@@ -8,6 +8,7 @@ const trip = (id: string, over: Partial<TripSummary> = {}): TripSummary => ({
   id,
   type: "trip",
   coverUrl: null,
+  coverFocusY: null,
   name: id,
   joinCode: "ABC234",
   startsAt: NOW - 10 * DAY,
@@ -26,12 +27,21 @@ const trip = (id: string, over: Partial<TripSummary> = {}): TripSummary => ({
 const ids = (list: TripSummary[]) => list.map((t) => t.id);
 
 describe("groupTrips", () => {
-  it("keeps live, upcoming and ended-but-unrevealed rolls on top in their original order", () => {
+  it("live rolls leave top", () => {
     const live = trip("live", { revealed: false, startsAt: NOW - DAY, endsAt: NOW + DAY, revealAt: NOW + DAY });
     const upcoming = trip("upcoming", { revealed: false, startsAt: NOW + DAY, endsAt: NOW + 2 * DAY, revealAt: NOW + 2 * DAY });
     const ended = trip("ended", { revealed: false, endsAt: NOW - DAY, revealAt: NOW + DAY });
     const g = groupTrips([upcoming, live, ended], NOW, null);
-    expect(ids(g.top)).toEqual(["upcoming", "live", "ended"]);
+    expect(ids(g.live)).toEqual(["live"]);
+    expect(ids(g.top)).toEqual(["upcoming", "ended"]);
+  });
+
+  it("keeps upcoming and ended-but-unrevealed rolls on top in their original order", () => {
+    const live = trip("live", { revealed: false, startsAt: NOW - DAY, endsAt: NOW + DAY, revealAt: NOW + DAY });
+    const upcoming = trip("upcoming", { revealed: false, startsAt: NOW + DAY, endsAt: NOW + 2 * DAY, revealAt: NOW + 2 * DAY });
+    const ended = trip("ended", { revealed: false, endsAt: NOW - DAY, revealAt: NOW + DAY });
+    const g = groupTrips([upcoming, live, ended], NOW, null);
+    expect(ids(g.top)).toEqual(["upcoming", "ended"]);
     expect(g.revealed).toEqual([]);
     expect(g.older).toEqual([]);
   });

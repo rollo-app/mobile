@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import type { TripDetail } from "@/features/trips/actions";
 import { ErrorText, Row, Section } from "@/ui/components";
 import { isOrganizer } from "./event";
@@ -12,6 +13,7 @@ export function EventCover({ detail }: { detail: TripDetail }) {
     <>
       <Section>
         <Row label={coverUrl ? "Cambiar portada" : "Elegir portada"} loading={cover.uploading} onPress={cover.uploading ? undefined : () => void cover.pick()} />
+        {!!coverUrl && <Row label="Ajustar banner" onPress={() => router.push({ pathname: "/cover-focus", params: { tripId: id } })} />}
       </Section>
       {!!cover.error && <ErrorText>{cover.error}</ErrorText>}
     </>

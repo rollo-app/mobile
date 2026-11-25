@@ -55,11 +55,11 @@ export async function createTrip(input: {
   return created.trip;
 }
 
-/** What the code opens: the event's name, cover and groups; null if it's a regular trip (or doesn't exist). No session needed. */
+/** What the code opens: the rollo's name, cover, description, dates and (events) groups; null if it doesn't exist. `any=1` opts in to regular rollos too. No session needed. */
 export async function previewEvent(code: string): Promise<EventPreview | null> {
   try {
     return await unwrap(
-      createApiClient({ baseUrl: API_URL }).GET("/events/{code}", { params: { path: { code: code.trim().toUpperCase() } } }),
+      createApiClient({ baseUrl: API_URL }).GET("/events/{code}", { params: { path: { code: code.trim().toUpperCase() }, query: { any: "1" } } }),
     );
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;

@@ -8,6 +8,19 @@ const media = (photos: number, videos: number) => [
 ];
 
 describe("rollSummary", () => {
+  it("uses mediaCount for the total while only part of the media has loaded", () => {
+    expect(
+      rollSummary({
+        media: media(2, 1),
+        mediaCount: 50,
+        people: 8,
+        startsAt: at("2027-01-10T09:00:00-03:00"),
+        endsAt: at("2027-01-15T22:00:00-03:00"),
+        timeZone: TZ,
+      }),
+    ).toBe("49 fotos · 1 video · 8 personas · 6 días");
+  });
+
   it("counts photos, videos, people and days (inclusive, in the trip's zone)", () => {
     expect(
       rollSummary({

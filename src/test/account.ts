@@ -25,6 +25,7 @@ export const tripSummary = (id: string, name: string, over: Partial<TripSummary>
   coverThumbhash: null,
   type: "trip",
   coverUrl: null,
+  coverFocusY: null,
   ...over,
 });
 

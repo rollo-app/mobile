@@ -74,6 +74,7 @@ const tripDetail = (): actions.TripDetail => ({
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
   },
@@ -559,7 +560,7 @@ describe("Login", () => {
     await signInAs({ trips: [] });
     mockApi({ "GET /me/trips": json(401, { error: "Sesión inválida, volvé a entrar" }) });
     mocked.fetchMyTrips.mockImplementation(jest.requireActual("@/features/trips/actions").fetchMyTrips);
-    await renderRouter(routes, { initialUrl: "/trips" });
+    await renderRouter(routes, { initialUrl: "/roll" });
     await act(async () => {
       await jest.requireActual("@/api/query-client").queryClient.invalidateQueries({ queryKey: ["myTrips"] });
     });
@@ -961,7 +962,7 @@ describe("Perfil", () => {
   beforeEach(() => signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] }));
 
   it("shows the members' handles under their names", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     // The board no longer lists the members: their handles show in the members list.
     await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
 

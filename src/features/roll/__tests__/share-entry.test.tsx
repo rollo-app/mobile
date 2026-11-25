@@ -31,6 +31,7 @@ const detail = (over: Partial<actions.Trip> = {}, extraMembers = 0): actions.Tri
       dailyPhotoLimit: 10,
       dailyVideoLimit: 3,
       featuringDisabled: false,
+      coverFocusY: null,
       maxMembers: 15,
       photoLimitMode: "daily",
       totalPhotoLimit: null,
@@ -89,26 +90,26 @@ describe("Compartir entries", () => {
 
   describe("revealed rollo", () => {
     it("shows the toolbar button when there are shareable photos and opens the collage screen", async () => {
-      await open(detail(), "/roll?view=roll", [photo("a", true), photo("b", false)]);
+      await open(detail(), `/roll/${SUR}?view=roll`, [photo("a", true), photo("b", false)]);
       await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
       expect(screen).toHavePathname("/share-story");
       expect(screen).toHaveSearchParams({ tripId: SUR, kind: "collage" });
     });
 
     it("has no Compartir en Instagram row", async () => {
-      await open(detail(), "/roll?view=roll", [photo("a", true)]);
+      await open(detail(), `/roll/${SUR}?view=roll`, [photo("a", true)]);
       await screen.findByRole("button", { name: "Compartir" });
       expect(screen.queryByText(LABEL)).toBeNull();
     });
 
     it("hides the button on a private rollo", async () => {
-      await open(detail({ featuringDisabled: true }), "/roll?view=roll", [photo("a", true)]);
+      await open(detail({ featuringDisabled: true }), `/roll/${SUR}?view=roll`, [photo("a", true)]);
       await screen.findByText("Personas");
       expect(button()).toBeNull();
     });
 
     it("hides the button when no photo can be shared", async () => {
-      await open(detail(), "/roll?view=roll", [photo("a", false)]);
+      await open(detail(), `/roll/${SUR}?view=roll`, [photo("a", false)]);
       await screen.findByText("Personas");
       expect(button()).toBeNull();
     });
@@ -118,26 +119,26 @@ describe("Compartir entries", () => {
     const pending = { revealed: false, revealAt: Date.now() + DAY };
 
     it("shows the button on an unrevealed rollo with room and opens the invitation screen", async () => {
-      await open(detail(pending), "/roll");
+      await open(detail(pending), `/roll/${SUR}`);
       await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
       expect(screen).toHavePathname("/share-story");
       expect(screen).toHaveSearchParams({ tripId: SUR, kind: "invite" });
     });
 
     it("has no Compartir en Instagram row", async () => {
-      await open(detail(pending), "/roll");
+      await open(detail(pending), `/roll/${SUR}`);
       await screen.findByText("Invitar");
       expect(screen.queryByText(LABEL)).toBeNull();
     });
 
     it("hides the button when the rollo is full", async () => {
-      await open(detail({ ...pending, maxMembers: 2 }, 1), "/roll");
+      await open(detail({ ...pending, maxMembers: 2 }, 1), `/roll/${SUR}`);
       await screen.findByText("Invitar");
       expect(button()).toBeNull();
     });
 
     it("shows no invitation row on a revealed rollo", async () => {
-      await open(detail(), "/roll?view=roll");
+      await open(detail(), `/roll/${SUR}?view=roll`);
       await screen.findByText("Personas");
       expect(screen.queryByText("Invitar")).toBeNull();
     });

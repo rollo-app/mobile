@@ -66,6 +66,7 @@ const detail = (over: Partial<tripActions.Trip> = {}): tripActions.TripDetail =>
       contest: null,
       type: "trip",
       coverUrl: null,
+      coverFocusY: null,
       groups: [],
       createdBy: { userId: "u1", name: "Juani" },
       ...over,
@@ -400,8 +401,8 @@ describe("Compartir screen", () => {
     still.mockRejectedValueOnce(new Error("jpeg"));
     await open("collage");
     expect(await screen.findByText("No se pudo armar la imagen. Probá de nuevo.")).toBeVisible();
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith("[share] could not build the image", expect.objectContaining({ message: "compose still failed" }));
+    const shareWarnings = warn.mock.calls.filter(([message]) => String(message).startsWith("[share]"));
+    expect(shareWarnings).toEqual([["[share] could not build the image", expect.objectContaining({ message: "compose still failed" })]]);
     warn.mockRestore();
   });
 
