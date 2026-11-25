@@ -88,11 +88,11 @@ describe("Compartir entries", () => {
   const button = () => screen.queryByRole("button", { name: "Compartir" });
 
   describe("revealed rollo", () => {
-    it("shows the toolbar button when there are shareable photos and opens the sheet", async () => {
+    it("shows the toolbar button when there are shareable photos and opens the collage screen", async () => {
       await open(detail(), "/roll?view=roll", [photo("a", true), photo("b", false)]);
       await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
-      expect(screen).toHavePathname("/share-roll");
-      expect(screen).toHaveSearchParams({ tripId: SUR });
+      expect(screen).toHavePathname("/share-story");
+      expect(screen).toHaveSearchParams({ tripId: SUR, kind: "collage" });
     });
 
     it("has no Compartir en Instagram row", async () => {
@@ -117,10 +117,11 @@ describe("Compartir entries", () => {
   describe("Invitar", () => {
     const pending = { revealed: false, revealAt: Date.now() + DAY };
 
-    it("shows the button on an unrevealed rollo with room and opens the sheet", async () => {
+    it("shows the button on an unrevealed rollo with room and opens the invitation screen", async () => {
       await open(detail(pending), "/roll");
       await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
-      expect(screen).toHavePathname("/share-roll");
+      expect(screen).toHavePathname("/share-story");
+      expect(screen).toHaveSearchParams({ tripId: SUR, kind: "invite" });
     });
 
     it("has no Compartir en Instagram row", async () => {

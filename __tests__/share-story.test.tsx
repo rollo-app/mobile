@@ -1,3 +1,4 @@
+import * as Burnt from "burnt";
 import * as Clipboard from "expo-clipboard";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { Text } from "react-native";
@@ -387,5 +388,30 @@ describe("Compartir screen", () => {
     story.shareToInstagramStories.mockRejectedValueOnce(new Error("boom"));
     await fireEvent.press(screen.getByRole("button", { name: "Instagram" }));
     expect(await screen.findByText("No se pudo compartir. Probá de nuevo.")).toBeVisible();
+  });
+
+  it("Copiar link shows only on the invite", async () => {
+    await open("collage");
+    await filesReady();
+    expect(screen.queryByRole("button", { name: "Copiar link" })).toBeNull();
+  });
+
+  it("invite: Copiar link copies the link and shows the HUD", async () => {
+    await open("invite", detail());
+    await filesReady();
+    await fireEvent.press(screen.getByRole("button", { name: "Copiar link" }));
+    await waitFor(() => expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("HUB5FT")));
+    expect(Burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Link copiado" }));
+    expect(story.shareMore).not.toHaveBeenCalled();
+    expect(screen.getByText("Copiamos el link. Pegalo en tu story con el sticker de Enlace")).toBeVisible();
+  });
+
+  it("invite: a clipboard failure on Copiar link shows the error and no HUD", async () => {
+    clipboard.setStringAsync.mockRejectedValueOnce(new Error("boom"));
+    await open("invite", detail());
+    await filesReady();
+    await fireEvent.press(screen.getByRole("button", { name: "Copiar link" }));
+    expect(await screen.findByText("No se pudo compartir. Probá de nuevo.")).toBeVisible();
+    expect(Burnt.toast).not.toHaveBeenCalled();
   });
 });

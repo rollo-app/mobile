@@ -1,3 +1,4 @@
+import * as Burnt from "burnt";
 import * as Clipboard from "expo-clipboard";
 import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -101,6 +102,19 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
     }
   }
 
+  /** Invite only: copies the link (handy to paste as the Link sticker) and confirms with the native HUD. */
+  async function copyLink() {
+    if (!detail) return;
+    setShareFailed(false);
+    try {
+      await Clipboard.setStringAsync(inviteLink(detail));
+    } catch {
+      setShareFailed(true);
+      return;
+    }
+    Burnt.toast({ title: "Link copiado", preset: "done" });
+  }
+
   const shareStories = () =>
     share(
       async (link) =>
@@ -160,6 +174,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
             onInstagram={() => void shareStories()}
             onWhatsApp={() => void share(() => shareImageToWhatsApp(assets.stillUri!), true)}
             onMore={() => void share((link) => shareMore(assets.stillUri!, link), true)}
+            onCopyLink={isCollage ? undefined : () => void copyLink()}
           />
           {!isCollage && (
             <Text style={[type.caption, styles.hint]}>Copiamos el link. Pegalo en tu story con el sticker de Enlace</Text>

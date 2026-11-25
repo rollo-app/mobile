@@ -167,13 +167,6 @@ function RootStack() {
             }}
           />
           <Stack.Screen
-            name="share-roll"
-            options={{
-              headerShown: false,
-              ...groupedSheet("fitToContents"),
-            }}
-          />
-          <Stack.Screen
             name="member"
             options={{
               headerShown: false,

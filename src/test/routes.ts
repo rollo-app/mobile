@@ -32,7 +32,6 @@ import ContestWinnerRoute from "../../app/contest-winner";
 import CreateScreen from "../../app/create";
 import EventGroupsRoute from "../../app/event-groups";
 import EventQrRoute from "../../app/event-qr";
-import ShareRollRoute from "../../app/share-roll";
 import SharePickRoute from "../../app/share-pick";
 import ShareStoryRoute from "../../app/share-story";
 import MyGroupsRoute from "../../app/my-groups";
@@ -99,7 +98,6 @@ export const routes = {
   "contest-winner": ContestWinnerRoute,
   "my-groups": MyGroupsRoute,
   "event-qr": EventQrRoute,
-  "share-roll": ShareRollRoute,
   "share-story": ShareStoryRoute,
   "share-pick": SharePickRoute,
   "roll-settings": RollSettingsRoute,

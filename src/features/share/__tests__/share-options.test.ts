@@ -2,8 +2,7 @@ import type { RevealedPhoto } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
 import { joinLinkUrl } from "@/features/events/join-link";
 import { inviteMessage } from "../invite";
-import { shareKind, shareOptions } from "../share-options";
-import { whatsAppUrl } from "../share-story";
+import { shareKind } from "../share-options";
 
 const LINK = joinLinkUrl("HUB5FT");
 
@@ -32,27 +31,11 @@ describe("shareKind", () => {
   it("is null when no photo can be shared", () => expect(shareKind(detail({ revealed: true }), [photo(false)])).toBeNull());
 });
 
-describe("shareOptions", () => {
-  it("lists the invite options", () => expect(shareOptions("invite", true)).toEqual(["link", "whatsapp", "instagram"]));
-  it("lists the collage options", () => expect(shareOptions("collage", true)).toEqual(["whatsapp", "instagram"]));
-  it("drops WhatsApp when it is not installed", () => {
-    expect(shareOptions("invite", false)).toEqual(["link", "instagram"]);
-    expect(shareOptions("collage", false)).toEqual(["instagram"]);
-  });
-});
-
 describe("inviteMessage", () => {
   it("links a regular roll with its code", () => {
     expect(inviteMessage(detail())).toBe(`Sumate a "Viaje al sur" en Rollo con el código HUB5FT: ${LINK}`);
   });
   it("links an event", () => {
     expect(inviteMessage(detail({ type: "event" }))).toBe(`Sumate a "Viaje al sur" en Rollo: ${LINK}`);
-  });
-});
-
-describe("whatsAppUrl", () => {
-  it("encodes &, quotes and emoji", () => {
-    const url = whatsAppUrl('a & "b" 🎞');
-    expect(url).toBe("whatsapp://send?text=a%20%26%20%22b%22%20%F0%9F%8E%9E");
   });
 });
