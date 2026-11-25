@@ -1,35 +1,22 @@
 import * as Burnt from "burnt";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { memberTotal } from "@/features/trips/member-total";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { ErrorText, Loading, Row, Section } from "@/ui/components";
+import { ErrorText, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption, pickCollage } from "./collage";
 import { composeStill } from "./compose-still";
 import { inviteLink, inviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { shareKind, shareOptions, type ShareOption } from "./share-options";
+import { ShareTargetButton } from "./share-target-button";
 import { shareImageToWhatsApp, whatsAppAvailable, whatsAppUrl, writeShareFile } from "./share-story";
 
 const LABEL: Record<ShareOption, string> = { link: "Copiar link", whatsapp: "WhatsApp", instagram: "Instagram" };
-const LOGO = 28;
-
-function OptionIcon({ option }: { option: ShareOption }) {
-  if (option === "link") {
-    return (
-      <View style={styles.icon}>
-        <SymbolView name="link" size={22} tintColor={colors.tint} />
-      </View>
-    );
-  }
-  const source = option === "whatsapp" ? require("../../../assets/share/whatsapp.png") : require("../../../assets/share/instagram.png");
-  return <Image source={source} style={styles.icon} accessible={false} />;
-}
 
 /** The "Compartir" sheet: copy the link, send it (or the collage) to WhatsApp, or open the Instagram Stories screen. */
 export function ShareRollScreen({ tripId }: { tripId: string }) {
@@ -109,25 +96,17 @@ export function ShareRollScreen({ tripId }: { tripId: string }) {
       <Text accessibilityRole="header" style={[type.title, { color: colors.label }]}>
         Compartir
       </Text>
-      <Section>
+      <View style={styles.row}>
         {shareOptions(kind, whatsapp).map((option) => (
-          <Row
-            key={option}
-            label={LABEL[option]}
-            leading={<OptionIcon option={option} />}
-            chevron={false}
-            loading={option === "whatsapp" && busy}
-            disabled={option === "whatsapp" && busy}
-            onPress={press[option]}
-          />
+          <ShareTargetButton key={option} option={option} label={LABEL[option]} busy={option === "whatsapp" && busy} onPress={press[option]} />
         ))}
-      </Section>
+      </View>
       {failed && <ErrorText>No se pudo compartir. Probá de nuevo.</ErrorText>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: { padding: spacing.lg, paddingTop: spacing.xl, gap: spacing.md, backgroundColor: colors.groupedBackground },
-  icon: { width: LOGO, height: LOGO, alignItems: "center", justifyContent: "center" },
+  sheet: { padding: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xl, gap: spacing.md, backgroundColor: colors.groupedBackground },
+  row: { flexDirection: "row", justifyContent: "center", gap: spacing.lg + spacing.xs, paddingTop: spacing.sm },
 });

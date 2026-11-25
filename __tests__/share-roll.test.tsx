@@ -108,13 +108,13 @@ beforeEach(async () => {
 describe("Compartir sheet", () => {
   it("invite: lists Copiar link, WhatsApp and Instagram in order", async () => {
     await open(detail());
-    await screen.findByText("Copiar link");
-    expect(screen.getAllByText(/^(Copiar link|WhatsApp|Instagram)$/).map((n) => n.props.children)).toEqual(["Copiar link", "WhatsApp", "Instagram"]);
+    await screen.findByRole("button", { name: "Copiar link" });
+    expect(screen.getAllByRole("button").map((n) => n.props.accessibilityLabel)).toEqual(["Copiar link", "WhatsApp", "Instagram"]);
   });
 
   it("Copiar link copies the link, shows the HUD and closes the sheet", async () => {
     await open(detail());
-    await fireEvent.press(await screen.findByText("Copiar link"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Copiar link" }));
     await waitFor(() => expect(Clipboard.setStringAsync).toHaveBeenCalledWith(joinLinkUrl("HUB5FT")));
     expect(Burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Link copiado" }));
     await waitFor(() => expect(screen).not.toHavePathname("/share-roll"));
@@ -122,7 +122,7 @@ describe("Compartir sheet", () => {
 
   it("invite WhatsApp opens whatsapp:// with the invitation text", async () => {
     await open(detail());
-    await fireEvent.press(await screen.findByText("WhatsApp"));
+    await fireEvent.press(await screen.findByRole("button", { name: "WhatsApp" }));
     await waitFor(() =>
       expect(Linking.openURL).toHaveBeenCalledWith(shareStory.whatsAppUrl(`Sumate a "Viaje al sur" en Rollo con el código HUB5FT: ${joinLinkUrl("HUB5FT")}`)),
     );
@@ -130,16 +130,16 @@ describe("Compartir sheet", () => {
 
   it("Instagram opens the Stories screen with the invitation", async () => {
     await open(detail());
-    await fireEvent.press(await screen.findByText("Instagram"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Instagram" }));
     await waitFor(() => expect(screen).toHavePathname("/share-story"));
     expect(screen).toHaveSearchParams({ tripId: SUR, kind: "invite" });
   });
 
   it("collage: WhatsApp and Instagram only; WhatsApp shares the dark still", async () => {
     await open(revealed(), [item("a"), item("b")]);
-    await screen.findByText("WhatsApp");
-    expect(screen.queryByText("Copiar link")).toBeNull();
-    await fireEvent.press(screen.getByText("WhatsApp"));
+    await screen.findByRole("button", { name: "WhatsApp" });
+    expect(screen.queryByRole("button", { name: "Copiar link" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "WhatsApp" }));
     await waitFor(() => expect(story.shareImageToWhatsApp).toHaveBeenCalledWith("file:///cache/rollo-collage-dark-whatsapp-still.jpg"));
     expect(collage.mock.calls[0]![0]).toMatchObject({ name: "Viaje al sur", style: "dark" });
     expect(still).toHaveBeenCalledWith(expect.anything(), "dark");
@@ -148,16 +148,23 @@ describe("Compartir sheet", () => {
   it("without WhatsApp installed the option is missing", async () => {
     story.whatsAppAvailable.mockResolvedValue(false);
     await open(detail());
-    await screen.findByText("Copiar link");
-    await waitFor(() => expect(screen.queryByText("WhatsApp")).toBeNull());
-    expect(screen.getByText("Instagram")).toBeVisible();
+    await screen.findByRole("button", { name: "Copiar link" });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "WhatsApp" })).toBeNull());
+    expect(screen.getByRole("button", { name: "Instagram" })).toBeVisible();
   });
 
   it("a WhatsApp failure on the collage shows the inline error", async () => {
     story.shareImageToWhatsApp.mockRejectedValue(new Error("boom"));
     await open(revealed(), [item("a")]);
-    await fireEvent.press(await screen.findByText("WhatsApp"));
+    await fireEvent.press(await screen.findByRole("button", { name: "WhatsApp" }));
     expect(await screen.findByText("No se pudo compartir. Probá de nuevo.")).toBeVisible();
+  });
+
+  it("the WhatsApp button is busy and disabled while the collage renders", async () => {
+    collage.mockReturnValue(new Promise(() => {}));
+    await open(revealed(), [item("a")]);
+    await fireEvent.press(await screen.findByRole("button", { name: "WhatsApp" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "WhatsApp" })).toHaveProp("accessibilityState", { busy: true, disabled: true }));
   });
 
   it("shows the title and a loading state while the rollo loads", async () => {
@@ -171,7 +178,7 @@ describe("Compartir sheet", () => {
   it("a clipboard failure on Copiar link shows the inline error and keeps the sheet open", async () => {
     jest.mocked(Clipboard.setStringAsync).mockRejectedValueOnce(new Error("boom"));
     await open(detail());
-    await fireEvent.press(await screen.findByText("Copiar link"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Copiar link" }));
     expect(await screen.findByText("No se pudo compartir. Probá de nuevo.")).toBeVisible();
     expect(Burnt.toast).not.toHaveBeenCalled();
     expect(screen).toHavePathname("/share-roll");
