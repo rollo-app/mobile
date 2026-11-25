@@ -4,7 +4,7 @@ import "@/test/reanimated";
 import * as actions from "@/features/trips/actions";
 import { markAppIntroPending } from "@/storage/app-intro";
 import { hasSeenWelcomeIntro } from "@/storage/welcome-intro";
-import { signInAs } from "@/test/account";
+import { signInAs, stubOwnProfile } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
@@ -20,6 +20,7 @@ const reduceMotion = jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled");
 beforeEach(async () => {
   reduceMotion.mockResolvedValue(false);
   jest.mocked(actions).fetchMyTrips.mockResolvedValue({ trips: [] });
+  stubOwnProfile();
   await signInAs();
 });
 afterAll(() => reduceMotion.mockResolvedValue(false));
