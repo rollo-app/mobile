@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
+import { useSheetBottomInset } from "@/ui/sheet";
 import { colors, spacing, type } from "@/ui/theme";
 import { infoTopic, splitButtonNames } from "./topics";
 
@@ -7,10 +8,11 @@ import { infoTopic, splitButtonNames } from "./topics";
  * bold, without the quotes. An unknown topic shows nothing.
  */
 export function InfoScreen({ topic }: { topic: string | string[] | undefined }) {
+  const bottom = useSheetBottomInset(spacing.lg);
   const found = infoTopic(topic);
   if (!found) return null;
   return (
-    <View style={styles.sheet}>
+    <View style={[styles.sheet, bottom]}>
       <Text accessibilityRole="header" style={[type.title, { color: colors.label }]}>
         {found.title}
       </Text>

@@ -42,6 +42,21 @@ export default function RootLayout() {
 }
 
 /**
+ * Bottom sheets: the system draws them translucent (glass on iOS 26), and the content only paints as far as it
+ * reaches (not the bottom inset, nor the leftover of a `fitToContents` sheet). `contentStyle` colors the whole
+ * screen view, so the sheet is solid; the color is the one the sheet's content uses.
+ */
+const sheet = (detents: number[] | "fitToContents", background: typeof colors.background) =>
+  ({
+    presentation: "formSheet",
+    sheetAllowedDetents: detents,
+    sheetGrabberVisible: true,
+    contentStyle: { backgroundColor: background },
+  }) as const;
+const groupedSheet = (detents: number[] | "fitToContents") => sheet(detents, colors.groupedBackground);
+const plainSheet = (detents: number[] | "fitToContents") => sheet(detents, colors.background);
+
+/**
  * Nothing of the app is reachable without a session and a name: the gate shows the login, the
  * "Completá tu perfil" step or the app. A 401 anywhere clears the session and lands back on the login.
  */
@@ -95,18 +110,14 @@ function RootStack() {
             name="trips"
             options={{
               title: "Tus rollos",
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.5, 1],
-              sheetGrabberVisible: true,
+              ...groupedSheet([0.5, 1]),
             }}
           />
           <Stack.Screen
             name="add-friends"
             options={{
               title: "Sumar amigos",
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.6, 1],
-              sheetGrabberVisible: true,
+              ...groupedSheet([0.6, 1]),
             }}
           />
           {/* "Ver todos" in a roll's "En el rollo": the full members list, with search. */}
@@ -130,9 +141,7 @@ function RootStack() {
             name="push-primer"
             options={{
               headerShown: false,
-              presentation: "formSheet",
-              sheetAllowedDetents: "fitToContents",
-              sheetGrabberVisible: true,
+              ...groupedSheet("fitToContents"),
             }}
           />
           <Stack.Screen name="blocked" options={{ title: "Bloqueados" }} />
@@ -147,45 +156,35 @@ function RootStack() {
             name="edit-profile"
             options={{
               title: "Editar perfil",
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.6, 1],
-              sheetGrabberVisible: true,
+              ...groupedSheet([0.6, 1]),
             }}
           />
           <Stack.Screen
             name="info/[topic]"
             options={{
               headerShown: false,
-              presentation: "formSheet",
-              sheetAllowedDetents: "fitToContents",
-              sheetGrabberVisible: true,
+              ...groupedSheet("fitToContents"),
             }}
           />
           <Stack.Screen
             name="share-roll"
             options={{
               headerShown: false,
-              presentation: "formSheet",
-              sheetAllowedDetents: "fitToContents",
-              sheetGrabberVisible: true,
+              ...groupedSheet("fitToContents"),
             }}
           />
           <Stack.Screen
             name="member"
             options={{
               headerShown: false,
-              presentation: "formSheet",
-              sheetAllowedDetents: "fitToContents",
-              sheetGrabberVisible: true,
+              ...groupedSheet("fitToContents"),
             }}
           />
           <Stack.Screen
             name="offline-maps"
             options={{
               title: "Mapa sin señal",
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.5, 1],
-              sheetGrabberVisible: true,
+              ...groupedSheet([0.5, 1]),
             }}
           />
           {/* No swipe to dismiss: once shot, the only way out of the caption screen is sending it. */}
@@ -223,9 +222,7 @@ function RootStack() {
             name="comments/[mediaId]"
             options={{
               title: "Comentarios",
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.6, 1],
-              sheetGrabberVisible: true,
+              ...plainSheet([0.6, 1]),
             }}
           />
           <Stack.Screen

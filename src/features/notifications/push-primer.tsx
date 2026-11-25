@@ -2,6 +2,7 @@ import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Button } from "@/ui/components";
+import { useSheetBottomInset } from "@/ui/sheet";
 import { colors, spacing, type } from "@/ui/theme";
 import { requestPushPermission } from "./push-permission";
 import { syncPushToken } from "./push-token";
@@ -12,6 +13,7 @@ import { syncPushToken } from "./push-token";
  */
 export function PushPrimer({ onDone }: { onDone: () => void }) {
   const [asking, setAsking] = useState(false);
+  const bottom = useSheetBottomInset(spacing.lg);
 
   async function activate() {
     setAsking(true);
@@ -20,7 +22,7 @@ export function PushPrimer({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, bottom]}>
       <SymbolView name="bell.badge" size={44} tintColor={colors.secondaryLabel} style={styles.icon} />
       <Text style={[type.title, styles.title]}>¿Te avisamos cuando arranque y cuando se revele?</Text>
       <Text style={[type.body, styles.body]}>

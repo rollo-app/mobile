@@ -7,6 +7,7 @@ import { useRevealedPhotos } from "@/features/media/revealed";
 import { memberTotal } from "@/features/trips/member-total";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Loading } from "@/ui/components";
+import { useSheetBottomInset } from "@/ui/sheet";
 import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, getCollageSelection } from "./collage-selection";
@@ -26,6 +27,7 @@ export function ShareRollScreen({ tripId }: { tripId: string }) {
   const [whatsapp, setWhatsapp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const bottom = useSheetBottomInset(spacing.xl);
   const kind = detail ? shareKind(detail, photos) : null;
   const candidates = useMemo(() => collageCandidates(photos), [photos]);
 
@@ -39,7 +41,7 @@ export function ShareRollScreen({ tripId }: { tripId: string }) {
 
   if (!detail || !kind) {
     return (
-      <View style={styles.sheet}>
+      <View style={[styles.sheet, bottom]}>
         <Text accessibilityRole="header" style={[type.title, { color: colors.label }]}>
           Compartir
         </Text>
@@ -93,7 +95,7 @@ export function ShareRollScreen({ tripId }: { tripId: string }) {
   };
 
   return (
-    <View style={styles.sheet}>
+    <View style={[styles.sheet, bottom]}>
       <Text accessibilityRole="header" style={[type.title, { color: colors.label }]}>
         Compartir
       </Text>

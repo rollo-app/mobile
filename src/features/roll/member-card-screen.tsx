@@ -9,6 +9,7 @@ import { formatHandle } from "@/features/profile/username";
 import { memberActions, memberBadge, type MemberAction } from "@/features/trips/roles";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Row, Section } from "@/ui/components";
+import { useSheetBottomInset } from "@/ui/sheet";
 import { colors, spacing, type } from "@/ui/theme";
 import { useMemberActions } from "./use-member-actions";
 
@@ -21,6 +22,7 @@ const ACTION_TITLES: Record<MemberAction, string> = { makeAdmin: "Hacer admin", 
  */
 export function MemberCardScreen({ tripId, memberId }: { tripId: string | undefined; memberId: string | undefined }) {
   const { detail, error } = useTripDetail(tripId);
+  const bottom = useSheetBottomInset(spacing.lg);
   const member = detail?.members.find((m) => m.id === memberId);
   const { profile } = useUser(member?.userId);
   const openProfile = useOpenProfile();
@@ -45,7 +47,7 @@ export function MemberCardScreen({ tripId, memberId }: { tripId: string | undefi
   );
   if (!detail || !member) {
     return (
-      <View style={styles.sheet}>
+      <View style={[styles.sheet, bottom]}>
         {closeButton}
         <View style={styles.empty}>{!!error && <ErrorText>No se pudo cargar.</ErrorText>}</View>
       </View>
@@ -55,7 +57,7 @@ export function MemberCardScreen({ tripId, memberId }: { tripId: string | undefi
   const bio = profile?.user.bio;
   const available = memberActions(detail.me, member);
   return (
-    <View style={styles.sheet}>
+    <View style={[styles.sheet, bottom]}>
       {closeButton}
       <View style={styles.header}>
         <Avatar id={member.id} name={member.name} avatarUrl={member.avatarUrl} size={96} />
