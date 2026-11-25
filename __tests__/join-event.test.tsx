@@ -296,7 +296,7 @@ describe("Joining a regular rollo by link or code", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
-    await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT", groupIds: [] }));
+    await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
   });
 

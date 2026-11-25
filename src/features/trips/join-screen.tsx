@@ -107,7 +107,8 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   }
 
   function enter() {
-    join.mutate({ code, groupIds: selected }, { onSuccess });
+    // A regular rollo has no groups: the server rejects an empty `groupIds`, so the key is left out.
+    join.mutate(event?.type === "trip" ? { code } : { code, groupIds: selected }, { onSuccess });
   }
 
   const choosing = event !== null;
