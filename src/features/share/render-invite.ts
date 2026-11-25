@@ -1,10 +1,11 @@
-import { FontWeight, Skia, TileMode, type SkCanvas, type SkImage } from "@shopify/react-native-skia";
+import { FontWeight, Skia, TileMode, type SkCanvas, type SkImage, type SkSurface } from "@shopify/react-native-skia";
 import { API_URL } from "@/config";
 import type { RGB } from "@/features/trips/thumbhash-color";
 import type { Rect } from "./collage";
 import { fetchImage } from "./load-images";
 import {
   clipRounded,
+  disposeSurface,
   drawBrand,
   drawCover,
   drawScrim,
@@ -62,23 +63,25 @@ function swatchImage(swatches: RGB[]): SkImage | null {
   const side = Math.round(HERO.w * SWATCH_OVERSIZE);
   const surface = Skia.Surface.MakeOffscreen(side, side);
   if (!surface) return null;
-  const canvas = surface.getCanvas();
-  const blur = Skia.Paint();
-  blur.setImageFilter(Skia.ImageFilter.MakeBlur(SWATCH_BLUR, SWATCH_BLUR, TileMode.Clamp, null));
-  canvas.saveLayer(blur);
-  const cell = side / SWATCH_GRID;
-  const paint = Skia.Paint();
-  for (let i = 0; i < SWATCH_GRID * SWATCH_GRID; i++) {
-    const { r, g, b } = swatches[i % swatches.length]!;
-    paint.setColor(Skia.Color(`rgb(${r},${g},${b})`));
-    // Half a pixel of overlap so no seam shows between cells.
-    canvas.drawRect(Skia.XYWHRect((i % SWATCH_GRID) * cell, Math.floor(i / SWATCH_GRID) * cell, cell + 0.5, cell + 0.5), paint);
+  try {
+    const canvas = surface.getCanvas();
+    const blur = Skia.Paint();
+    blur.setImageFilter(Skia.ImageFilter.MakeBlur(SWATCH_BLUR, SWATCH_BLUR, TileMode.Clamp, null));
+    canvas.saveLayer(blur);
+    const cell = side / SWATCH_GRID;
+    const paint = Skia.Paint();
+    for (let i = 0; i < SWATCH_GRID * SWATCH_GRID; i++) {
+      const { r, g, b } = swatches[i % swatches.length]!;
+      paint.setColor(Skia.Color(`rgb(${r},${g},${b})`));
+      // Half a pixel of overlap so no seam shows between cells.
+      canvas.drawRect(Skia.XYWHRect((i % SWATCH_GRID) * cell, Math.floor(i / SWATCH_GRID) * cell, cell + 0.5, cell + 0.5), paint);
+    }
+    canvas.restore();
+    surface.flush();
+    return surface.makeImageSnapshot();
+  } finally {
+    disposeSurface(surface);
   }
-  canvas.restore();
-  surface.flush();
-  const image = surface.makeImageSnapshot();
-  surface.dispose();
-  return image;
 }
 
 /** The middle of the oversized swatch image, filling the hero. */
@@ -129,8 +132,11 @@ export async function renderInvite(input: {
 }): Promise<Uint8Array> {
   const cover = input.coverUrl ? await fetchImage(`${API_URL}${input.coverUrl}`) : null;
   const swatches = !cover && input.swatches.length > 0 ? swatchImage(input.swatches) : null;
+  let surface: SkSurface | null = null;
   try {
-    const { surface, canvas } = makeStory();
+    const story = makeStory();
+    surface = story.surface;
+    const { canvas } = story;
 
     canvas.save();
     clipRounded(canvas, HERO, HERO_RADIUS);
@@ -149,6 +155,7 @@ export async function renderInvite(input: {
     drawBrand(canvas);
     return encodeStory(surface);
   } finally {
+    if (surface) disposeSurface(surface);
     cover?.dispose();
     swatches?.dispose();
   }

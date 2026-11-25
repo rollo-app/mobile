@@ -69,6 +69,7 @@
     "jest": "^30.5.2",
     "jest-expo": "~58.0.11",
     "openapi-typescript": "^7.13.0",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -81,7 +82,8 @@
     "icons": "node scripts/build-icons.mjs",
     "lottie": "node scripts/build-lottie.mjs",
     "update:production": "APP_VARIANT=production EXPO_PUBLIC_API_URL=https://rollo-api.juanifraga.com npx eas-cli@latest update --channel production --environment production --platform ios",
-    "api:generate": "openapi-typescript ${API_SPEC:-https://raw.githubusercontent.com/rollo-app/backend/develop/openapi.json} --default-non-nullable false -o src/api/schema.d.ts"
+    "api:generate": "openapi-typescript ${API_SPEC:-https://raw.githubusercontent.com/rollo-app/backend/develop/openapi.json} --default-non-nullable false -o src/api/schema.d.ts",
+    "postinstall": "patch-package"
   },
   "private": true,
   "jest": {

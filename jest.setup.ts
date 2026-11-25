@@ -30,7 +30,10 @@ jest.mock("@/features/capture/store", () => {
 // expo-file-system is native: a File that exists and uploads fine, and folders that do nothing.
 jest.mock("expo-file-system", () => {
   class File {
-    constructor(..._parts: unknown[]) {}
+    constructor(...parts: unknown[]) {
+      File.lastParts = parts;
+    }
+    static lastParts: unknown[] = [];
     uri = "file:///cache/tmp";
     get exists() {
       return true;

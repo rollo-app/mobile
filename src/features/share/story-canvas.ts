@@ -155,6 +155,15 @@ export function makeStory(): { surface: SkSurface; canvas: SkCanvas } {
   return { surface, canvas };
 }
 
+const disposed = new WeakSet<SkSurface>();
+
+/** Frees a surface once: safe to call again (and after `encodeStory`), so renderers can always call it from a `finally`. */
+export function disposeSurface(surface: SkSurface) {
+  if (disposed.has(surface)) return;
+  disposed.add(surface);
+  surface.dispose();
+}
+
 /** The finished story as JPEG bytes (quality 92). Frees the surface: it can't be drawn on afterwards. */
 export function encodeStory(surface: SkSurface): Uint8Array {
   surface.flush();
@@ -163,6 +172,6 @@ export function encodeStory(surface: SkSurface): Uint8Array {
     return snapshot.encodeToBytes(ImageFormat.JPEG, 92);
   } finally {
     snapshot.dispose();
-    surface.dispose();
+    disposeSurface(surface);
   }
 }

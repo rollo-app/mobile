@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { router } from "expo-router";
 import { StyleSheet, Text } from "react-native";
 import { ContestCard } from "@/features/contest/contest-card";
@@ -17,6 +18,7 @@ import { memberTotal } from "@/features/trips/member-total";
 export function RollOverview({ tripId, focused }: { tripId: string; /** The screen is in view (see `ContestCard`). */ focused: boolean }) {
   const { detail, error, refetch, isRefetching } = useTripDetail(tripId);
   const { photos } = useRevealedPhotos(tripId);
+  const hasCollage = useMemo(() => collageCandidates(photos).length > 0, [photos]);
 
   return (
     <Screen grouped testID="roll-overview">
@@ -40,7 +42,7 @@ export function RollOverview({ tripId, focused }: { tripId: string; /** The scre
               timeZone: detail.trip.timezone,
             })}
           </Text>
-          {!detail.trip.featuringDisabled && collageCandidates(photos).length > 0 && (
+          {!detail.trip.featuringDisabled && hasCollage && (
             <Section>
               <Row label="Compartir en Stories" onPress={() => router.push({ pathname: "/share-story", params: { tripId, kind: "collage" } })} />
             </Section>

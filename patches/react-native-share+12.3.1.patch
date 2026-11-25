@@ -1,0 +1,13 @@
+diff --git a/node_modules/react-native-share/ios/InstagramStories.m b/node_modules/react-native-share/ios/InstagramStories.m
+index 79cfd01..22d362c 100644
+--- a/node_modules/react-native-share/ios/InstagramStories.m
++++ b/node_modules/react-native-share/ios/InstagramStories.m
+@@ -76,6 +76,8 @@ - (void)shareSingle:(NSDictionary *)options
+     if(![options[@"linkText"] isEqual:[NSNull null]] && options[@"linkText"] != nil) {
+         NSString *linkText = [RCTConvert NSString:options[@"linkText"]];
+         [items setObject: linkText forKey: @"com.instagram.sharedSticker.linkText"];
++        // Instagram's Link sticker pastes from the same pasteboard item, and setItems replaces the general pasteboard.
++        [items setObject: linkText forKey: @"public.utf8-plain-text"];
+     }
+ 
+     if(![options[@"backgroundVideo"] isEqual:[NSNull null]] && options[@"backgroundVideo"] != nil) {

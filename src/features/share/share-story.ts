@@ -3,6 +3,8 @@ import { Linking, Share as SystemShare } from "react-native";
 import Share, { type Social } from "react-native-share";
 import { META_APP_ID } from "@/config";
 
+const STORY_BACKGROUND = "#0b0b0c";
+
 /** Writes the rendered JPEG to the cache (overwriting the previous one) and returns its file:// uri. */
 export async function writeStoryFile(bytes: Uint8Array, name: "collage" | "invite"): Promise<string> {
   const file = new File(Paths.cache, `rollo-${name}.jpg`);
@@ -25,10 +27,19 @@ export async function instagramStoriesAvailable(appId: string | null = META_APP_
  * Opens Instagram's Stories editor with the image as the background. On iOS this just opens Instagram and resolves:
  * there is no callback when the editor is closed, so there is no cancel to detect. Real failures reject.
  */
-export async function shareToInstagramStories(uri: string): Promise<void> {
+export async function shareToInstagramStories(uri: string, linkText?: string): Promise<void> {
   // The typings expose INSTAGRAM_STORIES as a plain string (it comes from native constants); shareSingle wants the enum member.
   const social = Share.Social.INSTAGRAM_STORIES as Social.InstagramStories;
-  await Share.shareSingle({ social, appId: META_APP_ID, backgroundImage: uri });
+  // `linkText` also goes in Instagram's pasteboard item as plain text (patches/react-native-share+*.patch): the module replaces the
+  // whole general pasteboard, so a link copied before would be lost. The colors keep the edges dark instead of the default purple.
+  await Share.shareSingle({
+    social,
+    appId: META_APP_ID,
+    backgroundImage: uri,
+    backgroundTopColor: STORY_BACKGROUND,
+    backgroundBottomColor: STORY_BACKGROUND,
+    ...(linkText ? { linkText } : {}),
+  });
 }
 
 /** The system share sheet ("Más opciones"). React Native's Share.share resolves with `dismissedAction` on dismiss and never throws for it. */

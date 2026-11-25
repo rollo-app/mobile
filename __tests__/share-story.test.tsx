@@ -135,13 +135,35 @@ describe("Compartir screen", () => {
     await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(FILE, undefined));
   });
 
+  it("collage: Stories is shared without a link", async () => {
+    await open("collage");
+    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(FILE, undefined));
+    expect(clipboard.setStringAsync).not.toHaveBeenCalled();
+  });
+
+  it("collage with no shareable photo shows the empty note", async () => {
+    await open("collage", detail(), [item("a", { shareable: false })]);
+    expect(await screen.findByText("Todavía no hay fotos para armar el collage.")).toBeVisible();
+    expect(screen.queryByLabelText("Vista previa")).toBeNull();
+    expect(collage).not.toHaveBeenCalled();
+  });
+
+  it("collage whose feed failed shows the error with Reintentar, not the empty note", async () => {
+    trips.fetchTrip.mockResolvedValue(detail());
+    trips.fetchFeedPage.mockRejectedValue(new Error("offline"));
+    await renderRouter(routes, { initialUrl: `/share-story?tripId=${SUR}&kind=collage` });
+    expect(await screen.findByRole("button", { name: "Reintentar" })).toBeVisible();
+    expect(screen.queryByText("Todavía no hay fotos para armar el collage.")).toBeNull();
+  });
+
   it("collage with a single shareable photo has no Otras", async () => {
     await open("collage", detail(), [item("a"), item("b", { shareable: false })]);
     expect(await screen.findByLabelText("Vista previa")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Otras" })).toBeNull();
   });
 
-  it("invite: copies the link before opening Stories and shows the sticker note", async () => {
+  it("invite: Stories carries the link, Más opciones copies it, and the sticker note shows", async () => {
     const order: string[] = [];
     clipboard.setStringAsync.mockImplementation(async () => (order.push("copy"), true));
     story.shareToInstagramStories.mockImplementation(async () => void order.push("stories"));
@@ -153,13 +175,15 @@ describe("Compartir screen", () => {
     expect(invite.mock.calls[0]![0].swatches.length).toBeGreaterThan(0);
 
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
-    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(FILE));
-    expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("HUB5FT"));
-    expect(order).toEqual(["copy", "stories"]);
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(FILE, expect.stringContaining("HUB5FT")));
+    // The Stories pasteboard write replaces the clipboard: the link travels in the Stories call, not through expo-clipboard.
+    expect(clipboard.setStringAsync).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
     await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(FILE, expect.stringContaining("HUB5FT")));
-    expect(clipboard.setStringAsync).toHaveBeenCalledTimes(2);
+    expect(clipboard.setStringAsync).toHaveBeenCalledTimes(1);
+    expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("HUB5FT"));
+    expect(order).toEqual(["stories", "copy"]);
   });
 
   it("render failure shows the error and Reintentar rebuilds", async () => {

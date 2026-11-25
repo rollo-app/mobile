@@ -18,7 +18,6 @@ export function useStoryImage(build: (() => Promise<Uint8Array>) | null, key: st
   });
   return {
     uri: query.data ?? null,
-    loading: build !== null && !query.isError && !query.data,
     error: query.isError,
     retry: () => void query.refetch(),
   };
