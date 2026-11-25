@@ -4,8 +4,9 @@ import { API_URL } from "@/config";
 import { Button } from "@/ui/components";
 import { spacing, type } from "@/ui/theme";
 
-// Dark at the top (the status bar) and at the bottom (the name), clear in the middle of the photo.
-const SCRIM = "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.7) 100%)";
+// Slightly dark at the top (the status bar), clear in the middle, and melting into the black screen at the bottom
+// (under the name), so the photo has no hard edge.
+const SCRIM = "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.75) 82%, rgba(0,0,0,1) 100%)";
 
 /**
  * The full-screen invitation to a regular rollo: the cover edge to edge with the name and dates over it, then the
@@ -37,7 +38,8 @@ export function TripInvitation({
   onClose: () => void;
 }) {
   const { height } = useWindowDimensions();
-  const coverHeight = Math.max(300, Math.round(height * 0.45));
+  // Most of the screen is the photo, as in the approved mockup (~58%).
+  const coverHeight = Math.max(340, Math.round(height * 0.58));
   return (
     <ScrollView testID="trip-invitation" style={styles.screen} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="never" bounces={false}>
       <View testID="trip-invitation-cover" style={[styles.cover, { height: coverHeight }]}>
@@ -76,7 +78,7 @@ export function TripInvitation({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#000" },
   content: { paddingBottom: spacing.xl },
-  cover: { width: "100%", backgroundColor: "#1c1c1e", justifyContent: "flex-end" },
+  cover: { width: "100%", backgroundColor: "#000", justifyContent: "flex-end" },
   scrim: { backgroundImage: SCRIM },
   title: { padding: spacing.lg, gap: spacing.xs },
   name: { color: "#fff" },
