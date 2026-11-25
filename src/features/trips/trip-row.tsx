@@ -13,9 +13,10 @@ import { rowTint } from "./row-tint";
 import { thumbHashAverageColor, type RGB } from "./thumbhash-color";
 
 const BADGE_LABEL = { live: "LIVE", revealed: "Revelado" } as const;
-// The menu only takes SF Symbols on iOS: for sharing, Apple's closest to the app's own share glyph (@/ui/share-icon).
+// The menu only takes SF Symbols on iOS (@expo/ui's MenuView drops image sources), so sharing uses iOS's own share symbol
+// here instead of the app's glyph (@/ui/share-icon).
 const ROW_ACTION_IMAGES = {
-  share: "point.3.connected.trianglepath.dotted",
+  share: "square.and.arrow.up",
   archive: "archivebox",
   unarchive: "tray.and.arrow.up",
   leave: "trash",
