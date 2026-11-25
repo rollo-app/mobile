@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { router, Stack } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -70,7 +70,7 @@ function FocusBand({ tripId, source, initial }: { tripId: string; source: string
   const done = () => save.mutate(focus, { onSuccess: () => router.back() });
 
   return (
-    <View style={styles.screen}>
+    <>
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button onPress={() => router.back()}>Cancelar</Stack.Toolbar.Button>
       </Stack.Toolbar>
@@ -86,6 +86,8 @@ function FocusBand({ tripId, source, initial }: { tripId: string; source: string
         )}
       </Stack.Toolbar>
 
+      {/* The scroll view insets its content below the modal's header; it never scrolls (the pan owns the drag). */}
+      <ScrollView testID="cover-focus-content" scrollEnabled={false} contentInsetAdjustmentBehavior="automatic" style={styles.scroll} contentContainerStyle={styles.screen}>
       <Text style={[type.subhead, styles.hint]}>Arrastrá el recuadro para elegir qué parte de la portada se ve en la lista de rollos.</Text>
       <View style={{ width: photoWidth, height: photoHeight, borderRadius: radius.md, borderCurve: "continuous", overflow: "hidden" }}>
         <Image source={source ? { uri: source } : undefined} contentFit="cover" style={StyleSheet.absoluteFill} accessibilityIgnoresInvertColors />
@@ -108,12 +110,14 @@ function FocusBand({ tripId, source, initial }: { tripId: string; source: string
         </GestureDetector>
       </View>
       {!!save.error && <ErrorText>{errorMessage(save.error, "No se pudo guardar")}</ErrorText>}
-    </View>
+      </ScrollView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, alignItems: "center", gap: spacing.md, paddingTop: spacing.md, backgroundColor: colors.groupedBackground },
+  scroll: { backgroundColor: colors.groupedBackground },
+  screen: { alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
   hint: { color: colors.secondaryLabel, textAlign: "center", paddingHorizontal: spacing.lg },
   dim: { position: "absolute", left: 0, right: 0, backgroundColor: DIM },
   band: { position: "absolute", top: 0, left: 0, right: 0, borderWidth: 3, borderColor: "#FFFFFF", borderRadius: radius.sm, borderCurve: "continuous" },
