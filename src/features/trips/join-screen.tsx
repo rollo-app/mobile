@@ -120,11 +120,13 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
     else router.replace("/");
   }
 
-  // A regular rollo's link opens as a full-screen invitation (no header; swiping down still closes the modal).
+  // A regular rollo's link opens as a full-screen invitation; swiping down still closes the modal. The header stays but
+  // turns transparent and empty: hiding a modal's header (headerShown) remounts the screen, which looked the code up
+  // again and hid it again, in a loop.
   if (event?.type === "trip") {
     return (
       <>
-        <Stack.Screen options={{ headerShown: false }} />
+        <Stack.Screen options={{ headerTransparent: true, title: "", headerShadowVisible: false }} />
         <TripInvitation
           name={event.name}
           dates={dates}
