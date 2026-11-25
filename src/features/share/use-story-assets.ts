@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import type { Card } from "./card-layout";
 import { composeStill } from "./compose-still";
+import { fileId } from "./file-id";
 import { writeShareFile } from "./share-story";
 import type { StoryStyle } from "./story-style";
 
@@ -28,7 +29,8 @@ export function useStoryAssets(build: (() => Promise<Card>) | null, key: string,
     queryFn: async () => {
       const card = await step("render card", build!);
       // One file per kind, style and seed: the cache keeps older entries, whose uris must keep pointing at their own bytes.
-      const id = `${name}-${style}-${key.replace(/[^a-z0-9]/gi, "_")}`;
+      // The key is hashed: with 8 photo ids it would pass the 255-byte file name limit.
+      const id = `${name}-${style}-${fileId(key)}`;
       const [cardUri, stillUri] = await Promise.all([
         step("write files", () => writeShareFile(card.png, `rollo-${id}-card.png`)),
         step("compose still", () => composeStill(card, style)).then((still) => step("write files", () => writeShareFile(still, `rollo-${id}-still.jpg`))),
