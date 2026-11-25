@@ -11,8 +11,9 @@ import { Button, ErrorText, Footnote, Loading, Screen } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import { canShuffle, collageCandidates, collageCaption, nextSeed, pickCollage } from "./collage";
 import { inviteCaption, inviteLink, inviteSwatches } from "./invite";
-import { renderCollage } from "./render-collage";
-import { renderInvite } from "./render-invite";
+import { composeStill } from "./compose-still";
+import { renderCollageCard } from "./render-collage";
+import { renderInviteCard } from "./render-invite";
 import { instagramStoriesAvailable, isShareCancel, shareMore, shareToInstagramStories } from "./share-story";
 import { useStoryImage } from "./use-story-image";
 
@@ -61,10 +62,21 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
     const { trip } = detail;
     if (isCollage) {
       const caption = collageCaption({ startsAt: trip.startsAt, endsAt: trip.endsAt, timeZone: trip.timezone, people: memberTotal(detail) });
-      return () => renderCollage({ name: trip.name, caption, photos: pickCollage(candidates, seed) });
+      // Temporary until the style picker lands: the dark card over the dark still.
+      return async () => composeStill(await renderCollageCard({ name: trip.name, caption, photos: pickCollage(candidates, seed), style: "dark" }), "dark");
     }
-    return () =>
-      renderInvite({ name: trip.name, caption: inviteCaption(detail), code: trip.joinCode, coverUrl: trip.coverUrl ?? null, swatches: inviteSwatches(thumbhashes) });
+    return async () =>
+      composeStill(
+        await renderInviteCard({
+          name: trip.name,
+          caption: inviteCaption(detail),
+          code: trip.joinCode,
+          coverUrl: trip.coverUrl ?? null,
+          swatches: inviteSwatches(thumbhashes),
+          style: "dark",
+        }),
+        "dark",
+      );
   }, [detail, ready, empty, feedFailed, isCollage, candidates, seed, thumbhashes]);
 
   const image = useStoryImage(build, `${tripId}:${kind}:${isCollage ? seed : 0}`, kind);

@@ -1,6 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import "@/test/reanimated";
+import * as composeStillModule from "@/features/share/compose-still";
 import * as renderCollageModule from "@/features/share/render-collage";
 import * as renderInviteModule from "@/features/share/render-invite";
 import * as shareStory from "@/features/share/share-story";
@@ -10,8 +11,9 @@ import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
-jest.mock("@/features/share/render-collage", () => ({ renderCollage: jest.fn() }));
-jest.mock("@/features/share/render-invite", () => ({ renderInvite: jest.fn() }));
+jest.mock("@/features/share/render-collage", () => ({ renderCollageCard: jest.fn() }));
+jest.mock("@/features/share/render-invite", () => ({ renderInviteCard: jest.fn() }));
+jest.mock("@/features/share/compose-still", () => ({ composeStill: jest.fn() }));
 jest.mock("@/features/share/share-story", () => ({
   ...jest.requireActual("@/features/share/share-story"),
   writeStoryFile: jest.fn(),
@@ -20,8 +22,9 @@ jest.mock("@/features/share/share-story", () => ({
   shareMore: jest.fn(),
 }));
 const trips = jest.mocked(tripActions);
-const collage = jest.mocked(renderCollageModule.renderCollage);
-const invite = jest.mocked(renderInviteModule.renderInvite);
+const collage = jest.mocked(renderCollageModule.renderCollageCard);
+const invite = jest.mocked(renderInviteModule.renderInviteCard);
+const still = jest.mocked(composeStillModule.composeStill);
 const story = jest.mocked(shareStory);
 const clipboard = jest.mocked(Clipboard);
 
@@ -100,8 +103,9 @@ beforeEach(async () => {
   jest.clearAllMocks();
   for (const mock of Object.values(trips)) (mock as Partial<jest.Mock>).mockReset?.();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
-  collage.mockResolvedValue(new Uint8Array([1]));
-  invite.mockResolvedValue(new Uint8Array([2]));
+  collage.mockResolvedValue({ png: new Uint8Array([1]), width: 920, height: 1100 });
+  invite.mockResolvedValue({ png: new Uint8Array([2]), width: 920, height: 1300 });
+  still.mockResolvedValue(new Uint8Array([3]));
   story.writeStoryFile.mockResolvedValue(FILE);
   story.instagramStoriesAvailable.mockResolvedValue(true);
   story.shareToInstagramStories.mockResolvedValue(undefined);

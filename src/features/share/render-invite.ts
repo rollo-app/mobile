@@ -2,6 +2,19 @@ import { FontWeight, Skia, TileMode, type SkCanvas, type SkImage, type SkSurface
 import { API_URL } from "@/config";
 import type { RGB } from "@/features/trips/thumbhash-color";
 import type { Rect } from "./collage";
+import {
+  BRAND_GAP,
+  BRAND_H,
+  CARD_CONTENT_W,
+  CARD_PAD,
+  CARD_W,
+  cardHeight,
+  CODE_GAP,
+  CODE_H,
+  CODE_LABEL_GAP,
+  SMALL_LINE_H,
+  type Card,
+} from "./card-layout";
 import { fetchImage } from "./load-images";
 import {
   clipRounded,
@@ -10,20 +23,20 @@ import {
   drawCover,
   drawScrim,
   drawText,
-  encodeStory,
+  encodeCard,
   layoutText,
-  makeStory,
+  makeCard,
   type TextSpec,
-  MARGIN,
   SMALL,
-  STORY_W,
   titleLines,
 } from "./story-canvas";
+import { STYLE_PALETTE, type StoryStyle } from "./story-style";
 
-// Layout of the invitation: the square hero (like the join screen's cover) with the text over its fade,
-// the code below it and, between the code and the brand, room for Instagram's Link sticker (~340 px, ≥180).
-const HERO: Rect = { x: MARGIN, y: 210, w: STORY_W - MARGIN * 2, h: STORY_W - MARGIN * 2 };
-const HERO_RADIUS = 48;
+// The invitation card: the square hero (like the join screen's cover) with the text over its fade, the code below it and
+// the brand. Instagram's Link sticker isn't inside it: the user places it anywhere on the background.
+const HERO: Rect = { x: CARD_PAD, y: CARD_PAD, w: CARD_CONTENT_W, h: CARD_CONTENT_W };
+/** Smaller than the card's corners, so the hero sits inside them. */
+const HERO_RADIUS = 28;
 /** Fill while nothing is drawn, the same as `EventHero`'s frame. */
 const HERO_PLACEHOLDER = "#1c1c1e";
 /** Text inside the hero: side padding and distance from its bottom. */
@@ -35,10 +48,6 @@ const HERO_SECONDARY = { ...SMALL, opacity: 0.85 };
 const NAME_GAP_ABOVE = 8;
 const NAME_GAP_BELOW = 12;
 
-/** "Sumate con el código" starts this far below the hero. */
-const CODE_LABEL_GAP = 72;
-const CODE_LABEL = { ...SMALL, opacity: 0.7, center: true };
-const CODE_GAP = 8;
 const CODE_LETTER_SPACING = 18;
 const CODE = {
   size: 110,
@@ -122,21 +131,24 @@ function drawHeroText(canvas: SkCanvas, name: string, caption: string) {
   under.paint(canvas, x, captionTop);
 }
 
-/** The pre-reveal invitation as a 1080×1920 JPEG. The cover is public (no token); if it fails, the swatches or the gradient. */
-export async function renderInvite(input: {
+/** The pre-reveal invitation as a card. The cover is public (no token); if it fails, the swatches or the gradient. */
+export async function renderInviteCard(input: {
   name: string;
   caption: string;
   code: string;
   coverUrl: string | null;
   swatches: RGB[];
-}): Promise<Uint8Array> {
+  style: StoryStyle;
+}): Promise<Card> {
   const cover = input.coverUrl ? await fetchImage(`${API_URL}${input.coverUrl}`) : null;
   const swatches = !cover && input.swatches.length > 0 ? swatchImage(input.swatches) : null;
+  const palette = STYLE_PALETTE[input.style];
   let surface: SkSurface | null = null;
   try {
-    const story = makeStory();
-    surface = story.surface;
-    const { canvas } = story;
+    const height = cardHeight({ kind: "invite", titleHeight: 0 });
+    const card = makeCard(height, palette.card);
+    surface = card.surface;
+    const { canvas } = card;
 
     canvas.save();
     clipRounded(canvas, HERO, HERO_RADIUS);
@@ -148,12 +160,14 @@ export async function renderInvite(input: {
     drawHeroText(canvas, input.name, input.caption);
     canvas.restore();
 
-    const codeTop = drawText(canvas, "Sumate con el código", CODE_LABEL, 0, HERO.y + HERO.h + CODE_LABEL_GAP, STORY_W) + CODE_GAP;
+    const labelTop = HERO.y + HERO.h + CODE_LABEL_GAP;
+    drawText(canvas, "Sumate con el código", { ...SMALL, color: palette.text, opacity: 0.7, center: true }, 0, labelTop, CARD_W);
+    const codeTop = labelTop + SMALL_LINE_H + CODE_GAP;
     // Letter spacing also follows the last character: shifting half of it keeps the code optically centered.
-    drawText(canvas, input.code, CODE, CODE_LETTER_SPACING / 2, codeTop, STORY_W);
+    drawText(canvas, input.code, { ...CODE, color: palette.text }, CODE_LETTER_SPACING / 2, codeTop, CARD_W);
 
-    drawBrand(canvas);
-    return encodeStory(surface);
+    drawBrand(canvas, CARD_W / 2, codeTop + CODE_H + BRAND_GAP + BRAND_H, palette.text);
+    return { png: encodeCard(surface), width: CARD_W, height };
   } finally {
     if (surface) disposeSurface(surface);
     cover?.dispose();

@@ -10,14 +10,13 @@ import {
   type SkParagraph,
   type SkSurface,
 } from "@shopify/react-native-skia";
+import { CARD_RADIUS, CARD_W } from "./card-layout";
 import type { Rect } from "./collage";
 
 // The Stories image, in pixels. The mockup (stories-v1.html) is 270×480: everything here is it ×4.
 export const STORY_W = 1080;
 export const STORY_H = 1920;
 export const BACKGROUND = "#0b0b0c";
-/** Side margin of both images. */
-export const MARGIN = 64;
 
 /** iOS's system font (SF). The family name Core Text uses for it; React Native maps "System" to the same. */
 const SYSTEM_FONT = ".AppleSystemUIFont";
@@ -25,7 +24,9 @@ const SYSTEM_FONT = ".AppleSystemUIFont";
 export type TextSpec = {
   size: number;
   weight?: FontWeight;
-  /** Of the white. */
+  /** Any CSS color; white by default. */
+  color?: string;
+  /** Multiplies the color's alpha. */
   opacity?: number;
   center?: boolean;
   letterSpacing?: number;
@@ -45,7 +46,13 @@ export const TITLE = {
   maxLines: 3,
 } satisfies TextSpec;
 
-/** `text` in white system font, wrapped and laid out to `width`. */
+/** `color` with its alpha multiplied by `opacity`. */
+export function withOpacity(color: string, opacity = 1) {
+  const c = Skia.Color(color);
+  return Skia.Color(`rgba(${Math.round(c[0]! * 255)},${Math.round(c[1]! * 255)},${Math.round(c[2]! * 255)},${c[3]! * opacity})`);
+}
+
+/** `text` in the system font (white unless `spec.color`), wrapped and laid out to `width`. */
 export function layoutText(text: string, spec: TextSpec, width: number): SkParagraph {
   const builder = Skia.ParagraphBuilder.Make({
     maxLines: spec.maxLines,
@@ -53,7 +60,7 @@ export function layoutText(text: string, spec: TextSpec, width: number): SkParag
     textAlign: spec.center ? TextAlign.Center : TextAlign.Left,
   });
   builder.pushStyle({
-    color: Skia.Color(`rgba(255,255,255,${spec.opacity ?? 1})`),
+    color: withOpacity(spec.color ?? "#ffffff", spec.opacity),
     fontFamilies: [SYSTEM_FONT],
     fontSize: spec.size,
     fontStyle: { weight: spec.weight ?? FontWeight.Normal },
@@ -75,7 +82,7 @@ export function drawText(canvas: SkCanvas, text: string, spec: TextSpec, x: numb
 }
 
 /** The roll's name as a title of up to 3 lines (ellipsis on the last), laid out to `width`; callers read its height. */
-export const titleLines = (name: string, width: number): SkParagraph => layoutText(name, TITLE, width);
+export const titleLines = (name: string, width: number, color?: string): SkParagraph => layoutText(name, { ...TITLE, color }, width);
 
 /** Clips what's drawn next to `rect` with rounded corners (the mockup's border-radius); the caller wraps it in save()/restore(). */
 export function clipRounded(canvas: SkCanvas, { x, y, w, h }: Rect, radius: number) {
@@ -121,29 +128,27 @@ const WORDMARK = { size: 30, weight: FontWeight.SemiBold, letterSpacing: 0.6 } s
 const SITE = { size: 24, opacity: 0.55, center: true } satisfies TextSpec;
 const LOGO_GAP = 14;
 const SITE_GAP = 10;
-/** Where the brand's last line ends. */
-export const BRAND_BOTTOM = 1840;
 
-/** The brand centered at the bottom, ending at `BRAND_BOTTOM`. */
-export function drawBrand(canvas: SkCanvas) {
-  const wordmark = layoutText("Rollo Project", WORDMARK, STORY_W);
-  const site = layoutText("rolloproject.com", SITE, STORY_W);
-  const siteTop = BRAND_BOTTOM - site.getHeight();
+/** The brand centered on `centerX`, its last line ending at `bottom`, in `color` (the logo's circles keep their opacities). */
+export function drawBrand(canvas: SkCanvas, centerX: number, bottom: number, color: string) {
+  const wordmark = layoutText("Rollo Project", { ...WORDMARK, color }, STORY_W);
+  const site = layoutText("rolloproject.com", { ...SITE, color }, STORY_W);
+  const siteTop = bottom - site.getHeight();
   const rowHeight = Math.max(LOGO_SIZE, wordmark.getHeight());
   const rowMid = siteTop - SITE_GAP - rowHeight / 2;
   const wordmarkWidth = wordmark.getLongestLine();
-  const left = (STORY_W - (LOGO_SIZE + LOGO_GAP + wordmarkWidth)) / 2;
+  const left = centerX - (LOGO_SIZE + LOGO_GAP + wordmarkWidth) / 2;
 
   const scale = LOGO_SIZE / 120;
   const logoTop = rowMid - LOGO_SIZE / 2;
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   for (const [cx, cy, r, opacity] of LOGO_CIRCLES) {
-    paint.setColor(Skia.Color(`rgba(255,255,255,${opacity})`));
+    paint.setColor(withOpacity(color, opacity));
     canvas.drawCircle(left + cx * scale, logoTop + cy * scale, r * scale, paint);
   }
   wordmark.paint(canvas, left + LOGO_SIZE + LOGO_GAP, rowMid - wordmark.getHeight() / 2);
-  site.paint(canvas, 0, siteTop);
+  site.paint(canvas, centerX - STORY_W / 2, siteTop);
 }
 
 /** A blank 1080×1920 story on the background color. */
@@ -152,6 +157,20 @@ export function makeStory(): { surface: SkSurface; canvas: SkCanvas } {
   if (!surface) throw new Error("no surface");
   const canvas = surface.getCanvas();
   canvas.drawColor(Skia.Color(BACKGROUND));
+  return { surface, canvas };
+}
+
+/**
+ * A blank card `CARD_W`×`height`: transparent outside, `background` inside the rounded rect, and clipped to it
+ * so nothing drawn afterwards leaks past the corners.
+ */
+export function makeCard(height: number, background: string): { surface: SkSurface; canvas: SkCanvas } {
+  const surface = Skia.Surface.MakeOffscreen(CARD_W, height);
+  if (!surface) throw new Error("no surface");
+  const canvas = surface.getCanvas();
+  canvas.clear(Skia.Color("transparent"));
+  clipRounded(canvas, { x: 0, y: 0, w: CARD_W, h: height }, CARD_RADIUS);
+  canvas.drawColor(Skia.Color(background));
   return { surface, canvas };
 }
 
@@ -164,14 +183,19 @@ export function disposeSurface(surface: SkSurface) {
   surface.dispose();
 }
 
-/** The finished story as JPEG bytes (quality 92). Frees the surface: it can't be drawn on afterwards. */
-export function encodeStory(surface: SkSurface): Uint8Array {
+function encode(surface: SkSurface, format: ImageFormat, quality?: number): Uint8Array {
   surface.flush();
   const snapshot = surface.makeImageSnapshot();
   try {
-    return snapshot.encodeToBytes(ImageFormat.JPEG, 92);
+    return snapshot.encodeToBytes(format, quality);
   } finally {
     snapshot.dispose();
     disposeSurface(surface);
   }
 }
+
+/** The finished story as JPEG bytes (quality 92). Frees the surface: it can't be drawn on afterwards. */
+export const encodeStory = (surface: SkSurface): Uint8Array => encode(surface, ImageFormat.JPEG, 92);
+
+/** The finished card as PNG bytes (keeps the alpha outside the rounded rect). Frees the surface. */
+export const encodeCard = (surface: SkSurface): Uint8Array => encode(surface, ImageFormat.PNG);
