@@ -17,7 +17,7 @@ const ROLLOS: TabsConfig["roll"] = { sf: { default: "film.stack", selected: "fil
 
 /**
  * What the tab bar looks like for each phase. NativeTabs can't add or remove tabs on the fly, so
- * the tabs stay and the roll and camera ones change icon, label and behavior after the reveal.
+ * the tabs stay and the camera one changes icon, label and behavior after the reveal (the Rollos tab keeps its icon in every phase).
  */
 export function tabsFor(phase: RollPhase | null, left: { photos: number } | null, hasTrip = true, isEvent = false): TabsConfig {
   return { map: mapTab(phase, hasTrip && isEvent), ...baseTabs(phase, left, hasTrip) };

@@ -14,7 +14,7 @@ const VIEWS = ["Mapa", "Feed"];
 
 /**
  * The Mapa tab: the roll's map and, before the reveal, its Feed, switched with "Mapa | Feed".
- * In an event it is only the Feed (no map, no switch) and, once revealed, it sends you to Rollo.
+ * In an event it is only the Feed (no map, no switch) and, once revealed, it sends you to Rollos.
  * The view lives in the `view` route param ("map" by default, or "feed"). The map is always
  * mounted: the Feed is drawn over it, so going back keeps the camera and the loaded style.
  */

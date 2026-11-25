@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, spacing, type } from "@/ui/theme";
 
-/** What Mapa and Feed show when there is no roll to look at: a calm pointer to the Rollo tab. */
+/** What Mapa and Feed show when there is no roll to look at: a calm pointer to the Rollos tab. */
 export function NoRollYet() {
   return (
     <View style={styles.screen}>

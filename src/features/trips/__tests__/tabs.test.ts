@@ -37,7 +37,7 @@ describe("tabsFor first tab", () => {
 });
 
 describe("tabsFor without a roll", () => {
-  it("shows the camera locked and sends its tap to the Rollo tab", () => {
+  it("shows the camera locked and sends its tap to the Rollos tab", () => {
     const tabs = tabsFor(null, null, false);
     expect(tabs.camera.target).toBe("/roll");
     expect(tabs.camera.badge).toBeNull();
