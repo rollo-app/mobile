@@ -1,5 +1,6 @@
 import type { TripDetail } from "@/features/trips/actions";
 import { dateFormatter } from "@/lib/intl";
+import { memberTotal } from "@/features/trips/member-total";
 
 type Group = { id: string; name: string };
 
@@ -60,4 +61,25 @@ export function joinedLine(memberCount: number | null | undefined): string | nul
 /** "1 persona" / "N personas". */
 export function peopleLabel(n: number): string {
   return `${n} ${n === 1 ? "persona" : "personas"}`;
+}
+
+const part = (parts: Intl.DateTimeFormatPart[], type: "day" | "month") => parts.find((p) => p.type === type)?.value ?? "";
+
+/** A trip's dates in its own zone: "3 al 8 de enero", "28 de dic al 3 de enero", "3 de enero" for a single day. */
+function tripDates(startsAt: number, endsAt: number, timeZone: string): string {
+  const long = dateFormatter("es-AR", { timeZone, day: "numeric", month: "long" });
+  const short = dateFormatter("es-AR", { timeZone, day: "numeric", month: "short" });
+  const from = long.formatToParts(startsAt);
+  const to = long.formatToParts(endsAt);
+  const [fromDay, fromMonth, toDay, toMonth] = [part(from, "day"), part(from, "month"), part(to, "day"), part(to, "month")];
+  if (fromMonth === toMonth) return fromDay === toDay ? `${toDay} de ${toMonth}` : `${fromDay} al ${toDay} de ${toMonth}`;
+  const shortMonth = part(short.formatToParts(startsAt), "month").replace(/\.$/, "");
+  return `${fromDay} de ${shortMonth} al ${toDay} de ${toMonth}`;
+}
+
+/** The line under the name on a rollo's cover: the event's day or the trip's dates, then how many people are in. */
+export function heroSubtitle(detail: TripDetail): string {
+  const { trip } = detail;
+  const when = isEvent(trip) ? eventDay(trip.startsAt, trip.timezone) : tripDates(trip.startsAt, trip.endsAt, trip.timezone);
+  return `${when} · ${peopleLabel(memberTotal(detail))}`;
 }

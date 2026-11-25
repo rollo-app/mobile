@@ -190,6 +190,33 @@ describe("Cover hero", () => {
     expect(within(hero).getByText(/· 1 persona$/)).toBeVisible();
   });
 
+  it("a regular rollo with a cover shows the hero with its dates", async () => {
+    const d = detail(organizer, [], {
+      type: "trip",
+      groups: [],
+      coverUrl: "/covers/x/y.jpg",
+      startsAt: Date.parse("2027-01-03T15:00:00Z"),
+      endsAt: Date.parse("2027-01-08T15:00:00Z"),
+    });
+    await open({ ...d, memberCount: 8 });
+    const hero = await screen.findByTestId("event-hero");
+    expect(within(hero).getByText("Casamiento de Cami")).toBeVisible();
+    expect(within(hero).getByText("3 al 8 de enero · 8 personas")).toBeVisible();
+  });
+
+  it("a regular rollo with only a description shows it", async () => {
+    await open(detail(organizer, [], { type: "trip", groups: [], description: "Vamos a Bariloche" }));
+    expect(await screen.findByText("Vamos a Bariloche")).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+  });
+
+  it("a regular rollo with neither shows the board as before", async () => {
+    await open(detail(organizer, [], { type: "trip", groups: [] }));
+    expect(await screen.findByRole("button", { name: "Sumar amigos" })).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+    expect(screen.queryByTestId("event-description")).toBeNull();
+  });
+
   it("has no hero without a cover", async () => {
     await openSettings(detail(organizer, []));
     expect(await screen.findByRole("button", { name: "Elegir portada" })).toBeVisible();

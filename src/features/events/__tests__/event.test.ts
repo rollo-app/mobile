@@ -1,5 +1,5 @@
 import type { TripDetail } from "@/features/trips/actions";
-import { eventDay, isEvent, joinedLine, peopleLabel, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
+import { eventDay, heroSubtitle, isEvent, joinedLine, peopleLabel, isOrganizer, myGroups, photoGroupLabel, sendableGroups } from "../event";
 
 const GROUPS = [
   { id: "g1", name: "Novios" },
@@ -119,5 +119,32 @@ describe("peopleLabel", () => {
     expect(peopleLabel(1)).toBe("1 persona");
     expect(peopleLabel(2)).toBe("2 personas");
     expect(peopleLabel(0)).toBe("0 personas");
+  });
+});
+
+describe("heroSubtitle", () => {
+  const zone = "America/Argentina/Buenos_Aires";
+  const sub = (trip: object, memberCount = 8) =>
+    heroSubtitle({ trip: { timezone: zone, ...trip }, memberCount, members: [] } as unknown as TripDetail);
+
+  it("an event shows its day and the headcount", () => {
+    expect(sub({ type: "event", startsAt: Date.parse("2026-12-12T21:00:00Z"), endsAt: Date.parse("2026-12-13T05:00:00Z") })).toBe("12 de diciembre · 8 personas");
+  });
+
+  it("a trip within one month collapses the month", () => {
+    expect(sub({ type: "trip", startsAt: Date.parse("2027-01-03T15:00:00Z"), endsAt: Date.parse("2027-01-08T15:00:00Z") })).toBe("3 al 8 de enero · 8 personas");
+  });
+
+  it("a trip across months names both", () => {
+    expect(sub({ type: "trip", startsAt: Date.parse("2026-12-28T15:00:00Z"), endsAt: Date.parse("2027-01-03T15:00:00Z") }, 1)).toBe("28 de dic al 3 de enero · 1 persona");
+  });
+
+  it("a one-day trip shows a single day", () => {
+    expect(sub({ type: "trip", startsAt: Date.parse("2027-01-03T15:00:00Z"), endsAt: Date.parse("2027-01-03T20:00:00Z") })).toBe("3 de enero · 8 personas");
+  });
+
+  it("uses the trip's zone, not the device's", () => {
+    // 02:00 UTC on the 4th is still the 3rd in Buenos Aires.
+    expect(sub({ type: "trip", startsAt: Date.parse("2027-01-04T02:00:00Z"), endsAt: Date.parse("2027-01-08T15:00:00Z") })).toBe("3 al 8 de enero · 8 personas");
   });
 });
