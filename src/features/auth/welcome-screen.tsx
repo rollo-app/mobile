@@ -7,6 +7,7 @@ import { useRegistrationsOpen } from "@/features/waitlist/use-config";
 import { WaitlistForm } from "@/features/waitlist/waitlist-form";
 import { Button } from "@/ui/components";
 import { useKeyboardLift } from "@/ui/keyboard-lift";
+import { SocialLinks } from "./social-links";
 import { colors, spacing, type } from "@/ui/theme";
 
 const MARK_SIZE = 120;
@@ -55,6 +56,7 @@ export function WelcomeScreen() {
           <Pressable accessibilityRole="button" accessibilityLabel="Ya tengo cuenta" onPress={toEmail} hitSlop={8} style={styles.login}>
             {({ pressed }) => <Text style={[type.body, { color: colors.tint, opacity: pressed ? 0.7 : 1 }]}>Ya tengo cuenta</Text>}
           </Pressable>
+          <SocialLinks />
         </View>
       </Animated.View>
     </Pressable>

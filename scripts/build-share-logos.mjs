@@ -1,10 +1,10 @@
-// Generates the Instagram and WhatsApp logos used by the share sheet, as transparent PNGs
+// Generates the Instagram, WhatsApp and TikTok logos (share sheet and the welcome screen's social links), as transparent PNGs
 // at 28 pt (28/56/84 px). Paths come from simple-icons (viewBox 24). Usage: npm run share-logos
 import { Resvg } from "@resvg/resvg-js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { siInstagram, siWhatsapp } from "simple-icons";
+import { siInstagram, siTiktok, siWhatsapp } from "simple-icons";
 
 const out = join(dirname(fileURLToPath(import.meta.url)), "..", "assets", "share");
 mkdirSync(out, { recursive: true });
@@ -26,6 +26,9 @@ const logos = {
   // Solid white glyph for colored buttons (Instagram's guidelines allow it).
   "instagram-white": svg("", siInstagram.path, "#FFFFFF"),
   whatsapp: svg("", siWhatsapp.path, "#25D366"),
+  // Plain glyphs the app tints with a system color (the welcome screen's links to Rollo Project's accounts).
+  "instagram-mono": svg("", siInstagram.path, "#000000"),
+  "tiktok-mono": svg("", siTiktok.path, "#000000"),
 };
 
 for (const [name, source] of Object.entries(logos)) {
