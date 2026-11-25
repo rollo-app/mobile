@@ -8,7 +8,6 @@ import {
   type SkCanvas,
   type SkImage,
   type SkParagraph,
-  type SkPath,
   type SkSurface,
 } from "@shopify/react-native-skia";
 import type { Rect } from "./collage";
@@ -78,40 +77,9 @@ export function drawText(canvas: SkCanvas, text: string, spec: TextSpec, x: numb
 /** The roll's name as a title of up to 3 lines (ellipsis on the last), laid out to `width`; callers read its height. */
 export const titleLines = (name: string, width: number): SkParagraph => layoutText(name, TITLE, width);
 
-/**
- * A rect with iOS's continuous ("squircle") corners, like `borderCurve: "continuous"`. Bezier constants of
- * UIBezierPath's rounded rect; each corner spans 1.528 × radius, so the radius shrinks to fit small rects.
- */
-const CORNER_SPAN = 1.52866483;
-const CORNER: [number, number][] = [
-  [1.08849323, 0], [0.86840689, 0.02491811], [0.66993427, 0.065496],
-  [0.42071178, 0.11577566], [0.11577566, 0.42071178], [0.065496, 0.66993427],
-  [0.02491811, 0.86840689], [0, 1.08849323], [0, CORNER_SPAN],
-];
-
-export function continuousRect({ x, y, w, h }: Rect, radius: number): SkPath {
-  const r = Math.min(radius, Math.min(w, h) / 2 / CORNER_SPAN);
-  // Clockwise from the top-left; each corner is its point plus a along the edge it comes from and b along the next one.
-  const corners: [cx: number, cy: number, ux: number, uy: number, vx: number, vy: number][] = [
-    [x + w, y, -1, 0, 0, 1],
-    [x + w, y + h, 0, -1, -1, 0],
-    [x, y + h, 1, 0, 0, -1],
-    [x, y, 0, 1, 1, 0],
-  ];
-  const builder = Skia.PathBuilder.Make().moveTo(x + CORNER_SPAN * r, y);
-  for (const [cx, cy, ux, uy, vx, vy] of corners) {
-    const at = ([a, b]: [number, number]) => [cx + (a * ux + b * vx) * r, cy + (a * uy + b * vy) * r] as const;
-    builder.lineTo(...at([CORNER_SPAN, 0]));
-    for (let i = 0; i < CORNER.length; i += 3) {
-      builder.cubicTo(...at(CORNER[i]!), ...at(CORNER[i + 1]!), ...at(CORNER[i + 2]!));
-    }
-  }
-  return builder.close().build();
-}
-
-/** Clips what's drawn next to `rect` with continuous corners; the caller wraps it in save()/restore(). */
-export function clipRounded(canvas: SkCanvas, rect: Rect, radius: number) {
-  canvas.clipPath(continuousRect(rect, radius), ClipOp.Intersect, true);
+/** Clips what's drawn next to `rect` with rounded corners (the mockup's border-radius); the caller wraps it in save()/restore(). */
+export function clipRounded(canvas: SkCanvas, { x, y, w, h }: Rect, radius: number) {
+  canvas.clipRRect(Skia.RRectXY(Skia.XYWHRect(x, y, w, h), radius, radius), ClipOp.Intersect, true);
 }
 
 /** Draws `image` filling `rect` (cropped in the middle, like `contentFit="cover"`). */
@@ -187,8 +155,14 @@ export function makeStory(): { surface: SkSurface; canvas: SkCanvas } {
   return { surface, canvas };
 }
 
-/** The finished story as JPEG bytes (quality 92). */
+/** The finished story as JPEG bytes (quality 92). Frees the surface: it can't be drawn on afterwards. */
 export function encodeStory(surface: SkSurface): Uint8Array {
   surface.flush();
-  return surface.makeImageSnapshot().encodeToBytes(ImageFormat.JPEG, 92);
+  const snapshot = surface.makeImageSnapshot();
+  try {
+    return snapshot.encodeToBytes(ImageFormat.JPEG, 92);
+  } finally {
+    snapshot.dispose();
+    surface.dispose();
+  }
 }

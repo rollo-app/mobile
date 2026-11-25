@@ -1,4 +1,4 @@
-import { FontWeight, Skia, TileMode, type SkCanvas } from "@shopify/react-native-skia";
+import { FontWeight, Skia, TileMode, type SkCanvas, type SkImage } from "@shopify/react-native-skia";
 import { API_URL } from "@/config";
 import type { RGB } from "@/features/trips/thumbhash-color";
 import type { Rect } from "./collage";
@@ -47,30 +47,49 @@ const CODE = {
   tabularNumbers: true,
 } satisfies TextSpec;
 
-/** Without photos: the swatches as a 4×4 grid, blurred, oversized like the mockup's `scale(1.15)` so the blur has no edges. */
+/**
+ * Without photos: the swatches as a 4×4 grid, blurred. The grid is drawn oversized (the mockup's `scale(1.15)`) and blurred on
+ * a surface of its own, before any clip, so its edges stay full color; the hero shows its middle.
+ */
 const SWATCH_GRID = 4;
 const SWATCH_BLUR = 60;
 const SWATCH_OVERSIZE = 1.15;
 /** Without photos or swatches: a cobalt gradient (the only place the brand color fills anything). */
 const EMPTY_GRADIENT = ["#3155F5", "#0b1a5c"];
 
-function drawSwatches(canvas: SkCanvas, swatches: RGB[]) {
-  const side = HERO.w * SWATCH_OVERSIZE;
-  const origin = { x: HERO.x - (side - HERO.w) / 2, y: HERO.y - (side - HERO.h) / 2 };
-  const cell = side / SWATCH_GRID;
+/** The blurred swatch grid as an image `SWATCH_OVERSIZE` times the hero's side; null if the surface can't be made. */
+function swatchImage(swatches: RGB[]): SkImage | null {
+  const side = Math.round(HERO.w * SWATCH_OVERSIZE);
+  const surface = Skia.Surface.MakeOffscreen(side, side);
+  if (!surface) return null;
+  const canvas = surface.getCanvas();
   const blur = Skia.Paint();
   blur.setImageFilter(Skia.ImageFilter.MakeBlur(SWATCH_BLUR, SWATCH_BLUR, TileMode.Clamp, null));
   canvas.saveLayer(blur);
+  const cell = side / SWATCH_GRID;
   const paint = Skia.Paint();
   for (let i = 0; i < SWATCH_GRID * SWATCH_GRID; i++) {
     const { r, g, b } = swatches[i % swatches.length]!;
     paint.setColor(Skia.Color(`rgb(${r},${g},${b})`));
-    const x = origin.x + (i % SWATCH_GRID) * cell;
-    const y = origin.y + Math.floor(i / SWATCH_GRID) * cell;
     // Half a pixel of overlap so no seam shows between cells.
-    canvas.drawRect(Skia.XYWHRect(x, y, cell + 0.5, cell + 0.5), paint);
+    canvas.drawRect(Skia.XYWHRect((i % SWATCH_GRID) * cell, Math.floor(i / SWATCH_GRID) * cell, cell + 0.5, cell + 0.5), paint);
   }
   canvas.restore();
+  surface.flush();
+  const image = surface.makeImageSnapshot();
+  surface.dispose();
+  return image;
+}
+
+/** The middle of the oversized swatch image, filling the hero. */
+function drawSwatches(canvas: SkCanvas, image: SkImage) {
+  const inset = (image.width() - HERO.w) / 2;
+  canvas.drawImageRect(
+    image,
+    Skia.XYWHRect(inset, inset, HERO.w, HERO.h),
+    Skia.XYWHRect(HERO.x, HERO.y, HERO.w, HERO.h),
+    Skia.Paint(),
+  );
 }
 
 function drawEmptyGradient(canvas: SkCanvas) {
@@ -109,22 +128,28 @@ export async function renderInvite(input: {
   swatches: RGB[];
 }): Promise<Uint8Array> {
   const cover = input.coverUrl ? await fetchImage(`${API_URL}${input.coverUrl}`) : null;
-  const { surface, canvas } = makeStory();
+  const swatches = !cover && input.swatches.length > 0 ? swatchImage(input.swatches) : null;
+  try {
+    const { surface, canvas } = makeStory();
 
-  canvas.save();
-  clipRounded(canvas, HERO, HERO_RADIUS);
-  canvas.drawColor(Skia.Color(HERO_PLACEHOLDER));
-  if (cover) drawCover(canvas, cover, HERO);
-  else if (input.swatches.length > 0) drawSwatches(canvas, input.swatches);
-  else drawEmptyGradient(canvas);
-  drawScrim(canvas, HERO);
-  drawHeroText(canvas, input.name, input.caption);
-  canvas.restore();
+    canvas.save();
+    clipRounded(canvas, HERO, HERO_RADIUS);
+    canvas.drawColor(Skia.Color(HERO_PLACEHOLDER));
+    if (cover) drawCover(canvas, cover, HERO);
+    else if (swatches) drawSwatches(canvas, swatches);
+    else drawEmptyGradient(canvas);
+    drawScrim(canvas, HERO);
+    drawHeroText(canvas, input.name, input.caption);
+    canvas.restore();
 
-  const codeTop = drawText(canvas, "Sumate con el código", CODE_LABEL, 0, HERO.y + HERO.h + CODE_LABEL_GAP, STORY_W) + CODE_GAP;
-  // Letter spacing also follows the last character: shifting half of it keeps the code optically centered.
-  drawText(canvas, input.code, CODE, CODE_LETTER_SPACING / 2, codeTop, STORY_W);
+    const codeTop = drawText(canvas, "Sumate con el código", CODE_LABEL, 0, HERO.y + HERO.h + CODE_LABEL_GAP, STORY_W) + CODE_GAP;
+    // Letter spacing also follows the last character: shifting half of it keeps the code optically centered.
+    drawText(canvas, input.code, CODE, CODE_LETTER_SPACING / 2, codeTop, STORY_W);
 
-  drawBrand(canvas);
-  return encodeStory(surface);
+    drawBrand(canvas);
+    return encodeStory(surface);
+  } finally {
+    cover?.dispose();
+    swatches?.dispose();
+  }
 }

@@ -32,21 +32,24 @@ const PHOTO_RADIUS = 28;
 export async function renderCollage(input: { name: string; caption: string; photos: RevealedPhoto[] }): Promise<Uint8Array> {
   const images = (await loadImages(input.photos.map((p) => p.thumbPath))).filter((i): i is SkImage => i !== null);
   if (images.length === 0) throw new Error("no images");
+  try {
+    const { surface, canvas } = makeStory();
+    const titleTop = drawText(canvas, input.caption, CAPTION, MARGIN, CAPTION_TOP, CONTENT_W) + TITLE_GAP;
+    const title = titleLines(input.name, CONTENT_W);
+    title.paint(canvas, MARGIN, titleTop);
 
-  const { surface, canvas } = makeStory();
-  const titleTop = drawText(canvas, input.caption, CAPTION, MARGIN, CAPTION_TOP, CONTENT_W) + TITLE_GAP;
-  const title = titleLines(input.name, CONTENT_W);
-  title.paint(canvas, MARGIN, titleTop);
+    const mosaicTop = titleTop + title.getHeight() + MOSAIC_GAP;
+    const frame = { x: MARGIN, y: mosaicTop, w: CONTENT_W, h: MOSAIC_BOTTOM - mosaicTop };
+    collageLayout(images.length, frame, PHOTO_GAP).forEach((rect, i) => {
+      canvas.save();
+      clipRounded(canvas, rect, PHOTO_RADIUS);
+      drawCover(canvas, images[i]!, rect);
+      canvas.restore();
+    });
 
-  const mosaicTop = titleTop + title.getHeight() + MOSAIC_GAP;
-  const frame = { x: MARGIN, y: mosaicTop, w: CONTENT_W, h: MOSAIC_BOTTOM - mosaicTop };
-  collageLayout(images.length, frame, PHOTO_GAP).forEach((rect, i) => {
-    canvas.save();
-    clipRounded(canvas, rect, PHOTO_RADIUS);
-    drawCover(canvas, images[i]!, rect);
-    canvas.restore();
-  });
-
-  drawBrand(canvas);
-  return encodeStory(surface);
+    drawBrand(canvas);
+    return encodeStory(surface);
+  } finally {
+    for (const image of images) image.dispose();
+  }
 }
