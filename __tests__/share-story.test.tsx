@@ -1,5 +1,7 @@
 import * as Clipboard from "expo-clipboard";
-import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
+import { Text } from "react-native";
+import { setCollageSelection } from "@/features/share/collage-selection";
 import "@/test/reanimated";
 import * as composeStillModule from "@/features/share/compose-still";
 import * as renderCollageModule from "@/features/share/render-collage";
@@ -97,13 +99,13 @@ const feed = (items: tripActions.Feed["items"], revealed = true): tripActions.Fe
 async function open(kind: "collage" | "invite", d = detail(), items = [item("a"), item("b")]) {
   trips.fetchTrip.mockResolvedValue(d);
   trips.fetchFeedPage.mockResolvedValue(feed(items, d.trip.revealed));
-  await renderRouter(routes, { initialUrl: `/share-story?tripId=${SUR}&kind=${kind}` });
+  await renderRouter({ ...routes, "share-pick": () => <Text>pick stub</Text> }, { initialUrl: `/share-story?tripId=${SUR}&kind=${kind}` });
 }
 
-const heroes = () => collage.mock.calls.map(([input]) => input.photos[0]?.id);
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  setCollageSelection(SUR, []);
   for (const mock of Object.values(trips)) (mock as Partial<jest.Mock>).mockReset?.();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
   collage.mockResolvedValue({ png: new Uint8Array([1]), width: 920, height: 1100 });
@@ -122,7 +124,7 @@ const filesReady = () => screen.findByLabelText("Vista previa");
 const lastStyle = (mock: jest.Mock) => mock.mock.calls.at(-1)![0].style;
 
 describe("Compartir screen", () => {
-  it("collage: shows the preview, Compartir en Instagram and Otras; Otras rebuilds with a new seed", async () => {
+  it("collage: shows the preview, Compartir en Instagram and Elegir fotos; Elegir fotos opens the picker", async () => {
     await open("collage");
     expect(await screen.findByLabelText("Vista previa")).toBeVisible();
     expect(await screen.findByRole("button", { name: "Compartir en Instagram" })).toBeVisible();
@@ -130,12 +132,23 @@ describe("Compartir screen", () => {
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeVisible();
     expect(collage).toHaveBeenCalledTimes(1);
     expect(collage.mock.calls[0]![0]).toMatchObject({ name: "Viaje al sur", caption: "3 – 9 de enero · 1 persona" });
+    expect(screen.queryByRole("button", { name: "Otras" })).toBeNull();
 
-    await fireEvent.press(screen.getByRole("button", { name: "Otras" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Elegir fotos" }));
+    expect(await screen.findByText("pick stub")).toBeVisible();
+    expect(screen).toHavePathname("/share-pick");
+    expect(screen).toHaveSearchParams({ tripId: SUR });
+  });
+
+  it("collage uses the selected photos in order, and a new selection rebuilds the image", async () => {
+    setCollageSelection(SUR, ["c", "a"]);
+    await open("collage", detail(), [item("a"), item("b"), item("c")]);
+    expect(await screen.findByLabelText("Vista previa")).toBeVisible();
+    expect(collage.mock.calls[0]![0].photos.map((p) => p.id)).toEqual(["c", "a"]);
+
+    await act(async () => setCollageSelection(SUR, ["b"]));
     await waitFor(() => expect(collage).toHaveBeenCalledTimes(2));
-    // With two candidates, "Otras" must change the hero (the first photo), not just the order of the rest.
-    const [first, second] = heroes();
-    expect(second).not.toBe(first);
+    expect(collage.mock.calls[1]![0].photos.map((p) => p.id)).toEqual(["b"]);
   });
 
   it("collage without Instagram: only Más opciones", async () => {
@@ -170,12 +183,6 @@ describe("Compartir screen", () => {
     await renderRouter(routes, { initialUrl: `/share-story?tripId=${SUR}&kind=collage` });
     expect(await screen.findByRole("button", { name: "Reintentar" })).toBeVisible();
     expect(screen.queryByText("Todavía no hay fotos para armar el collage.")).toBeNull();
-  });
-
-  it("collage with a single shareable photo has no Otras", async () => {
-    await open("collage", detail(), [item("a"), item("b", { shareable: false })]);
-    expect(await screen.findByLabelText("Vista previa")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Otras" })).toBeNull();
   });
 
   it("invite: Stories carries the link, Más opciones copies it, and the sticker note shows", async () => {

@@ -5,6 +5,7 @@ import { fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-li
 import "@/test/reanimated";
 import { joinLinkUrl } from "@/features/events/join-link";
 import * as composeStillModule from "@/features/share/compose-still";
+import { setCollageSelection } from "@/features/share/collage-selection";
 import * as renderCollageModule from "@/features/share/render-collage";
 import * as shareStory from "@/features/share/share-story";
 import * as tripActions from "@/features/trips/actions";
@@ -143,6 +144,15 @@ describe("Compartir sheet", () => {
     await waitFor(() => expect(story.shareImageToWhatsApp).toHaveBeenCalledWith("file:///cache/rollo-collage-dark-whatsapp-still.jpg"));
     expect(collage.mock.calls[0]![0]).toMatchObject({ name: "Viaje al sur", style: "dark" });
     expect(still).toHaveBeenCalledWith(expect.anything(), "dark");
+  });
+
+  it("collage: WhatsApp sends the selected photos in order", async () => {
+    setCollageSelection(SUR, ["b", "a"]);
+    await open(revealed(), [item("a"), item("b"), item("c")]);
+    await fireEvent.press(await screen.findByRole("button", { name: "WhatsApp" }));
+    await waitFor(() => expect(story.shareImageToWhatsApp).toHaveBeenCalled());
+    expect(collage.mock.calls[0]![0].photos.map((p) => p.id)).toEqual(["b", "a"]);
+    setCollageSelection(SUR, []);
   });
 
   it("without WhatsApp installed the option is missing", async () => {

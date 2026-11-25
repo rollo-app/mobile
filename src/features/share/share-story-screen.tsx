@@ -9,7 +9,8 @@ import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Screen } from "@/ui/components";
 import { colors, spacing, tintHex, type } from "@/ui/theme";
-import { canShuffle, collageCandidates, collageCaption, nextSeed, pickCollage } from "./collage";
+import { collageCandidates, collageCaption } from "./collage";
+import { collagePhotos, useCollageSelection } from "./collage-selection";
 import { InstagramButton } from "./instagram-button";
 import { inviteCaption, inviteLink, inviteSwatches } from "./invite";
 import { renderCollageCard } from "./render-collage";
@@ -23,13 +24,15 @@ import { useStoryAssets } from "./use-story-assets";
 const STYLE_LABELS = STORY_STYLES.map((s) => STYLE_LABEL[s]);
 /** The preview never takes more than this share of the screen's height. */
 const MAX_PREVIEW_HEIGHT = 0.62;
+/** Fixed seed: with no selection, the collage is always the same random pick. */
+const SEED = 1;
 
-/** "Compartir": builds the Stories image (collage or invitation), previews it and offers Instagram Stories, the system sheet and, for the collage, another pick. */
+/** "Compartir": builds the Stories image (collage or invitation), previews it and offers Instagram Stories, the system sheet and, for the collage, choosing the photos. */
 export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" }) {
   const { detail, error: detailError } = useTripDetail(tripId);
   const { photos, complete, loadAll } = useRevealedPhotos(tripId);
   const { feed, loading: feedLoading, error: feedError, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
-  const [seed, setSeed] = useState(1);
+  const selection = useCollageSelection(tripId);
   const [style, setStyle] = useState(DEFAULT_STYLE);
   const scheme = useColorScheme() ?? "light";
   const [loadedAll, setLoadedAll] = useState(false);
@@ -67,7 +70,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
     const { trip } = detail;
     if (isCollage) {
       const caption = collageCaption({ startsAt: trip.startsAt, endsAt: trip.endsAt, timeZone: trip.timezone, people: memberTotal(detail) });
-      return () => renderCollageCard({ name: trip.name, caption, photos: pickCollage(candidates, seed), style });
+      return () => renderCollageCard({ name: trip.name, caption, photos: collagePhotos(candidates, selection, SEED), style });
     }
     return () =>
       renderInviteCard({
@@ -78,9 +81,9 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
         swatches: inviteSwatches(thumbhashes),
         style,
       });
-  }, [detail, ready, empty, feedFailed, isCollage, candidates, seed, thumbhashes, style]);
+  }, [detail, ready, empty, feedFailed, isCollage, candidates, selection, thumbhashes, style]);
 
-  const version = `${tripId}:${kind}:${isCollage ? seed : 0}`;
+  const version = `${tripId}:${kind}:${isCollage ? selection.join(",") : ""}`;
   const assets = useStoryAssets(build, version, kind, style);
 
   /** The invitation has no link inside the image: it travels with the share. `copy`: also in the clipboard (the system sheet doesn't touch it). */
@@ -140,9 +143,10 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <View style={styles.actions}>
             {instagram && <InstagramButton disabled={!filesReady} onPress={() => void shareStories()} />}
             <Button label="Más opciones" disabled={!filesReady} variant={instagram ? "secondary" : "primary"} onPress={() => void share((link) => shareMore(assets.stillUri!, link), true)} />
-            {isCollage && canShuffle(candidates) && (
-              <Pressable accessibilityRole="button" onPress={() => setSeed((s) => nextSeed(candidates, s))} style={styles.shuffle}>
-                <Text style={[type.body, { color: colors.tint }]}>Otras</Text>
+            {/* `as never` until app/share-pick.tsx exists (typed routes); drop it then. */}
+            {isCollage && (
+              <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/share-pick", params: { tripId } } as never)} style={styles.shuffle}>
+                <Text style={[type.body, { color: colors.tint }]}>Elegir fotos</Text>
               </Pressable>
             )}
           </View>

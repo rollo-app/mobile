@@ -8,7 +8,8 @@ import { memberTotal } from "@/features/trips/member-total";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
-import { collageCandidates, collageCaption, pickCollage } from "./collage";
+import { collageCandidates, collageCaption } from "./collage";
+import { collagePhotos, getCollageSelection } from "./collage-selection";
 import { composeStill } from "./compose-still";
 import { inviteLink, inviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
@@ -71,7 +72,7 @@ export function ShareRollScreen({ tripId }: { tripId: string }) {
       } else {
         const { trip } = detail;
         const caption = collageCaption({ startsAt: trip.startsAt, endsAt: trip.endsAt, timeZone: trip.timezone, people: memberTotal(detail) });
-        const card = await renderCollageCard({ name: trip.name, caption, photos: pickCollage(candidates, 0), style: "dark" });
+        const card = await renderCollageCard({ name: trip.name, caption, photos: collagePhotos(candidates, getCollageSelection(tripId), 0), style: "dark" });
         const uri = await writeShareFile(await composeStill(card, "dark"), "rollo-collage-dark-whatsapp-still.jpg");
         await shareImageToWhatsApp(uri);
       }
