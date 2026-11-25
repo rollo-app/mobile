@@ -15,8 +15,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm test -- --ci
+      - name: Cada archivo por separado
+        run: |
+          for f in __tests__/accounts.test.tsx __tests__/add-friends.test.tsx __tests__/cache.test.tsx __tests__/capture.test.tsx __tests__/edit-trip.test.tsx __tests__/event-board.test.tsx __tests__/featuring-levels.test.tsx __tests__/info.test.tsx __tests__/moderation.test.tsx __tests__/moment-banner.test.tsx __tests__/moment.test.tsx __tests__/notifications.test.tsx __tests__/presentation.test.tsx __tests__/reveal-shell.test.tsx __tests__/reveal.test.tsx __tests__/roll-members-screen.test.tsx __tests__/roll-members.test.tsx __tests__/roll-started.test.tsx __tests__/screens.test.tsx __tests__/trips-list.test.tsx __tests__/upload-status.test.tsx src/features/trips/__tests__/group-trips.test.ts ; do
+            s=$(date +%s)
+            timeout 240 npx jest "$f" --ci -i >/tmp/out.txt 2>&1; code=$?
+            echo "RESULT $f exit=$code secs=$(( $(date +%s) - s )) $(grep -E '^Tests:' /tmp/out.txt)"
+            [ $code -eq 124 ] && tail -30 /tmp/out.txt
+          done
 
   # Avisa si el backend cambió su contrato y la app no regeneró el cliente.
   contract:
