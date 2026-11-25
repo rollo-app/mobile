@@ -12,11 +12,11 @@ import { ErrorText, Footnote, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
-import { inviteCaption, inviteLink, inviteSwatches } from "./invite";
+import { inviteCaption, inviteLink, inviteMessage, inviteSwatches } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
 import { renderInviteCard } from "./render-invite";
-import { instagramStoriesAvailable, isShareCancel, shareImageToWhatsApp, shareMore, shareToInstagramStories, whatsAppAvailable } from "./share-story";
+import { instagramStoriesAvailable, isShareCancel, shareImageToWhatsApp, shareMore, shareTextToWhatsApp, shareToInstagramStories, whatsAppAvailable } from "./share-story";
 import { CollageStrip } from "./collage-strip";
 import { SharePills } from "./share-pills";
 import { StyleChips } from "./style-chips";
@@ -177,7 +177,10 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
             whatsapp={whatsapp}
             disabled={!filesReady}
             onInstagram={() => void shareStories()}
-            onWhatsApp={() => void share(() => shareImageToWhatsApp(assets.stillUri!), true)}
+            // The invitation goes as text with the join link: WhatsApp draws the link's preview (the site's card for this roll).
+            onWhatsApp={() =>
+              void share(() => (isCollage ? shareImageToWhatsApp(assets.stillUri!) : shareTextToWhatsApp(inviteMessage(detail!))), false)
+            }
             onMore={() => void share((link) => shareMore(assets.stillUri!, link), true)}
             onCopyLink={isCollage ? undefined : () => void copyLink()}
           />

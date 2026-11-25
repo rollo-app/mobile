@@ -2,7 +2,7 @@ import { Linking, Share as NativeShare } from "react-native";
 import { File } from "expo-file-system";
 import Share from "react-native-share";
 import { META_APP_ID } from "@/config";
-import { instagramStoriesAvailable, isShareCancel, shareImageToWhatsApp, shareMore, shareToInstagramStories, writeShareFile } from "../share-story";
+import { instagramStoriesAvailable, isShareCancel, shareImageToWhatsApp, shareMore, shareTextToWhatsApp, shareToInstagramStories, writeShareFile } from "../share-story";
 
 describe("instagramStoriesAvailable", () => {
   it("is false without an app id and doesn't ask the system", async () => {
@@ -81,6 +81,16 @@ describe("isShareCancel", () => {
     expect(isShareCancel(new Error("other"))).toBe(false);
     expect(isShareCancel("User did not share")).toBe(false);
     expect(isShareCancel(null)).toBe(false);
+  });
+});
+
+describe("shareTextToWhatsApp", () => {
+  it("opens WhatsApp's chat picker with the text, encoded", async () => {
+    const spy = jest.spyOn(Linking, "openURL").mockResolvedValueOnce(undefined);
+    await shareTextToWhatsApp(`Sumate a "Sur & Co" en Rollo: https://rolloproject.com/join/HUB5FT`);
+    expect(spy).toHaveBeenLastCalledWith(
+      "whatsapp://send?text=Sumate%20a%20%22Sur%20%26%20Co%22%20en%20Rollo%3A%20https%3A%2F%2Frolloproject.com%2Fjoin%2FHUB5FT",
+    );
   });
 });
 

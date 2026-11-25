@@ -23,6 +23,7 @@ jest.mock("@/features/share/share-story", () => ({
   instagramStoriesAvailable: jest.fn(),
   whatsAppAvailable: jest.fn(),
   shareImageToWhatsApp: jest.fn(),
+  shareTextToWhatsApp: jest.fn(),
   shareToInstagramStories: jest.fn(),
   shareMore: jest.fn(),
 }));
@@ -120,6 +121,7 @@ beforeEach(async () => {
   story.instagramStoriesAvailable.mockResolvedValue(true);
   story.whatsAppAvailable.mockResolvedValue(false);
   story.shareImageToWhatsApp.mockResolvedValue(undefined);
+  story.shareTextToWhatsApp.mockResolvedValue(undefined);
   story.shareToInstagramStories.mockResolvedValue(undefined);
   story.shareMore.mockResolvedValue(undefined);
 });
@@ -228,17 +230,16 @@ describe("Compartir screen", () => {
     await waitFor(() => expect(story.shareImageToWhatsApp).toHaveBeenCalledWith(STILL_FILE("collage", "light")));
   });
 
-  it("invite: WhatsApp copies the link first", async () => {
+  it("invite: WhatsApp sends only the invitation text with the join link (WhatsApp draws the link's preview)", async () => {
     story.whatsAppAvailable.mockResolvedValue(true);
-    const order: string[] = [];
-    clipboard.setStringAsync.mockImplementation(async () => (order.push("copy"), true));
-    story.shareImageToWhatsApp.mockImplementation(async () => void order.push("whatsapp"));
     await open("invite", detail(), [item("a", { shareable: false })]);
     await filesReady();
     await fireEvent.press(await screen.findByRole("button", { name: "WhatsApp" }));
-    await waitFor(() => expect(story.shareImageToWhatsApp).toHaveBeenCalledWith(STILL_FILE("invite")));
-    expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("HUB5FT"));
-    expect(order).toEqual(["copy", "whatsapp"]);
+    await waitFor(() => expect(story.shareTextToWhatsApp).toHaveBeenCalledTimes(1));
+    const text = story.shareTextToWhatsApp.mock.calls[0]![0];
+    expect(text).toMatch(/^Sumate a ".+" en Rollo: https:\/\/rolloproject\.com\/join\/HUB5FT$/);
+    expect(story.shareImageToWhatsApp).not.toHaveBeenCalled();
+    expect(clipboard.setStringAsync).not.toHaveBeenCalled();
   });
 
   it("collage without Instagram: only Más opciones", async () => {

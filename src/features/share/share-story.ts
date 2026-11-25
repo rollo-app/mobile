@@ -71,6 +71,14 @@ export async function whatsAppAvailable(): Promise<boolean> {
   }
 }
 
+/**
+ * Opens WhatsApp's chat picker with `text` ready to send. Used for the invitation: plain text with the join link, so WhatsApp
+ * draws the link's own preview (the site's per-roll card) instead of getting an image.
+ */
+export async function shareTextToWhatsApp(text: string): Promise<void> {
+  await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(text)}`);
+}
+
 const WHATSAPP_TIMEOUT_MS = 15_000;
 
 /**
