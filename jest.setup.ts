@@ -92,6 +92,20 @@ afterEach(() => {
   (require("@/api/query-client") as typeof import("@/api/query-client")).queryClient.clear();
 });
 
+// Unmounting a screen hands its queries a gc timer of 7 days (real, not fake: TanStack's timeoutManager), and Testing
+// Library unmounts after the hooks above, so those timers outlive the test file and the process never exits. In tests
+// they don't hold the process open.
+(require("@tanstack/query-core") as typeof import("@tanstack/query-core")).timeoutManager.setTimeoutProvider({
+  setTimeout: (callback, delay) => {
+    const timer = setTimeout(callback, delay);
+    (timer as unknown as { unref?: () => void }).unref?.();
+    return timer;
+  },
+  clearTimeout: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+  setInterval: (callback, delay) => setInterval(callback, delay),
+  clearInterval: (timer) => clearInterval(timer as ReturnType<typeof setInterval>),
+});
+
 // MapLibre is native: in tests the map and its parts are empty views and there are no offline regions.
 jest.mock("@maplibre/maplibre-react-native", () => {
   const React = require("react");
@@ -602,3 +616,8 @@ jest.mock("expo-apple-authentication", () => {
       require("react").createElement(Pressable, { accessibilityRole: "button", accessibilityLabel: "Continuar con Apple", onPress }, require("react").createElement(Text, null, "Continuar con Apple")),
   };
 });
+
+// React Native's StatusBar schedules a setImmediate when it unmounts. Testing Library unmounts after the test, with
+// expo-router's fake timers still on, and that immediate was left pending forever: the file never exited and, in CI, the
+// Jest worker that ran it never finished the next file (the run hung). The status bar has nothing to test in Jest.
+jest.mock("expo-status-bar", () => ({ StatusBar: () => null, setStatusBarStyle: jest.fn(), setStatusBarHidden: jest.fn() }));
