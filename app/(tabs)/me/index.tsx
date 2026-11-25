@@ -26,7 +26,7 @@ export default function MeScreen() {
             avatarUrl={me.avatarUrl}
             bio={me.bio}
             badge={me.badge}
-            friends={friends ? { count: friends.length, own: true, onPress: () => router.navigate("/friends") } : undefined}
+            stats={friends ? { friends: friends.length, own: true, onPressFriends: () => router.navigate("/friends") } : undefined}
           />
           <ProfileShowcase own userId={me.id} canSee />
         </>

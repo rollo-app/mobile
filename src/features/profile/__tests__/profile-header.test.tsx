@@ -1,10 +1,12 @@
 import type { ComponentProps } from "react";
 import { StyleSheet } from "react-native";
 import { fireEvent, renderRouter, screen, within } from "expo-router/testing-library";
+import { type } from "@/ui/theme";
 import { ProfileHeader } from "../profile-header";
 
 const base = { id: "u1", name: "Juani", username: "juani", avatarUrl: null, bio: null };
 const show = (props: Partial<ComponentProps<typeof ProfileHeader>>) => renderRouter({ index: () => <ProfileHeader {...base} {...props} /> });
+const flat = (node: { props: { style?: unknown } }) => StyleSheet.flatten(node.props.style as never) as Record<string, unknown>;
 
 describe("ProfileHeader", () => {
   it("lets a long name wrap up to 3 lines", async () => {
@@ -24,43 +26,70 @@ describe("ProfileHeader", () => {
     expect(screen.queryByTestId("profile-name")).toBeNull();
   });
 
-  it("shows the 0-friends line on your own profile and it is pressable", async () => {
-    const onPress = jest.fn();
-    await show({ friends: { count: 0, own: true, onPress } });
-    await fireEvent.press(screen.getByRole("button", { name: "Todavía no tenés amigos" }));
-    expect(onPress).toHaveBeenCalledTimes(1);
-  });
-
-  it("hides the 0-friends line on someone else's profile", async () => {
-    await show({ friends: { count: 0, canSee: true, onPress: () => {} } });
-    expect(screen.queryByText(/amigos/)).toBeNull();
-  });
-
-  it("puts the photo and the name column in one row, with the bio and friend count below it", async () => {
-    await show({ bio: "Hola", friends: { count: 3, own: true, onPress: () => {} } });
-    const flat = (node: { props: { style?: unknown } }) => StyleSheet.flatten(node.props.style as never) as { flexDirection?: string };
-    const row = screen.getByTestId("profile-row");
-    expect(flat(row).flexDirection).toBe("row");
-    expect(within(row).getByTestId("avatar", { includeHiddenElements: true })).toBeTruthy();
-    expect(within(row).getByTestId("profile-name")).toBeTruthy();
-    expect(within(row).getByTestId("profile-username")).toBeTruthy();
-    expect(within(row).queryByTestId("profile-bio")).toBeNull();
-    expect(within(row).queryByText("3 amigos")).toBeNull();
-    expect(screen.getByTestId("profile-bio")).toBeTruthy();
+  it("centers the header", async () => {
+    await show({});
+    expect(flat(screen.getByTestId("profile-header")).alignItems).toBe("center");
+    const avatar = screen.getByTestId("avatar", { includeHiddenElements: true });
+    expect(flat(avatar)).toMatchObject({ width: 96, height: 96 });
+    expect(flat(screen.getByTestId("profile-name"))).toMatchObject({ fontSize: 22, textAlign: "center" });
   });
 
   it("has no card: no background and no radius on the header", async () => {
     await show({ bio: "Hola" });
-    const style = StyleSheet.flatten(screen.getByTestId("profile-header").props.style as never) as Record<string, unknown>;
+    const style = flat(screen.getByTestId("profile-header"));
     expect(style.backgroundColor).toBeUndefined();
     expect(style.borderRadius).toBeUndefined();
     expect(style.padding).toBeUndefined();
   });
 
-  it("shows an 80 pt photo and the name in the title size", async () => {
+  it("shows rolls, photos and friends in one line", async () => {
+    await show({ stats: { rolls: 8, photos: 34, friends: 12, own: true, onPressFriends: () => {} } });
+    expect(screen.getByTestId("profile-stats").props.accessibilityLabel).toBe("8 rollos, 34 fotos, 12 amigos");
+  });
+
+  it("opens the friend list from the friends part", async () => {
+    const onPressFriends = jest.fn();
+    await show({ stats: { rolls: 8, photos: 34, friends: 12, own: true, onPressFriends } });
+    await fireEvent.press(screen.getByRole("button", { name: "12 amigos" }));
+    expect(onPressFriends).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the 0-friends line on your own empty profile and it is pressable", async () => {
+    const onPressFriends = jest.fn();
+    await show({ stats: { rolls: 0, photos: 0, friends: 0, own: true, onPressFriends } });
+    await fireEvent.press(screen.getByRole("button", { name: "Todavía no tenés amigos" }));
+    expect(onPressFriends).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no line on someone else's empty profile", async () => {
+    await show({ stats: { friends: 0, canSee: true, onPressFriends: () => {} } });
+    expect(screen.queryByTestId("profile-stats")).toBeNull();
+  });
+
+  it("shows no line without stats", async () => {
     await show({});
-    const avatar = screen.getByTestId("avatar", { includeHiddenElements: true });
-    expect(StyleSheet.flatten(avatar.props.style as never)).toMatchObject({ width: 80, height: 80 });
-    expect(StyleSheet.flatten(screen.getByTestId("profile-name").props.style as never)).toMatchObject({ fontSize: 22 });
+    expect(screen.queryByTestId("profile-stats")).toBeNull();
+  });
+
+  it("puts mutual friends on their own line", async () => {
+    const onPressFriends = jest.fn();
+    await show({ stats: { rolls: 5, photos: 21, friends: 48, mutual: 3, onPressFriends } });
+    const mutual = screen.getByTestId("profile-mutual");
+    expect(within(mutual).getByText("3 amigos en común")).toBeTruthy();
+    await fireEvent.press(mutual);
+    expect(onPressFriends).toHaveBeenCalledTimes(1);
+  });
+
+  it("wraps the handle row", async () => {
+    await show({ badge: "founder" });
+    const row = screen.getByTestId("profile-handle-row");
+    expect(flat(row)).toMatchObject({ flexWrap: "wrap", justifyContent: "center", alignItems: "center" });
+    expect(within(row).getByTestId("profile-username")).toBeTruthy();
+    expect(within(row).getByLabelText(/^Insignia:/)).toBeTruthy();
+  });
+
+  it("sets the bio in the system serif", async () => {
+    await show({ bio: "Hola" });
+    expect(flat(screen.getByTestId("profile-bio"))).toMatchObject({ fontFamily: type.quote.fontFamily, textAlign: "center", fontSize: type.body.fontSize });
   });
 });

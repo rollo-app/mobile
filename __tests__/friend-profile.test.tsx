@@ -381,14 +381,16 @@ describe("Someone's profile header", () => {
   it("shows how many friends they have, singular and plural", async () => {
     fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 1, mutualCount: 1 }));
     await renderRouter(routes, { initialUrl: "/user/u9" });
-    expect(await screen.findByRole("button", { name: "1 amigo · 1 en común" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "1 amigo" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "1 amigo en común" })).toBeVisible();
   });
 
   it("adds how many are in common", async () => {
     fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 12, mutualCount: 3 }));
     await renderRouter(routes, { initialUrl: "/user/u9" });
 
-    expect(await screen.findByRole("button", { name: "12 amigos · 3 en común" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "12 amigos" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "3 amigos en común" })).toBeVisible();
   });
 
   it("without friends in common it only shows the count", async () => {

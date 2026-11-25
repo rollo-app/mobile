@@ -54,7 +54,7 @@ export function UserProfileScreen({ userId }: { userId: string }) {
         avatarUrl={user.avatarUrl}
         bio={user.bio}
         badge={user.badge}
-        friends={{ count: friendCount, mutual: mutualCount, canSee, onPress: () => router.push(`/user/${userId}/friends`) }}
+        stats={{ friends: friendCount, mutual: mutualCount, canSee, onPressFriends: () => router.push(`/user/${userId}/friends`) }}
       />
       {requestUi && <FriendRequestButton userId={userId} state={requestUi} />}
       {reportedByMe && <Footnote>Denunciaste a esta persona</Footnote>}

@@ -10,6 +10,10 @@ describe("statParts", () => {
     expect(words(parts)).toEqual(["rollos", "fotos", "amigos"]);
   });
 
+  it("shows friends only when the list is hidden but there are mutuals", () => {
+    expect(kinds(statParts({ friends: 48, canSee: false, mutual: 3 }))).toEqual(["friends"]);
+  });
+
   it("uses singulars", () => {
     expect(words(statParts({ rolls: 1, photos: 1, friends: 1 }))).toEqual(["rollo", "foto", "amigo"]);
   });
