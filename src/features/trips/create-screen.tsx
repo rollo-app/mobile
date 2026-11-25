@@ -1,25 +1,5 @@
-import {
-  Button,
-  Form,
-  Group,
-  Host,
-  Picker,
-  RNHostView,
-  Section,
-  SwipeActions,
-  Text,
-  TextField,
-  Toggle,
-} from "@expo/ui/swift-ui";
-import {
-  accessibilityLabel,
-  aspectRatio,
-  foregroundStyle,
-  listRowBackground,
-  listRowInsets,
-  pickerStyle,
-  tag,
-} from "@expo/ui/swift-ui/modifiers";
+import { Button, Form, Group, Host, Picker, RNHostView, Section, SwipeActions, Text, TextField, Toggle } from "@expo/ui/swift-ui";
+import { accessibilityLabel, aspectRatio, foregroundStyle, listRowBackground, listRowInsets, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import { router, Stack } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { use, useMemo, useRef, useState } from "react";
@@ -54,16 +34,8 @@ import {
   type MomentMode,
   type StartMode,
 } from "@/features/trips/create-form";
-import {
-  ContestSection,
-  DescriptionSection,
-} from "@/features/trips/contest-section";
-import {
-  infoHeader,
-  TripForm,
-  type LimitMode,
-  type RevealMode,
-} from "@/features/trips/trip-form";
+import { ContestSection, DescriptionSection } from "@/features/trips/contest-section";
+import { infoHeader, TripForm, type LimitMode, type RevealMode } from "@/features/trips/trip-form";
 import { useCreateTrip } from "@/features/trips/use-create-trip";
 import { rollHref } from "@/features/trips/roll-href";
 import { ErrorText } from "@/ui/components";
@@ -105,10 +77,7 @@ export function CreateScreen() {
   // Events are enabled per account. Not blocking: until /me says so (or if it fails) this is the regular rollo form.
   const canPickEvent = useMe().me?.canCreateEvents === true;
   const isEvent = canPickEvent && kind === "event";
-  const error = errorMessage(
-    create.error,
-    isEvent ? "No se pudo crear el evento" : "No se pudo crear el rollo",
-  );
+  const error = errorMessage(create.error, isEvent ? "No se pudo crear el evento" : "No se pudo crear el rollo");
 
   // With "Al terminar" the reveal follows the end on its own.
   const revealAt = revealMode === "end" ? endsAt : customReveal;
@@ -127,10 +96,7 @@ export function CreateScreen() {
   function chooseContest(on: boolean) {
     setContestEnabled(on);
     // The server needs the reveal 2 h after the end with the contest: "Al terminar" can't hold, so propose the next day.
-    if (
-      on &&
-      (revealMode === "end" || !revealAllowedWithContest(customReveal, endsAt))
-    ) {
+    if (on && (revealMode === "end" || !revealAllowedWithContest(customReveal, endsAt))) {
       setCustomReveal(contestRevealDefault(endsAt));
       setRevealMode("custom");
     }
@@ -175,11 +141,7 @@ export function CreateScreen() {
       ]);
     } catch {
       // The rollo stays created (and is never created again); the cover is set later from the settings.
-      Burnt.alert({
-        title: "No se pudo subir la portada",
-        message: "Podés elegirla desde Ajustes del rollo.",
-        preset: "error",
-      });
+      Burnt.alert({ title: "No se pudo subir la portada", message: "Podés elegirla desde Ajustes del rollo.", preset: "error" });
     }
   }
 
@@ -218,10 +180,7 @@ export function CreateScreen() {
         startsAt: effectiveStart(startMode, startsAt, Date.now()),
         endsAt,
         revealAt,
-        photoLimit:
-          limitMode === "total"
-            ? { mode: "total", total: totalPhotos }
-            : { mode: "daily", perDay: photos },
+        photoLimit: limitMode === "total" ? { mode: "total", total: totalPhotos } : { mode: "daily", perDay: photos },
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         momentMode,
         momentWindowStart: momentStart,
@@ -264,9 +223,7 @@ export function CreateScreen() {
   return (
     <View style={styles.screen}>
       <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button onPress={() => router.back()}>
-          Cancelar
-        </Stack.Toolbar.Button>
+        <Stack.Toolbar.Button onPress={() => router.back()}>Cancelar</Stack.Toolbar.Button>
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
         {create.isPending ? (
@@ -274,11 +231,7 @@ export function CreateScreen() {
             <ActivityIndicator />
           </Stack.Toolbar.View>
         ) : (
-          <Stack.Toolbar.Button
-            variant="done"
-            disabled={!valid}
-            onPress={submit}
-          >
+          <Stack.Toolbar.Button variant="done" disabled={!valid} onPress={submit}>
             Crear
           </Stack.Toolbar.Button>
         )}
@@ -288,85 +241,38 @@ export function CreateScreen() {
           {/* The server's message goes under the name, inside the form: above it, the transparent header covers it. */}
           {canPickEvent && (
             <Section>
-              <Picker
-                selection={kind}
-                onSelectionChange={chooseKind}
-                modifiers={[pickerStyle("segmented")]}
-              >
+              <Picker selection={kind} onSelectionChange={chooseKind} modifiers={[pickerStyle("segmented")]}>
                 <Text modifiers={[tag("trip")]}>Rollo</Text>
                 <Text modifiers={[tag("event")]}>Evento</Text>
               </Picker>
             </Section>
           )}
 
-          <Section
-            footer={
-              error ? (
-                <Text modifiers={[foregroundStyle("red")]}>{error}</Text>
-              ) : undefined
-            }
-          >
-            <TextField
-              placeholder={isEvent ? "Nombre del evento" : "Nombre del rollo"}
-              maxLength={60}
-              onTextChange={setName}
-            />
+          <Section footer={error ? <Text modifiers={[foregroundStyle("red")]}>{error}</Text> : undefined}>
+            <TextField placeholder={isEvent ? "Nombre del evento" : "Nombre del rollo"} maxLength={60} onTextChange={setName} />
           </Section>
 
           <DescriptionSection onChange={setDescription} />
 
           {isEvent && (
-            <Section
-              header={<Text>Grupos</Text>}
-              footer={
-                <Text>
-                  Los invitados eligen en cuál están. Deslizá un grupo para
-                  borrarlo.
-                </Text>
-              }
-            >
+            <Section header={<Text>Grupos</Text>} footer={<Text>Los invitados eligen en cuál están. Deslizá un grupo para borrarlo.</Text>}>
               {groups.map((group) => (
                 <SwipeActions key={group.id}>
                   <TextField
                     placeholder="Nombre del grupo"
                     maxLength={MAX_GROUP_NAME}
-                    onTextChange={(text) =>
-                      setGroups((rows) =>
-                        rows.map((r) =>
-                          r.id === group.id ? { ...r, name: text } : r,
-                        ),
-                      )
-                    }
+                    onTextChange={(text) => setGroups((rows) => rows.map((r) => (r.id === group.id ? { ...r, name: text } : r)))}
                   />
                   <SwipeActions.Actions>
-                    <Button
-                      role="destructive"
-                      label="Borrar"
-                      onPress={() =>
-                        setGroups((rows) =>
-                          rows.filter((r) => r.id !== group.id),
-                        )
-                      }
-                    />
+                    <Button role="destructive" label="Borrar" onPress={() => setGroups((rows) => rows.filter((r) => r.id !== group.id))} />
                   </SwipeActions.Actions>
                 </SwipeActions>
               ))}
-              {groups.length < MAX_EVENT_GROUPS && (
-                <Button
-                  label="Agregar grupo"
-                  systemImage="plus"
-                  onPress={addGroup}
-                />
-              )}
+              {groups.length < MAX_EVENT_GROUPS && <Button label="Agregar grupo" systemImage="plus" onPress={addGroup} />}
             </Section>
           )}
 
-          <Section
-            header={<Text>Portada</Text>}
-            footer={
-              <Text>Opcional. La podés cambiar después desde el tablero.</Text>
-            }
-          >
+          <Section header={<Text>Portada</Text>} footer={<Text>Opcional. La podés cambiar después desde Ajustes del rollo.</Text>}>
             {cover && (
               // The same hero the board and the join screen show, edge to edge in its row: what guests will see.
               // SwiftUI makes the row square (the width comes from the form); the hero fills it. Sizing it from the RN
@@ -379,27 +285,12 @@ export function CreateScreen() {
                 ]}
               >
                 <RNHostView>
-                  <EventHero
-                    name={
-                      name.trim() ||
-                      (isEvent ? "Nombre del evento" : "Nombre del rollo")
-                    }
-                    coverUrl={cover.uri}
-                  />
+                  <EventHero name={name.trim() || (isEvent ? "Nombre del evento" : "Nombre del rollo")} coverUrl={cover.uri} />
                 </RNHostView>
               </Group>
             )}
-            <Button
-              label={cover ? "Cambiar portada" : "Elegir portada"}
-              onPress={() => void chooseCover()}
-            />
-            {cover && (
-              <Button
-                role="destructive"
-                label="Quitar portada"
-                onPress={() => setCover(null)}
-              />
-            )}
+            <Button label={cover ? "Cambiar portada" : "Elegir portada"} onPress={() => void chooseCover()} />
+            {cover && <Button role="destructive" label="Quitar portada" onPress={() => setCover(null)} />}
           </Section>
 
           <TripForm
@@ -434,33 +325,18 @@ export function CreateScreen() {
           />
 
           {isEvent && (
-            <ContestSection
-              enabled={contestEnabled}
-              votingDays={votingDays}
-              onEnabledChange={chooseContest}
-              onVotingDaysChange={setVotingDays}
-            />
+            <ContestSection enabled={contestEnabled} votingDays={votingDays} onEnabledChange={chooseContest} onVotingDaysChange={setVotingDays} />
           )}
 
-          <Section
-            header={infoHeader("Privacidad", "privateRollo")}
-            footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}
-          >
-            <Toggle
-              label="Rollo privado"
-              isOn={isPrivate}
-              onIsOnChange={setIsPrivate}
-              modifiers={[accessibilityLabel("Rollo privado")]}
-            />
+          <Section header={infoHeader("Privacidad", "privateRollo")} footer={<Text>{PRIVATE_ROLLO_NOTE}</Text>}>
+            <Toggle label="Rollo privado" isOn={isPrivate} onIsOnChange={setIsPrivate} modifiers={[accessibilityLabel("Rollo privado")]} />
           </Section>
         </Form>
       </Host>
       {/* Pinned under the form, in RN: the native form doesn't redraw a footer or section that appears after it was laid out,
           and the form is long, so the name's footer can be off screen when "Crear" is tapped. */}
       {!!error && (
-        <View
-          style={[styles.errorBar, { paddingBottom: bottomInset + spacing.sm }]}
-        >
+        <View style={[styles.errorBar, { paddingBottom: bottomInset + spacing.sm }]}>
           <ErrorText>{error}</ErrorText>
         </View>
       )}

@@ -136,7 +136,7 @@ describe("heroSubtitle", () => {
   });
 
   it("a trip across months names both", () => {
-    expect(sub({ type: "trip", startsAt: Date.parse("2026-12-28T15:00:00Z"), endsAt: Date.parse("2027-01-03T15:00:00Z") }, 1)).toBe("28 de dic al 3 de enero · 1 persona");
+    expect(sub({ type: "trip", startsAt: Date.parse("2026-12-28T15:00:00Z"), endsAt: Date.parse("2027-01-03T15:00:00Z") }, 1)).toBe("28 de diciembre al 3 de enero · 1 persona");
   });
 
   it("a one-day trip shows a single day", () => {
