@@ -14,7 +14,7 @@ import * as actions from "@/features/trips/actions";
 import { formatDateTime } from "@/features/trips/phase";
 import { getActiveTripId, setActiveTripId } from "@/storage/active-trip";
 import { markPushPrimerSeen } from "@/storage/push-primer";
-import { signInAs, tripSummary } from "@/test/account";
+import { signInAs, tripSummary, stubOwnProfile } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import { routes } from "@/test/routes";
 
@@ -72,6 +72,12 @@ const detail = (overrides: Partial<actions.TripDetail> = {}): actions.TripDetail
 });
 
 const saveTrip = (tripId: string, tripName: string) => signInAs({ trips: [tripSummary(tripId, tripName)] });
+
+
+// The Profile tab is always mounted and asks for GET /users/{id}: leave it pending (as develop does in other suites).
+beforeEach(() => {
+  stubOwnProfile();
+});
 
 describe("Home", () => {
   it("with no trips it invites you to start a roll or join", async () => {
