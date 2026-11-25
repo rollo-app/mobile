@@ -6,6 +6,9 @@ import { colors, type } from "@/ui/theme";
 
 export type PickCellProps = {
   photo: RevealedPhoto;
+  /** 0-based position in the grid and the grid's size, for the accessibility label. */
+  index: number;
+  total: number;
   token: string | null;
   size: number;
   /** 1-based position in the selection (1 is the big photo), null when not selected. */
@@ -16,12 +19,12 @@ export type PickCellProps = {
 };
 
 /** One candidate in the picker grid: memoized, it re-renders only when its own number or dimming changes. */
-export const PickCell = memo(function PickCell({ photo, token, size, order, dimmed, onPress }: PickCellProps) {
+export const PickCell = memo(function PickCell({ photo, index, total, token, size, order, dimmed, onPress }: PickCellProps) {
   return (
     <Pressable
       testID={`pick-cell-${photo.id}`}
       accessibilityRole="button"
-      accessibilityLabel={`Foto de ${photo.author.name}`}
+      accessibilityLabel={`Foto ${index + 1} de ${total}${order !== null ? `, elegida ${order}` : ""}`}
       accessibilityState={{ selected: order !== null }}
       onPress={() => onPress(photo.id)}
       style={{ width: size, height: size, backgroundColor: colors.latent }}
@@ -49,7 +52,7 @@ export const PickCell = memo(function PickCell({ photo, token, size, order, dimm
 });
 
 const styles = StyleSheet.create({
-  dim: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(255,255,255,0.55)" },
+  dim: { ...StyleSheet.absoluteFill, backgroundColor: colors.background, opacity: 0.55 },
   badge: {
     position: "absolute",
     top: 5,

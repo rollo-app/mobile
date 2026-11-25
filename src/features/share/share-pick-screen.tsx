@@ -1,7 +1,7 @@
 import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
 import * as Haptics from "expo-haptics";
 import { router, Stack } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { type RevealedPhoto, useRevealedPhotos } from "@/features/media/revealed";
@@ -18,20 +18,35 @@ const keyExtractor = (photo: RevealedPhoto) => photo.id;
 
 /** "Elegir fotos": pick up to 8 shareable photos for the collage; the tap order is the collage order (1 is the big photo). */
 export function SharePickScreen({ tripId }: { tripId: string }) {
-  const { photos, token, complete, loading } = useRevealedPhotos(tripId);
+  const { photos, token, complete, loading, loadAll } = useRevealedPhotos(tripId);
   const candidates = useMemo(() => collageCandidates(photos), [photos]);
+  // Seeded from the saved selection, minus ids that are no longer candidates (they would count toward the cap).
   const [draft, setDraft] = useState<string[]>(() => [...getCollageSelection(tripId)]);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || candidates.length === 0) return;
+    seeded.current = true;
+    const known = new Set(candidates.map((p) => p.id));
+    setDraft((current) => current.filter((id) => known.has(id)));
+  }, [candidates]);
+  // The grid shows the whole roll: load the rest of the pages once.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (complete || asked.current) return;
+    asked.current = true;
+    void loadAll();
+  }, [complete, loadAll]);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
   const full = draft.length >= COLLAGE_MAX;
 
   const onPress = useCallback((id: string) => {
-    setDraft((current) => {
-      const result = toggleSelection(current, id);
-      if (result.full) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      return result.full ? current : result.selection;
-    });
+    const result = toggleSelection(draftRef.current, id);
+    if (result.full) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    else setDraft(result.selection);
   }, []);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
@@ -41,15 +56,15 @@ export function SharePickScreen({ tripId }: { tripId: string }) {
   };
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<RevealedPhoto>) => {
+    ({ item, index: position }: ListRenderItemInfo<RevealedPhoto>) => {
       const index = draft.indexOf(item.id);
       return (
         <View style={styles.slot}>
-          <PickCell photo={item} token={token} size={size} order={index >= 0 ? index + 1 : null} dimmed={full && index < 0} onPress={onPress} />
+          <PickCell photo={item} index={position} total={candidates.length} token={token} size={size} order={index >= 0 ? index + 1 : null} dimmed={full && index < 0} onPress={onPress} />
         </View>
       );
     },
-    [draft, token, size, full, onPress],
+    [draft, token, size, full, candidates.length, onPress],
   );
 
   return (

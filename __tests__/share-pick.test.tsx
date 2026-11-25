@@ -65,6 +65,22 @@ describe("Elegir fotos", () => {
     expect(screen.getByText("2 de 8")).toBeVisible();
   });
 
+  it("labels each photo with its position and, when chosen, its number", async () => {
+    await open();
+    expect(screen.getByLabelText("Foto 3 de 10")).toBeVisible();
+    await fireEvent.press(cell("p3"));
+    expect(screen.getByLabelText("Foto 3 de 10, elegida 1")).toBeVisible();
+    expect(screen.getByLabelText("Foto 4 de 10")).toBeVisible();
+  });
+
+  it("ignores saved ids that are no longer candidates", async () => {
+    await open(["gone", "p2"]);
+    expect(screen.getByText("1 de 8")).toBeVisible();
+    expect(badge("p2")).toHaveTextContent("1");
+    await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
+    expect(getCollageSelection(SUR)).toEqual(["p2"]);
+  });
+
   it("deselecting renumbers the rest", async () => {
     await open();
     await fireEvent.press(cell("p1"));
@@ -84,6 +100,7 @@ describe("Elegir fotos", () => {
     expect(badge("p9")).toBeNull();
     expect(screen.getByText("8 de 8")).toBeVisible();
     expect(haptics.impactAsync).toHaveBeenCalledWith("light");
+    expect(haptics.impactAsync).toHaveBeenCalledTimes(1);
   });
 
   it("Listo saves the draft and goes back", async () => {
