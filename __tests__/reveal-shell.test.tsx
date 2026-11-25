@@ -54,6 +54,7 @@ const detail = (over: Partial<actions.TripDetail["trip"]> = {}): actions.TripDet
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
     ...over,

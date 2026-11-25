@@ -65,6 +65,7 @@ const detail = (me: Member, groupIds: string[], over: Partial<tripActions.Trip> 
     contest: null,
     type: "event",
     coverUrl: null,
+    coverFocusY: null,
     groups: GROUPS,
     createdBy: { userId: "u1", name: "Juani" },
     ...over,

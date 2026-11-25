@@ -8,6 +8,7 @@ const trip = (id: string, over: Partial<TripSummary> = {}): TripSummary => ({
   id,
   type: "trip",
   coverUrl: null,
+  coverFocusY: null,
   name: id,
   joinCode: "ABC234",
   startsAt: NOW - 10 * DAY,

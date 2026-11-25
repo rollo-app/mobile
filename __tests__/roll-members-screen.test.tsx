@@ -59,6 +59,7 @@ const detail = (me: Member, members: Member[]): tripActions.TripDetail => ({
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: { userId: "u1", name: "Juani" },
   },

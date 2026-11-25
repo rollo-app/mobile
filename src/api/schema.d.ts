@@ -2843,7 +2843,7 @@ export interface paths {
         head?: never;
         /**
          * Edit the trip (admin)
-         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` and `description` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything. An event stays `photoLimitMode: total` with `momentMode: off` (409 otherwise).
+         * @description Any admin edits the name, dates, quota and daily moment, depending on the stage: before the start everything; while running not `startsAt` nor `photoLimitMode` (409); once ended or revealed only `name` and `description` (409 'El rollo ya terminó: no se puede editar'). A field re-sent with its stored value counts as untouched. Changing dates or moment config deletes the future moments nobody took (they are drawn again; today's stays). `featuringDisabled` (private rollo) is only for the creator: 403 without applying anything. An event stays `photoLimitMode: total` with `momentMode: off` (409 otherwise). `coverFocusY` (0..1, null resets; 400 outside) picks which vertical part of the cover shows in the rollos list; any admin, until the reveal (409 'Este rollo ya se reveló.' / 'Este evento ya se reveló.'); a new cover resets it.
          */
         patch: {
             parameters: {
@@ -6626,6 +6626,8 @@ export interface components {
             type: "trip" | "event";
             /** @description Public path of the cover; null if none */
             coverUrl: string | null;
+            /** @description Which vertical part of the cover shows in the wide card: 0 = top, 1 = bottom; null = middle */
+            coverFocusY: number | null;
             /** @description ThumbHash of the most recently taken uploaded photo or video of the rollo (null if none); the app derives the rollo's color from it */
             coverThumbhash: string | null;
         };
@@ -6967,6 +6969,8 @@ export interface components {
             type: "trip" | "event";
             /** @description Public path of the cover (the app prefixes the API base URL); null if none */
             coverUrl: string | null;
+            /** @description Which vertical part of the cover shows in the rollos list: 0 = top, 1 = bottom; null = middle */
+            coverFocusY: number | null;
             /** @description Groups of an event, in order; [] for a regular trip */
             groups: {
                 /** Format: uuid */
@@ -7123,6 +7127,8 @@ export interface components {
             contestEnabled?: boolean;
             /** @description How long the finalists are voted on after the reveal, in hours (24 to 336, default 72). Editable until the reveal; 409 once revealed */
             contestVotingHours?: number;
+            /** @description Which vertical part of the cover shows in the rollos list: 0 = top, 0.5 = middle, 1 = bottom; null resets it. Any admin; 409 once revealed */
+            coverFocusY?: number | null;
             /** @description Only before the rollo starts; never in the past */
             startsAt?: number;
             /** @description Trip end; must be after startsAt, at most 31 days after it and <= the resulting revealAt. Not once the rollo ended */

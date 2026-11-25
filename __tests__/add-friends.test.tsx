@@ -45,6 +45,7 @@ const detail = (over: Partial<tripActions.Trip> = {}, role: "admin" | "member" =
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
     ...over,

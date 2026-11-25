@@ -94,6 +94,7 @@ const detail = (): actions.TripDetail => ({
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
   },
