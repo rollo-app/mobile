@@ -4,6 +4,7 @@ import { isEvent, isOrganizer } from "@/features/events/event";
 import { joinLinkUrl } from "@/features/events/join-link";
 import { InfoButton } from "@/features/info/info-button";
 import { Avatar } from "@/features/profile/avatar";
+import { canShareInvite } from "@/features/share/invite";
 import type { TripDetail } from "@/features/trips/actions";
 import { Row, Section } from "@/ui/components";
 import { orderMembers } from "./members-order";
@@ -35,6 +36,9 @@ export function RollInvite({ detail }: { detail: TripDetail }) {
         accessibilityLabel={`Código ${detail.trip.joinCode}. Compartir invitación`}
         onPress={() => void share()}
       />
+      {canShareInvite(detail) && (
+        <Row label="Compartir en Stories" onPress={() => router.push({ pathname: "/share-story", params: { tripId: detail.trip.id, kind: "invite" } })} />
+      )}
       {event && isOrganizer(detail) && !detail.trip.revealed && (
         <Row label="Código QR" disabled={full} onPress={() => router.push({ pathname: "/event-qr", params: { tripId: detail.trip.id } })} />
       )}
