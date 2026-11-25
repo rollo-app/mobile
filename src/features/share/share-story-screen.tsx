@@ -2,28 +2,27 @@ import * as Clipboard from "expo-clipboard";
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from "react-native";
+import { type LayoutChangeEvent, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { memberTotal } from "@/features/trips/member-total";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { Button, ErrorText, Footnote, Loading, Screen } from "@/ui/components";
+import { Button, ErrorText, Footnote, Loading } from "@/ui/components";
 import { colors, spacing, tintHex, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
-import { InstagramButton } from "./instagram-button";
 import { inviteCaption, inviteLink, inviteSwatches } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
 import { renderInviteCard } from "./render-invite";
 import { instagramStoriesAvailable, isShareCancel, shareMore, shareToInstagramStories } from "./share-story";
+import { ShareTargetButton } from "./share-target-button";
 import { StoryPreview, STORY_RATIO } from "./story-preview";
 import { DEFAULT_STYLE, STORY_STYLES, STYLE_ASSETS, STYLE_LABEL, STYLE_PALETTE, styleFromLabel } from "./story-style";
 import { useStoryAssets } from "./use-story-assets";
 
 const STYLE_LABELS = STORY_STYLES.map((s) => STYLE_LABEL[s]);
-/** The preview never takes more than this share of the screen's height. */
-const MAX_PREVIEW_HEIGHT = 0.62;
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
 
@@ -38,7 +37,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const [loadedAll, setLoadedAll] = useState(false);
   const [instagram, setInstagram] = useState(false);
   const [shareFailed, setShareFailed] = useState(false);
-  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const [area, setArea] = useState({ width: 0, height: 0 });
   const isCollage = kind === "collage";
 
   useEffect(() => {
@@ -113,10 +113,12 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
 
   // Switching style redraws: until the new files exist the preview keeps the base color and video, and sharing waits.
   const filesReady = assets.card !== null && assets.stillUri !== null;
-  const previewHeight = Math.min((width - spacing.md * 2) / STORY_RATIO, height * MAX_PREVIEW_HEIGHT);
+  // The preview fills the space left over, at 9:16: its height is what's available (or less, if the width runs out first).
+  const previewHeight = Math.max(0, Math.min(area.height, area.width / STORY_RATIO));
+  const onPreviewArea = ({ nativeEvent: { layout } }: LayoutChangeEvent) => setArea({ width: layout.width, height: layout.height });
 
   return (
-    <Screen grouped>
+    <View style={[styles.screen, { backgroundColor: colors.groupedBackground, paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>Cancelar</Stack.Toolbar.Button>
       </Stack.Toolbar>
@@ -138,26 +140,30 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
       {!detailError && !empty && !feedFailed && !assets.error && build === null && <Loading />}
       {build !== null && !assets.error && (
         <>
-          <StoryPreview style={style} card={assets.card} height={previewHeight} />
+          <View style={styles.previewArea} onLayout={onPreviewArea}>
+            <StoryPreview style={style} card={assets.card} height={previewHeight} />
+          </View>
           <SegmentedControl values={STYLE_LABELS} tintColor={tintHex[scheme]} selectedIndex={STORY_STYLES.indexOf(style)} onValueChange={(v) => setStyle(styleFromLabel(v))} />
           <View style={styles.actions}>
-            {instagram && <InstagramButton disabled={!filesReady} onPress={() => void shareStories()} />}
-            <Button label="Más opciones" disabled={!filesReady} variant={instagram ? "secondary" : "primary"} onPress={() => void share((link) => shareMore(assets.stillUri!, link), true)} />
+            {instagram && <ShareTargetButton option="instagram" label="Instagram" disabled={!filesReady} onPress={() => void shareStories()} />}
+            <ShareTargetButton option="more" label="Más opciones" disabled={!filesReady} onPress={() => void share((link) => shareMore(assets.stillUri!, link), true)} />
             {isCollage && candidates.length >= 2 && (
-              <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/share-pick", params: { tripId } })} style={styles.shuffle}>
-                <Text style={[type.body, { color: colors.tint }]}>Elegir fotos</Text>
-              </Pressable>
+              <ShareTargetButton option="photos" label="Elegir fotos" onPress={() => router.push({ pathname: "/share-pick", params: { tripId } })} />
             )}
           </View>
-          {!isCollage && <Footnote>Copiamos el link. Pegalo en tu story con el sticker de Enlace</Footnote>}
+          {!isCollage && (
+            <Text style={[type.caption, styles.hint]}>Copiamos el link. Pegalo en tu story con el sticker de Enlace</Text>
+          )}
           {shareFailed && <ErrorText>No se pudo compartir. Probá de nuevo.</ErrorText>}
         </>
       )}
-    </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  actions: { gap: spacing.sm },
-  shuffle: { alignItems: "center", justifyContent: "center", minHeight: 44 },
+  screen: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.md },
+  previewArea: { flex: 1, alignItems: "center", justifyContent: "center", marginBottom: spacing.xs },
+  actions: { flexDirection: "row", justifyContent: "center", gap: spacing.lg },
+  hint: { color: colors.secondaryLabel, textAlign: "center" },
 });

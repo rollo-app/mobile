@@ -124,10 +124,10 @@ const filesReady = () => screen.findByLabelText("Vista previa");
 const lastStyle = (mock: jest.Mock) => mock.mock.calls.at(-1)![0].style;
 
 describe("Compartir screen", () => {
-  it("collage: shows the preview, Compartir en Instagram and Elegir fotos; Elegir fotos opens the picker", async () => {
+  it("collage: shows the preview, Instagram and Elegir fotos; Elegir fotos opens the picker", async () => {
     await open("collage");
     expect(await screen.findByLabelText("Vista previa")).toBeVisible();
-    expect(await screen.findByRole("button", { name: "Compartir en Instagram" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Instagram" })).toBeVisible();
     expect(screen.getByTestId("instagram-logo")).toBeVisible();
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeVisible();
     expect(collage).toHaveBeenCalledTimes(1);
@@ -156,7 +156,7 @@ describe("Compartir screen", () => {
     await open("collage");
     expect(await screen.findByLabelText("Vista previa")).toBeVisible();
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Compartir en Instagram" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Instagram" })).toBeNull();
 
     await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
     await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("collage"), undefined));
@@ -165,7 +165,7 @@ describe("Compartir screen", () => {
   it("collage: Stories is shared without a link", async () => {
     await open("collage");
     await filesReady();
-    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Instagram" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Instagram" }));
     await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(STORIES));
     expect(clipboard.setStringAsync).not.toHaveBeenCalled();
   });
@@ -197,7 +197,7 @@ describe("Compartir screen", () => {
     expect(invite.mock.calls[0]![0].swatches.length).toBeGreaterThan(0);
 
     await filesReady();
-    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Instagram" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Instagram" }));
     await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith({ ...STORIES, stickerUri: CARD_FILE("invite"), linkText: expect.stringContaining("HUB5FT") }));
     // The Stories pasteboard write replaces the clipboard: the link travels in the Stories call, not through expo-clipboard.
     expect(clipboard.setStringAsync).not.toHaveBeenCalled();
@@ -226,7 +226,7 @@ describe("Compartir screen", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Claro" }));
     await waitFor(() => expect(collage).toHaveBeenCalledTimes(2));
     await filesReady();
-    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Instagram" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Instagram" }));
     await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledTimes(1));
     const call = story.shareToInstagramStories.mock.calls[0]![0];
     expect(call.stickerUri).toEqual(CARD_FILE("collage", "light"));
@@ -250,7 +250,7 @@ describe("Compartir screen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Claro" }));
     await waitFor(() => expect(lastStyle(collage as unknown as jest.Mock)).toBe("light"));
     await filesReady();
-    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Instagram" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Instagram" }));
     await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(expect.objectContaining({ backgroundColor: "#f3efe8", backgroundVideoUri: "file:///assets/bg-light.mp4" })));
   });
 
@@ -266,7 +266,7 @@ describe("Compartir screen", () => {
     expect(collage).toHaveBeenCalledTimes(2);
     expect(screen.getByLabelText("Vista previa").props.source).toEqual([expect.objectContaining({ uri: CARD_FILE("collage") })]);
 
-    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Instagram" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Instagram" }));
     await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(expect.objectContaining({ stickerUri: CARD_FILE("collage") })));
     await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
     await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("collage"), undefined));
@@ -277,7 +277,7 @@ describe("Compartir screen", () => {
     await open("invite");
     await fireEvent.press(await screen.findByRole("button", { name: "Claro" }));
     await waitFor(() => expect(still).toHaveBeenCalledWith(expect.anything(), "light"));
-    expect(screen.queryByRole("button", { name: "Compartir en Instagram" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Instagram" })).toBeNull();
     await filesReady();
     await fireEvent.press(await screen.findByRole("button", { name: "Más opciones" }));
     await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("invite", "light"), expect.stringContaining("HUB5FT")));
@@ -316,7 +316,7 @@ describe("Compartir screen", () => {
     expect(screen.queryByRole("alert")).toBeNull();
 
     story.shareToInstagramStories.mockRejectedValueOnce(new Error("boom"));
-    await fireEvent.press(screen.getByRole("button", { name: "Compartir en Instagram" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Instagram" }));
     expect(await screen.findByText("No se pudo compartir. Probá de nuevo.")).toBeVisible();
   });
 });
