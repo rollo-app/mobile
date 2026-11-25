@@ -71,6 +71,7 @@
     "jest-expo": "~58.0.11",
     "openapi-typescript": "^7.13.0",
     "patch-package": "^8.0.1",
+    "simple-icons": "^16.38.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -81,6 +82,7 @@
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/build-icons.mjs",
+    "share-logos": "node scripts/build-share-logos.mjs",
     "lottie": "node scripts/build-lottie.mjs",
     "story-backgrounds": "node scripts/build-story-backgrounds.mjs",
     "update:production": "APP_VARIANT=production EXPO_PUBLIC_API_URL=https://rollo-api.juanifraga.com npx eas-cli@latest update --channel production --environment production --platform ios",
