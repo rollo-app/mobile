@@ -443,11 +443,14 @@ export interface paths {
         };
         /**
          * Preview a rollo (event or regular trip) by its invite code
-         * @description No token. The type (`trip` | `event`), name, description, cover, dates, timezone and groups (empty for a regular trip) the guest sees before joining (`POST /trips/join`), and whether the rollo was already revealed. 404 'Código inválido' if the code does not exist. Limited per IP (429, 300/min: a venue shares one IP; more than 20 misses (404) a minute block the IP for 60 s, valid codes included). CORS: open to the website (`https://rolloproject.com`, `https://www.rolloproject.com`), GET only.
+         * @description No token. The type (`trip` | `event`), name, description, cover, dates, timezone and groups (empty for a regular trip) the guest sees before joining (`POST /trips/join`), and whether the rollo was already revealed. A regular trip is previewed only with the query `any=1` (opt-in, so installed builds that read any 200 as an event keep working); without it a regular trip is 404 like an unknown code. 404 'Código inválido' if the code does not exist. Limited per IP (429, 300/min: a venue shares one IP; more than 20 misses (404) a minute block the IP for 60 s, valid codes included). CORS: open to the website (`https://rolloproject.com`, `https://www.rolloproject.com`), GET only.
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Send `1` to also preview a regular trip (any other value is ignored). Without it a regular trip answers 404 'Código inválido' like before, so installed builds that treat any 200 as an event keep working. */
+                    any?: string;
+                };
                 header?: never;
                 path: {
                     code: string;
@@ -3244,7 +3247,7 @@ export interface paths {
         get?: never;
         /**
          * Set your groups in an event
-         * @description Replaces the groups you are in (all must belong to the event, else 400). A guest needs at least one (400 with `[]`); an organizer (admin) may have none. 409 once the rollo or event is revealed ('Este rollo ya se reveló.' / 'Este evento ya se reveló.').
+         * @description Replaces the groups you are in (all must belong to the event, else 400). A guest needs at least one (400 with `[]`); an organizer (admin) may have none. 409 for a regular trip ('Solo los eventos tienen grupos.') and once the event is revealed ('Este evento ya se reveló.').
          */
         put: {
             parameters: {
@@ -3335,7 +3338,7 @@ export interface paths {
         put?: never;
         /**
          * Create a group in an event (admin)
-         * @description The name is trimmed (1 to 40 characters) and unique in the event (409). At most 30 groups (409). 409 once the rollo or event is revealed ('Este rollo ya se reveló.' / 'Este evento ya se reveló.').
+         * @description The name is trimmed (1 to 40 characters) and unique in the event (409). At most 30 groups (409). 409 for a regular trip ('Solo los eventos tienen grupos.') and once the event is revealed ('Este evento ya se reveló.').
          */
         post: {
             parameters: {
@@ -3426,7 +3429,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a group of an event (admin)
-         * @description 409 ('Este grupo tiene gente o fotos.') while anyone is in the group or any photo was sent to it; 409 ('Un evento necesita al menos un grupo.') for the last group. 404 if the group is not in this event. 409 once the rollo or event is revealed ('Este rollo ya se reveló.' / 'Este evento ya se reveló.').
+         * @description 409 ('Este grupo tiene gente o fotos.') while anyone is in the group or any photo was sent to it; 409 ('Un evento necesita al menos un grupo.') for the last group. 404 if the group is not in this event. 409 for a regular trip ('Solo los eventos tienen grupos.') and once the event is revealed ('Este evento ya se reveló.').
          */
         delete: {
             parameters: {
@@ -3498,7 +3501,7 @@ export interface paths {
         head?: never;
         /**
          * Rename a group of an event (admin)
-         * @description Same name rules as creating one (409 if taken). 404 if the group is not in this event. 409 once the rollo or event is revealed ('Este rollo ya se reveló.' / 'Este evento ya se reveló.').
+         * @description Same name rules as creating one (409 if taken). 404 if the group is not in this event. 409 for a regular trip ('Solo los eventos tienen grupos.') and once the event is revealed ('Este evento ya se reveló.').
          */
         patch: {
             parameters: {
