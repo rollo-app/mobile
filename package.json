@@ -73,7 +73,7 @@
     "start": "expo start",
     "ios": "expo run:ios",
     "android": "expo run:android",
-    "test": "jest --logHeapUsage",
+    "test": "jest",
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/build-icons.mjs",
