@@ -15,9 +15,9 @@ export function MeScreen() {
   // or remove someone, without another request. Rolls come from your profile; the photo count from the
   // featured grid (the same query ProfileShowcase makes, so no extra request).
   const { friends } = useFriends();
-  const { profile } = useUser(me?.id);
+  const { profile, error } = useUser(me?.id);
   const { photos } = useFeatured(me?.id);
-  const s = ownStats({ friends: friends?.length, profile, featuredLength: photos?.length });
+  const s = ownStats({ friends: friends?.length, profile, featuredLength: photos?.length, profileFailed: !!error });
   return (
     <Screen grouped>
       <Stack.Toolbar placement="right">

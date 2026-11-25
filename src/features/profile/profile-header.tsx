@@ -89,7 +89,7 @@ function StatsLine({ hasFriends, label, onPress, children }: { hasFriends: boole
     );
   }
   return (
-    <Pressable testID="profile-stats" accessibilityRole="button" accessibilityLabel={label} accessible onPress={onPress} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable testID="profile-stats" accessibilityRole="button" accessibilityLabel={label} accessibilityHint="Abre la lista de amigos" accessible onPress={onPress} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
       {children}
     </Pressable>
   );
