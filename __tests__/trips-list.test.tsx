@@ -4,6 +4,9 @@ import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import * as friendsActions from "@/features/friends/actions";
 import * as actions from "@/features/trips/actions";
+import { queryClient } from "@/api/query-client";
+import { localDay } from "@/features/capture/quota";
+import { myTripsKey } from "@/features/trips/use-active-trip";
 import { getActiveTripId } from "@/storage/active-trip";
 import type { TripSummary } from "@/features/trips/active";
 import { signInAs, tripSummary } from "@/test/account";
@@ -55,10 +58,30 @@ describe("Rollos list", () => {
 
   it("a live roll shows its card with the photos left", async () => {
     await signInWith([live, revealedMine]);
+    trips.fetchTrip.mockResolvedValue({
+      trip: { id: "t6", photoLimitMode: "daily", timezone: "America/Argentina/Buenos_Aires" },
+      today: { date: localDay(Date.now(), "America/Argentina/Buenos_Aires"), photosLeft: 6, videosLeft: 0 },
+    } as never);
     await renderRouter(routes, { initialUrl: "/roll" });
     expect(await screen.findByRole("button", { name: "Mar del Plata, en vivo" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Sacar una foto en Mar del Plata" })).toBeVisible();
+    expect(await screen.findByText("Te quedan 6 fotos hoy")).toBeVisible();
     expect(screen.queryByText("Próximos")).toBeNull();
+  });
+
+  it("without signal and without cache it says so with Reintentar, not the welcome, and retrying shows the list", async () => {
+    queryClient.removeQueries({ queryKey: myTripsKey });
+    trips.fetchMyTrips.mockRejectedValueOnce(new Error("Sin conexión"));
+    trips.fetchMyTrips.mockResolvedValue({ trips: [revealedMine] });
+    await renderRouter(routes, { initialUrl: "/roll" });
+
+    expect(await screen.findByText("Sin conexión")).toBeVisible();
+    expect(screen.queryByText("Todavía no tenés rollos")).toBeNull();
+    // Other tabs show the same failure with their own button: they share the one query.
+    await fireEvent.press(screen.getAllByRole("button", { name: "Reintentar" })[0]!);
+
+    expect(await screen.findByRole("button", { name: "Sur, revelado" })).toBeVisible();
+    expect(trips.fetchMyTrips).toHaveBeenCalledTimes(2);
   });
 
   it("tapping a live card opens that roll", async () => {
@@ -268,8 +291,10 @@ describe("Rollos: row states and grouping", () => {
   });
 });
 
-// Last on purpose: opening a roll leaves navigation state behind that confuses the tests after it.
+// Opening a roll mounts its screen, which keeps loading (detail, active id) after the test body; each test waits for
+// that to finish so it doesn't spill into the next one.
 describe("Rollos: opening a roll", () => {
+  const rollLoaded = () => waitFor(() => expect(trips.fetchTrip).toHaveBeenCalled());
   it("tapping a row opens that roll with Rollos to go back", async () => {
     await renderRouter(routes, { initialUrl: "/roll" });
     await fireEvent.press(await screen.findByRole("button", { name: /^Tandil/ }));
@@ -277,9 +302,8 @@ describe("Rollos: opening a roll", () => {
     // Pushed on top of the list (not replacing it), and the roll marks itself active once mounted.
     await waitFor(async () => expect(await getActiveTripId()).toBe("t2"));
     expect(router.canGoBack()).toBe(true);
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
+    await rollLoaded();
+    await act(async () => {});
   });
 
   it("choosing an old roll makes it the active one", async () => {
@@ -292,5 +316,7 @@ describe("Rollos: opening a roll", () => {
 
     await waitFor(() => expect(screen).toHavePathname(`/roll/${OLD}`));
     await waitFor(async () => expect(await getActiveTripId()).toBe(OLD));
+    await rollLoaded();
+    await act(async () => {});
   });
 });

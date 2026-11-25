@@ -24,16 +24,37 @@ export function RollsScreen() {
   const groups = groupTrips(trips, now, active?.id ?? null);
   const { setArchived } = useArchiveTrip();
 
-  if (hasNoTrips(loaded, active)) return <Welcome />;
+  // The title is set before any early return so it doesn't jump from small to large once the data arrives.
+  const title = <Stack.Screen options={{ title: "Rollos", headerLargeTitle: true }} />;
+  // `error` only exists without any data, so it must come before "no rolls": no signal is not "you have none".
   if (error) {
     return (
       <Screen grouped>
+        {title}
         <ErrorText>{error}</ErrorText>
         <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
+        {/* Starting or joining a roll doesn't need the list, so they stay available (as on the welcome). */}
+        <Button label="Empezar un nuevo rollo" onPress={() => router.push("/create")} />
+        <Button label="Sumarme con un código" variant="secondary" onPress={() => router.push("/join")} />
       </Screen>
     );
   }
-  if (!loaded) return <Loading />;
+  if (hasNoTrips(loaded, active)) {
+    return (
+      <>
+        {title}
+        <Welcome />
+      </>
+    );
+  }
+  if (!loaded) {
+    return (
+      <>
+        {title}
+        <Loading />
+      </>
+    );
+  }
 
   const open = (id: string) => router.push(rollHref(id));
   const row = (t: TripSummary) => (
@@ -42,7 +63,7 @@ export function RollsScreen() {
 
   return (
     <Screen grouped>
-      <Stack.Screen options={{ title: "Rollos", headerLargeTitle: true }} />
+      {title}
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Menu icon="plus" accessibilityLabel="Nuevo rollo o sumarte">
           <Stack.Toolbar.MenuAction icon="plus.circle" onPress={() => router.push("/create")}>
