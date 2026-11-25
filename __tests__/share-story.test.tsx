@@ -20,6 +20,8 @@ jest.mock("@/features/share/share-story", () => ({
   ...jest.requireActual("@/features/share/share-story"),
   writeShareFile: jest.fn(),
   instagramStoriesAvailable: jest.fn(),
+  whatsAppAvailable: jest.fn(),
+  shareImageToWhatsApp: jest.fn(),
   shareToInstagramStories: jest.fn(),
   shareMore: jest.fn(),
 }));
@@ -114,6 +116,8 @@ beforeEach(async () => {
   // A distinct uri per file, so sharing the card where the still belongs (or the reverse) fails a test.
   story.writeShareFile.mockImplementation(async (_bytes, name) => `file:///cache/${name}`);
   story.instagramStoriesAvailable.mockResolvedValue(true);
+  story.whatsAppAvailable.mockResolvedValue(false);
+  story.shareImageToWhatsApp.mockResolvedValue(undefined);
   story.shareToInstagramStories.mockResolvedValue(undefined);
   story.shareMore.mockResolvedValue(undefined);
 });
@@ -134,7 +138,7 @@ describe("Compartir screen", () => {
     expect(collage.mock.calls[0]![0]).toMatchObject({ name: "Viaje al sur", caption: "3 – 9 de enero · 1 persona" });
     expect(screen.queryByRole("button", { name: "Otras" })).toBeNull();
 
-    await fireEvent.press(screen.getByRole("button", { name: "Elegir fotos" }));
+    await fireEvent.press(screen.getByLabelText("Elegir fotos"));
     expect(await screen.findByText("pick stub")).toBeVisible();
     expect(screen).toHavePathname("/share-pick");
     expect(screen).toHaveSearchParams({ tripId: SUR });
@@ -149,6 +153,71 @@ describe("Compartir screen", () => {
     await act(async () => setCollageSelection(SUR, ["b"]));
     await waitFor(() => expect(collage).toHaveBeenCalledTimes(2));
     expect(collage.mock.calls[1]![0].photos.map((p) => p.id)).toEqual(["b"]);
+  });
+
+  it("collage: the strip shows the numbered photos in collage order, with a plus", async () => {
+    setCollageSelection(SUR, ["c", "a"]);
+    await open("collage", detail(), [item("a"), item("b"), item("c")]);
+    await filesReady();
+    expect(screen.getByTestId("strip-badge-c")).toHaveTextContent("1");
+    expect(screen.getByTestId("strip-badge-a")).toHaveTextContent("2");
+    expect(screen.queryByTestId("strip-badge-b")).toBeNull();
+    expect(screen.getByTestId("strip-add")).toBeVisible();
+    expect(screen.getByLabelText("Elegir fotos")).toHaveProp("accessibilityHint", "El collage tiene 2 fotos");
+    expect(screen.queryByRole("button", { name: "Elegir fotos" })).not.toBeNull();
+  });
+
+  it("collage: with a single candidate the strip has no plus and is not tappable", async () => {
+    await open("collage", detail(), [item("a")]);
+    await filesReady();
+    expect(screen.getByTestId("strip-badge-a")).toHaveTextContent("1");
+    expect(screen.queryByTestId("strip-add")).toBeNull();
+    expect(screen.queryByLabelText("Elegir fotos")).toBeNull();
+  });
+
+  it("invite: no photo strip", async () => {
+    await open("invite", detail(), [item("a"), item("b")]);
+    await filesReady();
+    expect(screen.queryByLabelText("Elegir fotos")).toBeNull();
+    expect(screen.queryByTestId("strip-badge-a")).toBeNull();
+  });
+
+  it("chips reflect the selected style", async () => {
+    await open("collage");
+    await filesReady();
+    expect(screen.getByRole("button", { name: "Oscuro" })).toHaveProp("accessibilityState", { selected: true });
+    await fireEvent.press(screen.getByRole("button", { name: "Claro" }));
+    expect(screen.getByRole("button", { name: "Claro" })).toHaveProp("accessibilityState", { selected: true });
+    expect(screen.getByRole("button", { name: "Oscuro" })).toHaveProp("accessibilityState", { selected: false });
+  });
+
+  it("WhatsApp pill shows only when WhatsApp is available", async () => {
+    await open("collage");
+    await filesReady();
+    expect(screen.queryByRole("button", { name: "WhatsApp" })).toBeNull();
+  });
+
+  it("WhatsApp pill shares the still of the selected style", async () => {
+    story.whatsAppAvailable.mockResolvedValue(true);
+    await open("collage");
+    await fireEvent.press(await screen.findByRole("button", { name: "Claro" }));
+    await waitFor(() => expect(still).toHaveBeenCalledWith(expect.anything(), "light"));
+    await filesReady();
+    await fireEvent.press(await screen.findByRole("button", { name: "WhatsApp" }));
+    await waitFor(() => expect(story.shareImageToWhatsApp).toHaveBeenCalledWith(STILL_FILE("collage", "light")));
+  });
+
+  it("invite: WhatsApp copies the link first", async () => {
+    story.whatsAppAvailable.mockResolvedValue(true);
+    const order: string[] = [];
+    clipboard.setStringAsync.mockImplementation(async () => (order.push("copy"), true));
+    story.shareImageToWhatsApp.mockImplementation(async () => void order.push("whatsapp"));
+    await open("invite", detail(), [item("a", { shareable: false })]);
+    await filesReady();
+    await fireEvent.press(await screen.findByRole("button", { name: "WhatsApp" }));
+    await waitFor(() => expect(story.shareImageToWhatsApp).toHaveBeenCalledWith(STILL_FILE("invite")));
+    expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("HUB5FT"));
+    expect(order).toEqual(["copy", "whatsapp"]);
   });
 
   it("collage without Instagram: only Más opciones", async () => {

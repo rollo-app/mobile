@@ -1,41 +1,41 @@
 import * as Clipboard from "expo-clipboard";
-import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type LayoutChangeEvent, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { memberTotal } from "@/features/trips/member-total";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading } from "@/ui/components";
-import { colors, spacing, tintHex, type } from "@/ui/theme";
+import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
 import { inviteCaption, inviteLink, inviteSwatches } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
 import { renderInviteCard } from "./render-invite";
-import { instagramStoriesAvailable, isShareCancel, shareMore, shareToInstagramStories } from "./share-story";
-import { ShareTargetButton } from "./share-target-button";
+import { instagramStoriesAvailable, isShareCancel, shareImageToWhatsApp, shareMore, shareToInstagramStories, whatsAppAvailable } from "./share-story";
+import { CollageStrip } from "./collage-strip";
+import { SharePills } from "./share-pills";
+import { StyleChips } from "./style-chips";
 import { StoryPreview, STORY_RATIO } from "./story-preview";
-import { DEFAULT_STYLE, STORY_STYLES, STYLE_ASSETS, STYLE_LABEL, STYLE_PALETTE, styleFromLabel } from "./story-style";
+import { DEFAULT_STYLE, STYLE_ASSETS, STYLE_PALETTE } from "./story-style";
 import { useStoryAssets } from "./use-story-assets";
 
-const STYLE_LABELS = STORY_STYLES.map((s) => STYLE_LABEL[s]);
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
 
 /** "Compartir": builds the Stories image (collage or invitation), previews it and offers Instagram Stories, the system sheet and, for the collage, choosing the photos. */
 export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" }) {
   const { detail, error: detailError } = useTripDetail(tripId);
-  const { photos, complete, loadAll } = useRevealedPhotos(tripId);
+  const { photos, token, complete, loadAll } = useRevealedPhotos(tripId);
   const { feed, loading: feedLoading, error: feedError, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
   const selection = useCollageSelection(tripId);
   const [style, setStyle] = useState(DEFAULT_STYLE);
-  const scheme = useColorScheme() ?? "light";
   const [loadedAll, setLoadedAll] = useState(false);
   const [instagram, setInstagram] = useState(false);
+  const [whatsapp, setWhatsapp] = useState(false);
   const [shareFailed, setShareFailed] = useState(false);
   const insets = useSafeAreaInsets();
   const [area, setArea] = useState({ width: 0, height: 0 });
@@ -44,6 +44,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   useEffect(() => {
     let active = true;
     void instagramStoriesAvailable().then((available) => active && setInstagram(available));
+    void whatsAppAvailable().then((available) => active && setWhatsapp(available));
     return () => {
       active = false;
     };
@@ -65,6 +66,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   // No photos because the feed failed to load is an error with a retry, not "no photos".
   const feedFailed = isCollage && !!feedError;
   const empty = isCollage && ready && candidates.length === 0 && !feedFailed;
+  const stripPhotos = useMemo(() => (isCollage ? collagePhotos(candidates, selection, SEED) : []), [isCollage, candidates, selection]);
   const build = useMemo(() => {
     if (!detail || !ready || empty || feedFailed) return null;
     const { trip } = detail;
@@ -143,14 +145,22 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <View style={styles.previewArea} onLayout={onPreviewArea}>
             <StoryPreview style={style} card={assets.card} height={previewHeight} />
           </View>
-          <SegmentedControl values={STYLE_LABELS} tintColor={tintHex[scheme]} selectedIndex={STORY_STYLES.indexOf(style)} onValueChange={(v) => setStyle(styleFromLabel(v))} />
-          <View style={styles.actions}>
-            {instagram && <ShareTargetButton option="instagram" label="Instagram" disabled={!filesReady} onPress={() => void shareStories()} />}
-            <ShareTargetButton option="more" label="Más opciones" disabled={!filesReady} onPress={() => void share((link) => shareMore(assets.stillUri!, link), true)} />
-            {isCollage && candidates.length >= 2 && (
-              <ShareTargetButton option="photos" label="Elegir fotos" onPress={() => router.push({ pathname: "/share-pick", params: { tripId } })} />
-            )}
-          </View>
+          {isCollage && (
+            <CollageStrip
+              photos={stripPhotos}
+              token={token}
+              onPress={candidates.length >= 2 ? () => router.push({ pathname: "/share-pick", params: { tripId } }) : null}
+            />
+          )}
+          <StyleChips value={style} onChange={setStyle} />
+          <SharePills
+            instagram={instagram}
+            whatsapp={whatsapp}
+            disabled={!filesReady}
+            onInstagram={() => void shareStories()}
+            onWhatsApp={() => void share(() => shareImageToWhatsApp(assets.stillUri!), true)}
+            onMore={() => void share((link) => shareMore(assets.stillUri!, link), true)}
+          />
           {!isCollage && (
             <Text style={[type.caption, styles.hint]}>Copiamos el link. Pegalo en tu story con el sticker de Enlace</Text>
           )}
@@ -164,6 +174,5 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
 const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.md },
   previewArea: { flex: 1, alignItems: "center", justifyContent: "center", marginBottom: spacing.xs },
-  actions: { flexDirection: "row", justifyContent: "center", gap: spacing.lg },
   hint: { color: colors.secondaryLabel, textAlign: "center" },
 });
