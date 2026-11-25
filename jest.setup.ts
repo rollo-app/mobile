@@ -602,3 +602,8 @@ jest.mock("expo-apple-authentication", () => {
       require("react").createElement(Pressable, { accessibilityRole: "button", accessibilityLabel: "Continuar con Apple", onPress }, require("react").createElement(Text, null, "Continuar con Apple")),
   };
 });
+
+// The LIVE badge's dot pulses forever (`Animated.loop`, src/ui/badge.tsx). Since the Rollos list became the first screen,
+// almost every screen test renders a live roll's card, and that endless JS-driven animation kept a Jest worker busy in CI
+// until later suites timed out and the run hung. Tests get a loop that never runs; the Badge test still sees it called.
+jest.spyOn(require("react-native").Animated, "loop").mockImplementation(() => ({ start: () => {}, stop: () => {}, reset: () => {} }));
