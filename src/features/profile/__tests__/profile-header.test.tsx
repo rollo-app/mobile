@@ -47,11 +47,17 @@ describe("ProfileHeader", () => {
     expect(screen.getByTestId("profile-stats").props.accessibilityLabel).toBe("8 rollos, 34 fotos, 12 amigos");
   });
 
-  it("opens the friend list from the friends part", async () => {
+  it("opens the friend list from the whole line", async () => {
     const onPressFriends = jest.fn();
     await show({ stats: { rolls: 8, photos: 34, friends: 12, own: true, onPressFriends } });
-    await fireEvent.press(screen.getByRole("button", { name: "12 amigos" }));
+    await fireEvent.press(screen.getByRole("button", { name: "8 rollos, 34 fotos, 12 amigos" }));
     expect(onPressFriends).toHaveBeenCalledTimes(1);
+  });
+
+  it("is not a button when there are no friends to open", async () => {
+    await show({ stats: { rolls: 3, friends: 0, own: true, onPressFriends: () => {} } });
+    expect(screen.getByTestId("profile-stats").props.accessibilityLabel).toBe("3 rollos");
+    expect(screen.queryByRole("button", { name: "3 rollos" })).toBeNull();
   });
 
   it("shows the 0-friends line on your own empty profile and it is pressable", async () => {

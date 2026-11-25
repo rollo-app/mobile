@@ -24,6 +24,7 @@ export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, stats
   const badgeText = badgeLabel(badge);
   const parts = stats ? statParts(stats) : [];
   const emptyText = stats ? emptyStatsText(stats) : null;
+  const hasFriends = parts.some((p) => p.kind === "friends");
   const mutual = stats ? mutualText(stats.mutual) : null;
   return (
     <View testID="profile-header" style={styles.header}>
@@ -53,19 +54,26 @@ export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, stats
         </Text>
       ) : null}
       {stats && parts.length > 0 ? (
-        // Facts, not actions: label and secondary text, never the tint.
-        <Text testID="profile-stats" accessibilityLabel={spokenStats(parts)} style={[type.subhead, styles.centered, { color: colors.secondaryLabel }]}>
-          {parts.map((p, i) => (
-            <Fragment key={p.kind}>
-              {i > 0 ? " · " : null}
-              <Text
-                {...(p.kind === "friends" ? { onPress: stats.onPressFriends, accessibilityRole: "button" as const, accessibilityLabel: `${p.count} ${p.word}` } : {})}
-              >
+        // Facts, not actions: label and secondary text, never the tint. With friends the whole line is one button (a nested Text with a label is not reachable on its own by VoiceOver).
+        <Pressable
+          testID="profile-stats"
+          accessibilityRole={hasFriends ? "button" : undefined}
+          accessibilityLabel={spokenStats(parts)}
+          accessible
+          disabled={!hasFriends}
+          onPress={stats.onPressFriends}
+          hitSlop={8}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <Text style={[type.subhead, styles.centered, { color: colors.secondaryLabel }]}>
+            {parts.map((p, i) => (
+              <Fragment key={p.kind}>
+                {i > 0 ? " · " : null}
                 <Text style={styles.count}>{p.count}</Text> {p.word}
-              </Text>
-            </Fragment>
-          ))}
-        </Text>
+              </Fragment>
+            ))}
+          </Text>
+        </Pressable>
       ) : null}
       {stats && parts.length === 0 && emptyText ? (
         <Pressable testID="profile-stats" accessibilityRole="button" accessibilityLabel={emptyText} onPress={stats.onPressFriends} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
