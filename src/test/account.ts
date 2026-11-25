@@ -1,5 +1,6 @@
 import { queryClient } from "@/api/query-client";
 import { meKey, type User } from "@/features/auth/actions";
+import * as profileActions from "@/features/profile/actions";
 import type { TripSummary } from "@/features/trips/active";
 import { myTripsKey } from "@/features/trips/use-active-trip";
 import { setActiveTripId } from "@/storage/active-trip";
@@ -43,3 +44,10 @@ export async function signInAs({
   queryClient.setQueryData(myTripsKey, { trips });
   if (active) await setActiveTripId(active);
 }
+
+/**
+ * Perfil is always mounted in the tabs and loads your own profile (`GET /users/{id}`). Suites that aren't about it
+ * call this to leave that request pending: it never answers, so no late update leaks into the next test's act()
+ * and the request stays out of recorded fetch calls. Call it after any mock reset.
+ */
+export const stubOwnProfile = () => jest.spyOn(profileActions, "fetchUser").mockReturnValue(new Promise(() => {}));

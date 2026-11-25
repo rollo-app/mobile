@@ -31,7 +31,7 @@ export function WorstCaseScreen() {
         {WORST_CASE_FIXTURES[current].map(({ title, props }) => (
           <View key={props.id} style={styles.case}>
             <Text style={[type.caption, styles.caption]}>{title}</Text>
-            <ProfileHeader {...props} friends={props.friends && { ...props.friends, onPress: () => {} }} />
+            <ProfileHeader {...props} stats={props.stats && { ...props.stats, onPressFriends: () => {} }} />
           </View>
         ))}
       </Screen>

@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
   type StyleProp,
+  type TextStyle,
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
@@ -39,9 +40,9 @@ export function Footnote({ children }: { children: ReactNode }) {
   return <Text style={[type.footnote, styles.footnote]}>{children}</Text>;
 }
 
-export function ErrorText({ children }: { children: ReactNode }) {
+export function ErrorText({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
   return (
-    <Text accessibilityRole="alert" selectable style={[type.subhead, { color: colors.danger }]}>
+    <Text accessibilityRole="alert" selectable style={[type.subhead, { color: colors.danger }, style]}>
       {children}
     </Text>
   );
