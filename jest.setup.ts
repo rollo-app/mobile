@@ -41,6 +41,8 @@ jest.mock("expo-file-system", () => {
     async upload(_url: string, _options?: unknown) {
       return { status: 200, body: "" };
     }
+    create(_options?: unknown) {}
+    async write(_content: unknown) {}
     delete() {
       (File as any).deleted += 1;
     }
@@ -602,3 +604,16 @@ jest.mock("expo-apple-authentication", () => {
       require("react").createElement(Pressable, { accessibilityRole: "button", accessibilityLabel: "Continuar con Apple", onPress }, require("react").createElement(Text, null, "Continuar con Apple")),
   };
 });
+
+// react-native-share and expo-clipboard are native: sharing resolves and the clipboard does nothing.
+jest.mock("react-native-share", () => ({
+  __esModule: true,
+  default: {
+    shareSingle: jest.fn(async () => ({ success: true, message: "" })),
+    Social: { INSTAGRAM_STORIES: "instagramstories" },
+  },
+}));
+
+jest.mock("expo-clipboard", () => ({
+  setStringAsync: jest.fn(async () => true),
+}));

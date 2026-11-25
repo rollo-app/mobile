@@ -31,3 +31,6 @@ export function googleIosClientId(bundleId: string | undefined): string {
 
 /** Public site with the terms and the privacy policy. */
 export const SITE_URL = "https://rolloproject.com";
+
+/** Meta app "Rollo Project": Instagram Stories asks for it when sharing. It's public. */
+export const META_APP_ID = "1187882687102371";

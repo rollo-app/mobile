@@ -16,6 +16,10 @@
         "NSCameraUsageDescription": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
         "CFBundleLocalizations": [
           "es"
+        ],
+        "LSApplicationQueriesSchemes": [
+          "instagram-stories",
+          "instagram"
         ]
       },
       "bundleIdentifier": "com.juanifraga.rollo",
