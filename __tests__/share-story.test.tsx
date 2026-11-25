@@ -395,6 +395,16 @@ describe("Compartir screen", () => {
     expect(collage).toHaveBeenCalledTimes(2);
   });
 
+  it("a build failure warns once, naming the step that failed", async () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    still.mockRejectedValueOnce(new Error("jpeg"));
+    await open("collage");
+    expect(await screen.findByText("No se pudo armar la imagen. Probá de nuevo.")).toBeVisible();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith("[share] could not build the image", expect.objectContaining({ message: "compose still failed" }));
+    warn.mockRestore();
+  });
+
   it("a cancelled share shows no error; another failure shows it", async () => {
     await open("collage");
     await filesReady();

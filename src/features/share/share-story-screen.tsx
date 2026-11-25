@@ -8,7 +8,7 @@ import { useRevealedPhotos } from "@/features/media/revealed";
 import { memberTotal } from "@/features/trips/member-total";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { Button, ErrorText, Footnote, Loading } from "@/ui/components";
+import { ErrorText, Footnote, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
@@ -23,6 +23,7 @@ import { StyleChips } from "./style-chips";
 import { StoryPreview, STORY_RATIO } from "./story-preview";
 import { DEFAULT_STYLE, STYLE_ASSETS, STYLE_PALETTE } from "./story-style";
 import { useStoryAssets } from "./use-story-assets";
+import { RetryPill } from "./retry-pill";
 
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
@@ -135,6 +136,10 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.groupedBackground, paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+      {/* A solid header (as in share-pick): every state starts below it instead of behind it. */}
+      <Stack.Screen
+        options={{ headerTransparent: false, headerStyle: { backgroundColor: colors.groupedBackground }, headerShadowVisible: false, headerBlurEffect: "none" }}
+      />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>Cancelar</Stack.Toolbar.Button>
       </Stack.Toolbar>
@@ -142,16 +147,16 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
       {!!detailError && <ErrorText>{detailError}</ErrorText>}
       {empty && <Footnote>Todavía no hay fotos para armar el collage.</Footnote>}
       {feedFailed && (
-        <>
+        <View style={styles.failure}>
           <ErrorText>{feedError}</ErrorText>
-          <Button label="Reintentar" variant="secondary" onPress={() => void refetchFeed()} />
-        </>
+          <RetryPill onPress={() => void refetchFeed()} />
+        </View>
       )}
       {assets.error && (
-        <>
+        <View style={styles.failure}>
           <ErrorText>No se pudo armar la imagen. Probá de nuevo.</ErrorText>
-          <Button label="Reintentar" variant="secondary" onPress={assets.retry} />
-        </>
+          <RetryPill onPress={assets.retry} />
+        </View>
       )}
       {!detailError && !empty && !feedFailed && !assets.error && build === null && <Loading />}
       {build !== null && !assets.error && (
@@ -188,6 +193,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
 
 const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm, gap: spacing.md },
+  failure: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md },
   previewArea: { flex: 1, alignItems: "center", justifyContent: "center", marginBottom: spacing.xs },
   hint: { color: colors.secondaryLabel, textAlign: "center" },
 });

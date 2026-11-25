@@ -1,8 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import type { Card } from "./card-layout";
 import { composeStill } from "./compose-still";
 import { writeShareFile } from "./share-story";
 import type { StoryStyle } from "./story-style";
+
+/** Runs one build step; a failure is rethrown naming the step, with the original error as `cause`. */
+export async function step<T>(name: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (cause) {
+    throw new Error(`${name} failed`, { cause });
+  }
+}
 
 export type StoryFile = { uri: string; width: number; height: number };
 
@@ -16,12 +26,12 @@ export function useStoryAssets(build: (() => Promise<Card>) | null, key: string,
   const query = useQuery({
     queryKey: ["story-image", key, style],
     queryFn: async () => {
-      const card = await build!();
+      const card = await step("render card", build!);
       // One file per kind, style and seed: the cache keeps older entries, whose uris must keep pointing at their own bytes.
       const id = `${name}-${style}-${key.replace(/[^a-z0-9]/gi, "_")}`;
       const [cardUri, stillUri] = await Promise.all([
-        writeShareFile(card.png, `rollo-${id}-card.png`),
-        composeStill(card, style).then((still) => writeShareFile(still, `rollo-${id}-still.jpg`)),
+        step("write files", () => writeShareFile(card.png, `rollo-${id}-card.png`)),
+        step("compose still", () => composeStill(card, style)).then((still) => step("write files", () => writeShareFile(still, `rollo-${id}-still.jpg`))),
       ]);
       return { card: { uri: cardUri, width: card.width, height: card.height }, stillUri };
     },
@@ -32,6 +42,11 @@ export function useStoryAssets(build: (() => Promise<Card>) | null, key: string,
     gcTime: 10 * 60 * 1000,
     staleTime: Infinity,
   });
+  // The one place a build failure becomes the error state: it is logged once, with the step that failed in the message.
+  const { error, errorUpdatedAt } = query;
+  useEffect(() => {
+    if (error) console.warn("[share] could not build the image", error);
+  }, [error, errorUpdatedAt]);
   return {
     card: query.data?.card ?? null,
     stillUri: query.data?.stillUri ?? null,
