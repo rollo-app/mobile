@@ -143,9 +143,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <View style={styles.actions}>
             {instagram && <InstagramButton disabled={!filesReady} onPress={() => void shareStories()} />}
             <Button label="Más opciones" disabled={!filesReady} variant={instagram ? "secondary" : "primary"} onPress={() => void share((link) => shareMore(assets.stillUri!, link), true)} />
-            {/* `as never` until app/share-pick.tsx exists (typed routes); drop it then. */}
-            {isCollage && (
-              <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/share-pick", params: { tripId } } as never)} style={styles.shuffle}>
+            {isCollage && candidates.length >= 2 && (
+              <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/share-pick", params: { tripId } })} style={styles.shuffle}>
                 <Text style={[type.body, { color: colors.tint }]}>Elegir fotos</Text>
               </Pressable>
             )}

@@ -33,6 +33,7 @@ import CreateScreen from "../../app/create";
 import EventGroupsRoute from "../../app/event-groups";
 import EventQrRoute from "../../app/event-qr";
 import ShareRollRoute from "../../app/share-roll";
+import SharePickRoute from "../../app/share-pick";
 import ShareStoryRoute from "../../app/share-story";
 import MyGroupsRoute from "../../app/my-groups";
 import EditTripRoute from "../../app/edit-trip";
@@ -100,6 +101,7 @@ export const routes = {
   "event-qr": EventQrRoute,
   "share-roll": ShareRollRoute,
   "share-story": ShareStoryRoute,
+  "share-pick": SharePickRoute,
   "roll-settings": RollSettingsRoute,
   "roll-started": RollStartedScreen,
   "photo/[id]": PhotoRoute,
