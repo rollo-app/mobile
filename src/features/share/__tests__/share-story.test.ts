@@ -85,8 +85,20 @@ describe("isShareCancel", () => {
 });
 
 describe("shareImageToWhatsApp", () => {
-  it("sends the image to WhatsApp as a JPEG", async () => {
+  afterEach(() => jest.useRealTimers());
+
+  it("sends the image to WhatsApp as a JPEG with a message key", async () => {
     await shareImageToWhatsApp("file:///cache/still.jpg");
-    expect(Share.shareSingle).toHaveBeenLastCalledWith({ social: Share.Social.WHATSAPP, url: "file:///cache/still.jpg", type: "image/jpeg" });
+    // react-native-share's WhatsAppShare.m returns without settling unless `message` is present (isAbleToSendMessage).
+    expect(Share.shareSingle).toHaveBeenLastCalledWith({ social: Share.Social.WHATSAPP, url: "file:///cache/still.jpg", type: "image/jpeg", message: "" });
+  });
+
+  it("rejects when the native call never settles", async () => {
+    jest.useFakeTimers();
+    (Share.shareSingle as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
+    const result = shareImageToWhatsApp("file:///cache/still.jpg");
+    const assertion = expect(result).rejects.toThrow("timeout");
+    await jest.advanceTimersByTimeAsync(15_000);
+    await assertion;
   });
 });

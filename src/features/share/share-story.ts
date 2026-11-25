@@ -73,9 +73,21 @@ export async function whatsAppAvailable(): Promise<boolean> {
   }
 }
 
+const WHATSAPP_TIMEOUT_MS = 15_000;
+
 /** Sends the image straight to WhatsApp's contact picker. Real failures reject. */
 export async function shareImageToWhatsApp(uri: string): Promise<void> {
   // Same as INSTAGRAM_STORIES: the typings expose the constant as a plain string; shareSingle wants the enum member.
   const social = Share.Social.WHATSAPP as Social.Whatsapp;
-  await Share.shareSingle({ social, url: uri, type: "image/jpeg" });
+  // `message` must be present (even empty): WhatsAppShare.m `shareSingle` returns early without resolving or rejecting otherwise.
+  const send = Share.shareSingle({ social, url: uri, type: "image/jpeg", message: "" });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("WhatsApp share timeout")), WHATSAPP_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([send, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
