@@ -19,11 +19,27 @@ const { __sourceProps: sourceProps, __layerProps: layerProps } = jest.requireMoc
   __layerProps: Record<string, any>;
 };
 
+const ownProfile = (over: Partial<profileActions.UserProfile>): profileActions.UserProfile => ({
+  user: { ...USER, badge: null } as profileActions.UserProfile["user"],
+  isFriend: false,
+  blockedByMe: false,
+  reportedByMe: false,
+  profileVisibility: "friends",
+  canSee: true,
+  friendCount: 0,
+  mutualCount: 0,
+  rollCount: null,
+  featuredCount: null,
+  friendRequest: "none",
+  ...over,
+});
+
 const SUR = "11111111-1111-4111-8111-111111111111";
 const BIO = "Viajando por el sur";
 
 beforeEach(() => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
+  jest.spyOn(profileActions, "fetchUser").mockResolvedValue(ownProfile({}));
   jest.mocked(actions).fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur")] });
   jest.mocked(actions).fetchTrip.mockReturnValue(new Promise(() => {}));
   jest.mocked(actions).fetchFeedPage.mockReturnValue(new Promise(() => {}));
@@ -56,6 +72,19 @@ describe("Perfil", () => {
     await renderRouter(routes, { initialUrl: "/me" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "1 amigo" }));
+
+    await waitFor(() => expect(screen).toHavePathname("/friends"));
+  });
+
+  it("shows your rolls, photos and friends", async () => {
+    jest.spyOn(profileActions, "fetchUser").mockResolvedValue(ownProfile({ rollCount: 3, featuredCount: 2 }));
+    featured.fetchFeatured.mockResolvedValue([featuredPhoto("m1"), featuredPhoto("m2")]);
+    const friend = (id: string) => ({ id, name: id, username: id, avatarUrl: null, bio: null });
+    jest.mocked(friendActions).fetchFriends.mockResolvedValue(["a", "b", "c", "d", "e"].map(friend));
+    await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
+    await renderRouter(routes, { initialUrl: "/me" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "3 rollos, 2 fotos, 5 amigos" }));
 
     await waitFor(() => expect(screen).toHavePathname("/friends"));
   });

@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Badge } from "@/ui/badge";
 import { colors, spacing, type } from "@/ui/theme";
@@ -54,17 +54,8 @@ export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, stats
         </Text>
       ) : null}
       {stats && parts.length > 0 ? (
-        // Facts, not actions: label and secondary text, never the tint. With friends the whole line is one button (a nested Text with a label is not reachable on its own by VoiceOver).
-        <Pressable
-          testID="profile-stats"
-          accessibilityRole={hasFriends ? "button" : undefined}
-          accessibilityLabel={spokenStats(parts)}
-          accessible
-          disabled={!hasFriends}
-          onPress={stats.onPressFriends}
-          hitSlop={8}
-          style={({ pressed }) => pressed && styles.pressed}
-        >
+        // Facts, not actions: label and secondary text, never the tint. With friends the whole line is one button (a nested Text with a label is not reachable on its own by VoiceOver); without, plain text (a disabled button would be announced as "dimmed").
+        <StatsLine hasFriends={hasFriends} label={spokenStats(parts)} onPress={stats.onPressFriends}>
           <Text style={[type.subhead, styles.centered, { color: colors.secondaryLabel }]}>
             {parts.map((p, i) => (
               <Fragment key={p.kind}>
@@ -73,7 +64,7 @@ export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, stats
               </Fragment>
             ))}
           </Text>
-        </Pressable>
+        </StatsLine>
       ) : null}
       {stats && parts.length === 0 && emptyText ? (
         <Pressable testID="profile-stats" accessibilityRole="button" accessibilityLabel={emptyText} onPress={stats.onPressFriends} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
@@ -86,6 +77,21 @@ export function ProfileHeader({ id, name, username, avatarUrl, bio, badge, stats
         </Pressable>
       ) : null}
     </View>
+  );
+}
+
+function StatsLine({ hasFriends, label, onPress, children }: { hasFriends: boolean; label: string; onPress: () => void; children: ReactNode }) {
+  if (!hasFriends) {
+    return (
+      <View testID="profile-stats" accessible accessibilityLabel={label}>
+        {children}
+      </View>
+    );
+  }
+  return (
+    <Pressable testID="profile-stats" accessibilityRole="button" accessibilityLabel={label} accessible onPress={onPress} hitSlop={8} style={({ pressed }) => pressed && styles.pressed}>
+      {children}
+    </Pressable>
   );
 }
 

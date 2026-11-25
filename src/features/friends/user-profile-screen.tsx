@@ -1,5 +1,6 @@
 import { router, Stack } from "expo-router";
 import { useMe } from "@/features/auth/use-me";
+import { useFeatured } from "@/features/featured/use-featured";
 import { ProfileMenu } from "@/features/moderation/profile-menu";
 import { useBlock } from "@/features/moderation/use-block";
 import { ProfileHeader } from "@/features/profile/profile-header";
@@ -20,6 +21,8 @@ export function UserProfileScreen({ userId }: { userId: string }) {
   const { profile, error, refetch, isRefetching } = useUser(userId);
   const { me } = useMe();
   const block = useBlock(userId, profile?.user.name ?? "");
+  // The photo count prefers the loaded grid (the same query ProfileShowcase makes) over the server's count.
+  const featuredLength = useFeatured(profile?.canSee && !profile.blockedByMe ? userId : undefined).photos?.length;
 
   if (!profile) {
     return (
@@ -36,7 +39,7 @@ export function UserProfileScreen({ userId }: { userId: string }) {
     );
   }
 
-  const { user, isFriend, canSee, friendCount, mutualCount, blockedByMe, reportedByMe, friendRequest } = profile;
+  const { user, isFriend, canSee, friendCount, mutualCount, rollCount, featuredCount, blockedByMe, reportedByMe, friendRequest } = profile;
   const requestUi = friendRequestUi({ isFriend, isMe: me?.id === userId, blockedByMe, friendRequest });
   return (
     <Screen grouped>
@@ -54,7 +57,14 @@ export function UserProfileScreen({ userId }: { userId: string }) {
         avatarUrl={user.avatarUrl}
         bio={user.bio}
         badge={user.badge}
-        stats={{ friends: friendCount, mutual: mutualCount, canSee, onPressFriends: () => router.push(`/user/${userId}/friends`) }}
+        stats={{
+          rolls: rollCount,
+          photos: canSee ? (featuredLength ?? featuredCount) : null,
+          friends: friendCount,
+          mutual: mutualCount,
+          canSee,
+          onPressFriends: () => router.push(`/user/${userId}/friends`),
+        }}
       />
       {requestUi && <FriendRequestButton userId={userId} state={requestUi} />}
       {reportedByMe && <Footnote>Denunciaste a esta persona</Footnote>}

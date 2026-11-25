@@ -58,6 +58,7 @@ describe("ProfileHeader", () => {
     await show({ stats: { rolls: 3, friends: 0, own: true, onPressFriends: () => {} } });
     expect(screen.getByTestId("profile-stats").props.accessibilityLabel).toBe("3 rollos");
     expect(screen.queryByRole("button", { name: "3 rollos" })).toBeNull();
+    expect(screen.getByTestId("profile-stats").props.accessibilityState?.disabled).not.toBe(true);
   });
 
   it("shows the 0-friends line on your own empty profile and it is pressable", async () => {
