@@ -55,7 +55,7 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
     momentMode,
     momentWindowStart: momentStart,
     momentWindowEnd: momentEnd,
-    description: event ? description : before.description,
+    description,
     contestEnabled: event ? contestEnabled : before.contestEnabled,
     contestVotingDays: event ? votingDays : before.contestVotingDays,
   };
@@ -93,7 +93,7 @@ function EditTripForm({ tripId, trip }: { tripId: string; trip: TripDetail["trip
       </Stack.Toolbar>
       <Host style={styles.form}>
         <Form>
-          {event && <DescriptionSection initial={before.description} onChange={setDescription} />}
+          <DescriptionSection initial={before.description} onChange={setDescription} />
           <TripForm
             values={{ startsAt, endsAt, revealMode, customReveal, limitMode, photos, totalPhotos, momentMode, momentStart, momentEnd }}
             on={{

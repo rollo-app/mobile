@@ -5,8 +5,11 @@
 
 export type Photo = { uri: string; width: number; height: number };
 
-/** How the crop looks and what it returns: the square under a circle (avatar) or under a rounded square (cover), at most `size` px a side. */
-export type CropOptions = { shape: "circle" | "square"; size: number };
+/**
+ * How the crop looks and what it returns: a circle (avatar), a rounded square or a rounded 3:4 portrait (cover).
+ * `size` is the output's max width in px (the height of a portrait follows at 4/3; a square's side).
+ */
+export type CropOptions = { shape: "circle" | "square" | "portrait"; size: number };
 
 const AVATAR: CropOptions = { shape: "circle", size: 512 };
 

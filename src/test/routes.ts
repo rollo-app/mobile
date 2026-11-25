@@ -30,6 +30,7 @@ import CommentsRoute from "../../app/comments/[mediaId]";
 import ContestRoute from "../../app/contest";
 import ContestPicksRoute from "../../app/contest-picks";
 import ContestWinnerRoute from "../../app/contest-winner";
+import CoverFocusRoute from "../../app/cover-focus";
 import CreateScreen from "../../app/create";
 import EventGroupsRoute from "../../app/event-groups";
 import EventQrRoute from "../../app/event-qr";
@@ -70,6 +71,7 @@ export const routes = {
   "info/[topic]": InfoRoute,
   create: CreateScreen,
   "edit-trip": EditTripRoute,
+  "cover-focus": CoverFocusRoute,
   "crop-avatar": CropAvatarScreen,
   "crop-cover": CropCoverScreen,
   "edit-profile": EditProfileScreen,

@@ -4,17 +4,18 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { ApiError, errorMessage } from "@/api/client";
 import { EventDescription } from "@/features/events/event-description";
 import { EventHero } from "@/features/events/event-hero";
-import { joinedLine } from "@/features/events/event";
+import { joinedLine, previewDates, revealedMessage } from "@/features/events/event";
 import { PickGroups } from "@/features/events/pick-groups";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { usePreviewEvent } from "@/features/events/use-preview-event";
 import type { EventPreview } from "./actions";
+import { TripInvitation } from "./trip-invitation";
 import { rollHref } from "./roll-href";
+import { useActiveTrip } from "./use-active-trip";
 import { useJoinTrip } from "./use-join-trip";
 
-const REVEALED_EVENT = "Este evento ya se reveló.";
 const EVENT_NEEDS_UPDATE = "EVENT_NEEDS_UPDATE";
 
 export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
@@ -22,25 +23,47 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   const [event, setEvent] = useState<EventPreview | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const preview = usePreviewEvent();
+  const { trips } = useActiveTrip();
   const join = useJoinTrip();
+  const dates = event ? previewDates(event) : "";
   const joined = event ? joinedLine(event.memberCount) : null;
   const error = errorMessage(join.error, "No se pudo entrar al rollo");
 
   // A code that arrives from a link (or changes in the route) is looked up by itself, so the guest lands on the groups.
   const lookedUp = useRef<string | null>(null);
   const linkCode = initialCode.toUpperCase().slice(0, 6);
+  // Opens the rollo behind the link when you're already in it (at most once per link).
+  const opened = useRef(false);
+  function openMine(): boolean {
+    if (opened.current || linkCode.length !== 6) return false;
+    const mine = trips.find((t) => t.joinCode.toUpperCase() === linkCode);
+    if (!mine) return false;
+    opened.current = true;
+    router.dismissTo("/roll");
+    router.push(rollHref(mine.id));
+    return true;
+  }
   useEffect(() => {
     if (lookedUp.current === linkCode) return;
     lookedUp.current = linkCode;
+    opened.current = false;
     setCode(linkCode);
     setEvent(null);
     setSelected([]);
     join.reset();
     if (linkCode.length !== 6) return;
-    // A regular rollo (or a failed lookup) just leaves the code filled in: joining it is up to the guest.
+    // A link to a rollo you're already in just opens it: no preview, no join.
+    if (openMine()) return;
+    // A failed lookup just leaves the code filled in: joining it is up to the guest.
     preview.mutate(linkCode, { onSuccess: (found) => found && setEvent(found) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkCode]);
+
+  // The persisted list can arrive after the screen (cold start from a QR): re-check while the link's preview is showing.
+  useEffect(() => {
+    if (lookedUp.current === linkCode) openMine();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trips]);
 
   const valid = code.trim().length === 6;
   const busy = preview.isPending || join.isPending;
@@ -75,7 +98,8 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
       );
     preview.mutate(code, {
       onSuccess: (found) => {
-        if (!found) return joinDirectly();
+        // A regular rollo has no groups to pick: a typed code joins it right away.
+        if (!found || found.type === "trip") return joinDirectly();
         setEvent(found);
         setSelected([]);
       },
@@ -84,11 +108,40 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   }
 
   function enter() {
-    join.mutate({ code, groupIds: selected }, { onSuccess });
+    // A regular rollo has no groups: the server rejects an empty `groupIds`, so the key is left out.
+    join.mutate(event?.type === "trip" ? { code } : { code, groupIds: selected }, { onSuccess });
   }
 
   const choosing = event !== null;
   const action = choosing ? (!event.revealed && selected.length > 0 ? enter : undefined) : valid ? submit : undefined;
+
+  function close() {
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  }
+
+  // A regular rollo's link opens as a full-screen invitation; swiping down still closes the modal. The header stays but
+  // turns transparent and empty: hiding a modal's header (headerShown) remounts the screen, which looked the code up
+  // again and hid it again, in a loop.
+  if (event?.type === "trip") {
+    return (
+      <>
+        <Stack.Screen options={{ headerTransparent: true, title: "", headerShadowVisible: false }} />
+        <TripInvitation
+          name={event.name}
+          dates={dates}
+          coverUrl={event.coverUrl}
+          description={event.description}
+          joined={joined}
+          revealedText={event.revealed ? revealedMessage(event) : undefined}
+          busy={busy}
+          error={error}
+          onJoin={enter}
+          onClose={close}
+        />
+      </>
+    );
+  }
 
   return (
     <Screen grouped>
@@ -110,7 +163,12 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
       {event ? (
         <>
           {event.coverUrl ? (
-            <EventHero name={event.name} coverUrl={event.coverUrl} eyebrow="Te invitaron a" description={event.description} />
+            <EventHero
+              name={event.name}
+              coverUrl={event.coverUrl}
+              eyebrow="Te invitaron a"
+              description={event.description}
+            />
           ) : (
             <>
               <Text accessibilityRole="header" style={styles.name}>
@@ -124,7 +182,7 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
             </>
           )}
           {event.revealed ? (
-            <ErrorText>{REVEALED_EVENT}</ErrorText>
+            <ErrorText>{revealedMessage(event)}</ErrorText>
           ) : (
             <View style={styles.groups}>
               {joined !== null && <Text style={styles.joined}>{joined}</Text>}

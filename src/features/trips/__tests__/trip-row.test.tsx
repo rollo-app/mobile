@@ -64,4 +64,10 @@ describe("TripRow", () => {
     await render(<TripRow trip={trip} now={NOW} timeZone={TZ} onPress={() => {}} />);
     expect(screen.getByTestId("trip-row-thumb").props.placeholder).toEqual([expect.objectContaining({ uri: expect.stringContaining("thumbhash:") })]);
   });
+
+  it("crops the thumbnail at the cover's focus", async () => {
+    const trip = tripSummary("t", "Boda", { coverUrl: "/c.jpg", coverFocusY: 0.2 });
+    await render(<TripRow trip={trip} now={NOW} timeZone={TZ} onPress={() => {}} />);
+    expect(screen.getByTestId("trip-row-thumb").props.contentPosition).toEqual({ top: "20%" });
+  });
 });

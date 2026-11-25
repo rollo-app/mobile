@@ -1,4 +1,4 @@
-import { clampOffset, clampZoom, cropRect, displayedSize, MAX_ZOOM, minScale } from "../crop-math";
+import { clampOffset, clampZoom, cropRect, displayedSize, MAX_ZOOM, minScale, portraitFrame } from "../crop-math";
 
 const portrait = { width: 1200, height: 1600 };
 const landscape = { width: 4000, height: 3000 };
@@ -62,5 +62,44 @@ describe("cropRect", () => {
 
   it("never leaves the photo's bounds, even with an unclamped offset", () => {
     expect(cropRect(portrait, D, 1, { x: 500, y: -500 })).toEqual({ originX: 0, originY: 400, width: 1200, height: 1200 });
+  });
+});
+
+describe("portrait frame (3:4)", () => {
+  const frame = { width: 300, height: 400 };
+
+  it("frame math keeps working with a number (square) as before", () => {
+    expect(minScale(portrait, 300)).toBe(minScale(portrait, { width: 300, height: 300 }));
+  });
+
+  it("portraitFrame is the largest 3:4 frame that fits the gutters and the available height", () => {
+    expect(portraitFrame(390, 700, 16)).toEqual({ width: 357, height: 476 });
+    // Short screen: height-bound, width follows at 3:4.
+    expect(portraitFrame(390, 300, 16)).toEqual({ width: 225, height: 300 });
+  });
+
+  it("covers the frame: a 3:4 photo fits exactly at zoom 1 and cannot move", () => {
+    expect(displayedSize(portrait, frame, 1)).toEqual({ width: 300, height: 400 });
+    expect(clampOffset({ x: 50, y: 50 }, portrait, frame, 1)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("crops a centered 3:4 rect from a 4000x3000 landscape source", () => {
+    expect(cropRect(landscape, frame, 1, { x: 0, y: 0 })).toEqual({ originX: 875, originY: 0, width: 2250, height: 3000 });
+  });
+
+  it("crops the whole 3000x4000 portrait source at zoom 1", () => {
+    expect(cropRect({ width: 3000, height: 4000 }, frame, 1, { x: 0, y: 0 })).toEqual({ originX: 0, originY: 0, width: 3000, height: 4000 });
+  });
+
+  it("zoomed and dragged crops stay 3:4 and inside the photo", () => {
+    const image = { width: 4000, height: 3000 };
+    for (const [zoom, offset] of [[2, { x: 999, y: -999 }], [4, { x: -999, y: 999 }], [1.5, { x: 10, y: 5 }]] as const) {
+      const r = cropRect(image, frame, zoom, offset);
+      expect(Math.abs(r.width / r.height - 0.75)).toBeLessThan(0.002);
+      expect(r.originX).toBeGreaterThanOrEqual(0);
+      expect(r.originY).toBeGreaterThanOrEqual(0);
+      expect(r.originX + r.width).toBeLessThanOrEqual(image.width);
+      expect(r.originY + r.height).toBeLessThanOrEqual(image.height);
+    }
   });
 });

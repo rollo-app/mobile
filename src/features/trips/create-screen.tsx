@@ -6,6 +6,7 @@ import { use, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { useMe } from "@/features/auth/use-me";
+import * as Burnt from "burnt";
 import { EventHero } from "@/features/events/event-hero";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
 import { PRIVATE_ROLLO_NOTE } from "@/features/featured/featuring-section";
@@ -116,8 +117,6 @@ export function CreateScreen() {
     // The group fields are native and keep their own text: leaving them unmounts it, so start over on return.
     if (next === "trip") {
       setGroups([{ id: nextGroupId.current++, name: "" }]);
-      setCover(null);
-      setDescription("");
       setContestEnabled(false);
     }
     setKind(next);
@@ -132,7 +131,7 @@ export function CreateScreen() {
     if (photo) setCover(photo);
   }
 
-  // The event exists by now: the cover goes up in the background. If it fails the organizer sets it from the board.
+  // The rollo exists by now: the cover goes up in the background. If it fails it is set later from Editar rollo / Ajustes.
   async function uploadChosenCover(tripId: string, photo: CoverPhoto) {
     try {
       await uploadCover(tripId, photo);
@@ -140,8 +139,10 @@ export function CreateScreen() {
         queryClient.invalidateQueries({ queryKey: tripKey(tripId) }),
         queryClient.invalidateQueries({ queryKey: myTripsKey }),
       ]);
+      router.push({ pathname: "/cover-focus", params: { tripId, uri: photo.uri } });
     } catch {
-      // Not blocking: it can be set later from the board.
+      // The rollo stays created (and is never created again); the cover is set later from the settings.
+      Burnt.alert({ title: "No se pudo subir la portada", message: "Podés elegirla desde Ajustes del rollo.", preset: "error" });
     }
   }
 
@@ -185,10 +186,12 @@ export function CreateScreen() {
         momentMode,
         momentWindowStart: momentStart,
         momentWindowEnd: momentEnd,
+        ...(description.trim() && { description: description.trim() }),
         ...(isPrivate && { featuringDisabled: true }),
       },
       {
         onSuccess: (trip) => {
+          if (cover) void uploadChosenCover(trip.id, cover);
           openOverList(trip.id);
           void offerNext();
         },
@@ -250,7 +253,7 @@ export function CreateScreen() {
             <TextField placeholder={isEvent ? "Nombre del evento" : "Nombre del rollo"} maxLength={60} onTextChange={setName} />
           </Section>
 
-          {isEvent && <DescriptionSection onChange={setDescription} />}
+          <DescriptionSection onChange={setDescription} />
 
           {isEvent && (
             <Section header={<Text>Grupos</Text>} footer={<Text>Los invitados eligen en cuál están. Deslizá un grupo para borrarlo.</Text>}>
@@ -270,28 +273,26 @@ export function CreateScreen() {
             </Section>
           )}
 
-          {isEvent && (
-            <Section header={<Text>Portada</Text>} footer={<Text>Opcional. La podés cambiar después desde el tablero.</Text>}>
-              {cover && (
-                // The same hero the board and the join screen show, edge to edge in its row: what guests will see.
-                // SwiftUI makes the row square (the width comes from the form); the hero fills it. Sizing it from the RN
-                // side left a thin strip: the hosted view was measured before it knew its width.
-                <Group
-                  modifiers={[
-                    listRowInsets({ top: 0, leading: 0, bottom: 0, trailing: 0 }),
-                    listRowBackground("transparent"),
-                    aspectRatio({ ratio: 1, contentMode: "fit" }),
-                  ]}
-                >
-                  <RNHostView>
-                    <EventHero name={name.trim() || "Nombre del evento"} coverUrl={cover.uri} />
-                  </RNHostView>
-                </Group>
-              )}
-              <Button label={cover ? "Cambiar portada" : "Elegir portada"} onPress={() => void chooseCover()} />
-              {cover && <Button role="destructive" label="Quitar portada" onPress={() => setCover(null)} />}
-            </Section>
-          )}
+          <Section header={<Text>Portada</Text>} footer={<Text>Opcional. La podés cambiar después desde Ajustes del rollo.</Text>}>
+            {cover && (
+              // The same hero the board and the join screen show, edge to edge in its row: what guests will see.
+              // SwiftUI makes the row square (the width comes from the form); the hero fills it. Sizing it from the RN
+              // side left a thin strip: the hosted view was measured before it knew its width.
+              <Group
+                modifiers={[
+                  listRowInsets({ top: 0, leading: 0, bottom: 0, trailing: 0 }),
+                  listRowBackground("transparent"),
+                  aspectRatio({ ratio: 1, contentMode: "fit" }),
+                ]}
+              >
+                <RNHostView>
+                  <EventHero name={name.trim() || (isEvent ? "Nombre del evento" : "Nombre del rollo")} coverUrl={cover.uri} />
+                </RNHostView>
+              </Group>
+            )}
+            <Button label={cover ? "Cambiar portada" : "Elegir portada"} onPress={() => void chooseCover()} />
+            {cover && <Button role="destructive" label="Quitar portada" onPress={() => setCover(null)} />}
+          </Section>
 
           <TripForm
             values={{

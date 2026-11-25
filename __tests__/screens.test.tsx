@@ -341,14 +341,14 @@ describe("Roll board · people and settings", () => {
     expect(screen.queryByRole("button", { name: "Fede" })).toBeNull();
   });
 
-  it("shares the invitation with the roll's name and code", async () => {
+  it("shares the invitation with the roll's name and join link", async () => {
     const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
     mocked.fetchTrip.mockResolvedValue(detail());
     await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ }));
 
-    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo con el código HUB5FT' });
+    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo: https://rolloproject.com/join/HUB5FT' });
     share.mockRestore();
   });
 

@@ -1,6 +1,6 @@
 import { getActiveTripId } from "@/storage/active-trip";
 import { setSessionToken } from "@/storage/session";
-import { createTrip, deleteMedia, fetchFeedPage, fetchMyTrips, fetchTrip, fetchWholeFeed, joinTrip } from "../actions";
+import { createTrip, deleteMedia, fetchFeedPage, fetchMyTrips, fetchTrip, fetchWholeFeed, joinTrip, previewEvent } from "../actions";
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.UTC(2027, 0, 5, 12, 0);
@@ -51,6 +51,22 @@ describe("fetchMyTrips", () => {
     expect(await fetchMyTrips()).toEqual({ trips: [] });
     expect(new URL(lastReq(fetchMock).url).pathname).toBe("/me/trips");
     expect(lastReq(fetchMock).headers.get("authorization")).toBe("Bearer session-tok");
+  });
+});
+
+describe("previewEvent", () => {
+  it("asks the wider preview (any=1) so a regular rollo answers too", async () => {
+    const fetchMock = mockFetch(200, { type: "trip", groups: [] });
+
+    await previewEvent(" hub5ft ");
+    const url = new URL(lastReq(fetchMock).url);
+    expect(url.pathname).toBe("/events/HUB5FT");
+    expect(url.searchParams.get("any")).toBe("1");
+  });
+
+  it("is null on a 404", async () => {
+    mockFetch(404, { error: "Código inválido" });
+    expect(await previewEvent("ZZZZZZ")).toBeNull();
   });
 });
 

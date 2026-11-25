@@ -320,7 +320,8 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     paddingHorizontal: spacing.md,
     color: colors.label,
-    backgroundColor: colors.cell,
+    // The system fill (the gray of iOS search fields), not the white cell: it shows on white screens, on grouped gray and in dark mode.
+    backgroundColor: colors.fill,
   },
   prefixed: { flexDirection: "row", alignItems: "center" },
   prefixedInput: { flex: 1, minHeight: 50, color: colors.label },

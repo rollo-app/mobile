@@ -5,6 +5,7 @@ import { CreateScreen } from "../create-screen";
 import { createTrip, uploadCover } from "../actions";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { pickCoverPhoto } from "@/features/events/use-upload-cover";
+import * as Burnt from "burnt";
 import { ApiError } from "@/api/client";
 import { useMe } from "@/features/auth/use-me";
 
@@ -23,6 +24,7 @@ jest.mock("@/features/notifications/offer-push", () => ({
 jest.mock("@/features/events/use-upload-cover", () => ({
   pickCoverPhoto: jest.fn(),
 }));
+jest.mock("burnt", () => ({ alert: jest.fn() }));
 jest.mock("@/features/auth/use-me", () => ({ useMe: jest.fn() }));
 jest.mock("@/features/friends/actions", () => ({
   fetchFriends: jest.fn(async () => [{ id: "f1" }]),
@@ -246,5 +248,48 @@ describe("CreateScreen as an event", () => {
     await waitFor(() => expect(createTripMock).toHaveBeenCalledTimes(1));
     expect(createTripMock.mock.calls[0]![0]).not.toHaveProperty("contestEnabled");
     expect(createTripMock.mock.calls[0]![0]).not.toHaveProperty("description");
+  });
+
+  it("creating a regular rollo sends its description", async () => {
+    await renderScreen();
+    await fireEvent.changeText(screen.getByPlaceholderText("Nombre del rollo"), "Sur");
+    await fireEvent.changeText(screen.getByPlaceholderText("Descripción"), "  Dos semanas  ");
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    await waitFor(() => expect(createTripMock).toHaveBeenCalledTimes(1));
+    expect(createTripMock.mock.calls[0]![0]).toMatchObject({ description: "Dos semanas" });
+    expect(createTripMock.mock.calls[0]![0]).not.toHaveProperty("type");
+  });
+
+  it("creating a regular rollo with a cover uploads it after creating", async () => {
+    const photo = { uri: "file:///cover.jpg", width: 4000, height: 3000 };
+    pickCoverMock.mockResolvedValue(photo);
+    await renderScreen();
+    await fireEvent.changeText(screen.getByPlaceholderText("Nombre del rollo"), "Sur");
+    await fireEvent.press(screen.getByRole("button", { name: "Elegir portada" }));
+    expect(await screen.findByTestId("event-hero")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    await waitFor(() => expect(uploadCoverMock).toHaveBeenCalledWith("t1", photo));
+    await waitFor(() => expect(offerMock).toHaveBeenCalledWith("/add-friends"));
+  });
+
+  it("a failed cover upload keeps the new rollo and does not create it again", async () => {
+    pickCoverMock.mockResolvedValue({ uri: "file:///cover.jpg", width: 4000, height: 3000 });
+    uploadCoverMock.mockRejectedValue(new Error("offline"));
+    await renderScreen();
+    await fireEvent.changeText(screen.getByPlaceholderText("Nombre del rollo"), "Sur");
+    await fireEvent.press(screen.getByRole("button", { name: "Elegir portada" }));
+    await screen.findByRole("button", { name: "Cambiar portada" });
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    await waitFor(() => expect(uploadCoverMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(router.dismissTo).toHaveBeenCalledWith("/roll"));
+    expect(createTripMock).toHaveBeenCalledTimes(1);
+    expect(Burnt.alert).toHaveBeenCalledWith({
+      title: "No se pudo subir la portada",
+      message: "Podés elegirla desde Ajustes del rollo.",
+      preset: "error",
+    });
   });
 });

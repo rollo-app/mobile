@@ -44,6 +44,16 @@ describe("LiveRollCard", () => {
     expect(screen.queryByText("Evento")).toBeNull();
   });
 
+  it("crops the cover at the focus the admins chose, the middle by default", async () => {
+    await render(<LiveRollCard trip={{ ...trip, coverUrl: "/c.jpg", coverFocusY: 0.2 }} onOpen={() => {}} onCamera={() => {}} />);
+    expect(screen.getByTestId("live-roll-cover").props.contentPosition).toEqual({ top: "20%" });
+  });
+
+  it("centers the cover without a focus", async () => {
+    await render(<LiveRollCard trip={{ ...trip, coverUrl: "/c.jpg" }} onOpen={() => {}} onCamera={() => {}} />);
+    expect(screen.getByTestId("live-roll-cover").props.contentPosition).toEqual({ top: "50%" });
+  });
+
   it("hides the photos line while unknown", async () => {
     mockLeft = null;
     await render(<LiveRollCard trip={trip} onOpen={() => {}} onCamera={() => {}} />);

@@ -167,7 +167,6 @@ describe("Event board", () => {
     await open({ ...detail(organizer, []), trip: { ...detail(organizer, []).trip, type: "trip", groups: [] } });
     expect(await screen.findByRole("button", { name: "Sumar amigos" })).toBeVisible();
     expect(screen.queryByText("Grupos")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
   });
 });
 
@@ -191,6 +190,33 @@ describe("Cover hero", () => {
     expect(within(hero).getByText(/· 1 persona$/)).toBeVisible();
   });
 
+  it("a regular rollo with a cover shows the hero with its dates", async () => {
+    const d = detail(organizer, [], {
+      type: "trip",
+      groups: [],
+      coverUrl: "/covers/x/y.jpg",
+      startsAt: Date.parse("2027-01-03T15:00:00Z"),
+      endsAt: Date.parse("2027-01-08T15:00:00Z"),
+    });
+    await open({ ...d, memberCount: 8 });
+    const hero = await screen.findByTestId("event-hero");
+    expect(within(hero).getByText("Casamiento de Cami")).toBeVisible();
+    expect(within(hero).getByText("3 al 8 de enero · 8 personas")).toBeVisible();
+  });
+
+  it("a regular rollo with only a description shows it", async () => {
+    await open(detail(organizer, [], { type: "trip", groups: [], description: "Vamos a Bariloche" }));
+    expect(await screen.findByText("Vamos a Bariloche")).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+  });
+
+  it("a regular rollo with neither shows the board as before", async () => {
+    await open(detail(organizer, [], { type: "trip", groups: [] }));
+    expect(await screen.findByRole("button", { name: "Sumar amigos" })).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+    expect(screen.queryByTestId("event-description")).toBeNull();
+  });
+
   it("has no hero without a cover", async () => {
     await openSettings(detail(organizer, []));
     expect(await screen.findByRole("button", { name: "Elegir portada" })).toBeVisible();
@@ -206,13 +232,13 @@ describe("Cover (organizer)", () => {
     } as ImagePicker.ImagePickerResult);
     trips.uploadCover.mockResolvedValue("/covers/x/y.jpg");
     await open(detail(organizer, []), "Elegir portada");
-    // The crop screen lets the organizer frame the square; Elegir uploads that square (at most 1600 px).
+    // The crop screen lets the organizer frame the 3:4 portrait; Elegir uploads it (1080×1440).
     await waitFor(() => expect(screen).toHavePathname("/crop-cover"));
     expect(trips.uploadCover).not.toHaveBeenCalled();
     await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
-    await waitFor(() => expect(trips.uploadCover).toHaveBeenCalledWith(EVENT, { uri: "file:///cache/cover.jpg", width: 1600, height: 1600 }));
-    expect(manipulator.ImageManipulator.__ctx.crop).toHaveBeenLastCalledWith({ originX: 500, originY: 0, width: 3000, height: 3000 });
-    expect(manipulator.ImageManipulator.__ctx.resize).toHaveBeenLastCalledWith({ width: 1600, height: 1600 });
+    await waitFor(() => expect(trips.uploadCover).toHaveBeenCalledWith(EVENT, { uri: "file:///cache/cover.jpg", width: 1080, height: 1440 }));
+    expect(manipulator.ImageManipulator.__ctx.crop).toHaveBeenLastCalledWith({ originX: 875, originY: 0, width: 2250, height: 3000 });
+    expect(manipulator.ImageManipulator.__ctx.resize).toHaveBeenLastCalledWith({ width: 1080, height: 1440 });
     pick.mockRestore();
   });
 
@@ -295,6 +321,41 @@ describe("Sumarme a otro grupo (guest)", () => {
 describe("Código QR", () => {
   it("the QR screen shows the code under the QR", async () => {
     await open(detail(organizer, []), "Código QR");
+    expect(await screen.findByText("Casamiento de Cami")).toBeVisible();
+    expect(screen.getByText("ABC123")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Compartir" })).toBeVisible();
+  });
+
+  const regular = (me: Member, over: Partial<tripActions.Trip> = {}) => detail(me, [], { type: "trip", groups: [], ...over });
+
+  it("a member of a regular rollo sees Código QR", async () => {
+    await open(regular(guest));
+    expect(await screen.findByRole("button", { name: "Código QR" })).toBeVisible();
+  });
+
+  it("Código QR is disabled when the rollo is full", async () => {
+    await open(regular(guest, { maxMembers: 2 }));
+    const row = await screen.findByRole("button", { name: "Código QR" });
+    expect(row).toBeDisabled();
+  });
+
+  it("a revealed regular rollo has no Código QR", async () => {
+    await markPresentationSeen(EVENT);
+    await open(regular(guest, { revealed: true }), undefined, `/roll/${EVENT}?view=roll`);
+    expect(await screen.findByText("Personas")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
+  });
+
+  it("sharing a regular rollo sends the join link", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
+    await open(regular(guest));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ }));
+    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Casamiento de Cami" en Rollo: https://rolloproject.com/join/ABC123' });
+    share.mockRestore();
+  });
+
+  it("the QR screen works for a regular rollo", async () => {
+    await open(regular(guest), "Código QR");
     expect(await screen.findByText("Casamiento de Cami")).toBeVisible();
     expect(screen.getByText("ABC123")).toBeVisible();
     expect(screen.getByRole("button", { name: "Compartir" })).toBeVisible();

@@ -91,6 +91,8 @@ function RootStack() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="create" options={{ title: "Nuevo rollo", presentation: "modal" }} />
           <Stack.Screen name="edit-trip" options={{ title: "Editar rollo", presentation: "modal" }} />
+          {/* Admins drag a band over the cover to pick the part the Rollos list shows (after a new cover and from Ajustes). */}
+          <Stack.Screen name="cover-focus" options={{ title: "Ajustar banner", presentation: "modal" }} />
           <Stack.Screen
             name="add-friends"
             options={{

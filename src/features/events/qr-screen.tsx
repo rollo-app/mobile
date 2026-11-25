@@ -7,7 +7,7 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 import { joinLinkUrl } from "./join-link";
 import { QrCanvas, qrPng } from "./qr-canvas";
 
-/** "Código QR": the event's name, its join link as a QR and the code under it, to show or share. */
+/** "Código QR": the rollo's name, its join link as a QR and the code under it, to show or share. */
 export function QrScreen({ tripId }: { tripId: string }) {
   const { detail, error, refetch, isRefetching } = useTripDetail(tripId);
   const { width } = useWindowDimensions();
