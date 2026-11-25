@@ -32,7 +32,7 @@ export function DescriptionSection({
     <Section
       footer={
         <Text>
-          Opcional. Hasta 6 renglones. La ven los invitados debajo del nombre.
+          Opcional. Hasta 6 renglones. La ve cualquiera que tenga el código o el QR, antes de unirse.
         </Text>
       }
     >
