@@ -163,7 +163,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
             <CollageStrip
               photos={stripPhotos}
               token={token}
-              onPress={candidates.length >= 2 ? () => router.push({ pathname: "/share-pick", params: { tripId } }) : null}
+              onPress={candidates.length >= 2 ? () => router.push({ pathname: "/share-pick", params: { tripId, seed: String(SEED) } }) : null}
             />
           )}
           <StyleChips value={style} onChange={setStyle} />

@@ -8,7 +8,7 @@ import { type RevealedPhoto, useRevealedPhotos } from "@/features/media/revealed
 import { Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { COLLAGE_MAX, collageCandidates } from "./collage";
-import { getCollageSelection, setCollageSelection, toggleSelection } from "./collage-selection";
+import { collagePhotos, getCollageSelection, setCollageSelection, toggleSelection } from "./collage-selection";
 import { PickCell } from "./pick-cell";
 
 const COLUMNS = 3;
@@ -17,7 +17,7 @@ const GAP = 2;
 const keyExtractor = (photo: RevealedPhoto) => photo.id;
 
 /** "Elegir fotos": pick up to 8 shareable photos for the collage; the tap order is the collage order (1 is the big photo). */
-export function SharePickScreen({ tripId }: { tripId: string }) {
+export function SharePickScreen({ tripId, seed }: { tripId: string; seed?: number }) {
   const { photos, token, complete, loading, loadAll } = useRevealedPhotos(tripId);
   const candidates = useMemo(() => collageCandidates(photos), [photos]);
   // Seeded from the saved selection, minus ids that are no longer candidates (they would count toward the cap).
@@ -30,10 +30,12 @@ export function SharePickScreen({ tripId }: { tripId: string }) {
     if (seeded.current || !complete) return;
     seeded.current = true;
     const known = new Set(candidates.map((p) => p.id));
-    const next = draftRef.current.filter((id) => known.has(id));
+    let next = draftRef.current.filter((id) => known.has(id));
+    // Nothing saved: start from the photos the collage shows right now (same seed as "Compartir"), in collage order.
+    if (next.length === 0 && seed !== undefined) next = collagePhotos(candidates, [], seed).map((p) => p.id);
     draftRef.current = next;
     setDraft(next);
-  }, [complete, candidates]);
+  }, [complete, candidates, seed]);
   // The grid shows the whole roll: load the rest of the pages once.
   const asked = useRef(false);
   useEffect(() => {

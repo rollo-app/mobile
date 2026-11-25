@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import { collageCandidates, pickCollage } from "@/features/share/collage";
 import { getCollageSelection, setCollageSelection } from "@/features/share/collage-selection";
 import { SharePickScreen } from "@/features/share/share-pick-screen";
 import * as tripActions from "@/features/trips/actions";
@@ -33,14 +34,14 @@ const item = (id: string): tripActions.Feed["items"][number] => ({
   files: { thumb: `/m/${id}/thumb`, original: `/m/${id}/original` },
 });
 
-async function open(selection: string[] = []) {
+async function open(selection: string[] = [], seed?: number) {
   setCollageSelection(SUR, selection);
   trips.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - 1000, items: ids.map(item), nextCursor: null });
   await renderRouter(
-    { ...routes, "share-pick": () => <SharePickScreen tripId={SUR} /> },
+    { ...routes, "share-pick": () => <SharePickScreen tripId={SUR} seed={seed} /> },
     { initialUrl: "/blocked" },
   );
-  await act(async () => router.push("/share-pick"));
+  await act(async () => router.push(seed === undefined ? "/share-pick" : { pathname: "/share-pick", params: { seed: String(seed) } }));
   await screen.findByTestId("pick-cell-p1");
 }
 
@@ -97,6 +98,21 @@ describe("Elegir fotos", () => {
     expect(await screen.findByTestId("pick-badge-p10")).toHaveTextContent("1");
     await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
     expect(getCollageSelection(SUR)).toEqual(["p10"]);
+  });
+
+  it("with nothing saved, opens with the collage photos already numbered in collage order and Listo saves them", async () => {
+    const shown = pickCollage(collageCandidates(ids.map((id) => ({ id, shareable: true }) as never)), 1).map((p) => p.id);
+    await open([], 1);
+    await screen.findByText(`${shown.length} de 8`);
+    shown.forEach((id, i) => expect(badge(id)).toHaveTextContent(String(i + 1)));
+    await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
+    expect(getCollageSelection(SUR)).toEqual(shown);
+  });
+
+  it("with a saved selection, shows that selection and not the collage pick", async () => {
+    await open(["p4"], 1);
+    expect(badge("p4")).toHaveTextContent("1");
+    expect(screen.getByText("1 de 8")).toBeVisible();
   });
 
   it("deselecting renumbers the rest", async () => {

@@ -4,14 +4,17 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
 import { colors, type } from "@/ui/theme";
 
-const SIZE = 40;
+const SIZE = 52;
+/** Thumbnails shown; the rest of the collage is summed up in the "+N" tile. */
+const SHOWN = 4;
 
-/** The photos the collage uses right now, numbered, plus a "+" to change them. Tappable only when `onPress` is given. */
+/** The first 4 photos the collage uses right now, numbered, plus a "+" to change them. Tappable only when `onPress` is given. */
 export function CollageStrip({ photos, token, onPress }: { photos: RevealedPhoto[]; token: string | null; onPress: (() => void) | null }) {
   const count = photos.length;
+  const extra = count - SHOWN;
   const content = (
     <>
-      {photos.map((photo, i) => (
+      {photos.slice(0, SHOWN).map((photo, i) => (
         <View key={photo.id} style={styles.thumb}>
           {!!token && (
             <Image
@@ -31,7 +34,11 @@ export function CollageStrip({ photos, token, onPress }: { photos: RevealedPhoto
       ))}
       {onPress !== null && (
         <View testID="strip-add" style={[styles.thumb, styles.add]}>
-          <SymbolView name="plus" size={16} weight="semibold" tintColor={colors.secondaryLabel} />
+          {extra > 0 ? (
+            <Text testID="strip-more" style={[type.subhead, styles.more]}>{`+${extra}`}</Text>
+          ) : (
+            <SymbolView name="plus" size={18} weight="semibold" tintColor={colors.secondaryLabel} />
+          )}
         </View>
       )}
     </>
@@ -55,6 +62,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.6 },
   thumb: { width: SIZE, height: SIZE, borderRadius: 6, backgroundColor: colors.latent, overflow: "visible" },
   add: { backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
+  more: { color: colors.secondaryLabel, fontWeight: "600", fontVariant: ["tabular-nums"] },
   badge: {
     position: "absolute",
     top: -4,

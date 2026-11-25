@@ -142,7 +142,7 @@ describe("Compartir screen", () => {
     await fireEvent.press(screen.getByLabelText("Elegir fotos"));
     expect(await screen.findByText("pick stub")).toBeVisible();
     expect(screen).toHavePathname("/share-pick");
-    expect(screen).toHaveSearchParams({ tripId: SUR });
+    expect(screen).toHaveSearchParams({ tripId: SUR, seed: "1" });
   });
 
   it("collage uses the selected photos in order, and a new selection rebuilds the image", async () => {
@@ -166,6 +166,25 @@ describe("Compartir screen", () => {
     expect(screen.getByTestId("strip-add")).toBeVisible();
     expect(screen.getByLabelText("Elegir fotos")).toHaveProp("accessibilityHint", "El collage tiene 2 fotos");
     expect(screen.queryByRole("button", { name: "Elegir fotos" })).not.toBeNull();
+  });
+
+  it("collage: with 7 photos the strip shows 4 numbered thumbnails and a +3 tile", async () => {
+    setCollageSelection(SUR, ["a", "b", "c", "d", "e", "f", "g"]);
+    await open("collage", detail(), ["a", "b", "c", "d", "e", "f", "g"].map((id) => item(id)));
+    await filesReady();
+    for (const [i, id] of ["a", "b", "c", "d"].entries()) expect(screen.getByTestId(`strip-badge-${id}`)).toHaveTextContent(String(i + 1));
+    for (const id of ["e", "f", "g"]) expect(screen.queryByTestId(`strip-badge-${id}`)).toBeNull();
+    expect(screen.getByTestId("strip-more")).toHaveTextContent("+3");
+    expect(screen.getByLabelText("Elegir fotos")).toHaveProp("accessibilityHint", "El collage tiene 7 fotos");
+  });
+
+  it("collage: with 3 photos the strip shows 3 thumbnails and the plus tile", async () => {
+    setCollageSelection(SUR, ["a", "b", "c"]);
+    await open("collage", detail(), ["a", "b", "c"].map((id) => item(id)));
+    await filesReady();
+    for (const id of ["a", "b", "c"]) expect(screen.getByTestId(`strip-badge-${id}`)).toBeVisible();
+    expect(screen.getByTestId("strip-add")).toBeVisible();
+    expect(screen.queryByTestId("strip-more")).toBeNull();
   });
 
   it("collage: with a single candidate the strip has no plus and is not tappable", async () => {
