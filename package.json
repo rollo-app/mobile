@@ -81,6 +81,7 @@
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/build-icons.mjs",
     "lottie": "node scripts/build-lottie.mjs",
+    "story-backgrounds": "node scripts/build-story-backgrounds.mjs",
     "update:production": "APP_VARIANT=production EXPO_PUBLIC_API_URL=https://rollo-api.juanifraga.com npx eas-cli@latest update --channel production --environment production --platform ios",
     "api:generate": "openapi-typescript ${API_SPEC:-https://raw.githubusercontent.com/rollo-app/backend/develop/openapi.json} --default-non-nullable false -o src/api/schema.d.ts",
     "postinstall": "patch-package"
