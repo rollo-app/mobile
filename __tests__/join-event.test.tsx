@@ -11,6 +11,7 @@ import "@/test/reanimated";
 import { routes } from "@/test/routes";
 import { setSessionToken } from "@/storage/session";
 import { queryClient } from "@/api/query-client";
+import { myTripsKey } from "@/features/trips/use-active-trip";
 import { meKey } from "@/features/auth/actions";
 
 jest.mock("@/features/trips/actions");
@@ -337,6 +338,17 @@ describe("Joining a regular rollo by link or code", () => {
 
     await waitFor(() => expect(screen).toHavePathname("/roll/t1"));
     expect(mocked.previewEvent).not.toHaveBeenCalled();
+    expect(mocked.joinTrip).not.toHaveBeenCalled();
+  });
+
+  it("a member whose rollo list loads after the screen still lands on the rollo", async () => {
+    mocked.previewEvent.mockResolvedValue(tripPreview({ revealed: true }));
+    await renderRouter(routes, { initialUrl: "/join?code=hub5ft" });
+    expect(await screen.findByText("Este rollo ya se reveló.")).toBeVisible();
+
+    await act(async () => queryClient.setQueryData(myTripsKey, { trips: [tripSummary("t1", "Bariloche", { joinCode: "HUB5FT" })] }));
+
+    await waitFor(() => expect(screen).toHavePathname("/roll/t1"));
     expect(mocked.joinTrip).not.toHaveBeenCalled();
   });
 });

@@ -31,25 +31,38 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   // A code that arrives from a link (or changes in the route) is looked up by itself, so the guest lands on the groups.
   const lookedUp = useRef<string | null>(null);
   const linkCode = initialCode.toUpperCase().slice(0, 6);
+  // Opens the rollo behind the link when you're already in it (at most once per link).
+  const opened = useRef(false);
+  function openMine(): boolean {
+    if (opened.current || linkCode.length !== 6) return false;
+    const mine = trips.find((t) => t.joinCode.toUpperCase() === linkCode);
+    if (!mine) return false;
+    opened.current = true;
+    router.dismissTo("/roll");
+    router.push(rollHref(mine.id));
+    return true;
+  }
   useEffect(() => {
     if (lookedUp.current === linkCode) return;
     lookedUp.current = linkCode;
+    opened.current = false;
     setCode(linkCode);
     setEvent(null);
     setSelected([]);
     join.reset();
     if (linkCode.length !== 6) return;
     // A link to a rollo you're already in just opens it: no preview, no join.
-    const mine = trips.find((t) => t.joinCode.toUpperCase() === linkCode);
-    if (mine) {
-      router.dismissTo("/roll");
-      router.push(rollHref(mine.id));
-      return;
-    }
+    if (openMine()) return;
     // A failed lookup just leaves the code filled in: joining it is up to the guest.
     preview.mutate(linkCode, { onSuccess: (found) => found && setEvent(found) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkCode]);
+
+  // The persisted list can arrive after the screen (cold start from a QR): re-check while the link's preview is showing.
+  useEffect(() => {
+    if (lookedUp.current === linkCode) openMine();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trips]);
 
   const valid = code.trim().length === 6;
   const busy = preview.isPending || join.isPending;
