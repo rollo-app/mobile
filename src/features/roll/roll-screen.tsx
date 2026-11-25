@@ -9,6 +9,7 @@ import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { setActiveTripId } from "@/storage/active-trip";
 import { Button, ErrorText, Loading, Screen } from "@/ui/components";
+import { SHARE_ICON } from "@/ui/share-icon";
 import { colors, spacing } from "@/ui/theme";
 import { RevealedRollScreen } from "./revealed-roll-screen";
 import { RollBoard } from "./roll-board";
@@ -92,7 +93,8 @@ function RollToolbar({ tripId, kind }: { tripId: string; kind: ShareKind | null 
       {/* Direct children only: the header drops Fragments (see GalleryToolbar). */}
       {kind && (
         <Stack.Toolbar.Button
-          icon="square.and.arrow.up"
+          icon={SHARE_ICON}
+          iconRenderingMode="template"
           accessibilityLabel="Compartir"
           onPress={() => router.push({ pathname: "/share-story", params: { tripId, kind } })}
         />

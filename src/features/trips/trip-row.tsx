@@ -13,7 +13,13 @@ import { rowTint } from "./row-tint";
 import { thumbHashAverageColor, type RGB } from "./thumbhash-color";
 
 const BADGE_LABEL = { live: "LIVE", revealed: "Revelado" } as const;
-const ROW_ACTION_IMAGES = { share: "square.and.arrow.up", archive: "archivebox", unarchive: "tray.and.arrow.up", leave: "trash" } as const satisfies Record<RowActionId, string>;
+// The menu only takes SF Symbols on iOS: for sharing, Apple's closest to the app's own share glyph (@/ui/share-icon).
+const ROW_ACTION_IMAGES = {
+  share: "point.3.connected.trianglepath.dotted",
+  archive: "archivebox",
+  unarchive: "tray.and.arrow.up",
+  leave: "trash",
+} as const satisfies Record<RowActionId, string>;
 
 /** A row of the Rollos list: tinted with the roll's color, with its state as badge or subtitle. */
 export function TripRow({

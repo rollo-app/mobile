@@ -1,5 +1,6 @@
 import { StyleSheet } from "react-native";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
+import { SHARE_ICON } from "@/ui/share-icon";
 import { tripSummary } from "@/test/account";
 import { LiveRollCard, leftLabel } from "../live-roll-card";
 
@@ -58,7 +59,9 @@ describe("LiveRollCard", () => {
     mockDetail = { trip: { photoLimitMode: "total", timezone: "America/Argentina/Buenos_Aires", revealed: false, maxMembers: 15 }, members: [{}], memberCount: 1 };
     const onShare = jest.fn();
     await render(<LiveRollCard trip={trip} onOpen={() => {}} onCamera={() => {}} onShare={onShare} />);
-    await fireEvent.press(screen.getByRole("button", { name: "Invitar a Sur" }));
+    const button = screen.getByRole("button", { name: "Invitar a Sur" });
+    expect(within(button).getByTestId("share-icon").props.source).toBe(SHARE_ICON);
+    await fireEvent.press(button);
     expect(onShare).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Sur, en vivo" }).props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["camera", "share"]);
   });

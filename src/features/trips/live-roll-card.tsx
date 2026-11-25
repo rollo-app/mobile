@@ -1,9 +1,10 @@
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image as RNImage, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTodayLeft } from "@/features/capture/use-today-left";
 import { canShareInvite } from "@/features/share/invite";
 import { Badge } from "@/ui/badge";
+import { SHARE_ICON } from "@/ui/share-icon";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import type { TripSummary } from "./active";
 import { coverContentPosition } from "./cover-focus";
@@ -86,7 +87,7 @@ export function LiveRollCard({ trip, onOpen, onCamera, onShare }: { trip: TripSu
             hitSlop={6}
             style={({ pressed }) => [styles.share, pressed && { opacity: 0.8 }]}
           >
-            <SymbolView name="square.and.arrow.up" size={20} tintColor="#FFFFFF" />
+            <RNImage testID="share-icon" source={SHARE_ICON} style={styles.shareIcon} accessible={false} />
           </Pressable>
         )}
         <Pressable
@@ -114,5 +115,6 @@ const styles = StyleSheet.create({
   left: { color: "rgba(255,255,255,0.85)" },
   // Secondary to the camera: a translucent white circle over the dark cover, not the brand color.
   share: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  shareIcon: { width: 22, height: 22, tintColor: "#FFFFFF" },
   camera: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: colors.tint, alignItems: "center", justifyContent: "center" },
 });
