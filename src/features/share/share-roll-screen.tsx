@@ -7,7 +7,7 @@ import { ActivityIndicator, Image, Linking, StyleSheet, Text, View } from "react
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { memberTotal } from "@/features/trips/member-total";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { ErrorText, Row, Section } from "@/ui/components";
+import { ErrorText, Loading, Row, Section } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption, pickCollage } from "./collage";
 import { composeStill } from "./compose-still";
@@ -49,12 +49,27 @@ export function ShareRollScreen({ tripId }: { tripId: string }) {
     };
   }, []);
 
-  if (!detail || !kind) return null;
+  if (!detail || !kind) {
+    return (
+      <View style={styles.sheet}>
+        <Text accessibilityRole="header" style={[type.title, { color: colors.label }]}>
+          Compartir
+        </Text>
+        <Loading />
+      </View>
+    );
+  }
 
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
   async function copyLink() {
-    await Clipboard.setStringAsync(inviteLink(detail!));
+    setFailed(false);
+    try {
+      await Clipboard.setStringAsync(inviteLink(detail!));
+    } catch {
+      setFailed(true);
+      return;
+    }
     Burnt.toast({ title: "Link copiado", preset: "done" });
     close();
   }

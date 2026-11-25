@@ -1,4 +1,4 @@
-import { fireEvent, renderRouter, screen } from "expo-router/testing-library";
+import { fireEvent, renderRouter, screen, within } from "expo-router/testing-library";
 import "@/test/reanimated";
 import * as actions from "@/features/trips/actions";
 import { markPresentationSeen } from "@/storage/presentation";
@@ -11,7 +11,7 @@ const mocked = jest.mocked(actions);
 
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
-const LABEL = "Compartir en Stories";
+const LABEL = "Compartir en Instagram";
 
 const member = (id: string) => ({ id, userId: `u-${id}`, name: id, username: null, avatarUrl: null, role: "member" as const, isCreator: false, blockedByMe: false });
 
@@ -95,7 +95,7 @@ describe("Compartir entries", () => {
       expect(screen).toHaveSearchParams({ tripId: SUR });
     });
 
-    it("has no Compartir en Stories row", async () => {
+    it("has no Compartir en Instagram row", async () => {
       await open(detail(), "/roll?view=roll", [photo("a", true)]);
       await screen.findByRole("button", { name: "Compartir" });
       expect(screen.queryByText(LABEL)).toBeNull();
@@ -123,7 +123,7 @@ describe("Compartir entries", () => {
       expect(screen).toHavePathname("/share-roll");
     });
 
-    it("has no Compartir en Stories row", async () => {
+    it("has no Compartir en Instagram row", async () => {
       await open(detail(pending), "/roll");
       await screen.findByText("Invitar");
       expect(screen.queryByText(LABEL)).toBeNull();
@@ -145,7 +145,9 @@ describe("Compartir entries", () => {
   describe("organizer QR", () => {
     it("offers the button and opens the invitation", async () => {
       await open(detail({ revealed: false, revealAt: Date.now() + DAY }), `/event-qr?tripId=${SUR}`);
-      await fireEvent.press(await screen.findByRole("button", { name: LABEL }));
+      const button = await screen.findByRole("button", { name: LABEL });
+      expect(within(button).getByTestId("instagram-logo")).toBeVisible();
+      await fireEvent.press(button);
       expect(screen).toHavePathname("/share-story");
       expect(screen).toHaveSearchParams({ tripId: SUR, kind: "invite" });
     });

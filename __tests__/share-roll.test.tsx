@@ -159,4 +159,21 @@ describe("Compartir sheet", () => {
     await fireEvent.press(await screen.findByText("WhatsApp"));
     expect(await screen.findByText("No se pudo compartir. Probá de nuevo.")).toBeVisible();
   });
+
+  it("shows the title and a loading state while the rollo loads", async () => {
+    trips.fetchTrip.mockReturnValue(new Promise(() => {}));
+    trips.fetchFeedPage.mockReturnValue(new Promise(() => {}));
+    await renderRouter(routes, { initialUrl: `/share-roll?tripId=${SUR}` });
+    expect(await screen.findByText("Compartir")).toBeVisible();
+    expect(JSON.stringify(screen.toJSON())).toContain("ActivityIndicator");
+  });
+
+  it("a clipboard failure on Copiar link shows the inline error and keeps the sheet open", async () => {
+    jest.mocked(Clipboard.setStringAsync).mockRejectedValueOnce(new Error("boom"));
+    await open(detail());
+    await fireEvent.press(await screen.findByText("Copiar link"));
+    expect(await screen.findByText("No se pudo compartir. Probá de nuevo.")).toBeVisible();
+    expect(Burnt.toast).not.toHaveBeenCalled();
+    expect(screen).toHavePathname("/share-roll");
+  });
 });

@@ -10,6 +10,7 @@ import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Screen } from "@/ui/components";
 import { colors, spacing, tintHex, type } from "@/ui/theme";
 import { canShuffle, collageCandidates, collageCaption, nextSeed, pickCollage } from "./collage";
+import { InstagramButton } from "./instagram-button";
 import { inviteCaption, inviteLink, inviteSwatches } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
@@ -137,7 +138,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <StoryPreview style={style} card={assets.card} height={previewHeight} />
           <SegmentedControl values={STYLE_LABELS} tintColor={tintHex[scheme]} selectedIndex={STORY_STYLES.indexOf(style)} onValueChange={(v) => setStyle(styleFromLabel(v))} />
           <View style={styles.actions}>
-            {instagram && <Button label="Compartir en Stories" disabled={!filesReady} onPress={() => void shareStories()} />}
+            {instagram && <InstagramButton disabled={!filesReady} onPress={() => void shareStories()} />}
             <Button label="Más opciones" disabled={!filesReady} variant={instagram ? "secondary" : "primary"} onPress={() => void share((link) => shareMore(assets.stillUri!, link), true)} />
             {isCollage && canShuffle(candidates) && (
               <Pressable accessibilityRole="button" onPress={() => setSeed((s) => nextSeed(candidates, s))} style={styles.shuffle}>
