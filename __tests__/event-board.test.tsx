@@ -166,7 +166,6 @@ describe("Event board", () => {
     await open({ ...detail(organizer, []), trip: { ...detail(organizer, []).trip, type: "trip", groups: [] } });
     expect(await screen.findByRole("button", { name: "Sumar amigos" })).toBeVisible();
     expect(screen.queryByText("Grupos")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
   });
 });
 
@@ -321,6 +320,41 @@ describe("Sumarme a otro grupo (guest)", () => {
 describe("Código QR", () => {
   it("the QR screen shows the code under the QR", async () => {
     await open(detail(organizer, []), "Código QR");
+    expect(await screen.findByText("Casamiento de Cami")).toBeVisible();
+    expect(screen.getByText("ABC123")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Compartir" })).toBeVisible();
+  });
+
+  const regular = (me: Member, over: Partial<tripActions.Trip> = {}) => detail(me, [], { type: "trip", groups: [], ...over });
+
+  it("a member of a regular rollo sees Código QR", async () => {
+    await open(regular(guest));
+    expect(await screen.findByRole("button", { name: "Código QR" })).toBeVisible();
+  });
+
+  it("Código QR is disabled when the rollo is full", async () => {
+    await open(regular(guest, { maxMembers: 2 }));
+    const row = await screen.findByRole("button", { name: "Código QR" });
+    expect(row).toBeDisabled();
+  });
+
+  it("a revealed regular rollo has no Código QR", async () => {
+    await markPresentationSeen(EVENT);
+    await open(regular(guest, { revealed: true }), undefined, `/roll/${EVENT}?view=roll`);
+    expect(await screen.findByText("Personas")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();
+  });
+
+  it("sharing a regular rollo sends the join link", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction", activityType: undefined });
+    await open(regular(guest));
+    await fireEvent.press(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ }));
+    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Casamiento de Cami" en Rollo: https://rolloproject.com/join/ABC123' });
+    share.mockRestore();
+  });
+
+  it("the QR screen works for a regular rollo", async () => {
+    await open(regular(guest), "Código QR");
     expect(await screen.findByText("Casamiento de Cami")).toBeVisible();
     expect(screen.getByText("ABC123")).toBeVisible();
     expect(screen.getByRole("button", { name: "Compartir" })).toBeVisible();

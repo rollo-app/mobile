@@ -19,9 +19,7 @@ export function RollInvite({ detail }: { detail: TripDetail }) {
   const full = memberTotal(detail) >= detail.trip.maxMembers;
   const share = () =>
     Share.share({
-      message: event
-        ? `Sumate a "${detail.trip.name}" en Rollo: ${joinLinkUrl(detail.trip.joinCode)}`
-        : `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}`,
+      message: `Sumate a "${detail.trip.name}" en Rollo: ${joinLinkUrl(detail.trip.joinCode)}`,
     });
 
   return (
@@ -35,7 +33,8 @@ export function RollInvite({ detail }: { detail: TripDetail }) {
         accessibilityLabel={`Código ${detail.trip.joinCode}. Compartir invitación`}
         onPress={() => void share()}
       />
-      {event && isOrganizer(detail) && !detail.trip.revealed && (
+      {/* An event's QR is the organizer's to hand out; any member can show a regular rollo's. */}
+      {(!event || isOrganizer(detail)) && !detail.trip.revealed && (
         <Row label="Código QR" disabled={full} onPress={() => router.push({ pathname: "/event-qr", params: { tripId: detail.trip.id } })} />
       )}
       {!event && !detail.trip.revealed && <Row label="Sumar amigos" onPress={() => router.push("/add-friends")} />}
