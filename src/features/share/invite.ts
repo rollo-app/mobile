@@ -7,7 +7,7 @@ import { dateRange } from "./collage";
 
 /** Same condition `RollInvite` uses to show the code: not revealed yet and with room left. */
 export const canShareInvite = (detail: TripDetail): boolean =>
-  !detail.trip.revealed && detail.members.length < detail.trip.maxMembers;
+  !detail.trip.revealed && memberTotal(detail) < detail.trip.maxMembers;
 
 /** The line under the name on the invitation image. */
 export function inviteCaption(detail: TripDetail): string {

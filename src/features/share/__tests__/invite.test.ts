@@ -50,6 +50,10 @@ describe("canShareInvite", () => {
     expect(canShareInvite(detail({ members: 10, maxMembers: 10 }))).toBe(false);
   });
 
+  it("is false for an event whose server total is full even if members lists fewer", () => {
+    expect(canShareInvite(detail({ type: "event", members: 2, memberCount: 10, maxMembers: 10 }))).toBe(false);
+  });
+
   it("is false for a revealed roll", () => {
     expect(canShareInvite(detail({ revealed: true }))).toBe(false);
   });
@@ -65,6 +69,15 @@ describe("inviteCaption", () => {
 
   it("invites to be among the first below 5 people", () => {
     expect(inviteCaption(event(3))).toBe("12 de diciembre · Sé de los primeros en unirte");
+  });
+
+  it("switches from 'first to join' to the count at 5 people", () => {
+    expect(inviteCaption(event(4))).toBe("12 de diciembre · Sé de los primeros en unirte");
+    expect(inviteCaption(event(5))).toBe("12 de diciembre · 5 personas ya se unieron");
+  });
+
+  it("uses the date range and 'sin revelar' for an event without a cover", () => {
+    expect(inviteCaption(detail({ type: "event" }))).toBe("3 – 9 de enero · sin revelar");
   });
 
   it("shows the date range and 'sin revelar' for a rollo without a cover", () => {
