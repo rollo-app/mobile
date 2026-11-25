@@ -62,8 +62,6 @@ export async function shareMore(uri: string, message?: string): Promise<void> {
  */
 export const isShareCancel = (e: unknown): boolean => e instanceof Error && e.message === "User did not share";
 
-export const whatsAppUrl = (text: string): string => `whatsapp://send?text=${encodeURIComponent(text)}`;
-
 /** Whether WhatsApp is installed (`whatsapp` scheme in LSApplicationQueriesSchemes). */
 export async function whatsAppAvailable(): Promise<boolean> {
   try {
@@ -75,7 +73,11 @@ export async function whatsAppAvailable(): Promise<boolean> {
 
 const WHATSAPP_TIMEOUT_MS = 15_000;
 
-/** Sends the image straight to WhatsApp's contact picker. Real failures reject. */
+/**
+ * Sends the image to WhatsApp (status or chat) through iOS's "Open in" menu. react-native-share writes the temp file as `image.wai`
+ * (patches/react-native-share+*.patch) with UTI `net.whatsapp.image`: WhatsApp's own extension makes the menu list only WhatsApp,
+ * where a `.jpg` would list every app that opens images. Real failures reject.
+ */
 export async function shareImageToWhatsApp(uri: string): Promise<void> {
   // Same as INSTAGRAM_STORIES: the typings expose the constant as a plain string; shareSingle wants the enum member.
   const social = Share.Social.WHATSAPP as Social.Whatsapp;
