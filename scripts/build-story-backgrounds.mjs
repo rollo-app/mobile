@@ -84,7 +84,7 @@ for (const [name, stops] of Object.entries(PALETTES)) {
   const input = ["-f", "rawvideo", "-pix_fmt", "rgb24", "-s", `${LW}x${LH}`, "-r", String(FPS), "-i", "-"];
   await run(
     ["-v", "error", "-y", ...input, "-vf", FILTER, "-c:v", "libx264", "-preset", "slow", "-crf", "24",
-      "-pix_fmt", "yuv420p", "-r", String(FPS), "-t", String(SECONDS), "-an", "-movflags", "+faststart",
+      "-pix_fmt", "yuv420p", "-x264-params", "colorprim=bt709:transfer=bt709:colormatrix=bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709", "-r", String(FPS), "-t", String(SECONDS), "-an", "-movflags", "+faststart",
       join(OUT, `bg-${name}.mp4`)],
     frames(stops),
   );

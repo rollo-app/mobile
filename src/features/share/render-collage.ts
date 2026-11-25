@@ -36,7 +36,7 @@ export async function renderCollageCard(input: { name: string; caption: string; 
     surface = card.surface;
     const { canvas } = card;
 
-    drawText(canvas, input.caption, { ...SMALL, color: palette.text, opacity: 0.7 }, CARD_PAD, CARD_PAD, CARD_CONTENT_W);
+    drawText(canvas, input.caption, { ...SMALL, maxLines: 1, color: palette.text, opacity: 0.7 }, CARD_PAD, CARD_PAD, CARD_CONTENT_W);
     const titleTop = CARD_PAD + SMALL_LINE_H + TITLE_GAP;
     title.paint(canvas, CARD_PAD, titleTop);
 

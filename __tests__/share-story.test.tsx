@@ -21,7 +21,7 @@ jest.mock("@/features/share/share-story", () => ({
   shareToInstagramStories: jest.fn(),
   shareMore: jest.fn(),
 }));
-jest.mock("@/features/share/asset-uri", () => ({ assetUri: jest.fn(async () => "file:///assets/bg-dark.mp4") }));
+jest.mock("@/features/share/asset-uri", () => ({ assetUri: jest.fn(async (m: unknown) => `file:///assets/${(m as { testUri: string }).testUri.split("/").pop()}`) }));
 const trips = jest.mocked(tripActions);
 const collage = jest.mocked(renderCollageModule.renderCollageCard);
 const invite = jest.mocked(renderInviteModule.renderInviteCard);
@@ -223,7 +223,7 @@ describe("Compartir screen", () => {
     const call = story.shareToInstagramStories.mock.calls[0]![0];
     expect(call.stickerUri).toEqual(CARD_FILE("collage", "light"));
     expect(call.backgroundColor).toBe("#f3efe8");
-    expect(call.backgroundVideoUri).toMatch(/^file:\/\/\/assets\//);
+    expect(call.backgroundVideoUri).toBe("file:///assets/bg-light.mp4");
   });
 
   it("Más opciones shares the composed still of the chosen style", async () => {
@@ -243,7 +243,7 @@ describe("Compartir screen", () => {
     await waitFor(() => expect(lastStyle(collage as unknown as jest.Mock)).toBe("light"));
     await filesReady();
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
-    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(expect.objectContaining({ backgroundColor: "#f3efe8" })));
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(expect.objectContaining({ backgroundColor: "#f3efe8", backgroundVideoUri: "file:///assets/bg-light.mp4" })));
   });
 
   it("going back to Oscuro after Claro shares the dark files, not the light ones", async () => {
