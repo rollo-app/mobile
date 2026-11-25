@@ -33,6 +33,17 @@ describe("LiveRollCard", () => {
     expect(screen.getByText("Te quedan 4 fotos en el rollo")).toBeTruthy();
   });
 
+  it("labels an event as Evento, also for VoiceOver", async () => {
+    await render(<LiveRollCard trip={{ ...trip, type: "event" }} onOpen={() => {}} onCamera={() => {}} />);
+    expect(screen.getByText("Evento")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sur, evento, en vivo" })).toBeTruthy();
+  });
+
+  it("has no Evento label on a regular roll", async () => {
+    await render(<LiveRollCard trip={trip} onOpen={() => {}} onCamera={() => {}} />);
+    expect(screen.queryByText("Evento")).toBeNull();
+  });
+
   it("hides the photos line while unknown", async () => {
     mockLeft = null;
     await render(<LiveRollCard trip={trip} onOpen={() => {}} onCamera={() => {}} />);

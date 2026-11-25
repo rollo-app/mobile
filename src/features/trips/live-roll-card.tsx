@@ -26,12 +26,13 @@ export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; on
   const left = useTodayLeft(trip.id, detail);
   const timeZone = detail?.trip.timezone ?? DEVICE_ZONE;
   const uri = coverUri(trip.coverUrl);
+  const isEvent = trip.type === "event";
 
   return (
     <Pressable
       testID="live-roll-card"
       accessibilityRole="button"
-      accessibilityLabel={`${trip.name}, en vivo`}
+      accessibilityLabel={isEvent ? `${trip.name}, evento, en vivo` : `${trip.name}, en vivo`}
       // The camera button below is its own Pressable, which VoiceOver can't reach inside the grouped card: expose it as an action.
       accessibilityActions={[{ name: "camera", label: "Sacar una foto" }]}
       onAccessibilityAction={({ nativeEvent }) => {
@@ -54,6 +55,7 @@ export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; on
       </View>
       <View style={styles.top}>
         <Badge variant="live" label="LIVE" />
+        {isEvent && <Badge variant="overlay" label="Evento" />}
         <Text style={[type.footnote, styles.day]}>{liveDayLabel(trip, Date.now(), timeZone)}</Text>
       </View>
       <View style={styles.bottom}>

@@ -27,6 +27,14 @@ describe("Badge", () => {
     expect(loop).not.toHaveBeenCalled();
   });
 
+  it("overlay is a white label for use over a photo, no dot", async () => {
+    jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+    await render(<Badge variant="overlay" label="Evento" />);
+
+    expect(screen.getByText("Evento")).toHaveStyle({ color: "#FFFFFF" });
+    expect(screen.queryByTestId("badge-dot")).toBeNull();
+  });
+
   it("neutral is just the label, no dot", async () => {
     jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
     await render(<Badge variant="neutral" label="Revelado" />);
