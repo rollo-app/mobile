@@ -43,6 +43,7 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
     if (absent && lookup === "missing") router.replace("/roll");
   }, [absent, lookup]);
   const revealed = trip && phase === "revealed";
+  const kind = detail ? shareKind(detail, photos) : null;
   const selecting = revealed && view !== "roll" && selection !== null;
   // Revealed, the header is solid with the screen's background so it reads as one block with the
   // "Galería | Rollo" row under it. Set here (not in the revealed screen) so that switching to a trip
@@ -60,7 +61,7 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
         />
       )}
       {/* "Compartir" and "Ajustes del rollo": on the board and in the revealed "Rollo" view; the gallery has its own toolbar. */}
-      {trip && (!revealed || view === "roll") && <RollToolbar tripId={trip.id} kind={detail ? shareKind(detail, photos) : null} />}
+      {trip && (!revealed || view === "roll") && <RollToolbar tripId={trip.id} kind={kind} />}
       {absent ? (
         <Screen grouped>
           {lookup === "failed" ? (
@@ -73,7 +74,11 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
           )}
         </Screen>
       ) : revealed ? (
-        <RevealedRollScreen tripId={tripId} onSelectionChange={setSelection} />
+        <RevealedRollScreen
+          tripId={tripId}
+          onSelectionChange={setSelection}
+          onShare={kind ? () => router.push({ pathname: "/share-story", params: { tripId, kind } }) : undefined}
+        />
       ) : (
         <RollBoard tripId={tripId} />
       )}

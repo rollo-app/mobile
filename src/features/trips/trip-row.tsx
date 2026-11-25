@@ -13,6 +13,7 @@ import { rowTint } from "./row-tint";
 import { thumbHashAverageColor, type RGB } from "./thumbhash-color";
 
 const BADGE_LABEL = { live: "LIVE", revealed: "Revelado" } as const;
+const ROW_ACTION_IMAGES = { share: "square.and.arrow.up", archive: "archivebox", unarchive: "tray.and.arrow.up", leave: "trash" } as const satisfies Record<RowActionId, string>;
 
 /** A row of the Rollos list: tinted with the roll's color, with its state as badge or subtitle. */
 export function TripRow({
@@ -72,7 +73,7 @@ export function TripRow({
       actions={actions.map((id) => ({
         id,
         title: ROW_ACTION_TITLES[id],
-        image: id === "leave" ? "trash" : id === "archive" ? "archivebox" : "tray.and.arrow.up",
+        image: ROW_ACTION_IMAGES[id],
         ...(id === "leave" && { attributes: { destructive: true } }),
       }))}
       onPressAction={({ nativeEvent }) => onAction?.(nativeEvent.event as RowActionId)}

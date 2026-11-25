@@ -96,6 +96,13 @@ describe("Compartir entries", () => {
       expect(screen).toHaveSearchParams({ tripId: SUR, kind: "collage" });
     });
 
+    it("shows the button in the Galería too (the view a revealed rollo opens on)", async () => {
+      await open(detail(), `/roll/${SUR}`, [photo("a", true)]);
+      await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
+      expect(screen).toHavePathname("/share-story");
+      expect(screen).toHaveSearchParams({ tripId: SUR, kind: "collage" });
+    });
+
     it("has no Compartir en Instagram row", async () => {
       await open(detail(), `/roll/${SUR}?view=roll`, [photo("a", true)]);
       await screen.findByRole("button", { name: "Compartir" });

@@ -65,7 +65,9 @@ describe("Rollos list", () => {
   it("a live roll shows its card with the photos left", async () => {
     await signInWith([live, revealedMine]);
     trips.fetchTrip.mockResolvedValue({
-      trip: { id: "t6", photoLimitMode: "daily", timezone: "America/Argentina/Buenos_Aires" },
+      trip: { id: "t6", photoLimitMode: "daily", timezone: "America/Argentina/Buenos_Aires", revealed: false, maxMembers: 15 },
+      members: [],
+      memberCount: 3,
       today: { date: localDay(Date.now(), "America/Argentina/Buenos_Aires"), photosLeft: 6, videosLeft: 0 },
     } as never);
     await renderRouter(routes, { initialUrl: "/roll" });
@@ -141,7 +143,8 @@ describe("Rollos: archived and row actions", () => {
     await renderRouter(routes, { initialUrl: "/roll" });
     await screen.findByRole("button", { name: "Sur, revelado" });
     const sur = screen.getByRole("button", { name: "Sur, revelado" });
-    expect(sur.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["archive", "leave"]);
+    expect(sur.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["share", "archive", "leave"]);
+    expect(items()).toContain("Compartir");
     expect(items()).toContain("Archivar");
     expect(items()).toContain("Eliminar");
   });
@@ -149,17 +152,28 @@ describe("Rollos: archived and row actions", () => {
   it("has no Archivar on an unrevealed roll and no Eliminar on one you created", async () => {
     await renderRouter(routes, { initialUrl: "/roll" });
     const playa = await screen.findByRole("button", { name: /^Playa/ });
-    expect(playa.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["leave"]);
+    expect(playa.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["share", "leave"]);
     const tandil = screen.getByRole("button", { name: /^Tandil/ });
-    expect(tandil.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["archive"]);
+    expect(tandil.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["share", "archive"]);
   });
 
   it("offers Desarchivar on an archived roll", async () => {
     await renderRouter(routes, { initialUrl: "/roll" });
     await fireEvent.press(await screen.findByRole("button", { name: "Archivados, 2" }));
     const row = await screen.findByRole("button", { name: /^Viejo uno/ });
-    expect(row.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["unarchive", "leave"]);
+    expect(row.props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["share", "unarchive", "leave"]);
     expect(items()).toContain("Desarchivar");
+  });
+
+  it.each([
+    [/^Sur/, "t1", "collage"],
+    [/^Playa/, "t3", "invite"],
+  ])("Compartir on %s opens the share screen: the collage once revealed, the invitation before", async (name, tripId, kind) => {
+    await renderRouter(routes, { initialUrl: "/roll" });
+    const row = await screen.findByRole("button", { name });
+    await fireEvent(row, "accessibilityAction", { nativeEvent: { actionName: "share" } });
+    expect(screen).toHavePathname("/share-story");
+    expect(screen).toHaveSearchParams({ tripId, kind });
   });
 
   it("Archivar calls setTripArchived and moves the row to Archivados without waiting, keeping the active roll", async () => {

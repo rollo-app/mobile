@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTodayLeft } from "@/features/capture/use-today-left";
+import { canShareInvite } from "@/features/share/invite";
 import { Badge } from "@/ui/badge";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import type { TripSummary } from "./active";
@@ -21,9 +22,13 @@ export function leftLabel(photos: number, mode: "daily" | "total") {
   return photos === 1 ? `Te queda 1 foto ${where}` : `Te quedan ${photos} fotos ${where}`;
 }
 
-/** Big card of a roll in progress: blurred cover, day, name, photos left, and a camera button for that roll. */
-export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; onOpen: () => void; onCamera: () => void }) {
+/**
+ * Big card of a roll in progress: blurred cover, day, name, photos left, a camera button for that roll and, while it has room,
+ * a share button that invites to it.
+ */
+export function LiveRollCard({ trip, onOpen, onCamera, onShare }: { trip: TripSummary; onOpen: () => void; onCamera: () => void; onShare?: () => void }) {
   const { detail } = useTripDetail(trip.id);
+  const share = onShare && detail && canShareInvite(detail) ? onShare : null;
   const left = useTodayLeft(trip.id, detail);
   const timeZone = detail?.trip.timezone ?? DEVICE_ZONE;
   const uri = coverUri(trip.coverUrl);
@@ -35,9 +40,10 @@ export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; on
       accessibilityRole="button"
       accessibilityLabel={isEvent ? `${trip.name}, evento, en vivo` : `${trip.name}, en vivo`}
       // The camera button below is its own Pressable, which VoiceOver can't reach inside the grouped card: expose it as an action.
-      accessibilityActions={[{ name: "camera", label: "Sacar una foto" }]}
+      accessibilityActions={[{ name: "camera", label: "Sacar una foto" }, ...(share ? [{ name: "share", label: "Invitar" }] : [])]}
       onAccessibilityAction={({ nativeEvent }) => {
         if (nativeEvent.actionName === "camera") onCamera();
+        if (nativeEvent.actionName === "share") share?.();
       }}
       onPress={onOpen}
       style={styles.card}
@@ -72,6 +78,17 @@ export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; on
             </Text>
           )}
         </View>
+        {share && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Invitar a ${trip.name}`}
+            onPress={share}
+            hitSlop={6}
+            style={({ pressed }) => [styles.share, pressed && { opacity: 0.8 }]}
+          >
+            <SymbolView name="square.and.arrow.up" size={20} tintColor="#FFFFFF" />
+          </Pressable>
+        )}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Sacar una foto en ${trip.name}`}
@@ -95,5 +112,7 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: 2 },
   name: { color: "#FFFFFF" },
   left: { color: "rgba(255,255,255,0.85)" },
+  // Secondary to the camera: a translucent white circle over the dark cover, not the brand color.
+  share: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
   camera: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: colors.tint, alignItems: "center", justifyContent: "center" },
 });

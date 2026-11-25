@@ -242,6 +242,21 @@ describe("Compartir screen", () => {
     expect(clipboard.setStringAsync).not.toHaveBeenCalled();
   });
 
+  it("invite of a full rollo (opened from the list) says so and offers nothing", async () => {
+    await open("invite", detail({ maxMembers: 1 }));
+    expect(await screen.findByText("Este rollo está lleno: no se puede invitar a más gente.")).toBeVisible();
+    expect(screen.queryByLabelText("Vista previa")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Más opciones" })).toBeNull();
+    expect(invite).not.toHaveBeenCalled();
+  });
+
+  it("collage of a private rollo (opened from the list) says so and offers nothing", async () => {
+    await open("collage", detail({ revealed: true, featuringDisabled: true }));
+    expect(await screen.findByText("Este rollo es privado: sus fotos no se comparten fuera del rollo.")).toBeVisible();
+    expect(screen.queryByLabelText("Vista previa")).toBeNull();
+    expect(collage).not.toHaveBeenCalled();
+  });
+
   it("collage without Instagram: only Más opciones", async () => {
     story.instagramStoriesAvailable.mockResolvedValue(false);
     await open("collage");

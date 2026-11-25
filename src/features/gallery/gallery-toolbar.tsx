@@ -16,9 +16,11 @@ type Props = {
   onStartSelecting: () => void;
   onSelectGroup?: (id: string | null) => void;
   onSaveAll: () => void;
+  /** "Compartir" (the roll's collage), shown while not selecting; the screen that owns the roll decides if it can. */
+  onShare?: () => void;
 };
 
-/** Native header buttons: select, filter by group and "Guardar todo en Fotos". */
+/** Native header buttons: share, select, filter by group and "Guardar todo en Fotos". */
 export function GalleryToolbar({
   selecting,
   allSelected,
@@ -33,6 +35,7 @@ export function GalleryToolbar({
   onStartSelecting,
   onSelectGroup,
   onSaveAll,
+  onShare,
 }: Props) {
   return (
     <>
@@ -45,6 +48,7 @@ export function GalleryToolbar({
       )}
       <Stack.Toolbar placement="right">
         {/* Direct children only: the header drops Fragments, which is how both buttons once vanished. */}
+        {!selecting && !!onShare && <Stack.Toolbar.Button icon="square.and.arrow.up" accessibilityLabel="Compartir" onPress={onShare} />}
         {selecting && <Stack.Toolbar.Button onPress={onStopSelecting}>Cancelar</Stack.Toolbar.Button>}
         {!selecting && (
           <Stack.Toolbar.Button disabled={busy || !hasPhotos} onPress={onStartSelecting}>

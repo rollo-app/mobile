@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRevealedPhotos } from "@/features/media/revealed";
+import type { TripDetail } from "@/features/trips/actions";
 import { memberTotal } from "@/features/trips/member-total";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
@@ -12,7 +13,7 @@ import { ErrorText, Footnote, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
-import { inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
+import { canShareInvite, inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
 import { renderInviteCard } from "./render-invite";
@@ -27,6 +28,13 @@ import { RetryPill } from "./retry-pill";
 
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
+
+/** Why this roll has nothing to share as `kind`, or null if it can be shared. */
+function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string | null {
+  if (kind === "collage") return detail.trip.featuringDisabled ? "Este rollo es privado: sus fotos no se comparten fuera del rollo." : null;
+  if (canShareInvite(detail)) return null;
+  return detail.trip.revealed ? "Este rollo ya se reveló: ya no se puede invitar a más gente." : "Este rollo está lleno: no se puede invitar a más gente.";
+}
 
 /** "Compartir": builds the Stories image (collage or invitation), previews it and offers Instagram Stories, the system sheet and, for the collage, choosing the photos. */
 export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" }) {
@@ -64,7 +72,9 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const candidates = useMemo(() => collageCandidates(photos), [photos]);
   const thumbhashes = useMemo(() => feed?.items.map((i) => i.thumbhash) ?? [], [feed]);
 
-  const ready = detail !== null && (isCollage ? complete || loadedAll : !feedLoading);
+  // The list offers Compartir on every roll without knowing these: say why there's nothing to share instead of drawing a card.
+  const blocked = detail === null ? null : blockedReason(detail, kind);
+  const ready = detail !== null && !blocked && (isCollage ? complete || loadedAll : !feedLoading);
   // No photos because the feed failed to load is an error with a retry, not "no photos".
   const feedFailed = isCollage && !!feedError;
   const empty = isCollage && ready && candidates.length === 0 && !feedFailed;
@@ -145,6 +155,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
       </Stack.Toolbar>
 
       {!!detailError && <ErrorText>{detailError}</ErrorText>}
+      {!!blocked && <Footnote>{blocked}</Footnote>}
       {empty && <Footnote>Todavía no hay fotos para armar el collage.</Footnote>}
       {feedFailed && (
         <View style={styles.failure}>
@@ -158,7 +169,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <RetryPill onPress={assets.retry} />
         </View>
       )}
-      {!detailError && !empty && !feedFailed && !assets.error && build === null && <Loading />}
+      {!detailError && !blocked && !empty && !feedFailed && !assets.error && build === null && <Loading />}
       {build !== null && !assets.error && (
         <>
           <View style={styles.previewArea} onLayout={onPreviewArea}>

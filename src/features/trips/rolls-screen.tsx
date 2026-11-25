@@ -11,7 +11,7 @@ import { hasNoTrips, type TripSummary } from "./active";
 import { groupTrips } from "./group-trips";
 import { LiveRollCard } from "./live-roll-card";
 import { rollHref } from "./roll-href";
-import { rowActions, type RowActionId } from "./row-actions";
+import { listShareKind, rowActions, type RowActionId } from "./row-actions";
 import { useArchiveTrip } from "./use-archive-trip";
 import { TripRow } from "./trip-row";
 import { useActiveTrip } from "./use-active-trip";
@@ -84,6 +84,7 @@ export function RollsScreen() {
             await setActiveTripId(t.id);
             router.push("/capture");
           }}
+          onShare={() => router.push({ pathname: "/share-story", params: { tripId: t.id, kind: "invite" } })}
         />
       ))}
       {groups.top.length > 0 && <Section title="Próximos">{groups.top.map(row)}</Section>}
@@ -116,7 +117,8 @@ function ActionableRow({
 }) {
   const leave = useLeaveTrip(trip.id, trip.name, { revealed: trip.revealed, copy: "list" });
   const onAction = (id: RowActionId) => {
-    if (id === "leave") leave.confirm();
+    if (id === "share") router.push({ pathname: "/share-story", params: { tripId: trip.id, kind: listShareKind(trip) } });
+    else if (id === "leave") leave.confirm();
     else setArchived(trip.id, id === "archive");
   };
   return <TripRow trip={trip} actions={rowActions(trip)} onAction={onAction} {...rest} />;

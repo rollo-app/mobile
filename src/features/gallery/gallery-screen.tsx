@@ -63,6 +63,7 @@ export function GalleryScreen({
   toolbar: showToolbar = true,
   onSelectionChange,
   header,
+  onShare,
 }: {
   tripId: string;
   toolbar?: boolean;
@@ -70,6 +71,8 @@ export function GalleryScreen({
   header?: ReactNode;
   /** How many photos are selected while selecting, null otherwise: the screen that owns the header shows it as the title. */
   onSelectionChange?: (count: number | null) => void;
+  /** "Compartir" in the toolbar; given by the roll screen when the roll can be shared. */
+  onShare?: () => void;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -333,6 +336,7 @@ export function GalleryScreen({
           onStartSelecting={startSelecting}
           onSelectGroup={setGroupId}
           onSaveAll={confirmSaveAll}
+          onShare={onShare}
         />
       )}
       <SaveBar
