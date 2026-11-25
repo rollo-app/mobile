@@ -10,6 +10,8 @@ import type { ConfigContext, ExpoConfig } from "expo/config";
 // Strips `aps-environment` (added by expo-notifications). It must be the FIRST plugin: mods run in
 // reverse order, so it runs after expo-notifications.
 const WITHOUT_PUSH = "./plugins/without-push-entitlement";
+// Strips Sign in with Apple (added by expo-apple-authentication's automatic plugin), same idea.
+const WITHOUT_APPLE_SIGNIN = "./plugins/without-apple-signin-entitlement";
 
 const GOOGLE_URL_SCHEME = {
   production: "com.googleusercontent.apps.331161321522-eg16sji80rga1jor4b5k8ebhs4tc750f",
@@ -32,7 +34,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       bundleIdentifier: isProduction ? "com.juanifraga.rollo.app" : "com.juanifraga.rollo",
     },
     plugins: [
-      ...(isProduction ? (config.plugins ?? []) : [WITHOUT_PUSH, ...(config.plugins ?? [])]),
+      ...(isProduction ? (config.plugins ?? []) : [WITHOUT_APPLE_SIGNIN, WITHOUT_PUSH, ...(config.plugins ?? [])]),
       // Google Sign-In returns to the app through the reversed iOS client id of each build (see GOOGLE_IOS_CLIENT_IDS in src/config.ts).
       ["@react-native-google-signin/google-signin", { iosUrlScheme: isProduction ? GOOGLE_URL_SCHEME.production : GOOGLE_URL_SCHEME.development }],
     ],
