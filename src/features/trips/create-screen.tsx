@@ -36,6 +36,7 @@ import {
 import { ContestSection, DescriptionSection } from "@/features/trips/contest-section";
 import { infoHeader, TripForm, type LimitMode, type RevealMode } from "@/features/trips/trip-form";
 import { useCreateTrip } from "@/features/trips/use-create-trip";
+import { rollHref } from "@/features/trips/roll-href";
 import { ErrorText } from "@/ui/components";
 import { colors, spacing } from "@/ui/theme";
 
@@ -165,7 +166,7 @@ export function CreateScreen() {
         {
           onSuccess: (trip) => {
             if (cover) void uploadChosenCover(trip.id, cover);
-            router.dismissTo("/roll");
+            openOverList(trip.id);
             // An event has no friends to add: guests come in by code or QR.
             void offerPushAfterJoining();
           },
@@ -187,12 +188,18 @@ export function CreateScreen() {
         ...(isPrivate && { featuringDisabled: true }),
       },
       {
-        onSuccess: () => {
-          router.dismissTo("/roll");
+        onSuccess: (trip) => {
+          openOverList(trip.id);
           void offerNext();
         },
       },
     );
+  }
+
+  // The new roll opens over the list of rolls (the roll screen refetches the list if it isn't there yet).
+  function openOverList(tripId: string) {
+    router.dismissTo("/roll");
+    router.push(rollHref(tripId));
   }
 
   // The roll exists and is active by now. Notifications are offered first (once), then, if you have

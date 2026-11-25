@@ -123,6 +123,14 @@ const queued = (over: Partial<QueuedMedia> = {}): QueuedMedia => ({
   ...over,
 });
 
+// The native header's title is a prop of its config, not text.
+const headerTitles = (node: unknown = screen.toJSON()): string[] => {
+  if (Array.isArray(node)) return node.flatMap((n) => headerTitles(n));
+  if (!node || typeof node !== "object") return [];
+  const { props, children } = node as { props?: { title?: unknown }; children?: unknown };
+  return [...(typeof props?.title === "string" ? [props.title] : []), ...headerTitles(children ?? [])];
+};
+
 let queue: Queue;
 
 beforeEach(async () => {
@@ -135,6 +143,15 @@ beforeEach(async () => {
 });
 
 describe("Map", () => {
+  it("the map title is the active roll's name", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/map" });
+
+    await screen.findByLabelText("mapa");
+    expect(screen.queryByRole("button", { name: /cambiar de rollo/ })).toBeNull();
+    await waitFor(() => expect(headerTitles()).toContain("Viaje al sur"));
+  });
+
   describe("starting view", () => {
     beforeEach(() => {
       cameraProps.current = null;
@@ -329,14 +346,14 @@ describe("Map", () => {
       expect(screen.queryByText("Filtros")).toBeNull();
     });
 
-    it("the event feed tab has the rollo selector in the header and no \"Mapa\" title", async () => {
+    it("the event feed tab shows the roll's name in the header, with no selector and no \"Mapa\" title", async () => {
       asEvent();
       mocked.fetchFeedPage.mockResolvedValue(feed([feedItem()]));
       await renderRouter(routes, { initialUrl: "/map" });
 
       await screen.findByTestId("feed-list");
-      // Only this tab's header has the selector (the roll's own screen shows its name as a plain title).
-      expect(screen.getAllByRole("button", { name: "Casamiento, cambiar de rollo" })).toHaveLength(1);
+      expect(screen.queryByRole("button", { name: /cambiar de rollo/ })).toBeNull();
+      await waitFor(() => expect(headerTitles()).toContain("Casamiento"));
       // Perfil (also mounted) has its own "Fotos | Mapa" control; any other "Mapa" would be this tab's header title.
       const profileMapa = within(screen.getByTestId("profile-showcase")).queryAllByText("Mapa");
       expect(screen.queryAllByText("Mapa").filter((t) => !profileMapa.includes(t))).toHaveLength(0);
@@ -356,7 +373,7 @@ describe("Map", () => {
       expect(screen.queryByLabelText("mapa")).toBeNull();
     });
 
-    it("a revealed event on the Feed tab goes to Rollo", async () => {
+    it("a revealed event on the Feed tab goes to Rollos", async () => {
       asEvent({ revealed: true, endsAt: Date.now() - DAY });
       await renderRouter(routes, { initialUrl: "/map" });
 

@@ -6,7 +6,6 @@ import { FeedList } from "@/features/feed/feed-list";
 import type { MapItem } from "@/features/map/features";
 import { CONTROLS_ROW_HEIGHT, RollMap } from "@/features/map/roll-map";
 import { isEvent } from "@/features/events/event";
-import { TripSwitcher } from "@/features/trips/trip-switcher";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { spacing, tintHex } from "@/ui/theme";
@@ -29,7 +28,7 @@ export function ActivityScreen() {
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const openOnMap = useCallback((item: MapItem) => router.setParams({ view: "map", focus: item.id }), [router]);
 
-  // An event has no map and its tab is hidden once revealed: if the reveal lands while this tab is focused, go to Rollo.
+  // An event has no map and its tab is hidden once revealed: if the reveal lands while this tab is focused, go to Rollos.
   const leaveRevealedEvent = eventTrip && revealed;
   useEffect(() => {
     if (leaveRevealedEvent) router.navigate("/roll");
@@ -39,7 +38,7 @@ export function ActivityScreen() {
     if (leaveRevealedEvent) return null;
     return (
       <>
-        <Stack.Screen options={{ title: "Feed", headerTitle: () => (trip ? <TripSwitcher name={trip.name} /> : null) }} />
+        <Stack.Screen options={{ title: trip?.name ?? "Feed" }} />
         <FeedList />
       </>
     );

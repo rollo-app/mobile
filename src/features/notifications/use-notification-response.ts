@@ -18,7 +18,7 @@ const handled = new Set<string>();
 /**
  * Tapping a push opens its `data.url`: from a closed app (the last response) or with the app running
  * (the listener). It waits for `accountReady` (signed in with a complete profile) and for the app to
- * land on its home: a tap while signed out opens once the login is done. A roll id in the url becomes the active roll first.
+ * land on its home: a tap while signed out opens once the login is done. A roll id in the url becomes the active roll first, and a roll's push opens that roll over the Rollos list.
  */
 export function useNotificationResponse(accountReady: boolean) {
   const pathname = usePathname();
@@ -55,6 +55,12 @@ export function useNotificationResponse(accountReady: boolean) {
       if (!target.tab) return router.push(target.href as Href);
       // A tab: close whatever is open on top (a sheet, the camera) and switch to it.
       if (router.canDismiss()) router.dismissAll();
+      if (target.href.startsWith("/roll/")) {
+        // A roll opens over the list: the list first, so going back lands on it.
+        router.navigate("/roll");
+        router.push(target.href as Href);
+        return;
+      }
       router.navigate(target.href as Href);
     })();
   }, [ready, pending]);

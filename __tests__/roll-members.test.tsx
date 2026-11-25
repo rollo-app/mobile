@@ -462,6 +462,14 @@ describe("Board and Ajustes del rollo", () => {
     expect(screen.getByRole("button", { name: "Salirme del rollo" })).toBeVisible();
   });
 
+  it("leaving a roll goes back to the list", async () => {
+    await openSettings(detail(tomi));
+    friends.leaveTrip.mockResolvedValue(undefined);
+    await fireEvent.press(screen.getByRole("button", { name: "Salirme del rollo" }));
+    await act(async () => alertButtons().find((b) => b.text === "Salirme")!.onPress!());
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
   it("leaving from the settings goes back to /roll", async () => {
     await openSettings(detail(tomi));
     const dismissTo = jest.spyOn(router, "dismissTo").mockImplementation(() => {});

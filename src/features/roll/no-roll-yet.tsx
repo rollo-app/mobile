@@ -8,10 +8,10 @@ export function NoRollYet() {
     <View style={styles.screen}>
       <Text style={[type.title, styles.center, { color: colors.label }]}>Primero hace falta un rollo</Text>
       <Text style={[type.body, styles.center, { color: colors.secondaryLabel }]}>
-        Empezá uno o sumate con un código desde la pestaña Rollo.
+        Empezá uno o sumate con un código desde la pestaña Rollos.
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Ir a Rollo" onPress={() => router.navigate("/roll")}>
-        <Text style={[type.headline, { color: colors.tint }]}>Ir a Rollo</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Ir a Rollos" onPress={() => router.navigate("/roll")}>
+        <Text style={[type.headline, { color: colors.tint }]}>Ir a Rollos</Text>
       </Pressable>
     </View>
   );

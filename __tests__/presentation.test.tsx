@@ -272,13 +272,13 @@ describe("Presentation: a huge day", () => {
     expect(screen.getByLabelText("2.000 fotos")).toBeTruthy();
   });
 
-  it("'Ver las 2.000 fotos en la galería' closes the presentation and lands on the gallery view", async () => {
+  it("Ver galería goes back to that roll's gallery", async () => {
     await renderRouter(routes, { initialUrl: `/roll/${SUR}?view=roll` });
     await act(async () => router.push("/presentation"));
     await toOutro();
     await fireEvent.press(screen.getByRole("button", { name: "Ver las 2.000 fotos en la galería" }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
-    expect(screen).toHaveSearchParams({ view: "gallery" });
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
+    expect(screen).toHaveSearchParams({ tripId: SUR, view: "gallery" });
     expect(screen.queryByTestId("story-surface")).toBeNull();
   });
 

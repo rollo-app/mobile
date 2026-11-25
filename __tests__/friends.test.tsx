@@ -107,7 +107,7 @@ describe("Friends", () => {
     await renderRouter(routes, { initialUrl: "/friends" });
 
     expect(await screen.findByText("Cami")).toBeVisible();
-    await waitFor(() => expect(tabBar()[0]![1]).toBe("square.grid.2x2"));
+    await waitFor(() => expect(tabBar()[0]![1]).toBe("film.stack"));
     expect(tabBar().map(([name]) => name)).toEqual(["roll", "map", "camera", "friends", "me"]);
   });
 

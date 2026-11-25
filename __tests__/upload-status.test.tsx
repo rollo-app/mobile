@@ -110,7 +110,8 @@ describe("Roll · Subidas", () => {
     await queue.markFailed("b", "Este rollo ya terminó");
     await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
-    await screen.findAllByText("Viaje al sur");
+    // The roll is on screen (its name is the native header title, not text).
+    await screen.findByLabelText(/en el rollo$/);
     expect(screen.queryByText(/esperando señal/)).toBeNull();
     expect(screen.queryByText("Este rollo ya terminó")).toBeNull();
     expect(screen.queryByText(/no se pudo/i)).toBeNull();

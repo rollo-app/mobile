@@ -2,6 +2,7 @@ import { keepOriginals } from "@/test/trip";
 import { Share } from "react-native";
 import * as BackgroundTask from "expo-background-task";
 import * as Notifications from "expo-notifications";
+import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import "@/test/reanimated";
 import { ApiError } from "@/api/client";
@@ -503,7 +504,7 @@ describe("Join", () => {
     expect(await screen.findByPlaceholderText("Ingresar código")).toBe(await screen.findByLabelText("Código del rollo"));
   });
 
-  it("joining goes to the roll", async () => {
+  it("joining opens the roll over the list", async () => {
     mocked.joinTrip.mockImplementation(async () => {
       await saveTrip(SUR, "Viaje al sur");
       return trip();
@@ -514,7 +515,7 @@ describe("Join", () => {
     await fireEvent.changeText(await screen.findByLabelText("Código del rollo"), "hub5ft");
     await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" });
   });
 
@@ -583,6 +584,21 @@ describe("Create roll", () => {
     await fireEvent.changeText(await screen.findByPlaceholderText("Nombre del rollo"), "Sur 2027");
   };
 
+  it("creating a roll opens it over the list", async () => {
+    mocked.createTrip.mockImplementation(async () => {
+      await saveTrip(SUR, "Sur 2027");
+      return trip();
+    });
+    mocked.fetchTrip.mockResolvedValue(detail());
+    await renderRouter(routes, { initialUrl: "/create" });
+    await fillNames();
+    await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
+
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
+    await act(async () => router.back());
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
   it("needs the roll name before it can be created", async () => {
     await renderRouter(routes, { initialUrl: "/create" });
     const button = await screen.findByRole("button", { name: "Crear" });
@@ -624,7 +640,7 @@ describe("Create roll", () => {
     expect(screen.getByLabelText("25 fotos")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Crear" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mocked.createTrip).toHaveBeenCalledWith({
       name: "Sur 2027",
       startsAt: start,
@@ -857,15 +873,15 @@ describe("Create roll", () => {
       await waitFor(() => expect(screen).toHavePathname("/add-friends"));
       expect(await screen.findByText("Cami")).toBeVisible();
       await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
-      expect(screen).toHavePathname("/roll");
+      expect(screen).toHavePathname(`/roll/${SUR}`);
     });
 
     it("with no friends, just lands on the roll", async () => {
       await create();
 
-      await waitFor(() => expect(screen).toHavePathname("/roll"));
+      await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
       await act(async () => {});
-      expect(screen).toHavePathname("/roll");
+      expect(screen).toHavePathname(`/roll/${SUR}`);
     });
 
     it("if the friends can't be loaded, lands on the roll without an error", async () => {
@@ -874,7 +890,7 @@ describe("Create roll", () => {
 
       await waitFor(() => expect(friends.fetchFriends).toHaveBeenCalled());
       await act(async () => {});
-      expect(screen).toHavePathname("/roll");
+      expect(screen).toHavePathname(`/roll/${SUR}`);
       expect(screen.queryByText("Sin señal")).toBeNull();
     });
   });

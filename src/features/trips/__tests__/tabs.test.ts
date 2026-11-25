@@ -5,7 +5,6 @@ const none = { left: null, ...{} };
 describe("tabsFor", () => {
   it("while shooting: camera opens capture and shows the photos left today", () => {
     const tabs = tabsFor("active", { photos: 7 });
-    expect(tabs.roll).toEqual({ sf: { default: "film", selected: "film.fill" }, md: "movie", label: "Rollo" });
     expect(tabs.camera).toMatchObject({ sf: "camera.fill", label: "Cámara", target: "/capture", badge: "7" });
     expect(tabs).not.toHaveProperty("feedHidden");
   });
@@ -18,13 +17,22 @@ describe("tabsFor", () => {
 
   it("after the reveal: gallery and presentation without badge", () => {
     const tabs = tabsFor("revealed", { photos: 3 });
-    expect(tabs.roll).toMatchObject({ sf: { default: "square.grid.2x2", selected: "square.grid.2x2.fill" }, label: "Galería" });
     expect(tabs.camera).toEqual({ sf: "play.rectangle.fill", md: "slideshow", label: "Presentación", target: "/presentation", badge: null });
     expect(tabs).not.toHaveProperty("feedHidden");
   });
 
   it("while the phase is unknown it looks like shooting", () => {
     expect(tabsFor(null, null).camera).toMatchObject({ target: "/capture", sf: "camera.fill" });
+  });
+});
+
+describe("tabsFor first tab", () => {
+  it("the first tab is always Rollos", () => {
+    const ROLLOS = { sf: { default: "film.stack", selected: "film.stack.fill" }, md: "movie", label: "Rollos" };
+    for (const phase of ["upcoming", "active", "ended", "revealed", null] as const) {
+      expect(tabsFor(phase, { photos: 3 }).roll).toEqual(ROLLOS);
+    }
+    expect(tabsFor(null, null, false).roll).toEqual(ROLLOS);
   });
 });
 

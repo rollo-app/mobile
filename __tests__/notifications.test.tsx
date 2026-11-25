@@ -149,21 +149,21 @@ describe("permission primer", () => {
 
     await waitFor(() => expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(push.registerPushToken).toHaveBeenCalledWith(TOKEN));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
   });
 
   it("'Ahora no' asks nothing", async () => {
     await join();
     await fireEvent.press(await screen.findByRole("button", { name: "Ahora no" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
   });
 
   it("once shown, it isn't shown again", async () => {
     await markPushPrimerSeen();
     await join();
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     await settle();
 
     expect(screen.queryByText("¿Te avisamos cuando arranque y cuando se revele?")).toBeNull();
@@ -173,7 +173,7 @@ describe("permission primer", () => {
   it("with the permission denied, nothing is shown or asked", async () => {
     permission(false, false, "denied");
     await join();
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     await settle();
 
     expect(screen.queryByText("¿Te avisamos cuando arranque y cuando se revele?")).toBeNull();
@@ -183,7 +183,7 @@ describe("permission primer", () => {
   it("with the permission already granted, registers silently without the primer", async () => {
     permission(true, true, "granted");
     await join();
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     await settle();
 
     expect(screen.queryByText("¿Te avisamos cuando arranque y cuando se revele?")).toBeNull();
@@ -231,15 +231,37 @@ describe("tapping a push", () => {
     expect(notifications.clearLastNotificationResponseAsync).toHaveBeenCalled();
   });
 
-  it("a roll's push makes that roll the active one and opens its tab", async () => {
+  it("a roll's push makes that roll the active one and opens it over the list", async () => {
     notifications.getLastNotificationResponseAsync.mockResolvedValue(tapped(`/roll?trip=${OTRO}`));
     await renderRouter(testRoutes, { initialUrl: "/me" });
 
     await waitFor(async () => expect(await getActiveTripId()).toBe(OTRO));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
-    // The tab's root is the list of rolls: the pushed roll is there, ready to open.
-    expect(await screen.findByRole("button", { name: "Bariloche" })).toBeVisible();
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${OTRO}`));
     await settle();
+    await act(async () => router.back());
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(await screen.findByRole("button", { name: "Bariloche" })).toBeVisible();
+  });
+
+  it("a reveal push opens that roll over the list", async () => {
+    notifications.getLastNotificationResponseAsync.mockResolvedValue(tapped(`/reveal?trip=${OTRO}`));
+    await renderRouter(testRoutes, { initialUrl: "/me" });
+
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${OTRO}`));
+    await settle();
+    await act(async () => router.back());
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("cold start from /roll?trip=X lands on X with back to Rollos", async () => {
+    notifications.getLastNotificationResponseAsync.mockResolvedValue(tapped(`/roll?trip=${OTRO}`, "cold-start"));
+    await renderRouter(testRoutes, { initialUrl: "/" });
+
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${OTRO}`));
+    await settle();
+    await act(async () => router.back());
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    expect(await screen.findByRole("button", { name: "Bariloche" })).toBeVisible();
   });
 
   it("with the app open, a tap goes to its url (a photo leaves its roll active)", async () => {
