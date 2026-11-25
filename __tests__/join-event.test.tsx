@@ -1,3 +1,4 @@
+import * as ReactNative from "react-native";
 import { act } from "@testing-library/react-native";
 import { router } from "expo-router";
 import { ApiError } from "@/api/client";
@@ -286,9 +287,11 @@ describe("Joining a regular rollo by link or code", () => {
     mocked.joinTrip.mockResolvedValue({} as actions.Trip);
     await renderRouter(routes, { initialUrl: "/join?code=hub5ft" });
 
+    // Light mode (the test default): the photo fades into white and the name goes under it, in dark text.
     const hero = await screen.findByTestId("trip-invitation-cover");
-    expect(within(hero).getByText("Bariloche")).toBeVisible();
-    expect(within(hero).getByText("3 al 8 de enero")).toBeVisible();
+    expect(within(hero).queryByText("Bariloche")).toBeNull();
+    expect(screen.getByText("Bariloche")).toBeVisible();
+    expect(screen.getByText("3 al 8 de enero")).toBeVisible();
     expect(screen.getByText("Con los pibes")).toBeVisible();
     expect(screen.getByText("7 personas ya se unieron")).toBeVisible();
     expect(screen.queryByText(/Elegí tu/)).toBeNull();
@@ -298,6 +301,17 @@ describe("Joining a regular rollo by link or code", () => {
 
     await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" }));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("in dark mode the name sits on the photo", async () => {
+    const scheme = jest.spyOn(ReactNative, "useColorScheme").mockReturnValue("dark");
+    mocked.previewEvent.mockResolvedValue(tripPreview({ coverUrl: "/covers/t/c.jpg" }));
+    await renderRouter(routes, { initialUrl: "/join?code=HUB5FT" });
+
+    const hero = await screen.findByTestId("trip-invitation-cover");
+    expect(within(hero).getByText("Bariloche")).toBeVisible();
+    expect(within(hero).getByText("3 al 8 de enero")).toBeVisible();
+    scheme.mockRestore();
   });
 
   it("a regular rollo without a cover shows the preview without the photo", async () => {
