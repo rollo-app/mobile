@@ -21,6 +21,7 @@ const photo = (id: string, lat: number | null, lng: number | null): RevealedPhot
   originalAvailable: true,
   authorUserId: "u-m1",
   featuredByMe: false,
+  shareable: false,
   featureBlocked: false,
   likeCount: 0,
   canFeature: true,

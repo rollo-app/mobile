@@ -16,6 +16,7 @@ import {
 jest.mock("@/features/exif/embed", () => ({ embedMetadataIfMissing: jest.fn(async () => true) }));
 
 const photo = (id: string, type: "photo" | "video" = "photo"): RevealedPhoto => ({
+  shareable: false,
   id,
   type,
   takenAt: 0,

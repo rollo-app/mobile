@@ -5,6 +5,7 @@ import appJson from "../app.json";
 import appConfig from "../app.config";
 
 const PLUGIN = "./plugins/without-push-entitlement";
+const APPLE_SIGNIN_PLUGIN = "./plugins/without-apple-signin-entitlement";
 const configFor = (variant: string | undefined) => {
   const before = process.env.APP_VARIANT;
   if (variant === undefined) delete process.env.APP_VARIANT;
@@ -25,13 +26,14 @@ describe("app config", () => {
   it("the production build keeps push (aps-environment from expo-notifications)", () => {
     const config = configFor("production");
     expect(config.plugins).not.toContain(PLUGIN);
+    expect(config.plugins).not.toContain(APPLE_SIGNIN_PLUGIN);
     expect(config.plugins).toContain("expo-notifications");
     expect(config.ios?.bundleIdentifier).toBe("com.juanifraga.rollo.app");
   });
 
-  it("the development build strips it, as the first plugin so it runs after expo-notifications", () => {
+  it("the development build strips push and Sign in with Apple, ahead of every other plugin so they run last", () => {
     const config = configFor(undefined);
-    expect(config.plugins?.[0]).toBe(PLUGIN);
+    expect(config.plugins?.slice(0, 2)).toEqual(expect.arrayContaining([PLUGIN, APPLE_SIGNIN_PLUGIN]));
     expect(config.plugins).toContain("expo-notifications");
     expect(config.ios?.bundleIdentifier).toBe("com.juanifraga.rollo");
   });
@@ -59,8 +61,8 @@ describe("app config", () => {
     expect(configFor(undefined).ios?.usesAppleSignIn).toBeUndefined();
   });
 
-  it("is version 1.4.0 (runtimeVersion follows it)", () => {
-    expect(appJson.expo.version).toBe("1.4.0");
+  it("is version 1.5.0 (runtimeVersion follows it)", () => {
+    expect(appJson.expo.version).toBe("1.5.0");
   });
 
   it("talks to the API on rolloproject.com (the build profile and the fallback agree)", () => {

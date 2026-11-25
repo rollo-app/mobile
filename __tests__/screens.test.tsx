@@ -7,6 +7,7 @@ import { act, fireEvent, renderRouter, screen, waitFor, within } from "expo-rout
 import "@/test/reanimated";
 import { ApiError } from "@/api/client";
 import { queryClient } from "@/api/query-client";
+import { joinLinkUrl } from "@/features/events/join-link";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";

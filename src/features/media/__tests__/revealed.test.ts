@@ -57,6 +57,12 @@ describe("revealed photos", () => {
     expect([gone!.originalAvailable, unset!.originalAvailable, there!.originalAvailable]).toEqual([false, true, true]);
   });
 
+  it("carries shareable, false when the server omits it", () => {
+    const [yes, old] = toRevealedPhotos([item({ id: "a", shareable: true }), item({ id: "b" })]);
+
+    expect([yes!.shareable, old!.shareable]).toEqual([true, false]);
+  });
+
   it("does the same for the linked image of a moment", () => {
     const [photo] = toRevealedPhotos([
       item({

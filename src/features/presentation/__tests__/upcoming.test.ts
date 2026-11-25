@@ -3,6 +3,7 @@ import { buildStory } from "../story";
 import { upcomingPhotos } from "../upcoming";
 
 const photo = (id: string, iso: string): RevealedPhoto => ({
+  shareable: false,
   id,
   type: "photo",
   takenAt: Date.parse(iso),

@@ -18,6 +18,7 @@ const photo = (id: string, extra: Partial<RevealedPhoto> = {}): RevealedPhoto =>
   originalPath: `/o/${id}`,
   displayPath: `/o/${id}`,
   originalAvailable: true,
+  shareable: false,
   authorUserId: "u-m1",
   featuredByMe: false,
   featureBlocked: false,

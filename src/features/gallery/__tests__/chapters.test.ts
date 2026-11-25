@@ -20,6 +20,7 @@ const photo = (id: string, day: string, takenAt = 0, groupIds: string[] = []): R
   originalAvailable: true,
   authorUserId: "u-m1",
   featuredByMe: false,
+  shareable: false,
   featureBlocked: false,
   likeCount: 0,
   canFeature: true,

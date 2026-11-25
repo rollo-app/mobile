@@ -4,6 +4,7 @@ import { initialPlayer, playerReducer } from "../player";
 
 const TZ = "America/Argentina/Buenos_Aires";
 const photo = (id: string, iso: string): RevealedPhoto => ({
+  shareable: false,
   id,
   type: "photo",
   takenAt: Date.parse(iso),

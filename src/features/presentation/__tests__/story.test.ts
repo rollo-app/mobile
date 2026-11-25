@@ -5,6 +5,7 @@ const TZ = "America/Argentina/Buenos_Aires";
 
 let n = 0;
 const photo = (iso: string, over: Partial<RevealedPhoto> = {}): RevealedPhoto => ({
+  shareable: false,
   id: `p${++n}`,
   type: "photo",
   takenAt: Date.parse(iso),

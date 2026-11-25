@@ -1,6 +1,9 @@
 import { File, Paths } from "expo-file-system";
+import { router } from "expo-router";
 import { useState } from "react";
 import { Share, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { canShareInvite } from "@/features/share/invite";
+import { InstagramButton } from "@/features/share/instagram-button";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Screen } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
@@ -50,6 +53,12 @@ export function QrScreen({ tripId }: { tripId: string }) {
             </Text>
           </View>
           <Button label="Compartir" onPress={() => void share()} />
+          {canShareInvite(detail) && (
+            <InstagramButton
+              variant="secondary"
+              onPress={() => router.push({ pathname: "/share-story", params: { tripId, kind: "invite" } })}
+            />
+          )}
         </>
       )}
       {failure && <ErrorText>{failure}</ErrorText>}

@@ -2,6 +2,7 @@ import type { RevealedPhoto } from "@/features/media/revealed";
 import { authorsOf, dayTitle, filterByAuthor, filterByGroup, groupByDay } from "../group";
 
 const photo = (id: string, day: string, authorId = "m1", takenAt = 0): RevealedPhoto => ({
+  shareable: false,
   id,
   type: "photo",
   takenAt,

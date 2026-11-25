@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rollo",
     "slug": "rollo",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -16,6 +16,11 @@
         "NSCameraUsageDescription": "Rollo usa la cámara para sacar las fotos y videos del viaje.",
         "CFBundleLocalizations": [
           "es"
+        ],
+        "LSApplicationQueriesSchemes": [
+          "instagram-stories",
+          "instagram",
+          "whatsapp"
         ]
       },
       "bundleIdentifier": "com.juanifraga.rollo",

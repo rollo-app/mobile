@@ -15,8 +15,10 @@
     "burnt": "^0.13.0",
     "expo": "~58.0.14",
     "expo-apple-authentication": "~58.0.3",
+    "expo-asset": "~58.0.21",
     "expo-audio": "~58.0.10",
     "expo-background-task": "~58.0.11",
+    "expo-clipboard": "~58.0.4",
     "expo-constants": "~58.0.12",
     "expo-crypto": "~58.0.7",
     "expo-dev-client": "~58.0.14",
@@ -54,6 +56,7 @@
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
+    "react-native-share": "^12.3.1",
     "react-native-vision-camera": "5.2.3",
     "react-native-worklets": "0.13.0"
   },
@@ -67,6 +70,8 @@
     "jest": "^30.5.2",
     "jest-expo": "~58.0.11",
     "openapi-typescript": "^7.13.0",
+    "patch-package": "^8.0.1",
+    "simple-icons": "^16.38.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -77,9 +82,12 @@
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",
     "icons": "node scripts/build-icons.mjs",
+    "share-logos": "node scripts/build-share-logos.mjs",
     "lottie": "node scripts/build-lottie.mjs",
+    "story-backgrounds": "node scripts/build-story-backgrounds.mjs",
     "update:production": "APP_VARIANT=production EXPO_PUBLIC_API_URL=https://rollo-api.juanifraga.com npx eas-cli@latest update --channel production --environment production --platform ios",
-    "api:generate": "openapi-typescript ${API_SPEC:-https://raw.githubusercontent.com/rollo-app/backend/develop/openapi.json} --default-non-nullable false -o src/api/schema.d.ts"
+    "api:generate": "openapi-typescript ${API_SPEC:-https://raw.githubusercontent.com/rollo-app/backend/develop/openapi.json} --default-non-nullable false -o src/api/schema.d.ts",
+    "postinstall": "patch-package"
   },
   "private": true,
   "jest": {

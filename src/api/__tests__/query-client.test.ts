@@ -45,6 +45,10 @@ describe("shouldDehydrateQuery", () => {
     expect(shouldDehydrateQuery(query(["upload-status", "t1"]))).toBe(false);
   });
 
+  it("never saves the Stories image (a file in the cache, rebuilt on every visit)", () => {
+    expect(shouldDehydrateQuery(query(["story-image", "t1:collage:1"]))).toBe(false);
+  });
+
   it("keeps saving the place names of gallery chapters (geocoded once, kept offline)", () => {
     expect(shouldDehydrateQuery(query(["place", "-41.13,-71.31"]))).toBe(true);
   });

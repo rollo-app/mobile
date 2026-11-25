@@ -61,6 +61,28 @@ describe("Welcome screen", () => {
     dismiss.mockRestore();
   });
 
+  it.each([
+    ["Instagram", "https://www.instagram.com/rolloproject"],
+    ["TikTok", "https://www.tiktok.com/@rolloproject"],
+  ])("links to Rollo Project on %s", async (network, url) => {
+    mockApi({ "GET /config": OPEN });
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
+    await renderRouter(routes, { initialUrl: "/welcome" });
+
+    await fireEvent.press(await screen.findByRole("link", { name: `Rollo Project en ${network}` }));
+    expect(open).toHaveBeenCalledWith(url);
+    open.mockRestore();
+  });
+
+  it("keeps the social links while registrations are closed", async () => {
+    mockApi({ "GET /config": CLOSED });
+    await renderRouter(routes, { initialUrl: "/welcome" });
+
+    expect(await screen.findByText(/Estamos abriendo Rollo/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Rollo Project en Instagram" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Rollo Project en TikTok" })).toBeVisible();
+  });
+
   it("a logged-out user opening the app lands on it", async () => {
     mockApi({ "GET /config": OPEN });
     await renderRouter(routes, { initialUrl: "/" });

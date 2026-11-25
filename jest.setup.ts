@@ -30,7 +30,10 @@ jest.mock("@/features/capture/store", () => {
 // expo-file-system is native: a File that exists and uploads fine, and folders that do nothing.
 jest.mock("expo-file-system", () => {
   class File {
-    constructor(..._parts: unknown[]) {}
+    constructor(...parts: unknown[]) {
+      File.lastParts = parts;
+    }
+    static lastParts: unknown[] = [];
     uri = "file:///cache/tmp";
     get exists() {
       return true;
@@ -41,6 +44,8 @@ jest.mock("expo-file-system", () => {
     async upload(_url: string, _options?: unknown) {
       return { status: 200, body: "" };
     }
+    create(_options?: unknown) {}
+    async write(_content: unknown) {}
     delete() {
       (File as any).deleted += 1;
     }
@@ -547,6 +552,10 @@ jest.mock("@/features/events/qr-canvas", () => {
   const { View } = require("react-native");
   return { QrCanvas: View, qrPng: jest.fn(() => null) };
 });
+// The Stories renderers (Skia) draw nothing in tests; the share screen's own test sets what they return.
+jest.mock("@/features/share/render-collage", () => ({ renderCollageCard: jest.fn(async () => ({ png: new Uint8Array(), width: 920, height: 1200 })) }));
+jest.mock("@/features/share/render-invite", () => ({ renderInviteCard: jest.fn(async () => ({ png: new Uint8Array(), width: 920, height: 1300 })) }));
+jest.mock("@/features/share/compose-still", () => ({ composeStill: jest.fn(async () => new Uint8Array()) }));
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
 jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));
@@ -616,6 +625,19 @@ jest.mock("expo-apple-authentication", () => {
       require("react").createElement(Pressable, { accessibilityRole: "button", accessibilityLabel: "Continuar con Apple", onPress }, require("react").createElement(Text, null, "Continuar con Apple")),
   };
 });
+
+// react-native-share and expo-clipboard are native: sharing resolves and the clipboard does nothing.
+jest.mock("react-native-share", () => ({
+  __esModule: true,
+  default: {
+    shareSingle: jest.fn(async () => ({ success: true, message: "" })),
+    Social: { INSTAGRAM_STORIES: "instagramstories", WHATSAPP: "whatsapp" },
+  },
+}));
+
+jest.mock("expo-clipboard", () => ({
+  setStringAsync: jest.fn(async () => true),
+}));
 
 // expo-router's renderRouter turns on fake timers and never turns them off, and Testing Library unmounts the screens
 // after every hook with those timers on: React Native's StatusBar, for one, schedules a setImmediate when it unmounts.

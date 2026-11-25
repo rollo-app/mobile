@@ -34,6 +34,8 @@ import CoverFocusRoute from "../../app/cover-focus";
 import CreateScreen from "../../app/create";
 import EventGroupsRoute from "../../app/event-groups";
 import EventQrRoute from "../../app/event-qr";
+import SharePickRoute from "../../app/share-pick";
+import ShareStoryRoute from "../../app/share-story";
 import MyGroupsRoute from "../../app/my-groups";
 import EditTripRoute from "../../app/edit-trip";
 import WorstCaseRoute from "../../app/dev/worst-case";
@@ -97,6 +99,8 @@ export const routes = {
   "contest-winner": ContestWinnerRoute,
   "my-groups": MyGroupsRoute,
   "event-qr": EventQrRoute,
+  "share-story": ShareStoryRoute,
+  "share-pick": SharePickRoute,
   "roll-settings": RollSettingsRoute,
   "roll-started": RollStartedScreen,
   "photo/[id]": PhotoRoute,

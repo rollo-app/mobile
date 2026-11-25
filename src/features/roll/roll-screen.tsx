@@ -1,5 +1,7 @@
 import { router, Stack } from "expo-router";
 import { useEffect, useState } from "react";
+import { useRevealedPhotos } from "@/features/media/revealed";
+import { shareKind, type ShareKind } from "@/features/share/share-options";
 import { SelectionHeaderTitle } from "@/features/gallery/selection-header-title";
 import { View, type ColorValue } from "react-native";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -7,6 +9,7 @@ import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { setActiveTripId } from "@/storage/active-trip";
 import { Button, ErrorText, Loading, Screen } from "@/ui/components";
+import { SHARE_ICON } from "@/ui/share-icon";
 import { colors, spacing } from "@/ui/theme";
 import { RevealedRollScreen } from "./revealed-roll-screen";
 import { RollBoard } from "./roll-board";
@@ -17,6 +20,8 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
   const trip = trips.find((t) => t.id === tripId);
   const { detail } = useTripDetail(tripId);
   const phase = useRollPhase(detail);
+  // Only a revealed roll needs the photos (for the collage); the revealed screen already caches them: no extra requests.
+  const { photos } = useRevealedPhotos(trip && phase === "revealed" ? trip.id : undefined);
   // While the gallery is selecting, the title is the selection: the trip's name doesn't fit between its two buttons.
   const [selection, setSelection] = useState<number | null>(null);
   // Opening a roll makes it the active one (capture, map and feed follow it).
@@ -39,6 +44,7 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
     if (absent && lookup === "missing") router.replace("/roll");
   }, [absent, lookup]);
   const revealed = trip && phase === "revealed";
+  const kind = detail ? shareKind(detail, photos) : null;
   const selecting = revealed && view !== "roll" && selection !== null;
   // Revealed, the header is solid with the screen's background so it reads as one block with the
   // "Galería | Rollo" row under it. Set here (not in the revealed screen) so that switching to a trip
@@ -55,8 +61,8 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
           }}
         />
       )}
-      {/* "Ajustes del rollo": on the board and in the revealed "Rollo" view; the gallery has its own toolbar. */}
-      {trip && (!revealed || view === "roll") && <SettingsButton tripId={trip.id} />}
+      {/* "Compartir" and "Ajustes del rollo": on the board and in the revealed "Rollo" view; the gallery has its own toolbar. */}
+      {trip && (!revealed || view === "roll") && <RollToolbar tripId={trip.id} kind={kind} />}
       {absent ? (
         <Screen grouped>
           {lookup === "failed" ? (
@@ -69,7 +75,11 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
           )}
         </Screen>
       ) : revealed ? (
-        <RevealedRollScreen tripId={tripId} onSelectionChange={setSelection} />
+        <RevealedRollScreen
+          tripId={tripId}
+          onSelectionChange={setSelection}
+          onShare={kind ? () => router.push({ pathname: "/share-story", params: { tripId, kind } }) : undefined}
+        />
       ) : (
         <RollBoard tripId={tripId} />
       )}
@@ -77,9 +87,18 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
   );
 }
 
-function SettingsButton({ tripId }: { tripId: string }) {
+function RollToolbar({ tripId, kind }: { tripId: string; kind: ShareKind | null }) {
   return (
     <Stack.Toolbar placement="right">
+      {/* Direct children only: the header drops Fragments (see GalleryToolbar). */}
+      {kind && (
+        <Stack.Toolbar.Button
+          icon={SHARE_ICON}
+          iconRenderingMode="template"
+          accessibilityLabel="Compartir"
+          onPress={() => router.push({ pathname: "/share-story", params: { tripId, kind } })}
+        />
+      )}
       <Stack.Toolbar.Button
         icon="gearshape"
         accessibilityLabel="Ajustes del rollo"

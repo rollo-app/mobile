@@ -1,5 +1,6 @@
 import { StyleSheet } from "react-native";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
+import { SHARE_ICON } from "@/ui/share-icon";
 import { tripSummary } from "@/test/account";
 import { LiveRollCard, leftLabel } from "../live-roll-card";
 
@@ -52,6 +53,26 @@ describe("LiveRollCard", () => {
   it("centers the cover without a focus", async () => {
     await render(<LiveRollCard trip={{ ...trip, coverUrl: "/c.jpg" }} onOpen={() => {}} onCamera={() => {}} />);
     expect(screen.getByTestId("live-roll-cover").props.contentPosition).toEqual({ top: "50%" });
+  });
+
+  it("has a Compartir button that invites to the roll while it has room", async () => {
+    mockDetail = { trip: { photoLimitMode: "total", timezone: "America/Argentina/Buenos_Aires", revealed: false, maxMembers: 15 }, members: [{}], memberCount: 1 };
+    const onShare = jest.fn();
+    await render(<LiveRollCard trip={trip} onOpen={() => {}} onCamera={() => {}} onShare={onShare} />);
+    const button = screen.getByRole("button", { name: "Invitar a Sur" });
+    expect(within(button).getByTestId("share-icon").props.source).toBe(SHARE_ICON);
+    await fireEvent.press(button);
+    expect(onShare).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Sur, en vivo" }).props.accessibilityActions.map((a: { name: string }) => a.name)).toEqual(["camera", "share"]);
+  });
+
+  it("has no Compartir button when the roll is full or before its detail loads", async () => {
+    mockDetail = { trip: { photoLimitMode: "total", timezone: "America/Argentina/Buenos_Aires", revealed: false, maxMembers: 1 }, members: [{}], memberCount: 1 };
+    const { rerender } = await render(<LiveRollCard trip={trip} onOpen={() => {}} onCamera={() => {}} onShare={() => {}} />);
+    expect(screen.queryByRole("button", { name: "Invitar a Sur" })).toBeNull();
+    mockDetail = null;
+    await rerender(<LiveRollCard trip={trip} onOpen={() => {}} onCamera={() => {}} onShare={() => {}} />);
+    expect(screen.queryByRole("button", { name: "Invitar a Sur" })).toBeNull();
   });
 
   it("hides the photos line while unknown", async () => {

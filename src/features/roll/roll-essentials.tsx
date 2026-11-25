@@ -1,9 +1,9 @@
 import { router } from "expo-router";
 import { Share, StyleSheet, View } from "react-native";
 import { isEvent, isOrganizer } from "@/features/events/event";
-import { joinLinkUrl } from "@/features/events/join-link";
 import { InfoButton } from "@/features/info/info-button";
 import { Avatar } from "@/features/profile/avatar";
+import { inviteMessage } from "@/features/share/invite";
 import type { TripDetail } from "@/features/trips/actions";
 import { Row, Section } from "@/ui/components";
 import { orderMembers } from "./members-order";
@@ -17,10 +17,7 @@ const FACES = 3;
 export function RollInvite({ detail }: { detail: TripDetail }) {
   const event = isEvent(detail.trip);
   const full = memberTotal(detail) >= detail.trip.maxMembers;
-  const share = () =>
-    Share.share({
-      message: `Sumate a "${detail.trip.name}" en Rollo: ${joinLinkUrl(detail.trip.joinCode)}`,
-    });
+  const share = () => Share.share({ message: inviteMessage(detail) });
 
   return (
     <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : INVITE_NOTE}>

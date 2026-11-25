@@ -20,8 +20,11 @@ const VIEWS = ["Galería", "Rollo"];
 export function RevealedRollScreen({
   tripId,
   onSelectionChange,
+  onShare,
 }: {
   tripId: string;
+  /** "Compartir" for the gallery's toolbar (the "Rollo" view gets it from the roll screen's own toolbar). */
+  onShare?: () => void;
   /** Passed on from the gallery: how many photos are selected, or null when it isn't selecting. */
   onSelectionChange?: (count: number | null) => void;
 }) {
@@ -58,6 +61,7 @@ export function RevealedRollScreen({
             tripId={tripId}
             toolbar={!showRoll}
             onSelectionChange={onSelectionChange}
+            onShare={onShare}
             header={<ContestCard tripId={tripId} enabled={contestEnabled} focused={focused} style={{ margin: spacing.md }} />}
           />
         </View>
