@@ -286,7 +286,7 @@ describe("Joining a regular rollo by link or code", () => {
     mocked.joinTrip.mockResolvedValue({} as actions.Trip);
     await renderRouter(routes, { initialUrl: "/join?code=hub5ft" });
 
-    const hero = await screen.findByTestId("event-hero");
+    const hero = await screen.findByTestId("trip-invitation-cover");
     expect(within(hero).getByText("Bariloche")).toBeVisible();
     expect(within(hero).getByText("3 al 8 de enero")).toBeVisible();
     expect(screen.getByText("Con los pibes")).toBeVisible();
@@ -307,7 +307,6 @@ describe("Joining a regular rollo by link or code", () => {
     expect(await screen.findByText("Bariloche")).toBeVisible();
     expect(screen.getByText("3 al 8 de enero")).toBeVisible();
     expect(screen.getByText("Con los pibes")).toBeVisible();
-    expect(screen.queryByTestId("event-hero")).toBeNull();
     expect(screen.getByRole("button", { name: "Unirme" })).toBeEnabled();
   });
 
@@ -318,6 +317,37 @@ describe("Joining a regular rollo by link or code", () => {
     expect(await screen.findByText("Este rollo ya se reveló.")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Unirme" })).toBeNull();
     expect(screen.queryByText(/ya se unieron/)).toBeNull();
+  });
+
+  it("a regular rollo's preview is full screen with Unirme and Ahora no", async () => {
+    mocked.previewEvent.mockResolvedValue(tripPreview({ coverUrl: "/covers/t/c.jpg" }));
+    await renderRouter(routes, { initialUrl: "/join?code=HUB5FT" });
+
+    expect(await screen.findByTestId("trip-invitation")).toBeVisible();
+    expect(screen.getByRole("header", { name: "Bariloche" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Unirme" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Ahora no" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Cancelar" })).toBeNull();
+    expect(screen.queryByText("Sumate a un rollo")).toBeNull();
+  });
+
+  it("Ahora no closes the preview without joining", async () => {
+    mocked.previewEvent.mockResolvedValue(tripPreview());
+    await renderRouter(routes, { initialUrl: "/join?code=HUB5FT" });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Ahora no" }));
+
+    await waitFor(() => expect(screen.queryByTestId("trip-invitation")).toBeNull());
+    expect(mocked.joinTrip).not.toHaveBeenCalled();
+  });
+
+  it("a revealed regular rollo shows Cerrar and no Unirme", async () => {
+    mocked.previewEvent.mockResolvedValue(tripPreview({ revealed: true }));
+    await renderRouter(routes, { initialUrl: "/join?code=HUB5FT" });
+
+    expect(await screen.findByRole("button", { name: "Cerrar" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Unirme" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ahora no" })).toBeNull();
   });
 
   it("typing a regular rollo's code joins it directly", async () => {

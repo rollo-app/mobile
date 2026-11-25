@@ -11,6 +11,7 @@ import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { usePreviewEvent } from "@/features/events/use-preview-event";
 import type { EventPreview } from "./actions";
+import { TripInvitation } from "./trip-invitation";
 import { rollHref } from "./roll-href";
 import { useActiveTrip } from "./use-active-trip";
 import { useJoinTrip } from "./use-join-trip";
@@ -112,10 +113,33 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   }
 
   const choosing = event !== null;
-  const isTrip = event?.type === "trip";
-  const action = choosing ? (!event.revealed && (isTrip || selected.length > 0) ? enter : undefined) : valid ? submit : undefined;
-  // A revealed regular rollo can't be joined: no button at all.
-  const showAction = !(isTrip && event.revealed);
+  const action = choosing ? (!event.revealed && selected.length > 0 ? enter : undefined) : valid ? submit : undefined;
+
+  function close() {
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  }
+
+  // A regular rollo's link opens as a full-screen invitation (no header; swiping down still closes the modal).
+  if (event?.type === "trip") {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <TripInvitation
+          name={event.name}
+          dates={dates}
+          coverUrl={event.coverUrl}
+          description={event.description}
+          joined={joined}
+          revealedText={event.revealed ? revealedMessage(event) : undefined}
+          busy={busy}
+          error={error}
+          onJoin={enter}
+          onClose={close}
+        />
+      </>
+    );
+  }
 
   return (
     <Screen grouped>
@@ -123,13 +147,13 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
         <Stack.Toolbar.Button onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>Cancelar</Stack.Toolbar.Button>
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
-        {!showAction ? null : busy ? (
+        {busy ? (
           <Stack.Toolbar.View>
             <ActivityIndicator />
           </Stack.Toolbar.View>
         ) : (
           <Stack.Toolbar.Button variant="done" disabled={!action} onPress={() => action?.()}>
-            {choosing && !isTrip ? "Entrar" : "Unirme"}
+            {choosing ? "Entrar" : "Unirme"}
           </Stack.Toolbar.Button>
         )}
       </Stack.Toolbar>
@@ -141,7 +165,6 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
               name={event.name}
               coverUrl={event.coverUrl}
               eyebrow="Te invitaron a"
-              caption={isTrip ? dates : undefined}
               description={event.description}
             />
           ) : (
@@ -149,7 +172,6 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
               <Text accessibilityRole="header" style={styles.name}>
                 {event.name}
               </Text>
-              {isTrip && <Text style={styles.joined}>{dates}</Text>}
               {!!event.description && (
                 <View style={styles.description}>
                   <EventDescription text={event.description} />
@@ -159,8 +181,6 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
           )}
           {event.revealed ? (
             <ErrorText>{revealedMessage(event)}</ErrorText>
-          ) : isTrip ? (
-            joined !== null && <Text style={styles.joined}>{joined}</Text>
           ) : (
             <View style={styles.groups}>
               {joined !== null && <Text style={styles.joined}>{joined}</Text>}
