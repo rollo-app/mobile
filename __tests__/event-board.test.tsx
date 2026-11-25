@@ -77,7 +77,7 @@ const detail = (me: Member, groupIds: string[], over: Partial<tripActions.Trip> 
 });
 
 /** Opens the Rollo tab and, if `row` is given, taps that row of the board to go to its screen. */
-async function open(d: tripActions.TripDetail, row?: string, url = "/roll") {
+async function open(d: tripActions.TripDetail, row?: string, url = `/roll/${EVENT}`) {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(EVENT);
   await renderRouter(routes, { initialUrl: url });
@@ -89,7 +89,7 @@ async function open(d: tripActions.TripDetail, row?: string, url = "/roll") {
 }
 
 /** Opens the Rollo tab and then "Ajustes del rollo" with the gear in the header. */
-async function openSettings(d: tripActions.TripDetail, url = "/roll") {
+async function openSettings(d: tripActions.TripDetail, url = `/roll/${EVENT}`) {
   await open(d, undefined, url);
   await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
   await screen.findByText("Fechas");
@@ -140,7 +140,7 @@ describe("Event board", () => {
 
   it("hides group management and the cover row after the reveal", async () => {
     await markPresentationSeen(EVENT);
-    await openSettings(detail(organizer, [], { revealed: true, coverUrl: "/covers/x/y.jpg" }), "/roll?view=roll");
+    await openSettings(detail(organizer, [], { revealed: true, coverUrl: "/covers/x/y.jpg" }), `/roll/${EVENT}?view=roll`);
     expect(await screen.findByText("Grupos")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Administrar grupos" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Cambiar portada" })).toBeNull();
@@ -148,7 +148,7 @@ describe("Event board", () => {
 
   it("hides the whole invite (code and QR) once the event is revealed", async () => {
     await markPresentationSeen(EVENT);
-    await open(detail(organizer, [], { revealed: true }), undefined, "/roll?view=roll");
+    await open(detail(organizer, [], { revealed: true }), undefined, `/roll/${EVENT}?view=roll`);
     expect(await screen.findByText("Personas")).toBeVisible();
     expect(screen.queryByRole("button", { name: /^Código .*Compartir invitación$/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Código QR" })).toBeNull();

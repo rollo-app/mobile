@@ -78,7 +78,7 @@ let prompt: jest.SpyInstance;
 async function openBoard(d: tripActions.TripDetail) {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(SUR);
-  await renderRouter(routes, { initialUrl: "/roll" });
+  await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
   await screen.findByText("Personas");
 }
 
@@ -180,7 +180,7 @@ describe("Members list: badges and actions", () => {
     const blocked = { ...adminCami, blockedByMe: true };
     trips.fetchTrip.mockResolvedValue({ ...detail(tomi), members: [creator, blocked, fede, tomi] });
     await setActiveTripId(SUR);
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
     expect(await screen.findByRole("button", { name: "Cami, Bloqueado" })).toBeVisible();
   });
@@ -343,7 +343,7 @@ describe("Archiving from the rollo", () => {
     trips.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - DAY, items: [], nextCursor: null });
     await setActiveTripId(SUR);
     await markPresentationSeen(SUR);
-    await renderRouter(routes, { initialUrl: "/roll?view=roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}?view=roll` });
     await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await screen.findByText("Fechas");
   };

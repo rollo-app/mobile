@@ -113,7 +113,7 @@ beforeEach(async () => {
 });
 
 async function openMoment(at: number, extra = `&trip=${SUR}`) {
-  await renderRouter(routes, { initialUrl: "/roll" });
+  await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
   await act(async () => router.push(`/moment?day=${MOMENT_DAY}&at=${at}${extra}` as never));
 }
 
@@ -153,7 +153,7 @@ describe("Moment", () => {
     await fireEvent.changeText(await screen.findByLabelText("Caption"), "el momento");
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     const items = await queue.pending("u1");
     expect(items).toHaveLength(2);
     const main = items.find((i) => i.pairedWith == null)!;
@@ -175,7 +175,7 @@ describe("Moment", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     const items = await queue.pending("u1");
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ momentDay: MOMENT_DAY, pairedWith: null });
@@ -199,7 +199,7 @@ describe("Moment", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     const items = await queue.pending("u1");
     const main = items.find((i) => i.pairedWith == null)!;
     const linked = items.find((i) => i.pairedWith != null)!;
@@ -243,7 +243,7 @@ describe("Moment", () => {
     expect(screen.queryByTestId("camera-front")).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     const items = await queue.pending("u1");
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ momentDay: MOMENT_DAY, pairedWith: null });
@@ -264,7 +264,7 @@ describe("Moment", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(`moment.${SUR}.${MOMENT_DAY}`);
     await waitFor(() => expect(screen.queryByText(/Tu momento/)).toBeNull());
     (Notifications.getPresentedNotificationsAsync as jest.Mock).mockResolvedValue([]);
@@ -276,7 +276,7 @@ describe("Moment", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Sacar foto" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect((await queue.pending("u1"))[0]).toMatchObject({ tripId: SUR });
   });
 
@@ -284,7 +284,7 @@ describe("Moment", () => {
     await openMoment(Date.now() - 10_000);
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(await queue.pending("u1")).toHaveLength(0);
   });
 
@@ -306,7 +306,7 @@ describe("Moment", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Sacar foto" }));
 
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(await queue.pending("u1")).toHaveLength(2);
   });
 
@@ -342,7 +342,7 @@ describe("Moment", () => {
     await openMoment(Date.now() - 10_000);
 
     await fireEvent.press(await screen.findByRole("button", { name: "Cerrar" }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     useCameraPermission.mockReset();
     useCameraPermission.mockReturnValue(vision.__granted);
   });

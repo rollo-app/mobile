@@ -159,7 +159,7 @@ describe("Presentation", () => {
   });
 
   it("tapping the author leaves the presentation and opens their profile, without advancing the story", async () => {
-    await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: "/roll" });
+    await renderRouter({ ...routes, "user/[id]": () => <Text>Perfil de alguien</Text> }, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/presentation"));
     await tap();
     await screen.findByText("el viento no perdona");
@@ -172,7 +172,7 @@ describe("Presentation", () => {
   });
 
   it("'Ver de nuevo' restarts the story", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/presentation"));
     for (let i = 0; i < 6; i++) await tap();
     await fireEvent.press(await screen.findByLabelText("Ver de nuevo"));
@@ -180,13 +180,13 @@ describe("Presentation", () => {
   });
 
   it("has no visible close button and closes with the VoiceOver escape action", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/presentation"));
     await screen.findByText("Día 1");
     expect(screen.queryByLabelText("Cerrar")).toBeNull();
 
     await fireEvent(await screen.findByTestId("story-surface"), "accessibilityAction", { nativeEvent: { actionName: "escape" } });
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
   });
 
   const drag = async (translationY: number, velocityY: number) => {
@@ -202,23 +202,23 @@ describe("Presentation", () => {
   };
 
   it("closes when swiped down past the distance threshold", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/presentation"));
     await screen.findByText("Día 1");
     await drag(150, 0);
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
   });
 
   it("closes on a short but fast downward fling", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/presentation"));
     await screen.findByText("Día 1");
     await drag(50, 1500); // 1.5 pt/ms
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
   });
 
   it("snaps back and keeps the story when the swipe is short and slow", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/presentation"));
     await screen.findByText("Día 1");
     await drag(60, 200);
@@ -229,10 +229,10 @@ describe("Presentation", () => {
   });
 
   it("closes from the hidden 'Cerrar presentación' button", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/presentation"));
     await fireEvent.press(await screen.findByLabelText("Cerrar presentación"));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
   });
 
   it("never shows the reveal intro, even when it was never seen", async () => {
@@ -273,7 +273,7 @@ describe("Presentation: a huge day", () => {
   });
 
   it("'Ver las 2.000 fotos en la galería' closes the presentation and lands on the gallery view", async () => {
-    await renderRouter(routes, { initialUrl: "/roll?view=roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}?view=roll` });
     await act(async () => router.push("/presentation"));
     await toOutro();
     await fireEvent.press(screen.getByRole("button", { name: "Ver las 2.000 fotos en la galería" }));

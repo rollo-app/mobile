@@ -80,15 +80,13 @@ describe("revealed roll", () => {
   // The roll's header is native: its title is the stack screen's `title` option (plain trip name).
   const headerOptions = () => navigationRef.getCurrentOptions() as { title?: string; headerTitle?: unknown };
 
-  it("the header title is the trip's name and follows a switch made through /roll", async () => {
+  it("the header title is the trip's name and doesn't follow a switch of the active roll", async () => {
     const upcoming = detail({ revealed: false, startsAt: Date.now() + DAY, endsAt: Date.now() + 2 * DAY, revealAt: Date.now() + 3 * DAY });
     mocked.fetchTrip.mockImplementation(async (id: string) =>
       id === SUR ? upcoming : detail({ id: OTRO, name: "Bariloche" }),
     );
     await markPresentationSeen(OTRO);
-    await setActiveTripId(OTRO);
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
-    // Open the revealed trip first so its detail is cached and the switch back to it is instant.
+    await renderRouter(testRoutes, { initialUrl: `/roll/${OTRO}` });
     await screen.findByText("Este rollo no tiene fotos");
     await waitFor(() => expect(headerOptions().title).toBe("Bariloche"));
     expect(headerOptions().headerTitle).toBeUndefined();
@@ -96,15 +94,11 @@ describe("revealed roll", () => {
     await act(async () => {
       await setActiveTripId(SUR);
     });
-    await waitFor(() => expect(screen.queryByText("Personas")).not.toBeNull());
-    expect(headerOptions().title).toBe("Viaje al sur");
 
-    await act(async () => {
-      await setActiveTripId(OTRO);
-    });
-
-    await waitFor(() => expect(screen.queryByText("Este rollo no tiene fotos")).not.toBeNull());
+    // The open roll keeps its content: only opening another one from Rollos changes it.
+    expect(screen.queryByText("Este rollo no tiene fotos")).not.toBeNull();
     expect(headerOptions().title).toBe("Bariloche");
+    for (let i = 0; i < 20; i++) await Promise.resolve();
   });
 
   it("opening a roll by id titles the header with that roll's name", async () => {
@@ -135,7 +129,7 @@ describe("revealed roll", () => {
     });
     mocked.fetchFeedPage.mockResolvedValue({ nextCursor: null, revealed: true, revealAt: Date.now() - DAY, items: [photo("a"), photo("b")] });
     await markPresentationSeen(SUR);
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     await screen.findByRole("button", { name: "Seleccionar" });
     await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
     await waitFor(() => expect(screen.getByRole("header", { name: "Seleccioná fotos" })).toBeTruthy());
@@ -163,7 +157,7 @@ describe("revealed roll", () => {
         },
       ],
     });
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByTestId("reveal-surface")).toBeTruthy();
     expect(screen).toHavePathname("/reveal");
@@ -173,18 +167,18 @@ describe("revealed roll", () => {
   it("doesn't open it again once seen", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
     await markPresentationSeen(SUR);
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     await screen.findByText("Este rollo no tiene fotos");
-    expect(screen).toHavePathname("/roll");
+    expect(screen).toHavePathname(`/roll/${SUR}`);
   });
 
   it("an ended roll that isn't revealed keeps the board and doesn't open the presentation", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("Personas")).toBeVisible();
-    expect(screen).toHavePathname("/roll");
+    expect(screen).toHavePathname(`/roll/${SUR}`);
   });
 });
 
@@ -204,7 +198,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("before the reveal there's no segmented control and the board keeps only the reveal date", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("Se revela")).toBeVisible();
     expect(screen.queryByText("Fechas")).toBeNull();
@@ -214,7 +208,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("after the reveal the gallery comes first, under a Galería | Rollo control", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByTestId("gallery-list")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Galería" })).toBeVisible();
@@ -226,7 +220,7 @@ describe("revealed roll: Galería | Rollo", () => {
   // The header is opaque, so the row sits in the normal flow right under it, and nothing pads the views' tops.
   it("puts the Galería | Rollo row in the flow under the header, and the gallery right below it", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     const list = await screen.findByTestId("gallery-list");
 
     const row = StyleSheet.flatten(screen.getByTestId("revealed-roll-controls").props.style);
@@ -247,21 +241,21 @@ describe("revealed roll: Galería | Rollo", () => {
 
     it("shows the expiry date in the Rollo segment", async () => {
       await withOriginals(EXPIRING);
-      await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+      await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}?view=roll` });
       await screen.findByText("Personas");
       expect(screen.getByText(SOON)).toBeVisible();
     });
 
     it("shows the expiry date at the top of the gallery", async () => {
       await withOriginals(EXPIRING);
-      await renderRouter(testRoutes, { initialUrl: "/roll" });
+      await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
       await screen.findByTestId("gallery-list");
       expect(await screen.findByText(SOON)).toBeVisible();
     });
 
     it("tells they were deleted once purged", async () => {
       await withOriginals({ ...EXPIRING, purged: true });
-      await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+      await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}?view=roll` });
       await screen.findByText("Personas");
       expect(screen.queryByText(SOON)).toBeNull();
       expect(screen.getAllByText(GONE).length).toBeGreaterThan(0);
@@ -269,7 +263,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
     it("shows nothing when the roll keeps its originals", async () => {
       await withOriginals({ keep: true, expiresAt: null, purged: false });
-      await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+      await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}?view=roll` });
       await screen.findByText("Personas");
       expect(screen.queryByText(/máxima calidad/)).toBeNull();
     });
@@ -277,7 +271,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("'Rollo' starts right below the row, on the grouped background", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}?view=roll` });
     await screen.findByText("Personas");
 
     const row = StyleSheet.flatten(screen.getByTestId("revealed-roll-controls").props.style);
@@ -289,7 +283,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("after the reveal the header is solid with the same background as the row, without a hairline", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     await screen.findByTestId("gallery-list");
 
     await waitFor(() =>
@@ -307,7 +301,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("before the reveal the header keeps its default look", async () => {
     mocked.fetchTrip.mockResolvedValue(detail({ revealed: false, revealAt: Date.now() + DAY }));
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     await screen.findByText("Personas");
 
     const options = navigationRef.getCurrentOptions() as Record<string, unknown>;
@@ -317,7 +311,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("the gallery menu no longer has 'Sobre el rollo'", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByRole("menuitem", { name: "Guardar todo en Fotos" })).toBeTruthy();
     expect(screen.queryByRole("menuitem", { name: "Sobre el rollo" })).toBeNull();
@@ -325,13 +319,13 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("'Rollo' shows the summary, the uploads and the people row, without the invite (nobody joins a revealed rollo), without the gallery toolbar", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     await screen.findByTestId("gallery-list");
     jest.mocked(RollDates).mockClear();
 
     await fireEvent.press(screen.getByRole("button", { name: "Rollo" }));
 
-    expect(screen).toHaveSearchParams({ view: "roll" });
+    expect(screen).toHaveSearchParams({ tripId: SUR, view: "roll" });
     expect(await screen.findByText("1 foto · 1 video · 1 persona · 4 días")).toBeVisible();
     expect(screen.queryByText("Fechas")).toBeNull();
     expect(jest.mocked(RollDates)).not.toHaveBeenCalled();
@@ -347,7 +341,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("the gear for Ajustes del rollo is in 'Rollo' but not in the gallery view, and opens the settings", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     await screen.findByTestId("gallery-list");
     expect(screen.queryByRole("button", { name: "Ajustes del rollo" })).toBeNull();
 
@@ -360,7 +354,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("going back to 'Galería' keeps the same gallery mounted", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     const list = await screen.findByTestId("gallery-list");
 
     await fireEvent.press(screen.getByRole("button", { name: "Rollo" }));
@@ -374,7 +368,7 @@ describe("revealed roll: Galería | Rollo", () => {
 
   it("/roll?view=roll opens straight on 'Rollo'", async () => {
     await revealedWithMedia();
-    await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}?view=roll` });
 
     expect(await screen.findByText("Personas")).toBeVisible();
     expect(screen.getByText("1 foto · 1 video · 1 persona · 4 días")).toBeVisible();
@@ -397,7 +391,7 @@ describe("revealed roll: Galería | Rollo", () => {
     const fede = { id: "m2", userId: "u-m2", name: "Fede", username: "fede", avatarUrl: null, role: "member" as const, isCreator: false, blockedByMe: false };
     mocked.fetchTrip.mockResolvedValue({ ...base, members: [...base.members, fede] });
     await markPresentationSeen(SUR);
-    await renderRouter(testRoutes, { initialUrl: "/roll?view=roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}?view=roll` });
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Personas/ }));
     await fireEvent.press(await screen.findByRole("button", { name: "Fede" }));

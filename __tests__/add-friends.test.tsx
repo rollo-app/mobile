@@ -77,14 +77,14 @@ beforeEach(async () => {
 afterEach(() => alert.mockRestore());
 
 const openSheet = async () => {
-  await renderRouter(routes, { initialUrl: "/roll" });
+  await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
   await fireEvent.press(await screen.findByRole("button", { name: "Sumar amigos" }));
   await waitFor(() => expect(screen).toHavePathname("/add-friends"));
 };
 
 describe("Add friends to a roll", () => {
   it("the board offers 'Sumar amigos' next to the invite code", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByRole("button", { name: "Sumar amigos" })).toBeVisible();
     expect(screen.getByText("Invitar")).toBeVisible();
@@ -123,7 +123,7 @@ describe("Add friends to a roll", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Sumar" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(friends.addFriendsToTrip).toHaveBeenCalledWith(SUR, ["u2", "u3"]);
     await waitFor(() => expect(trips.fetchTrip.mock.calls.length).toBeGreaterThan(before));
   });
@@ -201,7 +201,7 @@ describe("Add friends to a roll", () => {
   it("after the reveal the 'Rollo' segment no longer offers to add friends", async () => {
     trips.fetchTrip.mockResolvedValue(detail({ revealed: true, revealAt: Date.now() - DAY }));
     await markPresentationSeen(SUR);
-    await renderRouter(routes, { initialUrl: "/roll?view=roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}?view=roll` });
 
     expect(await screen.findByText("Personas")).toBeVisible();
     expect(screen.queryByText("Invitar")).toBeNull();
@@ -219,7 +219,7 @@ describe("Leaving a roll", () => {
     );
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     const leave = await screen.findByRole("button", { name: "Salirme del rollo" });
     jest.mocked(N.cancelScheduledNotificationAsync).mockClear();
@@ -242,7 +242,7 @@ describe("Leaving a roll", () => {
   it("asks first, then leaves, goes back to the board and the roll disappears", async () => {
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
 
@@ -263,7 +263,7 @@ describe("Leaving a roll", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
     friends.leaveTrip.mockResolvedValue();
     await setActiveTripId(SUR);
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
     trips.fetchMyTrips.mockResolvedValue({ trips: [] });
@@ -277,7 +277,7 @@ describe("Leaving a roll", () => {
 
   it("the admin can't: the server's message shows inline and the roll stays", async () => {
     friends.leaveTrip.mockRejectedValue(new Error("Sos el admin: no podés salirte del rollo"));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await fireEvent.press(await screen.findByRole("button", { name: "Ajustes del rollo" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Salirme del rollo" }));
     await confirmLeave();

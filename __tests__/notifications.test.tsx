@@ -78,6 +78,8 @@ const tapped = (url: string, identifier = `n-${url}`) =>
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  // Opening a roll persists the query cache in the in-memory kv store: the next test must not restore it over its own account.
+  (jest.requireMock("expo-sqlite/kv-store") as { __store: Map<string, string> }).__store.clear();
   trips.fetchTrip.mockImplementation(async (id: string) => (id === OTRO ? detail(OTRO, "Bariloche") : detail()));
   trips.joinTrip.mockResolvedValue(detail().trip);
   trips.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + 4 * DAY, items: [], nextCursor: null } as never);
@@ -101,14 +103,14 @@ const settle = () =>
 describe("push token", () => {
   it("is registered when the app opens signed in with permission", async () => {
     permission(true, true, "granted");
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     await waitFor(() => expect(push.registerPushToken).toHaveBeenCalledWith(TOKEN));
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
   });
 
   it("without permission nothing is asked or sent", async () => {
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     await screen.findByLabelText(/en el rollo$/);
     await settle();
 
@@ -223,7 +225,7 @@ describe("permission primer", () => {
 describe("tapping a push", () => {
   it("opened from a closed app, goes to its url once the account is ready", async () => {
     notifications.getLastNotificationResponseAsync.mockResolvedValue(tapped("/user/u2"));
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     await waitFor(() => expect(screen).toHavePathname("/user/u2"));
     expect(notifications.clearLastNotificationResponseAsync).toHaveBeenCalled();
@@ -235,12 +237,13 @@ describe("tapping a push", () => {
 
     await waitFor(async () => expect(await getActiveTripId()).toBe(OTRO));
     await waitFor(() => expect(screen).toHavePathname("/roll"));
-    await screen.findByLabelText(/en el rollo$/);
+    // The tab's root is the list of rolls: the pushed roll is there, ready to open.
+    expect(await screen.findByRole("button", { name: "Bariloche" })).toBeVisible();
     await settle();
   });
 
   it("with the app open, a tap goes to its url (a photo leaves its roll active)", async () => {
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     await screen.findByLabelText(/en el rollo$/);
     const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)![0];
 
@@ -277,7 +280,7 @@ describe("tapping a push", () => {
             ]
           : [],
     }) as never);
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await screen.findByLabelText(/en el rollo$/);
     const listener = notifications.addNotificationResponseReceivedListener.mock.calls.at(-1)![0];
 
@@ -294,7 +297,7 @@ describe("tapping a push", () => {
     notifications.getLastNotificationResponseAsync.mockResolvedValue(
       tapped(`/moment?trip=${OTRO}&day=2027-01-12&at=${at}`, `moment.${OTRO}.2027-01-12`),
     );
-    await renderRouter(testRoutes, { initialUrl: "/roll" });
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
 
     await waitFor(() => expect(screen).toHavePathname("/moment"));
     expect(screen).toHaveSearchParams({ trip: OTRO, day: "2027-01-12", at: String(at) });

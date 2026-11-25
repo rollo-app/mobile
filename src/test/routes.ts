@@ -58,7 +58,6 @@ import RollStartedScreen from "../../app/roll-started";
 import PhotoRoute from "../../app/photo/[id]";
 import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
 import SettingsScreen from "../../app/settings";
-import TripsScreen from "../../app/trips";
 import UserProfileRoute from "../../app/user/[id]";
 import UserFriendsRoute from "../../app/user/[id]/friends";
 
@@ -73,7 +72,6 @@ export const routes = {
   "edit-trip": EditTripRoute,
   "crop-avatar": CropAvatarScreen,
   "crop-cover": CropCoverScreen,
-  trips: TripsScreen,
   "edit-profile": EditProfileScreen,
   settings: SettingsScreen,
   notifications: NotificationsRoute,

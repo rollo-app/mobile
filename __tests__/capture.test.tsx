@@ -139,7 +139,7 @@ beforeEach(async () => {
 });
 
 async function openCapture() {
-  await renderRouter(routes, { initialUrl: "/roll" });
+  await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
   // No testRouter.push: it asserts the route and the capture may return right away.
   await act(async () => router.push("/capture"));
 }
@@ -161,7 +161,7 @@ describe("Capture", () => {
     expect(await screen.findByTestId("camera-back")).toBeVisible();
     await fireEvent.press(screen.getByRole("button", { name: "Cerrar" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(await queue.pending("u1")).toHaveLength(0);
     expect(takePhoto).not.toHaveBeenCalled();
   });
@@ -184,7 +184,7 @@ describe("Capture", () => {
     await shoot();
     await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mediaMock.prepareMedia.mock.calls[0]![3]).toBeUndefined();
   });
 
@@ -204,7 +204,7 @@ describe("Capture", () => {
     await screen.findByLabelText("Caption");
     expect(manipulator.manipulate).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mediaMock.prepareMedia.mock.lastCall![0]).toEqual(photo);
     expect(files.deleted).toBe(0);
   });
@@ -231,7 +231,7 @@ describe("Capture", () => {
     expect(manipulator.__ctx.crop).not.toHaveBeenCalled();
     expect(files.deleted).toBe(1);
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mediaMock.prepareMedia.mock.lastCall![0]).toEqual({ uri: "file:///cache/Manipulated/selfie.jpg", width: 3024, height: 4032 });
   });
 
@@ -253,7 +253,7 @@ describe("Capture", () => {
     expect(manipulator.__ctx.flip).not.toHaveBeenCalled();
     expect(files.deleted).toBe(0);
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mediaMock.prepareMedia.mock.lastCall![0]).toEqual({ uri: "file:///cache/Camera/selfie.jpg", width: 3024, height: 4032 });
   });
 
@@ -278,7 +278,7 @@ describe("Capture", () => {
     expect(manipulator.__ctx.flip).not.toHaveBeenCalled();
     expect(files.deleted).toBe(1);
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     expect(mediaMock.prepareMedia.mock.lastCall![0]).toMatchObject({ uri: "file:///cache/Manipulated/tall.jpg", width: 2250, height: 3000 });
   });
 
@@ -620,7 +620,7 @@ describe("Capture", () => {
       await act(async () => buttons!.find((b) => b.text === "Descartar")!.onPress!());
 
       expect(mediaMock.discard).toHaveBeenCalled();
-      await waitFor(() => expect(screen).toHavePathname("/roll"));
+      await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
       expect(await queue.pending("u1")).toEqual([]);
     } finally {
       alert.mockRestore();
@@ -656,7 +656,7 @@ describe("Capture", () => {
     await waitFor(() => expect(Haptics.notificationAsync).toHaveBeenCalledWith("success"));
     expect(screen).toHavePathname("/capture");
     expect(screen.getByRole("button", { name: "Mandar al rollo" })).toBeDisabled();
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
   });
 
   it.each([
@@ -670,7 +670,7 @@ describe("Capture", () => {
       await fireEvent.press(await screen.findByRole("button", { name: "Mandar al rollo" }));
 
       await waitFor(() => expect(StyleSheet.flatten(screen.getByTestId("sent-photo").props.style)).toMatchObject(end));
-      await waitFor(() => expect(screen).toHavePathname("/roll"));
+      await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     } finally {
       // Not mockRestore: it's React Native's own jest.fn, and restoring would leave it returning undefined.
       spy.mockResolvedValue(false);
@@ -684,7 +684,7 @@ describe("Capture", () => {
     await fireEvent.changeText(await screen.findByLabelText("Caption"), "  el viento no perdona ");
     await fireEvent.press(screen.getByRole("button", { name: "Mandar al rollo" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname(`/roll/${SUR}`));
     const [saved] = await queue.pending("u1");
     expect(saved).toMatchObject({
       id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",

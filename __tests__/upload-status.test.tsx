@@ -86,7 +86,7 @@ describe("Roll · Subidas", () => {
   });
 
   it("with nothing pending or failed the section is not there", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("HUB5FT")).toBeVisible();
     expect(screen.queryByText(/esperando señal/)).toBeNull();
@@ -97,7 +97,7 @@ describe("Roll · Subidas", () => {
     await queue.enqueue(queued("a"));
     await queue.enqueue(queued("b", { type: "video" }));
     await queue.markAttempt("a", Date.now() + 2 * 60_000 - 1000);
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("1 foto y 1 video esperando señal")).toBeVisible();
     expect(screen.getByText(/Se suben solas apenas hay conexión/)).toBeVisible();
@@ -108,7 +108,7 @@ describe("Roll · Subidas", () => {
     await queue.enqueue(queued("a", { ownerUserId: "someone-else" }));
     await queue.enqueue(queued("b", { ownerUserId: "someone-else" }));
     await queue.markFailed("b", "Este rollo ya terminó");
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await screen.findAllByText("Viaje al sur");
     expect(screen.queryByText(/esperando señal/)).toBeNull();
@@ -118,7 +118,7 @@ describe("Roll · Subidas", () => {
 
   it("there is no manual upload button: uploads happen on their own", async () => {
     await queue.enqueue(queued("a"));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("1 foto esperando señal")).toBeVisible();
     expect(screen.queryByText("Subir ahora")).toBeNull();
@@ -132,7 +132,7 @@ describe("Roll · Subidas", () => {
     await queue.markFailed("a", "Este rollo ya terminó");
     await queue.markFailed("b", "missing_file");
     await queue.markFailed("c", "deleted");
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("Este rollo ya terminó")).toBeVisible();
     expect(screen.getByText("El archivo ya no está en el celular")).toBeVisible();
@@ -144,7 +144,7 @@ describe("Roll · Subidas", () => {
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await queue.enqueue(queued("a"));
     await queue.markFailed("a", "no_token");
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Descartar" }));
 
@@ -169,7 +169,7 @@ describe("Roll · Subidas", () => {
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     await queue.enqueue(queued("a"));
     await queue.markFailed("a", "no_token");
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Descartar" }));
     await act(async () => {

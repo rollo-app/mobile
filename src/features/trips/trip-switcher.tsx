@@ -10,7 +10,7 @@ export function TripSwitcher({ name, maxWidthRatio = 0.5 }: { name: string; maxW
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${name}, cambiar de rollo`}
-      onPress={() => router.push("/trips")}
+      onPress={() => router.navigate("/roll")}
       style={({ pressed }) => [styles.switcher, { maxWidth: width * maxWidthRatio, opacity: pressed ? 0.6 : 1 }]}
     >
       <Text numberOfLines={1} style={[type.headline, styles.name, { color: colors.label }]}>

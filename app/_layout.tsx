@@ -92,15 +92,6 @@ function RootStack() {
           <Stack.Screen name="create" options={{ title: "Nuevo rollo", presentation: "modal" }} />
           <Stack.Screen name="edit-trip" options={{ title: "Editar rollo", presentation: "modal" }} />
           <Stack.Screen
-            name="trips"
-            options={{
-              title: "Tus rollos",
-              presentation: "formSheet",
-              sheetAllowedDetents: [0.5, 1],
-              sheetGrabberVisible: true,
-            }}
-          />
-          <Stack.Screen
             name="add-friends"
             options={{
               title: "Sumar amigos",

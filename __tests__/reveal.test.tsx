@@ -99,7 +99,7 @@ beforeEach(async () => {
 
 describe("Reveal", () => {
   it("plays the reveal intro and then continues with the stories", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/reveal"));
     await screen.findByText("Se reveló");
     expect(screen.queryByTestId("story-surface")).toBeNull();
@@ -109,7 +109,7 @@ describe("Reveal", () => {
   });
 
   it("tapping anywhere skips to the stories", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/reveal"));
     await screen.findByText("Se reveló");
 
@@ -132,7 +132,7 @@ describe("Reveal", () => {
 
     it("shows a spinner and a tap goes on to the stories", async () => {
       hangingFeed();
-      await renderRouter(routes, { initialUrl: "/roll" });
+      await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
       await act(async () => router.push("/reveal"));
 
       await fireEvent.press(await screen.findByTestId("reveal-loading"));
@@ -143,7 +143,7 @@ describe("Reveal", () => {
     // renderRouter already runs on Jest's fake timers.
     it("goes on to the stories when it takes too long", async () => {
       hangingFeed();
-      await renderRouter(routes, { initialUrl: "/roll" });
+      await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
       await act(async () => router.push("/reveal"));
       expect(screen.getByTestId("reveal-loading")).toBeTruthy();
       await act(async () => jest.advanceTimersByTime(REVEAL_TIMELINE.loadingTimeoutMs - 100));
@@ -155,7 +155,7 @@ describe("Reveal", () => {
 
     it("clears the safety timer when it leaves", async () => {
       hangingFeed();
-      await renderRouter(routes, { initialUrl: "/roll" });
+      await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
       await act(async () => router.push("/reveal"));
       expect(screen.getByTestId("reveal-loading")).toBeTruthy();
       const replace = jest.spyOn(router, "replace");
@@ -175,7 +175,7 @@ describe("Reveal", () => {
       pagedFeed({ revealed: false, revealAt: Date.parse("2027-01-14T12:00:00Z"), items: [{ ...item("a", "2027-01-12T15:00:00Z", { id: "m2", name: "Fede", avatarUrl: null }, null), files: null }] }),
       { updatedAt: Date.now() },
     );
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/reveal"));
 
     await screen.findByText("Se reveló");
@@ -191,7 +191,7 @@ describe("Reveal", () => {
     const full = await mocked.fetchFeedPage(SUR, { limit: 30 });
     let resolve!: (f: actions.Feed) => void;
     mocked.fetchFeedPage.mockReturnValue(new Promise((r) => (resolve = r)));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await act(async () => router.push("/reveal"));
 
     expect(await screen.findByTestId("reveal-loading")).toBeVisible();
@@ -214,7 +214,7 @@ describe("Reveal", () => {
 
     it("waits for the thumbs before it starts, up to the cap", async () => {
       globalThis.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
-      await renderRouter(routes, { initialUrl: "/roll" });
+      await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
       await act(async () => router.push("/reveal"));
       await screen.findByTestId("reveal-loading");
 
@@ -232,7 +232,7 @@ describe("Reveal", () => {
 
     it("hands over to the stories after the short reduced sequence, not the full one", async () => {
       jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
-      await renderRouter(routes, { initialUrl: "/roll" });
+      await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
       await act(async () => router.push("/reveal"));
       await screen.findByText("Se reveló");
       const { totalMs } = REVEAL_TIMELINE.reduced;
@@ -245,7 +245,7 @@ describe("Reveal", () => {
 
     it("does not start until Reduce Motion is known", async () => {
       jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockReturnValue(new Promise(() => {}));
-      await renderRouter(routes, { initialUrl: "/roll" });
+      await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
       await act(async () => router.push("/reveal"));
       await act(async () => jest.advanceTimersByTime(REVEAL_TIMELINE.thumbsCapMs + 100));
 

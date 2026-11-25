@@ -89,7 +89,7 @@ beforeEach(async () => {
 });
 
 async function openRollStarted() {
-  await renderRouter(routes, { initialUrl: "/roll" });
+  await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
   await act(async () => router.push("/roll-started"));
 }
 
@@ -113,7 +113,7 @@ describe("roll started", () => {
     await fireEvent.press(screen.getByText("Ahora no", { includeHiddenElements: true }));
     expect(screen).toHavePathname("/roll-started");
     await fireEvent.press(await screen.findByText("Ahora no", {}, SHOWN_WITHIN));
-    expect(screen).toHavePathname("/roll");
+    expect(screen).toHavePathname(`/roll/${SUR}`);
   });
 
   it("runs the same phases with Reduce Motion on", async () => {
@@ -155,6 +155,6 @@ describe("roll started", () => {
   it("closes with \"Ahora no\"", async () => {
     await openRollStarted();
     await fireEvent.press(await screen.findByText("Ahora no", {}, SHOWN_WITHIN));
-    expect(screen).toHavePathname("/roll");
+    expect(screen).toHavePathname(`/roll/${SUR}`);
   });
 });

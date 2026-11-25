@@ -78,7 +78,7 @@ describe("info buttons", () => {
     opensSheet("/settings", topic),
   );
 
-  it("the board's invite section opens the code sheet", () => opensSheet("/roll", "inviteCode"));
+  it("the board's invite section opens the code sheet", () => opensSheet(`/roll/${SUR}`, "inviteCode"));
 
   it("the offline map info does not open the zones", async () => {
     await renderRouter(routes, { initialUrl: "/settings" });
