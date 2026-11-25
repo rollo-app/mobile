@@ -22,6 +22,7 @@ const preview = (over: Partial<actions.EventPreview> = {}): actions.EventPreview
   type: "event",
   name: "Casamiento de Cami",
   coverUrl: null,
+  coverFocusY: null,
   description: null,
   startsAt: Date.UTC(2026, 11, 12),
   endsAt: Date.UTC(2026, 11, 13),
