@@ -617,7 +617,10 @@ jest.mock("expo-apple-authentication", () => {
   };
 });
 
-// React Native's StatusBar schedules a setImmediate when it unmounts. Testing Library unmounts after the test, with
-// expo-router's fake timers still on, and that immediate was left pending forever: the file never exited and, in CI, the
-// Jest worker that ran it never finished the next file (the run hung). The status bar has nothing to test in Jest.
-jest.mock("expo-status-bar", () => ({ StatusBar: () => null, setStatusBarStyle: jest.fn(), setStatusBarHidden: jest.fn() }));
+// expo-router's renderRouter turns on fake timers and never turns them off, and Testing Library unmounts the screens
+// after every hook with those timers on: React Native's StatusBar, for one, schedules a setImmediate when it unmounts.
+// Left pending, the file never exited and, in CI, the Jest worker that ran it never finished its next file (the run hung).
+afterAll(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
+});
