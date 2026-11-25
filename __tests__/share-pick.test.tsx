@@ -81,6 +81,24 @@ describe("Elegir fotos", () => {
     expect(getCollageSelection(SUR)).toEqual(["p2"]);
   });
 
+  it("keeps a saved id from a page that has not loaded yet", async () => {
+    setCollageSelection(SUR, ["p10"]);
+    let resolveSecond!: (feed: tripActions.Feed) => void;
+    const base = { revealed: true, revealAt: Date.now() - 1000 };
+    trips.fetchFeedPage
+      .mockResolvedValueOnce({ ...base, items: ids.slice(0, 5).map(item), nextCursor: "c2" })
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveSecond = resolve)));
+    await renderRouter({ ...routes, "share-pick": () => <SharePickScreen tripId={SUR} /> }, { initialUrl: "/blocked" });
+    await act(async () => router.push("/share-pick"));
+    await screen.findByTestId("pick-cell-p1");
+    expect(screen.queryByTestId("pick-cell-p10")).toBeNull();
+    expect(screen.getByText("1 de 8")).toBeVisible();
+    await act(async () => resolveSecond({ ...base, items: ids.slice(5).map(item), nextCursor: null }));
+    expect(await screen.findByTestId("pick-badge-p10")).toHaveTextContent("1");
+    await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
+    expect(getCollageSelection(SUR)).toEqual(["p10"]);
+  });
+
   it("deselecting renumbers the rest", async () => {
     await open();
     await fireEvent.press(cell("p1"));

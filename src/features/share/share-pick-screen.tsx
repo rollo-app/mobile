@@ -26,11 +26,14 @@ export function SharePickScreen({ tripId }: { tripId: string }) {
   draftRef.current = draft;
   const seeded = useRef(false);
   useEffect(() => {
-    if (seeded.current || candidates.length === 0) return;
+    // Only once every page is in: before that a saved id may just be on a page not loaded yet. Taps stay open meanwhile.
+    if (seeded.current || !complete) return;
     seeded.current = true;
     const known = new Set(candidates.map((p) => p.id));
-    setDraft((current) => current.filter((id) => known.has(id)));
-  }, [candidates]);
+    const next = draftRef.current.filter((id) => known.has(id));
+    draftRef.current = next;
+    setDraft(next);
+  }, [complete, candidates]);
   // The grid shows the whole roll: load the rest of the pages once.
   const asked = useRef(false);
   useEffect(() => {
@@ -46,7 +49,10 @@ export function SharePickScreen({ tripId }: { tripId: string }) {
   const onPress = useCallback((id: string) => {
     const result = toggleSelection(draftRef.current, id);
     if (result.full) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    else setDraft(result.selection);
+    else {
+      draftRef.current = result.selection;
+      setDraft(result.selection);
+    }
   }, []);
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
