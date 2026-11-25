@@ -40,6 +40,7 @@ function tripDetail(): actions.TripDetail {
       contest: null,
       type: "trip",
       coverUrl: null,
+      coverFocusY: null,
       groups: [],
       createdBy: null,
     },
@@ -70,21 +71,21 @@ beforeEach(async () => {
 
 describe("Moment banner in Rollo", () => {
   it("shows nothing when no moment was delivered", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     expect(await screen.findByText("En el rollo")).toBeVisible();
     expect(screen.queryByText(/Tu momento/)).toBeNull();
   });
 
   it("shows nothing for a delivered moment whose window is over", async () => {
     presented.mockResolvedValue(deliveredAt(Date.now() - MOMENT_WINDOW_MS - 100_000));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     expect(await screen.findByText("En el rollo")).toBeVisible();
     expect(screen.queryByText(/Tu momento/)).toBeNull();
   });
 
   it("shows the countdown for an open moment and opens /moment when tapped", async () => {
     presented.mockResolvedValue(deliveredAt(Date.now() - 120_000));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     expect(await screen.findByText(/^Tu momento · quedan 12:5\d$/)).toBeVisible();
 
     await fireEvent.press(screen.getByRole("button", { name: /^Tu momento · quedan/ }));
@@ -93,14 +94,14 @@ describe("Moment banner in Rollo", () => {
 
   it("forwards the selfie param of the delivered notification to /moment", async () => {
     presented.mockResolvedValue(deliveredAt(Date.now() - 120_000, "&selfie=1"));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await fireEvent.press(await screen.findByRole("button", { name: /^Tu momento · quedan/ }));
     expect(screen).toHavePathname("/moment");
     expect(screen).toHaveSearchParams(expect.objectContaining({ selfie: "1" }));
   });
 
   it("appears when the moment fires while Rollo is open", async () => {
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     expect(await screen.findByText("En el rollo")).toBeVisible();
     expect(screen.queryByText(/Tu momento/)).toBeNull();
 
@@ -113,7 +114,7 @@ describe("Moment banner in Rollo", () => {
 
   it("goes away when the window closes", async () => {
     presented.mockResolvedValue(deliveredAt(Date.now() - (MOMENT_WINDOW_MS - 1_500)));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     expect(await screen.findByText(/^Tu momento · quedan/)).toBeVisible();
     await waitFor(() => expect(screen.queryByText(/Tu momento/)).toBeNull(), { timeout: 4000 });
   });

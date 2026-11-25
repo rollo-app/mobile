@@ -1,38 +1,92 @@
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { setActiveTripId } from "@/storage/active-trip";
-import { Button, Screen, Section } from "@/ui/components";
+import { Welcome } from "@/features/roll/welcome";
+import { Button, ErrorText, Loading, Screen, Section } from "@/ui/components";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import { useLeaveTrip } from "@/features/friends/use-leave-trip";
-import type { TripSummary } from "./active";
+import { hasNoTrips, type TripSummary } from "./active";
 import { groupTrips } from "./group-trips";
+import { LiveRollCard } from "./live-roll-card";
+import { rollHref } from "./roll-href";
 import { rowActions, type RowActionId } from "./row-actions";
 import { useArchiveTrip } from "./use-archive-trip";
 import { TripRow } from "./trip-row";
 import { useActiveTrip } from "./use-active-trip";
 
-/** Trip selector (sheet). The chosen one becomes the active one. */
-export function TripsScreen() {
-  const { trip: active, trips } = useActiveTrip();
+/** Root of the Rollos tab: your rolls. Tapping one pushes it (the roll marks itself as the active one once it mounts). */
+export function RollsScreen() {
+  const { trip: active, trips, loaded, error, refetch } = useActiveTrip();
   const now = Date.now();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const groups = groupTrips(trips, now, active?.id ?? null);
+  const { setArchived } = useArchiveTrip();
 
-  async function select(tripId: string) {
-    await setActiveTripId(tripId);
-    router.dismissTo("/roll");
+  // The title is set before any early return so it doesn't jump from small to large once the data arrives.
+  const title = <Stack.Screen options={{ title: "Rollos", headerLargeTitle: true }} />;
+  // `error` only exists without any data, so it must come before "no rolls": no signal is not "you have none".
+  if (error) {
+    return (
+      <Screen grouped>
+        {title}
+        <ErrorText>{error}</ErrorText>
+        <Button label="Reintentar" variant="secondary" onPress={() => void refetch()} />
+        {/* Starting or joining a roll doesn't need the list, so they stay available (as on the welcome). */}
+        <Button label="Empezar un nuevo rollo" onPress={() => router.push("/create")} />
+        <Button label="Sumarme con un código" variant="secondary" onPress={() => router.push("/join")} />
+      </Screen>
+    );
+  }
+  if (hasNoTrips(loaded, active)) {
+    return (
+      <>
+        {title}
+        <Welcome />
+      </>
+    );
+  }
+  if (!loaded) {
+    return (
+      <>
+        {title}
+        <Loading />
+      </>
+    );
   }
 
-  const { setArchived } = useArchiveTrip();
+  const open = (id: string) => router.push(rollHref(id));
   const row = (t: TripSummary) => (
-    <ActionableRow key={t.id} trip={t} selected={t.id === active?.id} now={now} timeZone={timeZone} onPress={() => select(t.id)} setArchived={setArchived} />
+    <ActionableRow key={t.id} trip={t} now={now} timeZone={timeZone} onPress={() => open(t.id)} setArchived={setArchived} />
   );
 
   return (
     <Screen grouped>
-      {groups.top.length > 0 && <Group>{groups.top.map(row)}</Group>}
+      {title}
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Menu icon="plus" accessibilityLabel="Nuevo rollo o sumarte">
+          <Stack.Toolbar.MenuAction icon="plus.circle" onPress={() => router.push("/create")}>
+            Nuevo rollo
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction icon="number" onPress={() => router.push("/join")}>
+            Sumate con un código
+          </Stack.Toolbar.MenuAction>
+        </Stack.Toolbar.Menu>
+      </Stack.Toolbar>
+
+      {groups.live.map((t) => (
+        <LiveRollCard
+          key={t.id}
+          trip={t}
+          onOpen={() => open(t.id)}
+          onCamera={async () => {
+            await setActiveTripId(t.id);
+            router.push("/capture");
+          }}
+        />
+      ))}
+      {groups.top.length > 0 && <Section title="Próximos">{groups.top.map(row)}</Section>}
       {groups.revealed.length > 0 && <Section title="Revelados">{groups.revealed.map(row)}</Section>}
       {groups.older.length > 0 && (
         <FoldedRolls label="Anteriores" count={groups.older.length} initiallyOpen={groups.olderExpandedByDefault}>
@@ -44,11 +98,6 @@ export function TripsScreen() {
           {groups.archived.map(row)}
         </FoldedRolls>
       )}
-
-      <View style={styles.actions}>
-        <Button label="Empezar un nuevo rollo" onPress={() => router.replace("/create")} />
-        <Button label="Sumate con un código" variant="secondary" onPress={() => router.replace("/join")} />
-      </View>
     </Screen>
   );
 }
@@ -60,7 +109,6 @@ function ActionableRow({
   ...rest
 }: {
   trip: TripSummary;
-  selected: boolean;
   now: number;
   timeZone: string;
   onPress: () => void;
@@ -72,20 +120,6 @@ function ActionableRow({
     else setArchived(trip.id, id === "archive");
   };
   return <TripRow trip={trip} actions={rowActions(trip)} onAction={onAction} {...rest} />;
-}
-
-function Group({ children }: { children: ReactNode }) {
-  const rows = Array.isArray(children) ? children : [children];
-  return (
-    <View style={styles.group}>
-      {rows.map((child, i) => (
-        <Fragment key={i}>
-          {i > 0 && <View style={styles.separator} />}
-          {child}
-        </Fragment>
-      ))}
-    </View>
-  );
 }
 
 /** "Anteriores · N" / "Archivados · N": a disclosure row that opens those rolls inline. Remembers nothing. */
@@ -129,5 +163,4 @@ const styles = StyleSheet.create({
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: spacing.md },
   disclosure: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.md, paddingVertical: 13, gap: spacing.sm },
   disclosureLabel: { flex: 1 },
-  actions: { gap: spacing.sm },
 });

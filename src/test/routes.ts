@@ -14,6 +14,7 @@ import MapLayout from "../../app/(tabs)/map/_layout";
 import MapScreen from "../../app/(tabs)/map/index";
 import RollLayout from "../../app/(tabs)/roll/_layout";
 import RollScreen from "../../app/(tabs)/roll/index";
+import RollByIdScreen from "../../app/(tabs)/roll/[tripId]";
 import MeLayout from "../../app/(tabs)/me/_layout";
 import MeActivityScreen from "../../app/(tabs)/me/activity";
 import MeLikesScreen from "../../app/(tabs)/me/likes";
@@ -57,7 +58,6 @@ import RollStartedScreen from "../../app/roll-started";
 import PhotoRoute from "../../app/photo/[id]";
 import FeaturedRoute from "../../app/featured/[userId]/[mediaId]";
 import SettingsScreen from "../../app/settings";
-import TripsScreen from "../../app/trips";
 import UserProfileRoute from "../../app/user/[id]";
 import UserFriendsRoute from "../../app/user/[id]/friends";
 
@@ -72,7 +72,6 @@ export const routes = {
   "edit-trip": EditTripRoute,
   "crop-avatar": CropAvatarScreen,
   "crop-cover": CropCoverScreen,
-  trips: TripsScreen,
   "edit-profile": EditProfileScreen,
   settings: SettingsScreen,
   notifications: NotificationsRoute,
@@ -111,6 +110,7 @@ export const routes = {
   "(tabs)/_layout": TabsLayout,
   "(tabs)/roll/_layout": RollLayout,
   "(tabs)/roll/index": RollScreen,
+  "(tabs)/roll/[tripId]": RollByIdScreen,
   "(tabs)/map/_layout": MapLayout,
   "(tabs)/map/index": MapScreen,
   "(tabs)/camera": CameraTab,

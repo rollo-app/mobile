@@ -51,6 +51,7 @@ export function ErrorText({ children, style }: { children: ReactNode; style?: St
 export function Button({
   label,
   accessibilityLabel,
+  testID,
   onPress,
   disabled,
   loading,
@@ -60,6 +61,7 @@ export function Button({
 }: {
   label: string;
   accessibilityLabel?: string;
+  testID?: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -76,6 +78,7 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      testID={testID}
       accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       disabled={isDisabled}
       onPress={onPress}

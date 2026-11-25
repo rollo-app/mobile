@@ -93,7 +93,7 @@ describe("A user without rollos", () => {
     await renderRouter(routes, { initialUrl: "/map" });
 
     expect(await screen.findByText("Primero hace falta un rollo")).toBeVisible();
-    await fireEvent.press(screen.getByRole("button", { name: "Ir a Rollo" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Ir a Rollos" }));
     expect(screen).toHavePathname("/roll");
   });
 

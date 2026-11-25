@@ -10,7 +10,7 @@ import { useMe } from "@/features/auth/use-me";
 
 jest.mock("expo-router", () => ({
   ...jest.requireActual("expo-router"),
-  router: { back: jest.fn(), dismissTo: jest.fn() },
+  router: { back: jest.fn(), dismissTo: jest.fn(), push: jest.fn() },
 }));
 jest.mock("../actions", () => ({
   ...jest.requireActual("../actions"),
@@ -116,6 +116,7 @@ describe("CreateScreen as an event", () => {
       momentMode: "off",
     });
     await waitFor(() => expect(router.dismissTo).toHaveBeenCalledWith("/roll"));
+    expect(router.push).toHaveBeenCalledWith(expect.objectContaining({ pathname: "/roll/[tripId]" }));
   });
 
   it("creating an event does not offer to add friends", async () => {

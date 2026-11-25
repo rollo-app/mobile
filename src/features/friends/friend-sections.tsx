@@ -5,6 +5,7 @@ import { Alert } from "react-native";
 import { errorMessage } from "@/api/client";
 import { formatDateRange } from "@/features/trips/phase";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
+import { rollHref } from "@/features/trips/roll-href";
 import { setActiveTripId } from "@/storage/active-trip";
 import { Button, ErrorText, Footnote, Row, Section } from "@/ui/components";
 import { addableTrips } from "./addable-trips";
@@ -46,7 +47,8 @@ export function FriendSections({ userId, name }: { userId: string; name: string 
 
   async function openTrip(tripId: string) {
     await setActiveTripId(tripId);
-    router.navigate("/roll");
+    router.dismissTo("/roll");
+    router.push(rollHref(tripId));
   }
 
   function addTo(tripId: string) {

@@ -4,6 +4,7 @@ const trip = (id: string): TripSummary => ({
   id,
   type: "trip",
   coverUrl: null,
+  coverFocusY: null,
   name: id,
   joinCode: "ABC234",
   startsAt: 0,

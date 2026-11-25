@@ -45,6 +45,10 @@ describe("shouldDehydrateQuery", () => {
     expect(shouldDehydrateQuery(query(["upload-status", "t1"]))).toBe(false);
   });
 
+  it("keeps saving the place names of gallery chapters (geocoded once, kept offline)", () => {
+    expect(shouldDehydrateQuery(query(["place", "-41.13,-71.31"]))).toBe(true);
+  });
+
   it("keeps saving feed, trip and profile queries for offline cold starts", () => {
     expect(shouldDehydrateQuery(query(["trips"]))).toBe(true);
     expect(shouldDehydrateQuery(query(["feed", "t1"]))).toBe(true);

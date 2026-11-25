@@ -2,16 +2,16 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, spacing, type } from "@/ui/theme";
 
-/** What Mapa and Feed show when there is no roll to look at: a calm pointer to the Rollo tab. */
+/** What Mapa and Feed show when there is no roll to look at: a calm pointer to the Rollos tab. */
 export function NoRollYet() {
   return (
     <View style={styles.screen}>
       <Text style={[type.title, styles.center, { color: colors.label }]}>Primero hace falta un rollo</Text>
       <Text style={[type.body, styles.center, { color: colors.secondaryLabel }]}>
-        Empezá uno o sumate con un código desde la pestaña Rollo.
+        Empezá uno o sumate con un código desde la pestaña Rollos.
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Ir a Rollo" onPress={() => router.navigate("/roll")}>
-        <Text style={[type.headline, { color: colors.tint }]}>Ir a Rollo</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Ir a Rollos" onPress={() => router.navigate("/roll")}>
+        <Text style={[type.headline, { color: colors.tint }]}>Ir a Rollos</Text>
       </Pressable>
     </View>
   );

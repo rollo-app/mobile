@@ -61,6 +61,7 @@ const detail = (id: string, name: string, revealed: boolean): tripActions.TripDe
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
   },
@@ -151,12 +152,12 @@ describe("Friend profile", () => {
     expect(await screen.findByText("Todavía no tienen rollos en común.")).toBeVisible();
   });
 
-  it("tapping a roll in common makes it the active one and opens Rollo", async () => {
+  it("tapping a roll in common makes it the active one and opens it over the list", async () => {
     await renderRouter(routes, { initialUrl: "/friends/user/u2" });
 
     await fireEvent.press(await screen.findByRole("button", { name: "Bariloche, Revelado" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname("/roll/t3"));
     expect(await getActiveTripId()).toBe("t3");
   });
 
@@ -168,9 +169,9 @@ describe("Friend profile", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: "Bariloche, Revelado" }));
 
-    await waitFor(() => expect(screen).toHavePathname("/roll"));
+    await waitFor(() => expect(screen).toHavePathname("/roll/t3"));
     await waitFor(() => expect(tabBar()[2]![1]).toBe("play.rectangle.fill"));
-    expect(tabBar()[0]![1]).toBe("square.grid.2x2");
+    expect(tabBar()[0]![1]).toBe("film.stack");
   });
 
   it("'Sumar a un rollo' lists only your unrevealed rolls without them, and adding one shows it in common", async () => {

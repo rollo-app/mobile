@@ -1,29 +1,45 @@
 import { router, Stack } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SelectionHeaderTitle } from "@/features/gallery/selection-header-title";
-import type { ColorValue } from "react-native";
-import { hasNoTrips } from "@/features/trips/active";
-import { TripSwitcher } from "@/features/trips/trip-switcher";
+import { View, type ColorValue } from "react-native";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useRollPhase } from "@/features/trips/use-roll-phase";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { colors } from "@/ui/theme";
+import { setActiveTripId } from "@/storage/active-trip";
+import { Button, ErrorText, Loading, Screen } from "@/ui/components";
+import { colors, spacing } from "@/ui/theme";
 import { RevealedRollScreen } from "./revealed-roll-screen";
 import { RollBoard } from "./roll-board";
-import { Welcome } from "./welcome";
 
-/** After the reveal the Rollo tab is "Galería | Rollo"; before, the board. */
-export function RollScreen({ view }: { view?: string }) {
-  const { trip, loaded } = useActiveTrip();
-  const { detail } = useTripDetail(trip?.id);
+/** A roll's own screen: before the reveal the board, after it "Galería | Rollo". */
+export function RollScreen({ tripId, view }: { tripId: string; view?: string }) {
+  const { trips, loaded, refetch } = useActiveTrip();
+  const trip = trips.find((t) => t.id === tripId);
+  const { detail } = useTripDetail(tripId);
   const phase = useRollPhase(detail);
   // While the gallery is selecting, the title is the selection: the trip's name doesn't fit between its two buttons.
   const [selection, setSelection] = useState<number | null>(null);
-  if (hasNoTrips(loaded, trip)) return <Welcome />;
+  // Opening a roll makes it the active one (capture, map and feed follow it).
+  useEffect(() => {
+    void setActiveTripId(tripId);
+  }, [tripId]);
+  // A roll that isn't in the list may just be newer than the cached list (created or joined a moment ago):
+  // refetch the list once, and only go back to /roll if it's still missing after a successful fetch.
+  const [lookup, setLookup] = useState<"idle" | "checking" | "missing" | "failed">("idle");
+  const absent = loaded && !trip;
+  useEffect(() => {
+    if (!absent || lookup !== "idle") return;
+    setLookup("checking");
+    void refetch().then((result) => {
+      if (result.isError || !result.data) setLookup("failed");
+      else setLookup(result.data.trips.some((t) => t.id === tripId) ? "idle" : "missing");
+    });
+  }, [absent, lookup, refetch, tripId]);
+  useEffect(() => {
+    if (absent && lookup === "missing") router.replace("/roll");
+  }, [absent, lookup]);
   const revealed = trip && phase === "revealed";
   const selecting = revealed && view !== "roll" && selection !== null;
-  // The gallery's right toolbar (select + menu) is wider, so its title gets less room.
-  const maxWidthRatio = revealed && view !== "roll" ? 0.45 : 0.5;
   // Revealed, the header is solid with the screen's background so it reads as one block with the
   // "Galería | Rollo" row under it. Set here (not in the revealed screen) so that switching to a trip
   // that isn't revealed clears them: undefined goes back to the stack's default header.
@@ -34,14 +50,29 @@ export function RollScreen({ view }: { view?: string }) {
         <Stack.Screen
           options={{
             ...header,
-            headerTitle: () =>
-              selecting ? <SelectionHeaderTitle count={selection} /> : <TripSwitcher name={trip.name} maxWidthRatio={maxWidthRatio} />,
+            title: trip.name,
+            headerTitle: selecting ? () => <SelectionHeaderTitle count={selection} /> : undefined,
           }}
         />
       )}
       {/* "Ajustes del rollo": on the board and in the revealed "Rollo" view; the gallery has its own toolbar. */}
       {trip && (!revealed || view === "roll") && <SettingsButton tripId={trip.id} />}
-      {revealed ? <RevealedRollScreen tripId={trip.id} onSelectionChange={setSelection} /> : <RollBoard />}
+      {absent ? (
+        <Screen grouped>
+          {lookup === "failed" ? (
+            <View testID="roll-lookup-error" style={{ gap: spacing.md }}>
+              <ErrorText>No se pudo cargar tu lista de rollos</ErrorText>
+              <Button label="Reintentar" variant="secondary" onPress={() => setLookup("idle")} />
+            </View>
+          ) : (
+            <Loading />
+          )}
+        </Screen>
+      ) : revealed ? (
+        <RevealedRollScreen tripId={tripId} onSelectionChange={setSelection} />
+      ) : (
+        <RollBoard tripId={tripId} />
+      )}
     </>
   );
 }

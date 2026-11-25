@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { StoryPlayer } from "@/features/presentation/story-player";
+import { rollHref } from "@/features/trips/roll-href";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { spacing, type } from "@/ui/theme";
@@ -17,8 +18,8 @@ export default function PresentationScreen() {
   const { photos, token, error, loading, refetch } = useRevealedPhotos(trip?.id);
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
-  // The roll tab may have been left on "Rollo": close the modal and land on its gallery view.
-  const openGallery = () => router.dismissTo({ pathname: "/roll", params: { view: "gallery" } });
+  // Close the modal and land on that roll's gallery view.
+  const openGallery = () => trip && router.dismissTo(rollHref(trip.id, "gallery"));
 
   if (detail && token && photos.length > 0) {
     return <StoryPlayer photos={photos} token={token} timeZone={detail.trip.timezone} onClose={close} onGallery={openGallery} />;

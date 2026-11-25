@@ -11,6 +11,7 @@ import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { usePreviewEvent } from "@/features/events/use-preview-event";
 import type { EventPreview } from "./actions";
+import { rollHref } from "./roll-href";
 import { useJoinTrip } from "./use-join-trip";
 
 const REVEALED_EVENT = "Este evento ya se reveló.";
@@ -44,8 +45,9 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   const valid = code.trim().length === 6;
   const busy = preview.isPending || join.isPending;
 
-  function onSuccess() {
+  function onSuccess(joined: { id: string }) {
     router.dismissTo("/roll");
+    router.push(rollHref(joined.id));
     void offerPushAfterJoining();
   }
 

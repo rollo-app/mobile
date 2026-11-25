@@ -57,6 +57,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
       contest: null,
       type: "trip",
       coverUrl: null,
+      coverFocusY: null,
       groups: [],
       createdBy: { userId: "u1", name: "Juani" },
       ...over,
@@ -72,7 +73,7 @@ const detail = (me: Member, over: Partial<tripActions.Trip> = {}): tripActions.T
 async function openBoard(d: tripActions.TripDetail) {
   trips.fetchTrip.mockResolvedValue(d);
   await setActiveTripId(SUR);
-  await renderRouter(routes, { initialUrl: "/roll" });
+  await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
   await screen.findByText("Personas");
 }
 

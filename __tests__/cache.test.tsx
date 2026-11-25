@@ -46,6 +46,7 @@ const detail = (): actions.TripDetail => ({
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
   },
@@ -72,7 +73,7 @@ beforeEach(() => {
 describe("Shared trip data", () => {
   it("the tab bar and Roll share a single request", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("7 de 10")).toBeVisible();
     expect(mocked.fetchTrip).toHaveBeenCalledTimes(1);
@@ -80,12 +81,12 @@ describe("Shared trip data", () => {
 
   it("going back to a screen within 30 s does not request it again", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await screen.findByText("7 de 10");
 
     await act(async () => router.navigate("/me"));
     expect(await screen.findByText("HUB5FT")).toBeVisible();
-    await act(async () => router.navigate("/roll"));
+    await act(async () => router.navigate(`/roll/${SUR}`));
     expect(await screen.findByText("7 de 10")).toBeVisible();
 
     expect(mocked.fetchTrip).toHaveBeenCalledTimes(1);
@@ -93,7 +94,7 @@ describe("Shared trip data", () => {
 
   it("after 30 s, regaining focus requests it again", async () => {
     mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
     await screen.findByText("7 de 10");
     await act(async () => router.navigate("/me"));
     await screen.findByText("HUB5FT");
@@ -101,40 +102,56 @@ describe("Shared trip data", () => {
     const key = ["trip", SUR];
     await act(async () => {
       queryClient.setQueryData(key, detail(), { updatedAt: Date.now() - 60_000 });
-      router.navigate("/roll");
+      router.navigate(`/roll/${SUR}`);
     });
 
     await waitFor(() => expect(mocked.fetchTrip).toHaveBeenCalledTimes(2));
   });
 
+  // Waits for the error to show and for every request (the first one and its retry) to settle, so that
+  // whatever comes next can only come from pressing the roll's own Reintentar.
+  const failedAndQuiet = async () => {
+    await screen.findByTestId("roll-board-retry");
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+  };
+
   it("if it fails with no cache it shows the error and Reintentar requests it again", async () => {
-    mocked.fetchTrip.mockRejectedValueOnce(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
-    mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión. Probá de nuevo cuando tengas señal."));
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     // Several tabs are mounted at once, and each shows the shared error.
     expect((await screen.findAllByText("Sin conexión. Probá de nuevo cuando tengas señal."))[0]).toBeVisible();
-    await fireEvent.press(screen.getAllByRole("button", { name: "Reintentar" })[0]!);
+    await failedAndQuiet();
+    mocked.fetchTrip.mockResolvedValue(detail());
+    const calls = mocked.fetchTrip.mock.calls.length;
+    expect(screen.queryByText("7 de 10")).toBeNull();
+
+    await fireEvent.press(screen.getByTestId("roll-board-retry"));
 
     expect(await screen.findByText("7 de 10")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull();
-    expect(mocked.fetchTrip).toHaveBeenCalledTimes(2);
+    expect(mocked.fetchTrip.mock.calls.length).toBeGreaterThan(calls);
+    expect(screen.queryByTestId("roll-board-retry")).toBeNull();
   });
 
   it("Roll offers Reintentar when there is no data", async () => {
-    mocked.fetchTrip.mockRejectedValueOnce(new Error("Sin conexión"));
-    mocked.fetchTrip.mockResolvedValue(detail());
-    await renderRouter(routes, { initialUrl: "/roll" });
+    mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión"));
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
-    await fireEvent.press((await screen.findAllByRole("button", { name: "Reintentar" }))[0]!);
+    await failedAndQuiet();
+    mocked.fetchTrip.mockResolvedValue(detail());
+    const calls = mocked.fetchTrip.mock.calls.length;
+    expect(screen.queryByText("HUB5FT")).toBeNull();
+
+    await fireEvent.press(screen.getByTestId("roll-board-retry"));
 
     expect(await screen.findByText("HUB5FT")).toBeVisible();
+    expect(mocked.fetchTrip.mock.calls.length).toBeGreaterThan(calls);
   });
 
   it("with saved data and no signal it shows the saved data, no error", async () => {
     queryClient.setQueryData(["trip", SUR], detail(), { updatedAt: Date.now() - 60_000 });
     mocked.fetchTrip.mockRejectedValue(new Error("Sin conexión"));
-    await renderRouter(routes, { initialUrl: "/roll" });
+    await renderRouter(routes, { initialUrl: `/roll/${SUR}` });
 
     expect(await screen.findByText("7 de 10")).toBeVisible();
     await waitFor(() => expect(mocked.fetchTrip).toHaveBeenCalled());

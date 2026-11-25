@@ -20,6 +20,8 @@ export function notificationTarget(response: Notifications.NotificationResponse 
   const params = new URLSearchParams(query);
   const tripId = params.get("trip") ?? params.get("tripId");
   const tab = TAB_PATHS[pathname];
+  // A roll's push opens that roll on top of the list; without a roll id it is just the list.
+  if (tab === "/roll") return { tripId, tab: true, href: tripId ? `/roll/${encodeURIComponent(tripId)}` : "/roll" };
   if (tab) return { tripId, tab: true, href: tab };
 
   // The moment camera and the contest screens read their roll from the href itself, so they keep `trip`.

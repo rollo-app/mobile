@@ -168,11 +168,11 @@ Decisiones de producto:
   (la descripción y la cantidad de amigos son siempre públicas; rollos y fotos solo con `canSee`).
 - **Insignias** (`src/features/profile/badge.ts`): `badge` (`"founder"` | `"first_edition"` | null) viene del server en el usuario (`GET /me`, `GET /users/{id}`) y se asigna a mano en el backend. Se muestra solo en el encabezado del perfil (`ProfileHeader`, el tuyo y el de otros) al lado del @ (centrado en la misma fila, `profile-handle-row`), con `Badge` neutral y las etiquetas en inglés **FOUNDER** / **FIRST EDITION**; valores desconocidos no muestran nada. No va en listas, Feed ni mapa.
 - **Límites para crear rollos** (los aplica el server en `POST /trips`, **409** con el mensaje): máximo 2 rollos sin revelar creados por vos a la vez y 4 creados en los últimos 30 días; los rollos a los que te sumaste no cuentan y hay usuarios exentos (flag a mano en la DB). La app no chequea nada antes: `create-screen.tsx` muestra el mensaje del server debajo del botón (`ErrorText`, como cualquier error del form) sin perder lo cargado.
-- **Roles, archivar y eliminar rollos** (`src/features/trips/roles.ts`, `row-actions.ts`, `use-archive-trip.ts`; `src/features/roll/roll-essentials.tsx y `roll-settings-screen.tsx``): el rol de la API sigue siendo `admin` | `member`; el **creador** es el miembro con `isCreator` (también en `TripSummary`; el trip trae `createdBy`) y se muestra como "Creador", los demás admins como "Admin" (`memberBadge`). Mantener apretado un miembro (`MenuView` + acciones de VoiceOver, `memberActions`) ofrece "Hacer admin" / "Quitar admin" / "Sacar del rollo" (con `Alert`; hooks `use-make-admin`, `use-remove-admin`, `use-remove-member`). Cualquier admin cambia el nombre del rollo con la fila "Nombre" (`Alert.prompt` "Nombre del rollo", `use-rename-trip`; más de 60 caracteres: `ErrorText`). **Archivar** es por miembro y solo de rollos revelados: menú de mantener apretado en "Tus rollos" y fila "Archivar rollo" / "Desarchivar rollo" en el rollo revelado (`useArchiveTrip`, optimista; si falla, `Burnt.alert` "No se pudo archivar" / "No se pudo desarchivar"). **Eliminar** (menú de la fila, no lo ve el creador) es salirse: `useLeaveTrip(tripId, name, { revealed, copy: "list" | "board" })`; en un rollo revelado avisa "…No vas a poder volver a entrar." (a un revelado no se entra de nuevo con el código) y en uno sin revelar "…Podés volver con el código."; si falla desde la lista, `Burnt.alert`. **"Borrar rollo"** (solo el creador, fila roja con `Alert` "¿Borrar "{rollo}" para todos?", `useDeleteTrip`, `DELETE /trips/{id}`) lo borra para todos; un 403 del server dice "Solo quien creó el rollo puede hacer esto".
+- **Roles, archivar y eliminar rollos** (`src/features/trips/roles.ts`, `row-actions.ts`, `use-archive-trip.ts`; `src/features/roll/roll-essentials.tsx y `roll-settings-screen.tsx``): el rol de la API sigue siendo `admin` | `member`; el **creador** es el miembro con `isCreator` (también en `TripSummary`; el trip trae `createdBy`) y se muestra como "Creador", los demás admins como "Admin" (`memberBadge`). Mantener apretado un miembro (`MenuView` + acciones de VoiceOver, `memberActions`) ofrece "Hacer admin" / "Quitar admin" / "Sacar del rollo" (con `Alert`; hooks `use-make-admin`, `use-remove-admin`, `use-remove-member`). Cualquier admin cambia el nombre del rollo con la fila "Nombre" (`Alert.prompt` "Nombre del rollo", `use-rename-trip`; más de 60 caracteres: `ErrorText`). **Archivar** es por miembro y solo de rollos revelados: menú de mantener apretado en la lista de Rollos y fila "Archivar rollo" / "Desarchivar rollo" en el rollo revelado (`useArchiveTrip`, optimista; si falla, `Burnt.alert` "No se pudo archivar" / "No se pudo desarchivar"). **Eliminar** (menú de la fila, no lo ve el creador) es salirse: `useLeaveTrip(tripId, name, { revealed, copy: "list" | "board" })`; en un rollo revelado avisa "…No vas a poder volver a entrar." (a un revelado no se entra de nuevo con el código) y en uno sin revelar "…Podés volver con el código."; si falla desde la lista, `Burnt.alert`. **"Borrar rollo"** (solo el creador, fila roja con `Alert` "¿Borrar "{rollo}" para todos?", `useDeleteTrip`, `DELETE /trips/{id}`) lo borra para todos; un 403 del server dice "Solo quien creó el rollo puede hacer esto".
   **Muchos integrantes** (`members-order.ts`, `member-row.tsx`, `use-member-actions.ts`, `members-screen.tsx`, ruta `app/roll-members.tsx` → `/roll-members?tripId=…`, push en el stack raíz, título "Integrantes"): "En el rollo · N" muestra solo los primeros **10** (`previewMembers`: creador, después los demás admins, después vos, después el resto en el orden del server) y, si hay más, la fila "Ver todos" con el total (`value`) que abre la pantalla con todos, en el mismo orden y con la misma fila (`MemberRow`: badge, perfil, mantener apretado y acciones de VoiceOver). Búsqueda nativa del header (`useSearchBar`) por nombre o @usuario, sin tildes ni mayúsculas (`filterMembers`, contiene); sin coincidencias: "No hay integrantes con ese nombre.". Comparte el caché del detalle (`useTripDetail`), así los cambios de rol se ven también en el tablero.
 - **Editar rollo** (`/edit-trip?tripId=…`: `app/edit-trip.tsx` → `src/features/trips/edit-screen.tsx`; el formulario es el mismo de Crear, `trip-form.tsx`; la lógica pura vive en `edit-form.ts`: `editableFields`, `changedFields`, `lockedNote`; `use-update-trip.ts` hace `PATCH /trips/{id}`): fila "Editar rollo" en el tablero (`roll-people.tsx`), solo para admins y mientras el rollo no terminó. **Cualquier admin** cambia fechas, cupo y momento: antes del inicio, todo; en curso, no el inicio ni el tipo de cupo (nota `lockedNote`); terminado o revelado, solo el nombre (fila "Nombre"). **Solo el creador**: rollo privado, quitar admin, sacar a otro admin, borrar el rollo y **adelantar el revelado** (el server contesta "Solo quien creó el rollo puede adelantar el revelado"). Solo se manda lo que cambió; con el revelado en "Al terminar" sigue al fin. Si cambian fechas o momento, el hook corre `syncMoments()`. Los topes (30 / 200 / 31 días) los pone el server.
 - **Varios rollos por persona**, se puede volver a ver uno viejo. El **rollo activo** es el último que
-  abriste; se cambia con el selector del header (sheet "Tus rollos"). Las fechas del rollo van con
+  abriste; se cambia abriendo otro desde la tab Rollos (la lista de tus rollos; no hay selector en el header ni sheet `/trips`). Las fechas del rollo van con
   **inicio y fin** (no "cantidad de días").
 - **Momento del día (modo viaje, estilo BeReal)** (`src/features/moments/`): un aviso por día a una hora random distinta para cada uno, dentro de una
   franja (9:00–23:00 por defecto, configurable al crear el rollo con "Apagado" / "Solo foto" / "Dos cámaras"). Si un admin cambia el modo o la franja con el rollo en curso, **rige desde mañana** (`trips.moment_from_day` en el server): el de hoy conserva su hora y su modo (`trip_moments.mode`) y `GET /me/moments` trae el `mode` de cada momento, del que sale el param `selfie` (`plan.ts`); el banner de Rollo reenvía el `selfie` del aviso entregado (`currentMoment`), así la cámara respeta el modo de hoy aunque el rollo ya tenga otro. **Alargar el fin no vuelve a sortear nada**: el server solo borra los momentos sin sacar posteriores al nuevo último día (con inicio, modo o franja nuevos se sortea todo desde mañana); el formulario avisa "Los cambios valen desde mañana." en un rollo en curso. Caso borde conocido: quien estaba sin señal y ya tenía programado el aviso de mañana antes de la edición puede ver "No tenés un momento ese día" al subir esa foto. Hay **15 minutos** para sacar una foto extra, **aparte del
@@ -208,15 +208,15 @@ Decisiones de producto:
 - **"Arrancó el rollo"** (`/roll-started`, `src/features/capture/roll-started.tsx`, `use-roll-started.ts`): la primera vez que el rollo activo
   está en curso (una vez por rollo) un candado grande se sacude y se abre (SF Symbol `lock` → `lock.open` con `.symbolEffect(.replace.magic)`,
   módulo local `modules/rollo-symbol`; sin el módulo nativo cae a `expo-symbols`) con un "clac" y pasa a cámara. Texto "Arrancó el rollo.
-  Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En "Tus rollos" el badge del rollo en curso dice LIVE.
-  "Tus rollos" se agrupa con `groupTrips` (`src/features/trips/group-trips.ts`): en curso, próximos y sin revelar arriba; "Revelados" (últimos 3 meses por fecha de revelado); "Anteriores · N" colapsado (se abre solo si el rollo activo está ahí, sin recordar nada) y, al final, **"Archivados · N"** (`archived`, `archivedExpandedByDefault`: colapsado salvo que el rollo activo esté ahí; los archivados no entran en los otros grupos).
+  Tenés N fotos hoy." y botones "Sacar la primera" (abre la cámara) y "Ahora no". En la lista de Rollos el rollo en curso es una tarjeta grande con su badge LIVE.
+  La lista de Rollos se agrupa con `groupTrips` (`src/features/trips/group-trips.ts`, que también devuelve `live`, el rollo en curso que va en la tarjeta): en curso, próximos y sin revelar arriba; "Revelados" (últimos 3 meses por fecha de revelado); "Anteriores · N" colapsado (se abre solo si el rollo activo está ahí, sin recordar nada) y, al final, **"Archivados · N"** (`archived`, `archivedExpandedByDefault`: colapsado salvo que el rollo activo esté ahí; los archivados no entran en los otros grupos).
 - **Notificaciones push** (`src/features/notifications/`): las manda el backend con Expo Push Service. El token se registra con
   `PUT /me/push-tokens/{token}` atado a la sesión **solo si cambió el token o la sesión** desde el último registro exitoso (`rollo.pushTokenRegistered` en SecureStore: token + hash SHA-256 de la sesión, `src/storage/push-registered.ts`; no se renombra) y se borra al cerrar sesión y cuando un `401` la cierra (así un celular que cambia de
   cuenta no recibe avisos de la anterior). **Permiso con explicación propia** (`/push-primer`, `push-primer.tsx`): se ofrece una sola vez,
   después de crear o unirse a un rollo (`offerPushAfterJoining`; clave nueva `rollo.pushPrimerSeen`, no se renombra); si ya había permiso
   el token se registra en silencio, y si lo negó no pasa nada (queda el aviso en Ajustes). **Tocar una push** abre `data.url` (ruta de la
   app, nunca otro host) y, si trae `trip`/`tripId`, ese rollo pasa a ser el activo (`notification-target.ts`, `use-notification-response.ts`);
-  `/roll` y `/reveal` abren la tab Rollo (un revelado sin ver se reproduce desde ahí). **Siete avisos:** te sumaron a un rollo, nuevo amigo,
+  `/roll` y `/reveal` abren el rollo sobre la lista (un revelado sin ver se reproduce desde ahí). **Siete avisos:** te sumaron a un rollo, nuevo amigo,
   arrancó el rollo, se reveló, destacaron tu foto, le gustó tu foto y comentaron tu foto. Nunca por acciones propias ni de usuarios bloqueados. Se **sacó el aviso
   local del revelado**: al abrir la app se cancelan los `reveal.*` que dejaron versiones viejas (`legacy-reveal.ts`).
   **Ajustes → Notificaciones** (`settings-screen.tsx`, `GET/PATCH /me/settings`): un switch por aviso (`addedToTrip`, `newFriend`, `tripStarted`,
@@ -264,19 +264,39 @@ Decisiones de producto:
   "Invitar" del tablero. Un tema nuevo = una entrada en `topics.ts` + su test en `__tests__/info.test.tsx`.
 
 - **Barra de abajo nativa** (`NativeTabs` de `expo-router/native-tabs`, liquid glass en iOS 26), **solo
-  íconos SF Symbols**: Rollo · Mapa · **Cámara** (centro) · Amigos · Perfil. La cámara es un trigger
-  `disabled` cuyo `tabPress` abre `/capture` encima. Después del revelado: Galería · Mapa · Presentación (solo historias)
-  · Amigos · Perfil.
+  íconos SF Symbols**: Rollos · Mapa · **Cámara** (centro) · Amigos · Perfil. La cámara es un trigger
+  `disabled` cuyo `tabPress` abre `/capture` encima. El ícono de Rollos es fijo (`film.stack`, `src/features/trips/tabs.ts`) en todas las
+  fases: no hay ícono de Galería. Después del revelado el centro pasa a ser Presentación (solo historias).
+- **Rollos = la lista y la primera pantalla** (`app/(tabs)/roll/index.tsx` → `src/features/trips/rolls-screen.tsx`; `app/(tabs)/roll/[tripId].tsx` es el
+  rollo): tarjeta del rollo en curso (`live-roll-card.tsx`: portada borrosa, día, nombre, "Te quedan N fotos hoy" y un botón de cámara de ese rollo),
+  grupos de `groupTrips` (filas con miniatura, `trip-row.tsx`), menú "+" ("Nuevo rollo" / "Sumate con un código"), error con "Reintentar" cuando la lista no carga (sin datos;
+  sin red no es "no tenés rollos") y la bienvenida (`roll/welcome.tsx`) si no hay ninguno. Tocar un rollo hace push de `/roll/[tripId]`
+  (`rollHref`, `roll-href.ts`), que deja ese rollo como activo al montar. Mapa y Feed llevan de título el nombre del rollo activo. **No hay
+  `TripSwitcher` ni ruta `/trips`**: avisos, links, crear y unirse abren el rollo encima de la lista (`notification-target.ts`).
 - Mapa = mapa + Feed: control "Mapa | Feed" arriba (param `view`), el mapa queda montado al pasar al Feed y tocar una fila
   vuelve al Mapa enfocando ese pin. El segmento Feed existe solo antes del revelado. "Solo hoy" va en el menú de filtros.
   La lógica vive en `src/features/map/roll-map.tsx`, `src/features/map/activity-screen.tsx` y `src/features/feed/feed-list.tsx`.
-- Rollo = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
-  miembros con sus roles, "Nombre" (solo para admins) y "Creado por {nombre}" en el pie de Fechas): todo lo del rollo activo vive acá. Revelado, la tab es **"Galería | Rollo"** (control arriba, param `view`:
+- El rollo (`/roll/[tripId]`) = tablero (hoja de contacto, cupo de hoy, fechas, estado de subidas, "Invitar" con código y compartir,
+  miembros con sus roles, "Nombre" (solo para admins) y "Creado por {nombre}" en el pie de Fechas): muestra el rollo de la ruta (`/roll/[tripId]`, el que se tocó en la lista de Rollos o el rollo en vivo). Revelado, esa pantalla es **"Galería | Rollo"** (control arriba, param `view`:
   `gallery` por defecto o `roll`, como "Mapa | Feed"; la galería queda montada y su toolbar solo se ve en Galería). El
   segmento Rollo es una lista agrupada con el resumen ("64 fotos · 3 videos · 8 personas · 6 días"), Fechas (el mismo
   `RollDates` del tablero), subidas y miembros/invitar, sin "Hoy" ni hoja de contacto (`src/features/roll/revealed-roll-screen.tsx`,
   `roll-overview.tsx`). La actividad
   ("Cami sacó una foto · 14:32", con la hora de captura) vive solo en el Feed (dentro de Mapa).
+- **Galería Diario** (spec `docs/superpowers/specs/2026-11-24-galeria-diario-y-rollos-design.md`; `src/features/gallery/`): la grilla es un diario con
+  **capítulos** (`chapters.ts`, `buildChapters`): en un viaje uno por día con el kicker "DÍA N" (`dayNumber`, contado desde el inicio del rollo); en un
+  evento uno por grupo (la foto va al primer grupo según el orden del evento; el kicker "GRUPO" solo si se muestra el título del grupo) y, si un grupo
+  pasa de 40 fotos (`SPLIT_THRESHOLD`), se parte en **bloques de 2 horas** ("De 20 a 22 h", con el día si el evento dura varios) en la zona del
+  evento; las que no caen en ningún grupo van al final en "Otras fotos". **Foto grande** (`hero-cell.tsx`, `pickHero` en `chapter-picks.ts`): solo
+  en capítulos de 4 fotos o más, la foto (no video, no archivada) con más "me gusta". **Citas** (`quote-row.tsx`, `pickQuotes`): hasta 2 fotos con
+  texto por capítulo, las de más "me gusta" (empate: la más temprana), a todo el ancho entre filas; la primera tras la primera fila y la segunda a
+  mitad del capítulo **solo si una fila completa de fotos la separa de la primera** (si no, se descarta). `grid-items.ts` (`diaryItems`) arma todo
+  como una lista plana para FlashList. **Lugar** de cada capítulo (`place.ts`, `use-chapter-place.ts`, `chapter-header.tsx`): mediana de las
+  coordenadas de **todas** las fotos cargadas del día (sin filtrar, así elegir una cara no vuelve a geocodificar), redondeada a ~1 km (`placeKey`) y geocodificada con `expo-location` (el geocodificador de iOS); se guarda en el caché
+  de TanStack Query **7 días** y se comparte entre capítulos cercanos; sin GPS o sin nombre no se muestra nada. **Caras** (`people-row.tsx`,
+  `people-order.ts`): una fila de avatares arriba reemplaza al "Filtrar por persona" de la toolbar (miembros en el orden del rollo y después
+  autores que ya no están; elegida = aro cobalto; tocar de nuevo la cara elegida vuelve a "Todos"). Los **eventos no llevan línea de lugar** (`placeable: false`: solo los capítulos de un viaje la tienen). **Resumen** arriba con el formato de `rollSummary`
+  ("64 fotos · 3 videos · 8 personas · 6 días"); mientras cargan las páginas usa `totalUploaded` del server para que no vaya creciendo.
 - Perfil = lo que ven los demás, **sin título visible en la barra** (solo los botones de actividad y ajustes; `title: "Perfil"` queda para el botón de volver y VoiceOver; pantalla en `src/features/profile/me-screen.tsx`): encabezado **centrado** (`profile-header.tsx`; sin card, sobre el fondo: foto de 96 pt arriba; abajo, centrados, nombre (`type.title`, hasta 3 renglones), @usuario con la insignia, descripción (serif del sistema), la línea de números "8 rollos · 34 fotos · 12 amigos" (un solo botón si tiene amigos, ver "Perfil de cualquier usuario") y, en el de otro, "N amigos en común" aparte; un solo margen de 16 pt, el de `Screen`, igual que el control "Fotos | Mapa" y el título grande, con la grilla de punta a punta) y "Fotos | Mapa" (tus destacadas y sus
   zonas). No carga datos de ningún rollo. El engranaje abre **Ajustes** (`/settings`): "Editar perfil" (nombre, @, descripción;
   ahí se ve el email, de solo lectura), "Perfil público", "Notificaciones", "Desarrollo" (solo dev: "Probar subida en segundo plano", "Probar momento ahora", "Ver revelado", "Ver candado" y "Ver intro", que muestran esos momentos siempre), "Mapa sin señal" (ajuste del celular) y
@@ -291,8 +311,8 @@ Decisiones de producto:
   arriba a la derecha: r 34 / 24 / 14, opacidades 0.18 / 0.38 / 1) y **cobalto** como color de marca
   (`colors.tint`: claro `#3155F5`, oscuro `#5C7CFF`; `colors.onTint` es el blanco del texto encima). Es el
   acento del sistema y aparece **solo en acciones y en lo seleccionado, nunca de relleno**.
-  - **Sí:** la tab activa, los botones `primary`, los links y acciones de texto ("Reintentar", chevron del
-    TripSwitcher, check del selector de rollos), en el Mapa el filtro elegido / el punto de ubicación / el halo
+  - **Sí:** la tab activa, los botones `primary`, los links y acciones de texto ("Reintentar"), el aro de la cara elegida en
+    la fila de caras de la Galería, el botón de cámara de la tarjeta del rollo en curso, en el Mapa el filtro elegido / el punto de ubicación / el halo
     del pin seleccionado, y "Mandar al rollo".
   - **No:** fondos, textos, cards, contadores, íconos inactivos, `memberColor` ni el badge rojo de la cámara.
   - MapLibre no acepta colores dinámicos: ahí se usa `tintHex[scheme]` según `useColorScheme`.
@@ -345,7 +365,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
 
 ```
 app/                    Solo rutas (Expo Router). Pantallas finas: arman hooks y componentes de features.
-  (tabs)/               NativeTabs: roll, map (+ Feed), camera (abre /capture o /presentation), friends, me; cada una con su Stack
+  (tabs)/               NativeTabs: roll (lista de rollos + roll/[tripId]), map (+ Feed), camera (abre /capture o /presentation), friends, me; cada una con su Stack
   photo/[id].tsx        visor de una foto revelada; presentation.tsx, capture.tsx, create.tsx, join.tsx, settings.tsx...
   friends/[code].tsx    link de amistad (fuera del grupo protegido; el perfil de un amigo es (tabs)/friends/user/[id])
   reveal.tsx, roll-started.tsx  el revelado y "Arrancó el rollo" (fullScreenModal; fino, usan `src/features/reveal` y `capture`)
@@ -575,7 +595,7 @@ de la app (`src/features/map/style.ts` + `positron.json`): si cambia la paleta, 
 Hecho: crear rollo configurable (fechas, cupos, revelado), unirse con código, etapas del rollo, cámara con
 preview, cola offline con subida en segundo plano, cache persistente, Mapa (pins agrupados, carrusel, filtros)
 con el Feed adentro, Amigos (tab, link de amistad, perfil con rollos en común, sumar a un rollo), fotos destacadas en el
-perfil (grilla, mapa por zonas, perfil público o solo amigos, perfil de cualquier miembro o autor), identidad (cobalto, ícono, splash) y el revelado: tabs Galería · Mapa · Presentación · Amigos · Perfil, cuentas (email + código, perfil con foto y descripción), presentación
+perfil (grilla, mapa por zonas, perfil público o solo amigos, perfil de cualquier miembro o autor), identidad (cobalto, ícono, splash) y el revelado: tabs Rollos · Mapa · (cámara / Presentación) · Amigos · Perfil, cuentas (email + código, perfil con foto y descripción), presentación
 (enfoque + historias), galería con visor y descargas a Fotos, y notificaciones push (siete avisos, permiso, Ajustes) con "me gusta" en los visores. Corre en el iPhone
 con dev build contra el backend local.
 

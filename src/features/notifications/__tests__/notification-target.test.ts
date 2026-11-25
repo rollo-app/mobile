@@ -4,12 +4,16 @@ const response = (data: unknown, identifier = "n1") =>
   ({ notification: { request: { identifier, content: { data } } } }) as never;
 
 describe("notificationTarget", () => {
-  it("opens a roll as the active one, on its tab", () => {
-    expect(notificationTarget(response({ url: "/roll?trip=t1" }))).toEqual({ tripId: "t1", tab: true, href: "/roll" });
+  it("opens a roll as the active one, on the roll itself", () => {
+    expect(notificationTarget(response({ url: "/roll?trip=t1" }))).toEqual({ tripId: "t1", tab: true, href: "/roll/t1" });
   });
 
-  it("the reveal goes through the roll's tab, which plays it if it wasn't seen", () => {
-    expect(notificationTarget(response({ url: "/reveal?trip=t1" }))).toEqual({ tripId: "t1", tab: true, href: "/roll" });
+  it("without a roll id it opens the list", () => {
+    expect(notificationTarget(response({ url: "/roll" }))).toEqual({ tripId: null, tab: true, href: "/roll" });
+  });
+
+  it("the reveal goes through the roll itself, which plays it if it wasn't seen", () => {
+    expect(notificationTarget(response({ url: "/reveal?trip=t1" }))).toEqual({ tripId: "t1", tab: true, href: "/roll/t1" });
   });
 
   it("a friend request opens the Amigos tab", () => {

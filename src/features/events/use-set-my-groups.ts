@@ -4,7 +4,7 @@ import { myTripsKey } from "@/features/trips/use-active-trip";
 import { feedKey } from "@/features/trips/use-feed";
 import { tripKey } from "@/features/trips/use-trip-detail";
 
-/** Saves the groups you are in; refreshes the detail (your groups) and your list (the cover of "Tus rollos" follows them). */
+/** Saves the groups you are in; refreshes the detail (your groups) and your list (the cover in the Rollos list follows them). */
 export function useSetMyGroups(tripId: string) {
   const client = useQueryClient();
   return useMutation({
