@@ -1,15 +1,18 @@
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { API_URL } from "@/config";
 import { useTodayLeft } from "@/features/capture/use-today-left";
 import { Badge } from "@/ui/badge";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import type { TripSummary } from "./active";
+import { coverUri } from "./cover-uri";
 import { liveDayLabel } from "./row-state";
 import { useTripDetail } from "./use-trip-detail";
 
 const STRIPS = 16;
+const DEVICE_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+/** Behind the white text while there is no cover image (a new roll): colors.fill is near-white in light mode. */
+const FALLBACK_BG = "#2C2C2E";
 
 /** "Te quedan 6 fotos hoy" (daily limit) / "Te quedan 6 fotos en el rollo" (total limit). */
 export function leftLabel(photos: number, mode: "daily" | "total") {
@@ -21,11 +24,22 @@ export function leftLabel(photos: number, mode: "daily" | "total") {
 export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; onOpen: () => void; onCamera: () => void }) {
   const { detail } = useTripDetail(trip.id);
   const left = useTodayLeft(trip.id, detail);
-  const timeZone = detail?.trip.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const uri = trip.coverUrl ? (trip.coverUrl.startsWith("file:") ? trip.coverUrl : `${API_URL}${trip.coverUrl}`) : null;
+  const timeZone = detail?.trip.timezone ?? DEVICE_ZONE;
+  const uri = coverUri(trip.coverUrl);
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${trip.name}, en vivo`} onPress={onOpen} style={styles.card}>
+    <Pressable
+      testID="live-roll-card"
+      accessibilityRole="button"
+      accessibilityLabel={`${trip.name}, en vivo`}
+      // The camera button below is its own Pressable, which VoiceOver can't reach inside the grouped card: expose it as an action.
+      accessibilityActions={[{ name: "camera", label: "Sacar una foto" }]}
+      onAccessibilityAction={({ nativeEvent }) => {
+        if (nativeEvent.actionName === "camera") onCamera();
+      }}
+      onPress={onOpen}
+      style={styles.card}
+    >
       <Image
         source={uri ? { uri } : undefined}
         placeholder={trip.coverThumbhash ? { thumbhash: trip.coverThumbhash } : undefined}
@@ -35,7 +49,7 @@ export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; on
       />
       <View pointerEvents="none" style={styles.shade}>
         {Array.from({ length: STRIPS }, (_, i) => (
-          <View key={i} style={{ flex: 1, backgroundColor: `rgba(0,0,0,${(0.62 * ((i + 0.5) / STRIPS) ** 1.2).toFixed(3)})` }} />
+          <View key={i} style={{ flex: 1, backgroundColor: `rgba(0,0,0,${(0.2 + 0.42 * ((i + 0.5) / STRIPS) ** 1.2).toFixed(3)})` }} />
         ))}
       </View>
       <View style={styles.top}>
@@ -68,7 +82,7 @@ export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; on
 }
 
 const styles = StyleSheet.create({
-  card: { height: 180, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden", justifyContent: "space-between", padding: spacing.md, backgroundColor: colors.fill },
+  card: { height: 180, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden", justifyContent: "space-between", padding: spacing.md, backgroundColor: FALLBACK_BG },
   shade: { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, flexDirection: "column" },
   top: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   day: { color: "#FFFFFF", fontWeight: "600" },

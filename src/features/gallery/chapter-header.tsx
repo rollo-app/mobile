@@ -10,9 +10,9 @@ export function chapterLine(count: number, place: string | null) {
   return place ? `${photos} · ${place}` : photos;
 }
 
-/** The start of a chapter: kicker, serif title and "N fotos · place". */
-export const ChapterHeader = memo(function ChapterHeader({ chapter }: { chapter: Chapter }) {
-  const place = useChapterPlace(chapter.photos, chapter.placeable);
+/** The start of a chapter: kicker, serif title and "N fotos · place" (`center`: where the chapter is, from all its photos). */
+export const ChapterHeader = memo(function ChapterHeader({ chapter, center }: { chapter: Chapter; center: { lat: number; lng: number } | null }) {
+  const place = useChapterPlace(center, chapter.placeable);
   return (
     <View style={styles.wrap}>
       {!!chapter.kicker && <Text style={[type.caption, styles.kicker]}>{chapter.kicker}</Text>}

@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import * as Location from "expo-location";
-import { useMemo } from "react";
-import type { RevealedPhoto } from "@/features/media/revealed";
 import { CACHE_MAX_AGE } from "@/api/query-client";
-import { chapterCenter, placeKey, placeName } from "./place";
+import { placeKey, placeName } from "./place";
 
-/** The place name of a chapter (iOS geocoder), cached per ~1 km; null while loading, disabled or on error. */
-export function useChapterPlace(photos: RevealedPhoto[], enabled: boolean): string | null {
-  const center = useMemo(() => chapterCenter(photos), [photos]);
+/**
+ * The place name of a chapter's center (iOS geocoder), cached per ~1 km; null while loading, disabled or on error.
+ * The center comes from all of the chapter's photos (not the filtered ones) so a filter never triggers a new lookup.
+ */
+export function useChapterPlace(center: { lat: number; lng: number } | null, enabled: boolean): string | null {
   const key = center ? placeKey(center) : "";
   const { data } = useQuery({
     queryKey: ["place", key],

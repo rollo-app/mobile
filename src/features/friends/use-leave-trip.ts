@@ -12,7 +12,7 @@ import { leaveTrip } from "./actions";
 
 /**
  * "Salirme del rollo": asks first; on success the roll leaves your list. From the board (`"board"`) you land back on
- * the roll tab; from "Tus rollos" (`"list"`, "Eliminar") you stay in the list. A revealed roll can't be rejoined
+ * the roll screen; from the Rollos list (`"list"`, "Eliminar") you stay in the list. A revealed roll can't be rejoined
  * with the code, so the warning changes with `revealed`.
  */
 export function useLeaveTrip(tripId: string, tripName: string, { revealed, copy = "board" }: { revealed: boolean; copy?: "board" | "list" }) {

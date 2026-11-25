@@ -2,18 +2,18 @@ import { Image } from "expo-image";
 import { useMemo } from "react";
 import { FullWidthMenuView } from "@/ui/full-width-menu";
 import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
-import { API_URL } from "@/config";
 import { Badge } from "@/ui/badge";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import type { TripSummary } from "./active";
 import { tripRowState } from "./row-state";
 import { ROW_ACTION_TITLES, type RowActionId } from "./row-actions";
+import { coverUri } from "./cover-uri";
 import { rowTint } from "./row-tint";
 import { thumbHashAverageColor, type RGB } from "./thumbhash-color";
 
 const BADGE_LABEL = { live: "LIVE", revealed: "Revelado" } as const;
 
-/** A row of "Tus rollos": tinted with the roll's color, with its state as badge or subtitle. */
+/** A row of the Rollos list: tinted with the roll's color, with its state as badge or subtitle. */
 export function TripRow({
   trip,
   now,
@@ -84,7 +84,7 @@ export function TripRow({
 /** 40 pt rounded thumbnail: the event cover, else the blurred last photo (ThumbHash), else a neutral square. */
 function Thumbnail({ trip }: { trip: TripSummary }) {
   const placeholder = trip.coverThumbhash ? { thumbhash: trip.coverThumbhash } : undefined;
-  const uri = trip.coverUrl ? (trip.coverUrl.startsWith("file:") ? trip.coverUrl : `${API_URL}${trip.coverUrl}`) : null;
+  const uri = coverUri(trip.coverUrl);
   if (!uri && !placeholder) return <View testID="trip-row-thumb" style={[styles.thumb, { backgroundColor: colors.fill }]} />;
   return (
     <Image

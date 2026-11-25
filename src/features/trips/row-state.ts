@@ -11,7 +11,7 @@ export type TripRowState = {
   stateLabel: string | null;
 };
 
-/** What a row of "Tus rollos" says about a trip at `now`, counting days in `timeZone`. */
+/** What a row of the Rollos list says about a trip at `now`, counting days in `timeZone`. */
 export function tripRowState(trip: TripSummary, now: number, timeZone: string): TripRowState {
   const role = trip.isCreator ? "Lo creaste vos" : "Entraste con un código";
   switch (rollPhase(trip, now)) {

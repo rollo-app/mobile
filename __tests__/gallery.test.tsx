@@ -243,7 +243,7 @@ describe("Gallery", () => {
   it("shows a caption as a quote and opens its photo", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
-    const quote = await screen.findByRole("button", { name: "Cita: el glaciar" });
+    const quote = await screen.findByRole("button", { name: /^Cita: el glaciar, de Juani, \d{2}:\d{2}$/ });
     expect(within(quote).getByText("el glaciar")).toBeVisible();
     expect(within(quote).getByText(/^Juani · \d{2}:\d{2}$/)).toBeVisible();
     await fireEvent.press(quote);
@@ -262,6 +262,38 @@ describe("Gallery", () => {
     expect(screen.getByRole("button", { name: "Juani" }).props.accessibilityState).toMatchObject({ selected: true });
     await fireEvent.press(screen.getByRole("button", { name: "Todos" }));
     expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("tapping the selected face again goes back to Todos", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    await fireEvent.press(screen.getByRole("button", { name: "Juani" }));
+    expect(screen.getByRole("button", { name: "Juani" }).props.accessibilityState).toMatchObject({ selected: true });
+    await fireEvent.press(screen.getByRole("button", { name: "Juani" }));
+    expect(screen.getByRole("button", { name: "Todos" }).props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getAllByRole("button", { name: /^(Foto|Video) de / })).toHaveLength(3);
+  });
+
+  it("filtering by a face does not geocode the chapter again", async () => {
+    mockGeocode.mockResolvedValue([{ city: "El Bolsón" }]);
+    mocked.fetchFeedPage.mockResolvedValue(
+      feed([
+        item("a", { lat: -49.33, lng: -72.89, takenAt: Date.parse("2027-01-12T15:00:00Z") }),
+        item("b", {
+          lat: -41.13,
+          lng: -71.31,
+          takenAt: Date.parse("2027-01-12T16:00:00Z"),
+          author: { id: "m1", userId: "u-m1", name: "Juani", username: null, avatarUrl: null },
+        }),
+      ]),
+    );
+    await open();
+    expect(await screen.findByText("2 fotos · El Bolsón")).toBeVisible();
+    expect(mockGeocode).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole("button", { name: "Juani" }));
+    expect(await screen.findByText("1 foto · El Bolsón")).toBeVisible();
+    expect(mockGeocode).toHaveBeenCalledTimes(1);
   });
 
   const eventDetail = (me: Partial<actions.TripDetail["me"]>): actions.TripDetail => {

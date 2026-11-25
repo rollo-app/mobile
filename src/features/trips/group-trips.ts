@@ -18,7 +18,7 @@ export type TripGroups = {
   archivedExpandedByDefault: boolean;
 };
 
-/** Splits the list of "Tus rollos" into sections at `now`. Exactly 3 months ago still counts as recent. */
+/** Splits the Rollos list into sections at `now`. Exactly 3 months ago still counts as recent. */
 export function groupTrips(trips: TripSummary[], now: number, activeId: string | null): TripGroups {
   const cutoff = new Date(now);
   cutoff.setUTCMonth(cutoff.getUTCMonth() - 3);

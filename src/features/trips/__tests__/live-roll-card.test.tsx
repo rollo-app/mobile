@@ -1,3 +1,4 @@
+import { StyleSheet } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { tripSummary } from "@/test/account";
 import { LiveRollCard, leftLabel } from "../live-roll-card";
@@ -46,5 +47,20 @@ describe("LiveRollCard", () => {
     expect(onCamera).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByRole("button", { name: "Sur, en vivo" }));
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("exposes the camera as an accessibility action of the card", async () => {
+    const onCamera = jest.fn();
+    await render(<LiveRollCard trip={trip} onOpen={() => {}} onCamera={onCamera} />);
+    const card = screen.getByTestId("live-roll-card");
+    expect(card.props.accessibilityActions).toEqual([{ name: "camera", label: "Sacar una foto" }]);
+    await fireEvent(card, "accessibilityAction", { nativeEvent: { actionName: "camera" } });
+    expect(onCamera).toHaveBeenCalledTimes(1);
+  });
+
+  it("has a dark background without a cover so the white text stays readable", async () => {
+    await render(<LiveRollCard trip={{ ...trip, coverUrl: null, coverThumbhash: null }} onOpen={() => {}} onCamera={() => {}} />);
+    const { backgroundColor } = StyleSheet.flatten(screen.getByTestId("live-roll-card").props.style);
+    expect(backgroundColor).toBe("#2C2C2E");
   });
 });

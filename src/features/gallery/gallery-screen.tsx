@@ -27,6 +27,7 @@ import { buildChapters, type ChapterContext } from "./chapters";
 import { ChapterHeader } from "./chapter-header";
 import { Cell } from "./gallery-cell";
 import { GalleryToolbar } from "./gallery-toolbar";
+import { chapterCenter } from "./place";
 import { authorsOf, filterByAuthor, filterByGroup } from "./group";
 import { diaryItems, type GridItem } from "./grid-items";
 import { HeroCell } from "./hero-cell";
@@ -117,6 +118,16 @@ export function GalleryScreen({
   }, [detail, sendable, groupsKey, photos]);
   const chapters = useMemo(() => buildChapters(shown, chapterContext), [shown, chapterContext]);
   const items = useMemo(() => diaryItems(chapters, COLUMNS), [chapters]);
+  // Where each day's chapter is, from ALL its loaded photos: a filter must not move the center (and so re-geocode).
+  const placeCenters = useMemo(() => {
+    const byDay = new Map<string, RevealedPhoto[]>();
+    for (const photo of photos) {
+      const list = byDay.get(photo.day);
+      if (list) list.push(photo);
+      else byDay.set(photo.day, [photo]);
+    }
+    return new Map<string, ReturnType<typeof chapterCenter>>([...byDay].map(([day, list]) => [`trip:${day}`, chapterCenter(list)]));
+  }, [photos]);
   const people = useMemo(() => (detail && me ? peopleOrder(detail.members, me.id, authors) : []), [detail, me, authors]);
   // Until every page is in, the photo count is the server's total, so the line doesn't grow while loading.
   const summary = useMemo(
@@ -186,7 +197,7 @@ export function GalleryScreen({
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<GridItem>) => {
-      if (item.kind === "chapter") return <ChapterHeader chapter={item.chapter} />;
+      if (item.kind === "chapter") return <ChapterHeader chapter={item.chapter} center={placeCenters.get(item.chapter.key) ?? null} />;
       const { photo } = item;
       const own = revealed && !!me && photo.authorUserId === me.id;
       if (item.kind === "quote")
@@ -224,7 +235,7 @@ export function GalleryScreen({
         </View>
       );
     },
-    [token, size, width, timeZone, selecting, selected, revealed, me, onCellPress, onToggleFeatured, onOwnAction],
+    [token, size, width, timeZone, selecting, selected, revealed, me, onCellPress, onToggleFeatured, onOwnAction, placeCenters],
   );
   const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
 

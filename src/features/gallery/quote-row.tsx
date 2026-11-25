@@ -22,7 +22,7 @@ export const QuoteRow = memo(function QuoteRow({ photo, timeZone, selecting, sel
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Cita: ${photo.caption}`}
+      accessibilityLabel={`Cita: ${photo.caption}, de ${photo.author.name}, ${time}`}
       accessibilityState={selecting ? { selected } : undefined}
       onPress={() => onPress(photo)}
       style={styles.row}

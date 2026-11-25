@@ -34,7 +34,7 @@ export function PeopleRow({ people, selectedId, onSelect }: Props) {
         </View>
       </Item>
       {people.map((p) => (
-        <Item key={p.id} label={p.name} name={firstName(p.name)} selected={selectedId === p.id} onPress={() => onSelect(p.id)}>
+        <Item key={p.id} label={p.name} name={firstName(p.name)} selected={selectedId === p.id} onPress={() => onSelect(selectedId === p.id ? null : p.id)}>
           <Avatar id={p.id} name={p.name} avatarUrl={p.avatarUrl} size={SIZE} />
         </Item>
       ))}
