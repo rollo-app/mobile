@@ -1,5 +1,5 @@
 import type { TripDetail } from "@/features/trips/actions";
-import { canShareInvite, inviteCaption, inviteLink, inviteSwatches } from "../invite";
+import { canShareInvite, inviteCaption, inviteLink, inviteMessage, inviteSwatches, whatsAppInviteMessage } from "../invite";
 
 jest.mock("@/features/trips/thumbhash-color", () => ({
   thumbHashAverageColor: jest.fn((hash: string) => (hash === "bad" ? null : { r: hash.length, g: 2, b: 3 })),
@@ -108,5 +108,17 @@ describe("inviteSwatches", () => {
 describe("inviteLink", () => {
   it("is the public join link of the rollo's code", () => {
     expect(inviteLink(detail())).toBe("https://rolloproject.com/join/ABC123");
+  });
+});
+
+describe("invite messages", () => {
+  const named = { ...detail(), trip: { ...detail().trip, name: "Viaje al sur" } } as TripDetail;
+
+  it("the general message quotes the name (it may land anywhere: iMessage, mail…)", () => {
+    expect(inviteMessage(named)).toBe('Sumate a "Viaje al sur" en Rollo: https://rolloproject.com/join/ABC123');
+  });
+
+  it("the WhatsApp message puts the name in bold with WhatsApp's asterisks", () => {
+    expect(whatsAppInviteMessage(named)).toBe("Sumate a *Viaje al sur* en Rollo: https://rolloproject.com/join/ABC123");
   });
 });

@@ -12,7 +12,7 @@ import { ErrorText, Footnote, Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
-import { inviteCaption, inviteLink, inviteMessage, inviteSwatches } from "./invite";
+import { inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
 import { renderInviteCard } from "./render-invite";
@@ -179,7 +179,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
             onInstagram={() => void shareStories()}
             // The invitation goes as text with the join link: WhatsApp draws the link's preview (the site's card for this roll).
             onWhatsApp={() =>
-              void share(() => (isCollage ? shareImageToWhatsApp(assets.stillUri!) : shareTextToWhatsApp(inviteMessage(detail!))), false)
+              void share(() => (isCollage ? shareImageToWhatsApp(assets.stillUri!) : shareTextToWhatsApp(whatsAppInviteMessage(detail!))), false)
             }
             onMore={() => void share((link) => shareMore(assets.stillUri!, link), true)}
             onCopyLink={isCollage ? undefined : () => void copyLink()}

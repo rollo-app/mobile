@@ -34,3 +34,6 @@ export const inviteLink = (detail: TripDetail): string => joinLinkUrl(detail.tri
 
 /** The invitation text shared as a message: the link leads to the roll's join screen (any roll). */
 export const inviteMessage = (detail: TripDetail): string => `Sumate a "${detail.trip.name}" en Rollo: ${inviteLink(detail)}`;
+
+/** The invitation for WhatsApp: the name between asterisks, which WhatsApp shows in bold (elsewhere they'd show as is). */
+export const whatsAppInviteMessage = (detail: TripDetail): string => `Sumate a *${detail.trip.name}* en Rollo: ${inviteLink(detail)}`;

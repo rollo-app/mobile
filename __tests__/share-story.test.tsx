@@ -237,7 +237,7 @@ describe("Compartir screen", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "WhatsApp" }));
     await waitFor(() => expect(story.shareTextToWhatsApp).toHaveBeenCalledTimes(1));
     const text = story.shareTextToWhatsApp.mock.calls[0]![0];
-    expect(text).toMatch(/^Sumate a ".+" en Rollo: https:\/\/rolloproject\.com\/join\/HUB5FT$/);
+    expect(text).toMatch(/^Sumate a \*[^*]+\* en Rollo: https:\/\/rolloproject\.com\/join\/HUB5FT$/);
     expect(story.shareImageToWhatsApp).not.toHaveBeenCalled();
     expect(clipboard.setStringAsync).not.toHaveBeenCalled();
   });
