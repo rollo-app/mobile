@@ -1,25 +1,25 @@
 import * as Clipboard from "expo-clipboard";
-import { Image } from "expo-image";
+import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from "react-native";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import { memberTotal } from "@/features/trips/member-total";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Footnote, Loading, Screen } from "@/ui/components";
-import { colors, radius, spacing, type } from "@/ui/theme";
+import { colors, spacing, tintHex, type } from "@/ui/theme";
 import { canShuffle, collageCandidates, collageCaption, nextSeed, pickCollage } from "./collage";
 import { inviteCaption, inviteLink, inviteSwatches } from "./invite";
-import { composeStill } from "./compose-still";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
 import { renderInviteCard } from "./render-invite";
 import { instagramStoriesAvailable, isShareCancel, shareMore, shareToInstagramStories } from "./share-story";
-import { STYLE_ASSETS, STYLE_PALETTE } from "./story-style";
-import { useStoryImage } from "./use-story-image";
+import { StoryPreview, STORY_RATIO } from "./story-preview";
+import { DEFAULT_STYLE, STORY_STYLES, STYLE_ASSETS, STYLE_LABEL, STYLE_PALETTE, styleFromLabel } from "./story-style";
+import { useStoryAssets } from "./use-story-assets";
 
-const STORY_RATIO = 9 / 16;
+const STYLE_LABELS = STORY_STYLES.map((s) => STYLE_LABEL[s]);
 /** The preview never takes more than this share of the screen's height. */
 const MAX_PREVIEW_HEIGHT = 0.62;
 
@@ -29,6 +29,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const { photos, complete, loadAll } = useRevealedPhotos(tripId);
   const { feed, loading: feedLoading, error: feedError, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
   const [seed, setSeed] = useState(1);
+  const [style, setStyle] = useState(DEFAULT_STYLE);
+  const scheme = useColorScheme() ?? "light";
   const [loadedAll, setLoadedAll] = useState(false);
   const [instagram, setInstagram] = useState(false);
   const [shareFailed, setShareFailed] = useState(false);
@@ -64,30 +66,25 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
     const { trip } = detail;
     if (isCollage) {
       const caption = collageCaption({ startsAt: trip.startsAt, endsAt: trip.endsAt, timeZone: trip.timezone, people: memberTotal(detail) });
-      // Temporary until the style picker lands: the dark card over the dark background.
-      return async () => {
-        const card = await renderCollageCard({ name: trip.name, caption, photos: pickCollage(candidates, seed), style: "dark" });
-        return { card: card.png, still: await composeStill(card, "dark") };
-      };
+      return () => renderCollageCard({ name: trip.name, caption, photos: pickCollage(candidates, seed), style });
     }
-    return async () => {
-      const card = await renderInviteCard({
+    return () =>
+      renderInviteCard({
         name: trip.name,
         caption: inviteCaption(detail),
         code: trip.joinCode,
         coverUrl: trip.coverUrl ?? null,
         swatches: inviteSwatches(thumbhashes),
-        style: "dark",
+        style,
       });
-      return { card: card.png, still: await composeStill(card, "dark") };
-    };
-  }, [detail, ready, empty, feedFailed, isCollage, candidates, seed, thumbhashes]);
+  }, [detail, ready, empty, feedFailed, isCollage, candidates, seed, thumbhashes, style]);
 
-  const image = useStoryImage(build, `${tripId}:${kind}:${isCollage ? seed : 0}`, kind);
+  const version = `${tripId}:${kind}:${isCollage ? seed : 0}`;
+  const assets = useStoryAssets(build, version, kind, style);
 
   /** The invitation has no link inside the image: it travels with the share. `copy`: also in the clipboard (the system sheet doesn't touch it). */
   async function share(send: (link: string | undefined) => Promise<void>, copy: boolean) {
-    if (!image.uri || !image.cardUri || !detail) return;
+    if (!assets.stillUri || !assets.card || !detail) return;
     setShareFailed(false);
     try {
       const link = isCollage ? undefined : inviteLink(detail);
@@ -102,14 +99,16 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
     share(
       async (link) =>
         shareToInstagramStories({
-          stickerUri: image.cardUri!,
-          backgroundVideoUri: await assetUri(STYLE_ASSETS.dark.video),
-          backgroundColor: STYLE_PALETTE.dark.base,
+          stickerUri: assets.card!.uri,
+          backgroundVideoUri: await assetUri(STYLE_ASSETS[style].video),
+          backgroundColor: STYLE_PALETTE[style].base,
           linkText: link,
         }),
       false,
     );
 
+  // Switching style redraws: until the new files exist the preview keeps the base color and video, and sharing waits.
+  const filesReady = assets.card !== null && assets.stillUri !== null;
   const previewHeight = Math.min((width - spacing.md * 2) / STORY_RATIO, height * MAX_PREVIEW_HEIGHT);
 
   return (
@@ -126,21 +125,20 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <Button label="Reintentar" variant="secondary" onPress={() => void refetchFeed()} />
         </>
       )}
-      {image.error && (
+      {assets.error && (
         <>
           <ErrorText>No se pudo armar la imagen. Probá de nuevo.</ErrorText>
-          <Button label="Reintentar" variant="secondary" onPress={image.retry} />
+          <Button label="Reintentar" variant="secondary" onPress={assets.retry} />
         </>
       )}
-      {!detailError && !empty && !feedFailed && !image.error && !image.uri && <Loading />}
-      {image.uri !== null && (
+      {!detailError && !empty && !feedFailed && !assets.error && build === null && <Loading />}
+      {build !== null && !assets.error && (
         <>
-          <View style={[styles.preview, { height: previewHeight }]}>
-            <Image accessibilityLabel="Vista previa" source={{ uri: image.uri, cacheKey: `${tripId}:${kind}:${seed}` }} cachePolicy="none" contentFit="cover" style={styles.image} />
-          </View>
+          <StoryPreview style={style} card={assets.card} height={previewHeight} version={version} />
+          <SegmentedControl values={STYLE_LABELS} tintColor={tintHex[scheme]} selectedIndex={STORY_STYLES.indexOf(style)} onValueChange={(v) => setStyle(styleFromLabel(v))} />
           <View style={styles.actions}>
-            {instagram && <Button label="Compartir en Stories" onPress={() => void shareStories()} />}
-            <Button label="Más opciones" variant={instagram ? "secondary" : "primary"} onPress={() => void share((link) => shareMore(image.uri!, link), true)} />
+            {instagram && <Button label="Compartir en Stories" disabled={!filesReady} onPress={() => void shareStories()} />}
+            <Button label="Más opciones" disabled={!filesReady} variant={instagram ? "secondary" : "primary"} onPress={() => void share((link) => shareMore(assets.stillUri!, link), true)} />
             {isCollage && canShuffle(candidates) && (
               <Pressable accessibilityRole="button" onPress={() => setSeed((s) => nextSeed(candidates, s))} style={styles.shuffle}>
                 <Text style={[type.body, { color: colors.tint }]}>Otras</Text>
@@ -156,8 +154,6 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
 }
 
 const styles = StyleSheet.create({
-  preview: { alignSelf: "center", aspectRatio: STORY_RATIO, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden", backgroundColor: colors.fill },
-  image: { flex: 1 },
   actions: { gap: spacing.sm },
   shuffle: { alignItems: "center", justifyContent: "center", minHeight: 44 },
 });

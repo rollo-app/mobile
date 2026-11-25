@@ -31,8 +31,9 @@ const clipboard = jest.mocked(Clipboard);
 
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
-const FILE = "file:///cache/rollo-story.jpg";
-const STORIES = { stickerUri: FILE, backgroundVideoUri: "file:///assets/bg-dark.mp4", backgroundColor: "#0b0b0c" };
+const CARD_FILE = (kind: "collage" | "invite") => `file:///cache/rollo-${kind}-card.png`;
+const STILL_FILE = (kind: "collage" | "invite") => `file:///cache/rollo-${kind}-still.jpg`;
+const STORIES = { stickerUri: CARD_FILE("collage"), backgroundVideoUri: "file:///assets/bg-dark.mp4", backgroundColor: "#0b0b0c" };
 
 const detail = (over: Partial<tripActions.Trip> = {}): tripActions.TripDetail => {
   const me = { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" as const, isCreator: true, blockedByMe: false, groupIds: [] };
@@ -108,11 +109,17 @@ beforeEach(async () => {
   collage.mockResolvedValue({ png: new Uint8Array([1]), width: 920, height: 1100 });
   invite.mockResolvedValue({ png: new Uint8Array([2]), width: 920, height: 1300 });
   still.mockResolvedValue(new Uint8Array([3]));
-  story.writeShareFile.mockResolvedValue(FILE);
+  // A distinct uri per file, so sharing the card where the still belongs (or the reverse) fails a test.
+  story.writeShareFile.mockImplementation(async (_bytes, name) => `file:///cache/${name}`);
   story.instagramStoriesAvailable.mockResolvedValue(true);
   story.shareToInstagramStories.mockResolvedValue(undefined);
   story.shareMore.mockResolvedValue(undefined);
 });
+
+/** The files exist: the card is on the preview (the buttons are disabled until then). */
+const filesReady = () => screen.findByLabelText("Vista previa");
+
+const lastStyle = (mock: jest.Mock) => mock.mock.calls.at(-1)![0].style;
 
 describe("Compartir screen", () => {
   it("collage: shows the preview, Compartir en Stories and Otras; Otras rebuilds with a new seed", async () => {
@@ -138,11 +145,12 @@ describe("Compartir screen", () => {
     expect(screen.queryByRole("button", { name: "Compartir en Stories" })).toBeNull();
 
     await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
-    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(FILE, undefined));
+    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("collage"), undefined));
   });
 
   it("collage: Stories is shared without a link", async () => {
     await open("collage");
+    await filesReady();
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
     await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(STORIES));
     expect(clipboard.setStringAsync).not.toHaveBeenCalled();
@@ -180,16 +188,84 @@ describe("Compartir screen", () => {
     expect(invite).toHaveBeenCalledWith(expect.objectContaining({ name: "Viaje al sur", code: "HUB5FT", coverUrl: null }));
     expect(invite.mock.calls[0]![0].swatches.length).toBeGreaterThan(0);
 
+    await filesReady();
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
-    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith({ ...STORIES, linkText: expect.stringContaining("HUB5FT") }));
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith({ ...STORIES, stickerUri: CARD_FILE("invite"), linkText: expect.stringContaining("HUB5FT") }));
     // The Stories pasteboard write replaces the clipboard: the link travels in the Stories call, not through expo-clipboard.
     expect(clipboard.setStringAsync).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
-    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(FILE, expect.stringContaining("HUB5FT")));
+    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("invite"), expect.stringContaining("HUB5FT")));
     expect(clipboard.setStringAsync).toHaveBeenCalledTimes(1);
     expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("HUB5FT"));
     expect(order).toEqual(["stories", "copy"]);
+  });
+
+  it("defaults to Oscuro and switching to Claro rebuilds with the light style", async () => {
+    await open("collage");
+    expect(await screen.findByLabelText("Vista previa")).toBeVisible();
+    expect(collage.mock.calls[0]![0].style).toBe("dark");
+    expect(still.mock.calls[0]![1]).toBe("dark");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Claro" }));
+    await waitFor(() => expect(collage).toHaveBeenCalledTimes(2));
+    expect(lastStyle(collage as unknown as jest.Mock)).toBe("light");
+    expect(still.mock.calls.at(-1)![1]).toBe("light");
+  });
+
+  it("Stories shares the card as sticker over the style's video", async () => {
+    await open("collage");
+    await fireEvent.press(await screen.findByRole("button", { name: "Claro" }));
+    await waitFor(() => expect(collage).toHaveBeenCalledTimes(2));
+    await filesReady();
+    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledTimes(1));
+    const call = story.shareToInstagramStories.mock.calls[0]![0];
+    expect(call.stickerUri).toBe(CARD_FILE("collage"));
+    expect(call.backgroundColor).toBe("#f3efe8");
+    expect(call.backgroundVideoUri).toMatch(/^file:\/\/\/assets\//);
+  });
+
+  it("Más opciones shares the composed still of the chosen style", async () => {
+    await open("collage");
+    await fireEvent.press(await screen.findByRole("button", { name: "Claro" }));
+    await waitFor(() => expect(still).toHaveBeenCalledWith(expect.anything(), "light"));
+    await filesReady();
+    await fireEvent.press(await screen.findByRole("button", { name: "Más opciones" }));
+    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("collage"), undefined));
+  });
+
+  it("switching style twice shares the last one", async () => {
+    await open("collage");
+    await fireEvent.press(await screen.findByRole("button", { name: "Claro" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Oscuro" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Claro" }));
+    await waitFor(() => expect(lastStyle(collage as unknown as jest.Mock)).toBe("light"));
+    await filesReady();
+    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(expect.objectContaining({ backgroundColor: "#f3efe8" })));
+  });
+
+  it("without Instagram only Más opciones, with the chosen style's still", async () => {
+    story.instagramStoriesAvailable.mockResolvedValue(false);
+    await open("invite");
+    await fireEvent.press(await screen.findByRole("button", { name: "Claro" }));
+    await waitFor(() => expect(still).toHaveBeenCalledWith(expect.anything(), "light"));
+    expect(screen.queryByRole("button", { name: "Compartir en Stories" })).toBeNull();
+    await filesReady();
+    await fireEvent.press(await screen.findByRole("button", { name: "Más opciones" }));
+    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("invite"), expect.stringContaining("HUB5FT")));
+    expect(lastStyle(invite as unknown as jest.Mock)).toBe("light");
+  });
+
+  it("the preview shows the card over the base color even if the video never plays", async () => {
+    await open("collage");
+    const card = await screen.findByLabelText("Vista previa");
+    expect(card).toBeVisible();
+    expect([card.props.source].flat()[0].uri).toBe(CARD_FILE("collage"));
+    expect(screen.getByTestId("story-preview")).toHaveStyle({ backgroundColor: "#0b0b0c" });
+    await fireEvent.press(screen.getByRole("button", { name: "Claro" }));
+    await waitFor(() => expect(screen.getByTestId("story-preview")).toHaveStyle({ backgroundColor: "#f3efe8" }));
   });
 
   it("render failure shows the error and Reintentar rebuilds", async () => {
@@ -206,7 +282,7 @@ describe("Compartir screen", () => {
 
   it("a cancelled share shows no error; another failure shows it", async () => {
     await open("collage");
-    await screen.findByRole("button", { name: "Compartir en Stories" });
+    await filesReady();
 
     story.shareMore.mockRejectedValueOnce(new Error("User did not share"));
     await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
