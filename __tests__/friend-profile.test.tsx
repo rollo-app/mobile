@@ -92,6 +92,8 @@ const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserPr
   canSee: true,
   friendCount: 12,
   mutualCount: 0,
+  rollCount: null,
+  featuredCount: null,
   friendRequest: "none",
   ...over,
 });
