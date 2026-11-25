@@ -58,6 +58,7 @@ const detail = (id = SUR, name = "Viaje al sur"): actions.TripDetail => ({
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
   },

@@ -119,6 +119,7 @@ describe("Members", () => {
         contest: null,
         type: "trip",
         coverUrl: null,
+        coverFocusY: null,
         groups: [],
         createdBy: null,
       },

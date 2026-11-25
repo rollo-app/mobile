@@ -61,6 +61,7 @@ const detail = (id: string, name: string, revealed: boolean): tripActions.TripDe
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
   },

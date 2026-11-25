@@ -53,6 +53,7 @@ const detail = (role: "admin" | "member" = "admin"): actions.TripDetail => ({
     contest: null,
     type: "trip",
     coverUrl: null,
+    coverFocusY: null,
     groups: [],
     createdBy: null,
   },

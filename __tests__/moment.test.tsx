@@ -78,6 +78,7 @@ function tripDetail(momentMode: "off" | "photo" | "photo_selfie"): actions.TripD
       contest: null,
       type: "trip",
       coverUrl: null,
+      coverFocusY: null,
       groups: [],
       createdBy: null,
     },
