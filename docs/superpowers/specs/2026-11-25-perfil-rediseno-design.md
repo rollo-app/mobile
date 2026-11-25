@@ -115,8 +115,8 @@ de la maqueta)*. El error sigue inline debajo, centrado. Lógica y optimismo no 
   **`useUser(me.id)`** (la misma query del perfil de otro) *(decisión de Claude)*; amigos sigue saliendo de `useFriends()` para que
   cambie al toque. Mientras `useUser` carga, la línea muestra solo amigos (sin hueco que salte: se acepta que rollos y fotos
   aparezcan un instante después). Excepción: con 0 amigos no se muestra "Todavía no tenés amigos" hasta que `useUser` resuelva,
-  para que no aparezca y se reemplace enseguida *(decisión de Claude)*. Destacar o sacar una foto, y "Borrar amigo"/bloquear, tienen que invalidar también la query de
-  `useUser` del dueño para que "fotos" no quede viejo.
+  para que no aparezca y se reemplace enseguida *(decisión de Claude)*. Para que "fotos" no quede viejo al destacar o sacar una foto, se usa el largo de la grilla ya
+  cargada (`useFeatured`, que ya se invalida en todos esos casos) y `featuredCount` solo mientras la grilla no cargó.
 - `ProfileHeader`: nuevo layout centrado; recibe los números ya resueltos (p. ej. `stats: { rolls?: number | null; photos?:
   number | null; friends: {...} }`). La forma exacta de las props la decide quien implementa (evitar props booleanas nuevas; ver
   "Composición" en `CLAUDE.md`).
