@@ -617,7 +617,7 @@ jest.mock("react-native-share", () => ({
   __esModule: true,
   default: {
     shareSingle: jest.fn(async () => ({ success: true, message: "" })),
-    Social: { INSTAGRAM_STORIES: "instagramstories" },
+    Social: { INSTAGRAM_STORIES: "instagramstories", WHATSAPP: "whatsapp" },
   },
 }));
 

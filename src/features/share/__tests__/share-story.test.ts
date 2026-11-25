@@ -2,7 +2,7 @@ import { Linking, Share as NativeShare } from "react-native";
 import { File } from "expo-file-system";
 import Share from "react-native-share";
 import { META_APP_ID } from "@/config";
-import { instagramStoriesAvailable, isShareCancel, shareMore, shareToInstagramStories, writeShareFile } from "../share-story";
+import { instagramStoriesAvailable, isShareCancel, shareImageToWhatsApp, shareMore, shareToInstagramStories, writeShareFile } from "../share-story";
 
 describe("instagramStoriesAvailable", () => {
   it("is false without an app id and doesn't ask the system", async () => {
@@ -81,5 +81,12 @@ describe("isShareCancel", () => {
     expect(isShareCancel(new Error("other"))).toBe(false);
     expect(isShareCancel("User did not share")).toBe(false);
     expect(isShareCancel(null)).toBe(false);
+  });
+});
+
+describe("shareImageToWhatsApp", () => {
+  it("sends the image to WhatsApp as a JPEG", async () => {
+    await shareImageToWhatsApp("file:///cache/still.jpg");
+    expect(Share.shareSingle).toHaveBeenLastCalledWith({ social: Share.Social.WHATSAPP, url: "file:///cache/still.jpg", type: "image/jpeg" });
   });
 });

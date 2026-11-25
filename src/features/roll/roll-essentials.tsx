@@ -1,10 +1,9 @@
 import { router } from "expo-router";
 import { Share, StyleSheet, View } from "react-native";
 import { isEvent, isOrganizer } from "@/features/events/event";
-import { joinLinkUrl } from "@/features/events/join-link";
 import { InfoButton } from "@/features/info/info-button";
 import { Avatar } from "@/features/profile/avatar";
-import { canShareInvite } from "@/features/share/invite";
+import { inviteMessage } from "@/features/share/invite";
 import type { TripDetail } from "@/features/trips/actions";
 import { Row, Section } from "@/ui/components";
 import { orderMembers } from "./members-order";
@@ -18,12 +17,7 @@ const FACES = 3;
 export function RollInvite({ detail }: { detail: TripDetail }) {
   const event = isEvent(detail.trip);
   const full = memberTotal(detail) >= detail.trip.maxMembers;
-  const share = () =>
-    Share.share({
-      message: event
-        ? `Sumate a "${detail.trip.name}" en Rollo: ${joinLinkUrl(detail.trip.joinCode)}`
-        : `Sumate a "${detail.trip.name}" en Rollo con el código ${detail.trip.joinCode}`,
-    });
+  const share = () => Share.share({ message: inviteMessage(detail) });
 
   return (
     <Section title="Invitar" titleAccessory={<InfoButton topic="inviteCode" />} footer={full ? FULL_NOTE : INVITE_NOTE}>
@@ -36,9 +30,6 @@ export function RollInvite({ detail }: { detail: TripDetail }) {
         accessibilityLabel={`Código ${detail.trip.joinCode}. Compartir invitación`}
         onPress={() => void share()}
       />
-      {canShareInvite(detail) && (
-        <Row label="Compartir en Stories" onPress={() => router.push({ pathname: "/share-story", params: { tripId: detail.trip.id, kind: "invite" } })} />
-      )}
       {event && isOrganizer(detail) && !detail.trip.revealed && (
         <Row label="Código QR" disabled={full} onPress={() => router.push({ pathname: "/event-qr", params: { tripId: detail.trip.id } })} />
       )}

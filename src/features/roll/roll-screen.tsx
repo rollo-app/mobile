@@ -1,5 +1,7 @@
 import { router, Stack } from "expo-router";
 import { useState } from "react";
+import { useRevealedPhotos } from "@/features/media/revealed";
+import { shareKind } from "@/features/share/share-options";
 import { SelectionHeaderTitle } from "@/features/gallery/selection-header-title";
 import type { ColorValue } from "react-native";
 import { hasNoTrips } from "@/features/trips/active";
@@ -17,6 +19,8 @@ export function RollScreen({ view }: { view?: string }) {
   const { trip, loaded } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const phase = useRollPhase(detail);
+  // Only a revealed roll needs the photos (for the collage); the revealed screen already caches them: no extra requests.
+  const { photos } = useRevealedPhotos(trip && phase === "revealed" ? trip.id : undefined);
   // While the gallery is selecting, the title is the selection: the trip's name doesn't fit between its two buttons.
   const [selection, setSelection] = useState<number | null>(null);
   if (hasNoTrips(loaded, trip)) return <Welcome />;
@@ -39,16 +43,24 @@ export function RollScreen({ view }: { view?: string }) {
           }}
         />
       )}
-      {/* "Ajustes del rollo": on the board and in the revealed "Rollo" view; the gallery has its own toolbar. */}
-      {trip && (!revealed || view === "roll") && <SettingsButton tripId={trip.id} />}
+      {/* "Compartir" and "Ajustes del rollo": on the board and in the revealed "Rollo" view; the gallery has its own toolbar. */}
+      {trip && (!revealed || view === "roll") && <RollToolbar tripId={trip.id} shareable={!!detail && shareKind(detail, photos) !== null} />}
       {revealed ? <RevealedRollScreen tripId={trip.id} onSelectionChange={setSelection} /> : <RollBoard />}
     </>
   );
 }
 
-function SettingsButton({ tripId }: { tripId: string }) {
+function RollToolbar({ tripId, shareable }: { tripId: string; shareable: boolean }) {
   return (
     <Stack.Toolbar placement="right">
+      {/* Direct children only: the header drops Fragments (see GalleryToolbar). */}
+      {shareable && (
+        <Stack.Toolbar.Button
+          icon="square.and.arrow.up"
+          accessibilityLabel="Compartir"
+          onPress={() => router.push({ pathname: "/share-roll", params: { tripId } })}
+        />
+      )}
       <Stack.Toolbar.Button
         icon="gearshape"
         accessibilityLabel="Ajustes del rollo"

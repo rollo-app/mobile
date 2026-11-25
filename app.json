@@ -19,7 +19,8 @@
         ],
         "LSApplicationQueriesSchemes": [
           "instagram-stories",
-          "instagram"
+          "instagram",
+          "whatsapp"
         ]
       },
       "bundleIdentifier": "com.juanifraga.rollo",

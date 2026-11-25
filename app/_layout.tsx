@@ -161,6 +161,15 @@ function RootStack() {
             }}
           />
           <Stack.Screen
+            name="share-roll"
+            options={{
+              headerShown: false,
+              presentation: "formSheet",
+              sheetAllowedDetents: "fitToContents",
+              sheetGrabberVisible: true,
+            }}
+          />
+          <Stack.Screen
             name="member"
             options={{
               headerShown: false,

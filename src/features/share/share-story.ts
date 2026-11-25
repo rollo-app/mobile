@@ -61,3 +61,21 @@ export async function shareMore(uri: string, message?: string): Promise<void> {
  * Any other rejection is a real error and must surface.
  */
 export const isShareCancel = (e: unknown): boolean => e instanceof Error && e.message === "User did not share";
+
+export const whatsAppUrl = (text: string): string => `whatsapp://send?text=${encodeURIComponent(text)}`;
+
+/** Whether WhatsApp is installed (`whatsapp` scheme in LSApplicationQueriesSchemes). */
+export async function whatsAppAvailable(): Promise<boolean> {
+  try {
+    return await Linking.canOpenURL("whatsapp://send");
+  } catch {
+    return false;
+  }
+}
+
+/** Sends the image straight to WhatsApp's contact picker. Real failures reject. */
+export async function shareImageToWhatsApp(uri: string): Promise<void> {
+  // Same as INSTAGRAM_STORIES: the typings expose the constant as a plain string; shareSingle wants the enum member.
+  const social = Share.Social.WHATSAPP as Social.Whatsapp;
+  await Share.shareSingle({ social, url: uri, type: "image/jpeg" });
+}

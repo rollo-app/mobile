@@ -6,6 +6,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testi
 import "@/test/reanimated";
 import { ApiError } from "@/api/client";
 import { queryClient } from "@/api/query-client";
+import { joinLinkUrl } from "@/features/events/join-link";
 import { createQueue, type Queue, type QueuedMedia } from "@/features/capture/queue";
 import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
@@ -278,7 +279,7 @@ describe("Roll board · people and settings", () => {
 
     await fireEvent.press(await screen.findByRole("button", { name: /^Código .*Compartir invitación$/ }));
 
-    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo con el código HUB5FT' });
+    expect(share).toHaveBeenCalledWith({ message: 'Sumate a "Viaje al sur" en Rollo con el código HUB5FT: ' + joinLinkUrl('HUB5FT') });
     share.mockRestore();
   });
 

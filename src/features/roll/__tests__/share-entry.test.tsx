@@ -84,42 +84,55 @@ beforeEach(async () => {
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")], active: SUR });
 });
 
-describe("Compartir en Stories entries", () => {
+describe("Compartir entries", () => {
+  const button = () => screen.queryByRole("button", { name: "Compartir" });
+
   describe("revealed rollo", () => {
-    it("shows the row when there are shareable photos and opens the collage", async () => {
+    it("shows the toolbar button when there are shareable photos and opens the sheet", async () => {
       await open(detail(), "/roll?view=roll", [photo("a", true), photo("b", false)]);
-      await fireEvent.press(await screen.findByText(LABEL));
-      expect(screen).toHavePathname("/share-story");
-      expect(screen).toHaveSearchParams({ tripId: SUR, kind: "collage" });
+      await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
+      expect(screen).toHavePathname("/share-roll");
+      expect(screen).toHaveSearchParams({ tripId: SUR });
     });
 
-    it("hides the row on a private rollo", async () => {
+    it("has no Compartir en Stories row", async () => {
+      await open(detail(), "/roll?view=roll", [photo("a", true)]);
+      await screen.findByRole("button", { name: "Compartir" });
+      expect(screen.queryByText(LABEL)).toBeNull();
+    });
+
+    it("hides the button on a private rollo", async () => {
       await open(detail({ featuringDisabled: true }), "/roll?view=roll", [photo("a", true)]);
       await screen.findByText("Personas");
-      expect(screen.queryByText(LABEL)).toBeNull();
+      expect(button()).toBeNull();
     });
 
-    it("hides the row when no photo can be shared", async () => {
+    it("hides the button when no photo can be shared", async () => {
       await open(detail(), "/roll?view=roll", [photo("a", false)]);
       await screen.findByText("Personas");
-      expect(screen.queryByText(LABEL)).toBeNull();
+      expect(button()).toBeNull();
     });
   });
 
   describe("Invitar", () => {
     const pending = { revealed: false, revealAt: Date.now() + DAY };
 
-    it("shows the row on an unrevealed rollo with room and opens the invitation", async () => {
+    it("shows the button on an unrevealed rollo with room and opens the sheet", async () => {
       await open(detail(pending), "/roll");
-      await fireEvent.press(await screen.findByText(LABEL));
-      expect(screen).toHavePathname("/share-story");
-      expect(screen).toHaveSearchParams({ tripId: SUR, kind: "invite" });
+      await fireEvent.press(await screen.findByRole("button", { name: "Compartir" }));
+      expect(screen).toHavePathname("/share-roll");
     });
 
-    it("hides the row when the rollo is full", async () => {
-      await open(detail({ ...pending, maxMembers: 2 }, 1), "/roll");
+    it("has no Compartir en Stories row", async () => {
+      await open(detail(pending), "/roll");
       await screen.findByText("Invitar");
       expect(screen.queryByText(LABEL)).toBeNull();
+    });
+
+    it("hides the button when the rollo is full", async () => {
+      await open(detail({ ...pending, maxMembers: 2 }, 1), "/roll");
+      await screen.findByText("Invitar");
+      expect(button()).toBeNull();
     });
 
     it("shows no invitation row on a revealed rollo", async () => {
