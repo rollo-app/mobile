@@ -40,6 +40,7 @@ export function UserProfileScreen({ userId }: { userId: string }) {
   }
 
   const { user, isFriend, canSee, friendCount, mutualCount, rollCount, featuredCount, blockedByMe, reportedByMe, friendRequest } = profile;
+  const showCounts = canSee && !blockedByMe;
   const requestUi = friendRequestUi({ isFriend, isMe: me?.id === userId, blockedByMe, friendRequest });
   return (
     <Screen grouped>
@@ -58,8 +59,8 @@ export function UserProfileScreen({ userId }: { userId: string }) {
         bio={user.bio}
         badge={user.badge}
         stats={{
-          rolls: rollCount,
-          photos: canSee ? (featuredLength ?? featuredCount) : null,
+          rolls: showCounts ? rollCount : null,
+          photos: showCounts ? (featuredLength ?? featuredCount) : null,
           friends: friendCount,
           mutual: mutualCount,
           canSee,

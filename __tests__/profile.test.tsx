@@ -77,7 +77,7 @@ describe("Perfil", () => {
   });
 
   it("shows your rolls, photos and friends", async () => {
-    jest.spyOn(profileActions, "fetchUser").mockResolvedValue(ownProfile({ rollCount: 3, featuredCount: 2 }));
+    jest.spyOn(profileActions, "fetchUser").mockResolvedValue(ownProfile({ rollCount: 3, featuredCount: 9 }));
     featured.fetchFeatured.mockResolvedValue([featuredPhoto("m1"), featuredPhoto("m2")]);
     const friend = (id: string) => ({ id, name: id, username: id, avatarUrl: null, bio: null });
     jest.mocked(friendActions).fetchFriends.mockResolvedValue(["a", "b", "c", "d", "e"].map(friend));

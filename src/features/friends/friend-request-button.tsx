@@ -28,6 +28,6 @@ export function FriendRequestButton({ userId, state }: { userId: string; state: 
 
 const styles = StyleSheet.create({
   box: { gap: spacing.sm, alignItems: "center" },
-  row: { flexDirection: "row", gap: spacing.sm, justifyContent: "center" },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" },
   error: { textAlign: "center" },
 });
