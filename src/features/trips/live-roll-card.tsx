@@ -5,6 +5,7 @@ import { useTodayLeft } from "@/features/capture/use-today-left";
 import { Badge } from "@/ui/badge";
 import { colors, radius, spacing, type } from "@/ui/theme";
 import type { TripSummary } from "./active";
+import { coverContentPosition } from "./cover-focus";
 import { coverUri } from "./cover-uri";
 import { liveDayLabel } from "./row-state";
 import { useTripDetail } from "./use-trip-detail";
@@ -45,6 +46,8 @@ export function LiveRollCard({ trip, onOpen, onCamera }: { trip: TripSummary; on
         source={uri ? { uri } : undefined}
         placeholder={trip.coverThumbhash ? { thumbhash: trip.coverThumbhash } : undefined}
         contentFit="cover"
+        contentPosition={coverContentPosition(trip.coverFocusY)}
+        testID="live-roll-cover"
         style={StyleSheet.absoluteFill}
         accessibilityIgnoresInvertColors
       />

@@ -139,6 +139,7 @@ export function CreateScreen() {
         queryClient.invalidateQueries({ queryKey: tripKey(tripId) }),
         queryClient.invalidateQueries({ queryKey: myTripsKey }),
       ]);
+      router.push({ pathname: "/cover-focus", params: { tripId, uri: photo.uri } });
     } catch {
       // The rollo stays created (and is never created again); the cover is set later from the settings.
       Burnt.alert({ title: "No se pudo subir la portada", message: "Podés elegirla desde Ajustes del rollo.", preset: "error" });

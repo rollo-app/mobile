@@ -7,6 +7,7 @@ import { colors, radius, spacing, type } from "@/ui/theme";
 import type { TripSummary } from "./active";
 import { tripRowState } from "./row-state";
 import { ROW_ACTION_TITLES, type RowActionId } from "./row-actions";
+import { coverContentPosition } from "./cover-focus";
 import { coverUri } from "./cover-uri";
 import { rowTint } from "./row-tint";
 import { thumbHashAverageColor, type RGB } from "./thumbhash-color";
@@ -92,6 +93,7 @@ function Thumbnail({ trip }: { trip: TripSummary }) {
       source={uri ? { uri } : undefined}
       placeholder={placeholder}
       contentFit="cover"
+      contentPosition={coverContentPosition(trip.coverFocusY)}
       style={styles.thumb}
       accessibilityIgnoresInvertColors
     />

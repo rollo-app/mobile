@@ -36,7 +36,10 @@ export function useUploadCover(tripId: string) {
   const pick = async () => {
     reset();
     const photo = await pickCoverPhoto();
-    if (photo) await mutateAsync(photo).catch(() => undefined);
+    if (!photo) return;
+    const uploaded = await mutateAsync(photo).then(() => true, () => false);
+    // Right after a new cover: choose which part of it the Rollos list shows.
+    if (uploaded) router.push({ pathname: "/cover-focus", params: { tripId, uri: photo.uri } });
   };
 
   return { pick, uploading: upload.isPending, error: errorMessage(upload.error, "No se pudo subir la foto") };
