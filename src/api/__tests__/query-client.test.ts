@@ -45,6 +45,10 @@ describe("shouldDehydrateQuery", () => {
     expect(shouldDehydrateQuery(query(["upload-status", "t1"]))).toBe(false);
   });
 
+  it("never saves the Stories image (a file in the cache, rebuilt on every visit)", () => {
+    expect(shouldDehydrateQuery(query(["story-image", "t1:collage:1"]))).toBe(false);
+  });
+
   it("keeps saving feed, trip and profile queries for offline cold starts", () => {
     expect(shouldDehydrateQuery(query(["trips"]))).toBe(true);
     expect(shouldDehydrateQuery(query(["feed", "t1"]))).toBe(true);

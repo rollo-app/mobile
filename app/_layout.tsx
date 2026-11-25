@@ -117,6 +117,7 @@ function RootStack() {
           <Stack.Screen name="event-groups" options={{ title: "Grupos" }} />
           <Stack.Screen name="my-groups" options={{ title: "Sumarme a otro grupo" }} />
           <Stack.Screen name="event-qr" options={{ title: "Código QR" }} />
+          <Stack.Screen name="share-story" options={{ title: "Compartir", presentation: "modal" }} />
           {/* Organizers pick the contest's finalists between the end of the event and the reveal. */}
           {/* Vote, tie-break and result of the photo contest. */}
           <Stack.Screen name="contest" options={{ title: "Concurso de fotos" }} />

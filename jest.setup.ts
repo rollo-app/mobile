@@ -535,6 +535,9 @@ jest.mock("@/features/events/qr-canvas", () => {
   const { View } = require("react-native");
   return { QrCanvas: View, qrPng: jest.fn(() => null) };
 });
+// The Stories renderers (Skia) draw nothing in tests; the share screen's own test sets what they return.
+jest.mock("@/features/share/render-collage", () => ({ renderCollage: jest.fn(async () => new Uint8Array()) }));
+jest.mock("@/features/share/render-invite", () => ({ renderInvite: jest.fn(async () => new Uint8Array()) }));
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
 jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));

@@ -22,9 +22,10 @@ export const OWN_DATA_STALE_TIME = 5 * 60 * SECOND;
  * - `user-search`: throwaway results of what was typed, useless on the next launch.
  * - `pending`, `pending-items`, `upload-status`: read from the local SQLite capture queue, which is
  *   already persistent; a saved copy could only be stale (and every screen refetches them on focus).
+ * - `story-image`: the Stories image is a file in the cache, rebuilt on every visit; a saved copy would point at a file that may be gone.
  * Everything else (feeds, trips, profile) stays: the app is offline-first and shows it with no signal.
  */
-const NOT_PERSISTED = new Set(["config", "user-search", "pending", "pending-items", "upload-status"]);
+const NOT_PERSISTED = new Set(["config", "user-search", "pending", "pending-items", "upload-status", "story-image"]);
 
 export function shouldDehydrateQuery(query: Query): boolean {
   return defaultShouldDehydrateQuery(query) && !NOT_PERSISTED.has(String(query.queryKey[0]));

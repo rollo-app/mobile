@@ -38,6 +38,15 @@ export function pickCollage(
   return shuffled.slice(0, COLLAGE_MAX);
 }
 
+/** The next seed (after `seed`) that puts a different photo first, so "Otras" always shows something new; `seed + 1` if none does. */
+export function nextSeed(candidates: RevealedPhoto[], seed: number): number {
+  const hero = pickCollage(candidates, seed)[0]?.id;
+  for (let next = seed + 1; next <= seed + 20; next++) {
+    if (pickCollage(candidates, next)[0]?.id !== hero) return next;
+  }
+  return seed + 1;
+}
+
 export const canShuffle = (candidates: RevealedPhoto[]): boolean =>
   candidates.length >= 2;
 

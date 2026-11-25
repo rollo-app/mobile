@@ -32,6 +32,7 @@ import ContestWinnerRoute from "../../app/contest-winner";
 import CreateScreen from "../../app/create";
 import EventGroupsRoute from "../../app/event-groups";
 import EventQrRoute from "../../app/event-qr";
+import ShareStoryRoute from "../../app/share-story";
 import MyGroupsRoute from "../../app/my-groups";
 import EditTripRoute from "../../app/edit-trip";
 import WorstCaseRoute from "../../app/dev/worst-case";
@@ -96,6 +97,7 @@ export const routes = {
   "contest-winner": ContestWinnerRoute,
   "my-groups": MyGroupsRoute,
   "event-qr": EventQrRoute,
+  "share-story": ShareStoryRoute,
   "roll-settings": RollSettingsRoute,
   "roll-started": RollStartedScreen,
   "photo/[id]": PhotoRoute,

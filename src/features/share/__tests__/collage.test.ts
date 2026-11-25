@@ -6,6 +6,7 @@ import {
   collageCaption,
   collageLayout,
   dateRange,
+  nextSeed,
   pickCollage,
   type Rect,
 } from "../collage";
@@ -174,5 +175,14 @@ describe("collageCaption", () => {
     expect(collageCaption({ startsAt, endsAt, timeZone: tz, people: 1 })).toBe(
       "3 – 9 de enero · 1 persona",
     );
+  });
+});
+
+describe("nextSeed", () => {
+  it("moves to a seed that puts a different photo first, whatever the pool", () => {
+    const two = [photo("a"), photo("b")];
+    for (let seed = 0; seed < 30; seed++) {
+      expect(pickCollage(two, nextSeed(two, seed))[0]?.id).not.toBe(pickCollage(two, seed)[0]?.id);
+    }
   });
 });
