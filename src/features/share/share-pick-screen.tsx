@@ -10,9 +10,11 @@ import { colors, spacing, type } from "@/ui/theme";
 import { COLLAGE_MAX, collageCandidates } from "./collage";
 import { collagePhotos, getCollageSelection, setCollageSelection, toggleSelection } from "./collage-selection";
 import { PickCell } from "./pick-cell";
+import { PickTray, TRAY_HEIGHT } from "./pick-tray";
 
-const COLUMNS = 3;
-const GAP = 2;
+const COLUMNS = 4;
+const GAP = 4;
+const PADDING = 12;
 
 const keyExtractor = (photo: RevealedPhoto) => photo.id;
 
@@ -45,7 +47,10 @@ export function SharePickScreen({ tripId, seed }: { tripId: string; seed?: numbe
   }, [complete, loadAll]);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
+  // Each slot gets GAP / 2 on both sides, so the content padding is PADDING - GAP / 2 to keep PADDING at the edges.
+  const edge = PADDING - GAP / 2;
+  const size = Math.floor((width - edge * 2) / COLUMNS - GAP);
+  const photosById = useMemo(() => new Map(candidates.map((p) => [p.id, p])), [candidates]);
   const full = draft.length >= COLLAGE_MAX;
 
   const onPress = useCallback((id: string) => {
@@ -77,6 +82,15 @@ export function SharePickScreen({ tripId, seed }: { tripId: string; seed?: numbe
 
   return (
     <View style={styles.screen}>
+      <Stack.Screen
+        options={{
+          headerTransparent: false,
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
+          headerBlurEffect: "none",
+          headerTitle: () => <HeaderTitle />,
+        }}
+      />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button onPress={goBack}>Cancelar</Stack.Toolbar.Button>
       </Stack.Toolbar>
@@ -86,7 +100,6 @@ export function SharePickScreen({ tripId, seed }: { tripId: string; seed?: numbe
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
 
-      <Text style={[type.subhead, styles.counter]}>{`${draft.length} de ${COLLAGE_MAX}`}</Text>
       {!complete && loading ? (
         <Loading />
       ) : (
@@ -96,16 +109,29 @@ export function SharePickScreen({ tripId, seed }: { tripId: string; seed?: numbe
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           extraData={draft}
-          contentContainerStyle={{ paddingBottom: insets.bottom + spacing.md }}
+          contentInsetAdjustmentBehavior="never"
+          contentContainerStyle={{ paddingHorizontal: edge, paddingTop: GAP / 2, paddingBottom: TRAY_HEIGHT + insets.bottom + spacing.sm }}
         />
       )}
+      <PickTray selection={draft} photos={photosById} token={token} bottomInset={insets.bottom} onRemove={onPress} />
+    </View>
+  );
+}
+
+function HeaderTitle() {
+  return (
+    <View style={styles.titleBlock}>
+      <Text style={[type.headline, styles.title]}>Elegir fotos</Text>
+      <Text style={[type.caption, styles.subtitle]}>la 1 va grande</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  counter: { color: colors.secondaryLabel, textAlign: "center", paddingVertical: spacing.sm, fontVariant: ["tabular-nums"] },
-  // Same trick as the gallery: the cell hugs the edges, leaving GAP between neighbours.
-  slot: { alignItems: "center", paddingBottom: GAP },
+  titleBlock: { alignItems: "center" },
+  title: { color: colors.label },
+  subtitle: { color: colors.secondaryLabel },
+  // Each slot leaves GAP / 2 on every side, so neighbours are GAP apart.
+  slot: { alignItems: "center", paddingHorizontal: GAP / 2, paddingVertical: GAP / 2 },
 });

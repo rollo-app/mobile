@@ -57,13 +57,13 @@ beforeEach(async () => {
 describe("Elegir fotos", () => {
   it("numbers the cells in tap order and shows the counter", async () => {
     await open();
-    expect(screen.getByText("0 de 8")).toBeVisible();
+    expect(screen.getByText("En el collage · 0 de 8")).toBeVisible();
     await fireEvent.press(cell("p3"));
     await fireEvent.press(cell("p1"));
     expect(badge("p3")).toHaveTextContent("1");
     expect(badge("p1")).toHaveTextContent("2");
     expect(badge("p2")).toBeNull();
-    expect(screen.getByText("2 de 8")).toBeVisible();
+    expect(screen.getByText("En el collage · 2 de 8")).toBeVisible();
   });
 
   it("labels each photo with its position and, when chosen, its number", async () => {
@@ -76,7 +76,7 @@ describe("Elegir fotos", () => {
 
   it("ignores saved ids that are no longer candidates", async () => {
     await open(["gone", "p2"]);
-    expect(screen.getByText("1 de 8")).toBeVisible();
+    expect(screen.getByText("En el collage · 1 de 8")).toBeVisible();
     expect(badge("p2")).toHaveTextContent("1");
     await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
     expect(getCollageSelection(SUR)).toEqual(["p2"]);
@@ -93,7 +93,7 @@ describe("Elegir fotos", () => {
     await act(async () => router.push("/share-pick"));
     await screen.findByTestId("pick-cell-p1");
     expect(screen.queryByTestId("pick-cell-p10")).toBeNull();
-    expect(screen.getByText("1 de 8")).toBeVisible();
+    expect(screen.getByText("En el collage · 1 de 8")).toBeVisible();
     await act(async () => resolveSecond({ ...base, items: ids.slice(5).map(item), nextCursor: null }));
     expect(await screen.findByTestId("pick-badge-p10")).toHaveTextContent("1");
     await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
@@ -103,7 +103,7 @@ describe("Elegir fotos", () => {
   it("with nothing saved, opens with the collage photos already numbered in collage order and Listo saves them", async () => {
     const shown = pickCollage(collageCandidates(ids.map((id) => ({ id, shareable: true }) as never)), 1).map((p) => p.id);
     await open([], 1);
-    await screen.findByText(`${shown.length} de 8`);
+    await screen.findByText(`En el collage · ${shown.length} de 8`);
     shown.forEach((id, i) => expect(badge(id)).toHaveTextContent(String(i + 1)));
     await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
     expect(getCollageSelection(SUR)).toEqual(shown);
@@ -112,7 +112,42 @@ describe("Elegir fotos", () => {
   it("with a saved selection, shows that selection and not the collage pick", async () => {
     await open(["p4"], 1);
     expect(badge("p4")).toHaveTextContent("1");
-    expect(screen.getByText("1 de 8")).toBeVisible();
+    expect(screen.getByText("En el collage · 1 de 8")).toBeVisible();
+  });
+
+  it("shows the tray in selection order with its label", async () => {
+    await open();
+    await fireEvent.press(cell("p5"));
+    await fireEvent.press(cell("p2"));
+    await fireEvent.press(cell("p9"));
+    expect(screen.getByText("En el collage · 3 de 8")).toBeVisible();
+    const tray = screen.getAllByLabelText(/^Quitar foto \d del collage$/);
+    expect(tray.map((node) => node.props.testID)).toEqual(["pick-tray-p5", "pick-tray-p2", "pick-tray-p9"]);
+    expect(screen.getByTestId("pick-tray-badge-p9")).toHaveTextContent("3");
+  });
+
+  it("shows 8 minus n empty slots", async () => {
+    await open();
+    expect(screen.getAllByTestId("pick-tray-empty")).toHaveLength(8);
+    await fireEvent.press(cell("p1"));
+    await fireEvent.press(cell("p2"));
+    expect(screen.getAllByTestId("pick-tray-empty")).toHaveLength(6);
+    for (const id of ids.slice(2, 8)) await fireEvent.press(cell(id));
+    expect(screen.queryAllByTestId("pick-tray-empty")).toHaveLength(0);
+  });
+
+  it("tapping a tray item deselects it and renumbers the rest", async () => {
+    await open();
+    await fireEvent.press(cell("p1"));
+    await fireEvent.press(cell("p2"));
+    await fireEvent.press(cell("p3"));
+    await fireEvent.press(screen.getByLabelText("Quitar foto 1 del collage"));
+    expect(badge("p1")).toBeNull();
+    expect(badge("p2")).toHaveTextContent("1");
+    expect(badge("p3")).toHaveTextContent("2");
+    expect(screen.getByText("En el collage · 2 de 8")).toBeVisible();
+    expect(screen.getByTestId("pick-tray-badge-p3")).toHaveTextContent("2");
+    expect(screen.queryByTestId("pick-tray-p1")).toBeNull();
   });
 
   it("deselecting renumbers the rest", async () => {
@@ -132,7 +167,7 @@ describe("Elegir fotos", () => {
     expect(haptics.impactAsync).not.toHaveBeenCalled();
     await fireEvent.press(cell("p9"));
     expect(badge("p9")).toBeNull();
-    expect(screen.getByText("8 de 8")).toBeVisible();
+    expect(screen.getByText("En el collage · 8 de 8")).toBeVisible();
     expect(haptics.impactAsync).toHaveBeenCalledWith("light");
     expect(haptics.impactAsync).toHaveBeenCalledTimes(1);
   });

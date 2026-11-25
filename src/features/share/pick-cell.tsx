@@ -27,7 +27,7 @@ export const PickCell = memo(function PickCell({ photo, index, total, token, siz
       accessibilityLabel={`Foto ${index + 1} de ${total}${order !== null ? `, elegida ${order}` : ""}`}
       accessibilityState={{ selected: order !== null }}
       onPress={() => onPress(photo.id)}
-      style={{ width: size, height: size, backgroundColor: colors.latent }}
+      style={[styles.cell, { width: size, height: size }]}
     >
       {!!token && (
         <Image
@@ -40,6 +40,7 @@ export const PickCell = memo(function PickCell({ photo, index, total, token, siz
         />
       )}
       {dimmed && <View pointerEvents="none" style={styles.dim} />}
+      {order !== null && <View pointerEvents="none" style={styles.selectedBorder} />}
       {order !== null && (
         <View style={styles.badge}>
           <Text testID={`pick-badge-${photo.id}`} style={[type.caption, styles.badgeText]}>
@@ -52,6 +53,8 @@ export const PickCell = memo(function PickCell({ photo, index, total, token, siz
 });
 
 const styles = StyleSheet.create({
+  cell: { borderRadius: 6, overflow: "hidden", backgroundColor: colors.latent },
+  selectedBorder: { ...StyleSheet.absoluteFill, borderRadius: 6, borderWidth: 2, borderColor: colors.tint },
   dim: { ...StyleSheet.absoluteFill, backgroundColor: colors.background, opacity: 0.55 },
   badge: {
     position: "absolute",
@@ -61,6 +64,8 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: colors.onTint,
     backgroundColor: colors.tint,
     alignItems: "center",
     justifyContent: "center",
