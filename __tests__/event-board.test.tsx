@@ -231,13 +231,13 @@ describe("Cover (organizer)", () => {
     } as ImagePicker.ImagePickerResult);
     trips.uploadCover.mockResolvedValue("/covers/x/y.jpg");
     await open(detail(organizer, []), "Elegir portada");
-    // The crop screen lets the organizer frame the square; Elegir uploads that square (at most 1600 px).
+    // The crop screen lets the organizer frame the 3:4 portrait; Elegir uploads it (1080×1440).
     await waitFor(() => expect(screen).toHavePathname("/crop-cover"));
     expect(trips.uploadCover).not.toHaveBeenCalled();
     await fireEvent.press(await screen.findByRole("button", { name: "Elegir" }));
-    await waitFor(() => expect(trips.uploadCover).toHaveBeenCalledWith(EVENT, { uri: "file:///cache/cover.jpg", width: 1600, height: 1600 }));
-    expect(manipulator.ImageManipulator.__ctx.crop).toHaveBeenLastCalledWith({ originX: 500, originY: 0, width: 3000, height: 3000 });
-    expect(manipulator.ImageManipulator.__ctx.resize).toHaveBeenLastCalledWith({ width: 1600, height: 1600 });
+    await waitFor(() => expect(trips.uploadCover).toHaveBeenCalledWith(EVENT, { uri: "file:///cache/cover.jpg", width: 1080, height: 1440 }));
+    expect(manipulator.ImageManipulator.__ctx.crop).toHaveBeenLastCalledWith({ originX: 875, originY: 0, width: 2250, height: 3000 });
+    expect(manipulator.ImageManipulator.__ctx.resize).toHaveBeenLastCalledWith({ width: 1080, height: 1440 });
     pick.mockRestore();
   });
 

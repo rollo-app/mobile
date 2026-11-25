@@ -37,9 +37,9 @@ export function TripInvitation({
   onJoin: () => void;
   onClose: () => void;
 }) {
-  const { height } = useWindowDimensions();
-  // Most of the screen is the photo, as in the approved mockup (~58%).
-  const coverHeight = Math.max(340, Math.round(height * 0.58));
+  const { width, height } = useWindowDimensions();
+  // The whole vertical 3:4 photo edge to edge, but never more than ~70% of a short screen.
+  const coverHeight = Math.round(Math.min(width * (4 / 3), height * 0.7));
   return (
     <ScrollView testID="trip-invitation" style={styles.screen} contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="never" bounces={false}>
       <View testID="trip-invitation-cover" style={[styles.cover, { height: coverHeight }]}>

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 import { EventHero } from "../event-hero";
 
 describe("EventHero description", () => {
@@ -29,5 +30,12 @@ describe("EventHero description", () => {
     await render(<EventHero name="Casamiento" coverUrl="/c.jpg" description={null} />);
     expect(screen.queryByTestId("event-description")).toBeNull();
     expect(screen.queryByRole("button", { name: "Ver más" })).toBeNull();
+  });
+});
+
+describe("EventHero frame", () => {
+  it("is a vertical 3:4 frame", async () => {
+    await render(<EventHero name="Casamiento" coverUrl="/c.jpg" />);
+    expect(StyleSheet.flatten(screen.getByTestId("event-hero").props.style).aspectRatio).toBeCloseTo(3 / 4);
   });
 });
