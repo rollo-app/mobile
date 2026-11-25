@@ -6,12 +6,12 @@ export const STORY_STYLES: readonly StoryStyle[] = ["dark", "light"];
 
 export const STYLE_LABEL: Record<StoryStyle, string> = { dark: "Oscuro", light: "Claro" };
 
-/** `base` is the background's solid color: the fallback while (or if) the video doesn't load. */
-export type StylePalette = { card: string; text: string; base: string };
+/** `brand` is the logo's cobalt (as in the app icon, lighter on dark). `base` is the background's solid color: the fallback while (or if) the video doesn't load. */
+export type StylePalette = { card: string; text: string; base: string; brand: string };
 
 export const STYLE_PALETTE: Record<StoryStyle, StylePalette> = {
-  dark: { card: "#141416", text: "#ffffff", base: "#0b0b0c" },
-  light: { card: "#fbfaf7", text: "#111111", base: "#f3efe8" },
+  dark: { card: "#141416", text: "#ffffff", base: "#0b0b0c", brand: "#5C7CFF" },
+  light: { card: "#fbfaf7", text: "#111111", base: "#f3efe8", brand: "#3155F5" },
 };
 
 export const STYLE_ASSETS: Record<StoryStyle, { video: number; still: number }> = {

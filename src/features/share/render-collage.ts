@@ -49,7 +49,7 @@ export async function renderCollageCard(input: { name: string; caption: string; 
     });
 
     const brandBottom = frame.y + frame.h + BRAND_GAP + BRAND_H;
-    drawBrand(canvas, CARD_W / 2, brandBottom, palette.text);
+    drawBrand(canvas, CARD_W / 2, brandBottom, palette.text, palette.brand);
     return { png: encodeCard(surface), width: CARD_W, height };
   } finally {
     if (surface) disposeSurface(surface);

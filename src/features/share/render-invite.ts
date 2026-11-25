@@ -166,7 +166,7 @@ export async function renderInviteCard(input: {
     // Letter spacing also follows the last character: shifting half of it keeps the code optically centered.
     drawText(canvas, input.code, { ...CODE, color: palette.text }, CODE_LETTER_SPACING / 2, codeTop, CARD_W);
 
-    drawBrand(canvas, CARD_W / 2, codeTop + CODE_H + BRAND_GAP + BRAND_H, palette.text);
+    drawBrand(canvas, CARD_W / 2, codeTop + CODE_H + BRAND_GAP + BRAND_H, palette.text, palette.brand);
     return { png: encodeCard(surface), width: CARD_W, height };
   } finally {
     if (surface) disposeSurface(surface);

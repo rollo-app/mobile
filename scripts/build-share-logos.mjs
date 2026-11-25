@@ -23,6 +23,8 @@ const gradient = `<defs><linearGradient id="ig" x1="0" y1="24" x2="24" y2="0" gr
 
 const logos = {
   instagram: svg(gradient, siInstagram.path, "url(#ig)"),
+  // Solid white glyph for colored buttons (Instagram's guidelines allow it).
+  "instagram-white": svg("", siInstagram.path, "#FFFFFF"),
   whatsapp: svg("", siWhatsapp.path, "#25D366"),
 };
 

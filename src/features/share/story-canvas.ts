@@ -129,8 +129,8 @@ const SITE = { size: 24, opacity: 0.55, center: true } satisfies TextSpec;
 const LOGO_GAP = 14;
 const SITE_GAP = 10;
 
-/** The brand centered on `centerX`, its last line ending at `bottom`, in `color` (the logo's circles keep their opacities). */
-export function drawBrand(canvas: SkCanvas, centerX: number, bottom: number, color: string) {
+/** The brand centered on `centerX`, its last line ending at `bottom`, with the text in `color` and the logo's circles in `logoColor`, keeping their opacities. */
+export function drawBrand(canvas: SkCanvas, centerX: number, bottom: number, color: string, logoColor: string) {
   const wordmark = layoutText("Rollo Project", { ...WORDMARK, color }, STORY_W);
   const site = layoutText("rolloproject.com", { ...SITE, color }, STORY_W);
   const siteTop = bottom - site.getHeight();
@@ -144,7 +144,7 @@ export function drawBrand(canvas: SkCanvas, centerX: number, bottom: number, col
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
   for (const [cx, cy, r, opacity] of LOGO_CIRCLES) {
-    paint.setColor(withOpacity(color, opacity));
+    paint.setColor(withOpacity(logoColor, opacity));
     canvas.drawCircle(left + cx * scale, logoTop + cy * scale, r * scale, paint);
   }
   wordmark.paint(canvas, left + LOGO_SIZE + LOGO_GAP, rowMid - wordmark.getHeight() / 2);

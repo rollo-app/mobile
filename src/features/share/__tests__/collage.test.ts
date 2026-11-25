@@ -152,6 +152,19 @@ describe("dateRange", () => {
     ).toBe("12 de diciembre");
   });
 
+  it("does not depend on formatToParts (Hermes returns no month part)", () => {
+    const spy = jest
+      .spyOn(Intl.DateTimeFormat.prototype, "formatToParts")
+      .mockReturnValue([{ type: "day", value: "23" }]);
+    try {
+      expect(
+        dateRange(day("2026-01-23T15:00:00Z"), day("2026-01-30T15:00:00Z"), tz),
+      ).toBe("23 – 30 de enero");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("uses the trip's time zone", () => {
     // 02:00 UTC on the 10th is still the 9th in Buenos Aires.
     expect(

@@ -21,8 +21,8 @@ describe("story-style", () => {
   });
 
   it("has the exact palette", () => {
-    expect(STYLE_PALETTE.dark).toEqual({ card: "#141416", text: "#ffffff", base: "#0b0b0c" });
-    expect(STYLE_PALETTE.light).toEqual({ card: "#fbfaf7", text: "#111111", base: "#f3efe8" });
+    expect(STYLE_PALETTE.dark).toEqual({ card: "#141416", text: "#ffffff", base: "#0b0b0c", brand: "#5C7CFF" });
+    expect(STYLE_PALETTE.light).toEqual({ card: "#fbfaf7", text: "#111111", base: "#f3efe8", brand: "#3155F5" });
   });
 
   it("resolves the video and still of each style", () => {

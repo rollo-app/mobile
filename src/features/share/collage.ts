@@ -130,14 +130,10 @@ function dayAndMonth(
   ms: number,
   timeZone: string,
 ): { day: string; month: string } {
-  const parts = dateFormatter("es", {
-    timeZone,
-    day: "numeric",
-    month: "long",
-  }).formatToParts(ms);
+  // Plain `.format()` calls: `formatToParts` loses the month part on Hermes.
   return {
-    day: parts.find((p) => p.type === "day")?.value ?? "",
-    month: parts.find((p) => p.type === "month")?.value ?? "",
+    day: dateFormatter("es-AR", { timeZone, day: "numeric" }).format(ms),
+    month: dateFormatter("es-AR", { timeZone, month: "long" }).format(ms),
   };
 }
 
