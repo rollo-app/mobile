@@ -52,7 +52,8 @@ export function SharePills({
       </View>
       {onCopyLink && (
         <View style={styles.row}>
-          <Pill label="Copiar link" symbol="link" disabled={disabled} onPress={onCopyLink} />
+          {/* Copying needs no files: it is never disabled while the image builds. */}
+          <Pill label="Copiar link" symbol="link" disabled={false} onPress={onCopyLink} />
         </View>
       )}
     </View>

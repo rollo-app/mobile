@@ -414,4 +414,14 @@ describe("Compartir screen", () => {
     expect(await screen.findByText("No se pudo compartir. Probá de nuevo.")).toBeVisible();
     expect(Burnt.toast).not.toHaveBeenCalled();
   });
+
+  it("invite: Copiar link works while the image is still building", async () => {
+    invite.mockReturnValue(new Promise(() => {}));
+    await open("invite", detail());
+    const copy = await screen.findByRole("button", { name: "Copiar link" });
+    expect(screen.getByRole("button", { name: "Más opciones" })).toHaveProp("accessibilityState", { disabled: true });
+    await fireEvent.press(copy);
+    await waitFor(() => expect(clipboard.setStringAsync).toHaveBeenCalledWith(expect.stringContaining("HUB5FT")));
+    expect(Burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Link copiado" }));
+  });
 });
