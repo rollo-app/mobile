@@ -10,12 +10,12 @@ import {
   type SkParagraph,
   type SkSurface,
 } from "@shopify/react-native-skia";
-import { CARD_RADIUS, CARD_W } from "./card-layout";
+import { CARD_RADIUS, CARD_W, STORY_H, STORY_W } from "./card-layout";
+
+export { STORY_H, STORY_W };
 import type { Rect } from "./collage";
 
 // The Stories image, in pixels. The mockup (stories-v1.html) is 270×480: everything here is it ×4.
-export const STORY_W = 1080;
-export const STORY_H = 1920;
 export const BACKGROUND = "#0b0b0c";
 
 /** iOS's system font (SF). The family name Core Text uses for it; React Native maps "System" to the same. */

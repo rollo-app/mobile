@@ -31,8 +31,8 @@ const clipboard = jest.mocked(Clipboard);
 
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
-const CARD_FILE = (kind: "collage" | "invite") => `file:///cache/rollo-${kind}-card.png`;
-const STILL_FILE = (kind: "collage" | "invite") => `file:///cache/rollo-${kind}-still.jpg`;
+const CARD_FILE = (kind: "collage" | "invite", style = "dark") => expect.stringMatching(new RegExp(`^file:///cache/rollo-${kind}-${style}-.*-card\\.png$`));
+const STILL_FILE = (kind: "collage" | "invite", style = "dark") => expect.stringMatching(new RegExp(`^file:///cache/rollo-${kind}-${style}-.*-still\\.jpg$`));
 const STORIES = { stickerUri: CARD_FILE("collage"), backgroundVideoUri: "file:///assets/bg-dark.mp4", backgroundColor: "#0b0b0c" };
 
 const detail = (over: Partial<tripActions.Trip> = {}): tripActions.TripDetail => {
@@ -221,7 +221,7 @@ describe("Compartir screen", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
     await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledTimes(1));
     const call = story.shareToInstagramStories.mock.calls[0]![0];
-    expect(call.stickerUri).toBe(CARD_FILE("collage"));
+    expect(call.stickerUri).toEqual(CARD_FILE("collage", "light"));
     expect(call.backgroundColor).toBe("#f3efe8");
     expect(call.backgroundVideoUri).toMatch(/^file:\/\/\/assets\//);
   });
@@ -232,7 +232,7 @@ describe("Compartir screen", () => {
     await waitFor(() => expect(still).toHaveBeenCalledWith(expect.anything(), "light"));
     await filesReady();
     await fireEvent.press(await screen.findByRole("button", { name: "Más opciones" }));
-    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("collage"), undefined));
+    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("collage", "light"), undefined));
   });
 
   it("switching style twice shares the last one", async () => {
@@ -246,6 +246,24 @@ describe("Compartir screen", () => {
     await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(expect.objectContaining({ backgroundColor: "#f3efe8" })));
   });
 
+  it("going back to Oscuro after Claro shares the dark files, not the light ones", async () => {
+    await open("collage");
+    await filesReady();
+    await fireEvent.press(screen.getByRole("button", { name: "Claro" }));
+    await waitFor(() => expect(collage).toHaveBeenCalledTimes(2));
+    await fireEvent.press(screen.getByRole("button", { name: "Oscuro" }));
+    // Cached: no third render.
+    await waitFor(() => expect(screen.getByTestId("story-preview")).toHaveStyle({ backgroundColor: "#0b0b0c" }));
+    await filesReady();
+    expect(collage).toHaveBeenCalledTimes(2);
+    expect(screen.getByLabelText("Vista previa").props.source).toEqual([expect.objectContaining({ uri: CARD_FILE("collage") })]);
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(expect.objectContaining({ stickerUri: CARD_FILE("collage") })));
+    await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
+    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("collage"), undefined));
+  });
+
   it("without Instagram only Más opciones, with the chosen style's still", async () => {
     story.instagramStoriesAvailable.mockResolvedValue(false);
     await open("invite");
@@ -254,7 +272,7 @@ describe("Compartir screen", () => {
     expect(screen.queryByRole("button", { name: "Compartir en Stories" })).toBeNull();
     await filesReady();
     await fireEvent.press(await screen.findByRole("button", { name: "Más opciones" }));
-    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("invite"), expect.stringContaining("HUB5FT")));
+    await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith(STILL_FILE("invite", "light"), expect.stringContaining("HUB5FT")));
     expect(lastStyle(invite as unknown as jest.Mock)).toBe("light");
   });
 
@@ -262,7 +280,7 @@ describe("Compartir screen", () => {
     await open("collage");
     const card = await screen.findByLabelText("Vista previa");
     expect(card).toBeVisible();
-    expect([card.props.source].flat()[0].uri).toBe(CARD_FILE("collage"));
+    expect([card.props.source].flat()[0].uri).toEqual(CARD_FILE("collage"));
     expect(screen.getByTestId("story-preview")).toHaveStyle({ backgroundColor: "#0b0b0c" });
     await fireEvent.press(screen.getByRole("button", { name: "Claro" }));
     await waitFor(() => expect(screen.getByTestId("story-preview")).toHaveStyle({ backgroundColor: "#f3efe8" }));

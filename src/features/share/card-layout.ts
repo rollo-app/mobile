@@ -1,5 +1,9 @@
 // The card that goes over the background (Instagram's sticker, or the still image's middle): pure layout math, no Skia.
 
+/** The Stories image, in pixels. */
+export const STORY_W = 1080;
+export const STORY_H = 1920;
+
 /** Width of the card, in story pixels (the story is 1080 wide). */
 export const CARD_W = 920;
 /** Inner padding on every side. */

@@ -134,7 +134,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
       {!detailError && !empty && !feedFailed && !assets.error && build === null && <Loading />}
       {build !== null && !assets.error && (
         <>
-          <StoryPreview style={style} card={assets.card} height={previewHeight} version={version} />
+          <StoryPreview style={style} card={assets.card} height={previewHeight} />
           <SegmentedControl values={STYLE_LABELS} tintColor={tintHex[scheme]} selectedIndex={STORY_STYLES.indexOf(style)} onValueChange={(v) => setStyle(styleFromLabel(v))} />
           <View style={styles.actions}>
             {instagram && <Button label="Compartir en Stories" disabled={!filesReady} onPress={() => void shareStories()} />}
