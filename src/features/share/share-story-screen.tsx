@@ -13,8 +13,10 @@ import { canShuffle, collageCandidates, collageCaption, nextSeed, pickCollage } 
 import { inviteCaption, inviteLink, inviteSwatches } from "./invite";
 import { composeStill } from "./compose-still";
 import { renderCollageCard } from "./render-collage";
+import { assetUri } from "./asset-uri";
 import { renderInviteCard } from "./render-invite";
 import { instagramStoriesAvailable, isShareCancel, shareMore, shareToInstagramStories } from "./share-story";
+import { STYLE_ASSETS, STYLE_PALETTE } from "./story-style";
 import { useStoryImage } from "./use-story-image";
 
 const STORY_RATIO = 9 / 16;
@@ -62,37 +64,51 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
     const { trip } = detail;
     if (isCollage) {
       const caption = collageCaption({ startsAt: trip.startsAt, endsAt: trip.endsAt, timeZone: trip.timezone, people: memberTotal(detail) });
-      // Temporary until the style picker lands: the dark card over the dark still.
-      return async () => composeStill(await renderCollageCard({ name: trip.name, caption, photos: pickCollage(candidates, seed), style: "dark" }), "dark");
+      // Temporary until the style picker lands: the dark card over the dark background.
+      return async () => {
+        const card = await renderCollageCard({ name: trip.name, caption, photos: pickCollage(candidates, seed), style: "dark" });
+        return { card: card.png, still: await composeStill(card, "dark") };
+      };
     }
-    return async () =>
-      composeStill(
-        await renderInviteCard({
-          name: trip.name,
-          caption: inviteCaption(detail),
-          code: trip.joinCode,
-          coverUrl: trip.coverUrl ?? null,
-          swatches: inviteSwatches(thumbhashes),
-          style: "dark",
-        }),
-        "dark",
-      );
+    return async () => {
+      const card = await renderInviteCard({
+        name: trip.name,
+        caption: inviteCaption(detail),
+        code: trip.joinCode,
+        coverUrl: trip.coverUrl ?? null,
+        swatches: inviteSwatches(thumbhashes),
+        style: "dark",
+      });
+      return { card: card.png, still: await composeStill(card, "dark") };
+    };
   }, [detail, ready, empty, feedFailed, isCollage, candidates, seed, thumbhashes]);
 
   const image = useStoryImage(build, `${tripId}:${kind}:${isCollage ? seed : 0}`, kind);
 
   /** The invitation has no link inside the image: it travels with the share. `copy`: also in the clipboard (the system sheet doesn't touch it). */
-  async function share(send: (uri: string, link: string | undefined) => Promise<void>, copy: boolean) {
-    if (!image.uri || !detail) return;
+  async function share(send: (link: string | undefined) => Promise<void>, copy: boolean) {
+    if (!image.uri || !image.cardUri || !detail) return;
     setShareFailed(false);
     try {
       const link = isCollage ? undefined : inviteLink(detail);
       if (link && copy) await Clipboard.setStringAsync(link);
-      await send(image.uri, link);
+      await send(link);
     } catch (e) {
       if (!isShareCancel(e)) setShareFailed(true);
     }
   }
+
+  const shareStories = () =>
+    share(
+      async (link) =>
+        shareToInstagramStories({
+          stickerUri: image.cardUri!,
+          backgroundVideoUri: await assetUri(STYLE_ASSETS.dark.video),
+          backgroundColor: STYLE_PALETTE.dark.base,
+          linkText: link,
+        }),
+      false,
+    );
 
   const previewHeight = Math.min((width - spacing.md * 2) / STORY_RATIO, height * MAX_PREVIEW_HEIGHT);
 
@@ -123,8 +139,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
             <Image accessibilityLabel="Vista previa" source={{ uri: image.uri, cacheKey: `${tripId}:${kind}:${seed}` }} cachePolicy="none" contentFit="cover" style={styles.image} />
           </View>
           <View style={styles.actions}>
-            {instagram && <Button label="Compartir en Stories" onPress={() => void share((uri, link) => shareToInstagramStories(uri, link), false)} />}
-            <Button label="Más opciones" variant={instagram ? "secondary" : "primary"} onPress={() => void share((uri, link) => shareMore(uri, link), true)} />
+            {instagram && <Button label="Compartir en Stories" onPress={() => void shareStories()} />}
+            <Button label="Más opciones" variant={instagram ? "secondary" : "primary"} onPress={() => void share((link) => shareMore(image.uri!, link), true)} />
             {isCollage && canShuffle(candidates) && (
               <Pressable accessibilityRole="button" onPress={() => setSeed((s) => nextSeed(candidates, s))} style={styles.shuffle}>
                 <Text style={[type.body, { color: colors.tint }]}>Otras</Text>

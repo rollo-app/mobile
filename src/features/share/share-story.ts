@@ -3,11 +3,9 @@ import { Linking, Share as SystemShare } from "react-native";
 import Share, { type Social } from "react-native-share";
 import { META_APP_ID } from "@/config";
 
-const STORY_BACKGROUND = "#0b0b0c";
-
-/** Writes the rendered JPEG to the cache (overwriting the previous one) and returns its file:// uri. */
-export async function writeStoryFile(bytes: Uint8Array, name: "collage" | "invite"): Promise<string> {
-  const file = new File(Paths.cache, `rollo-${name}.jpg`);
+/** Writes rendered bytes to the cache as `name` (extension included; overwrites the previous file) and returns its file:// uri. */
+export async function writeShareFile(bytes: Uint8Array, name: string): Promise<string> {
+  const file = new File(Paths.cache, name);
   file.create({ overwrite: true });
   await file.write(bytes);
   return file.uri;
@@ -23,21 +21,32 @@ export async function instagramStoriesAvailable(appId: string | null = META_APP_
   }
 }
 
+export type InstagramStoriesInput = {
+  /** The card (PNG with transparent corners): Instagram puts it on top as a sticker. */
+  stickerUri: string;
+  /** The style's looping background video. */
+  backgroundVideoUri: string;
+  /** The style's `base` color: the edges while (or if) the video doesn't load. */
+  backgroundColor: string;
+  linkText?: string;
+};
+
 /**
- * Opens Instagram's Stories editor with the image as the background. On iOS this just opens Instagram and resolves:
- * there is no callback when the editor is closed, so there is no cancel to detect. Real failures reject.
+ * Opens Instagram's Stories editor with a looping background video and the card as a sticker. On iOS this just opens Instagram
+ * and resolves: there is no callback when the editor is closed, so there is no cancel to detect. Real failures reject.
  */
-export async function shareToInstagramStories(uri: string, linkText?: string): Promise<void> {
+export async function shareToInstagramStories({ stickerUri, backgroundVideoUri, backgroundColor, linkText }: InstagramStoriesInput): Promise<void> {
   // The typings expose INSTAGRAM_STORIES as a plain string (it comes from native constants); shareSingle wants the enum member.
   const social = Share.Social.INSTAGRAM_STORIES as Social.InstagramStories;
   // `linkText` also goes in Instagram's pasteboard item as plain text (patches/react-native-share+*.patch): the module replaces the
-  // whole general pasteboard, so a link copied before would be lost. The colors keep the edges dark instead of the default purple.
+  // whole general pasteboard, so a link copied before would be lost.
   await Share.shareSingle({
     social,
     appId: META_APP_ID,
-    backgroundImage: uri,
-    backgroundTopColor: STORY_BACKGROUND,
-    backgroundBottomColor: STORY_BACKGROUND,
+    stickerImage: stickerUri,
+    backgroundVideo: backgroundVideoUri,
+    backgroundTopColor: backgroundColor,
+    backgroundBottomColor: backgroundColor,
     ...(linkText ? { linkText } : {}),
   });
 }

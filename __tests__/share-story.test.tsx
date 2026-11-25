@@ -16,11 +16,12 @@ jest.mock("@/features/share/render-invite", () => ({ renderInviteCard: jest.fn()
 jest.mock("@/features/share/compose-still", () => ({ composeStill: jest.fn() }));
 jest.mock("@/features/share/share-story", () => ({
   ...jest.requireActual("@/features/share/share-story"),
-  writeStoryFile: jest.fn(),
+  writeShareFile: jest.fn(),
   instagramStoriesAvailable: jest.fn(),
   shareToInstagramStories: jest.fn(),
   shareMore: jest.fn(),
 }));
+jest.mock("@/features/share/asset-uri", () => ({ assetUri: jest.fn(async () => "file:///assets/bg-dark.mp4") }));
 const trips = jest.mocked(tripActions);
 const collage = jest.mocked(renderCollageModule.renderCollageCard);
 const invite = jest.mocked(renderInviteModule.renderInviteCard);
@@ -31,6 +32,7 @@ const clipboard = jest.mocked(Clipboard);
 const DAY = 24 * 60 * 60 * 1000;
 const SUR = "11111111-1111-4111-8111-111111111111";
 const FILE = "file:///cache/rollo-story.jpg";
+const STORIES = { stickerUri: FILE, backgroundVideoUri: "file:///assets/bg-dark.mp4", backgroundColor: "#0b0b0c" };
 
 const detail = (over: Partial<tripActions.Trip> = {}): tripActions.TripDetail => {
   const me = { id: "m1", userId: "u1", name: "Juani", username: "juani", avatarUrl: null, role: "admin" as const, isCreator: true, blockedByMe: false, groupIds: [] };
@@ -106,7 +108,7 @@ beforeEach(async () => {
   collage.mockResolvedValue({ png: new Uint8Array([1]), width: 920, height: 1100 });
   invite.mockResolvedValue({ png: new Uint8Array([2]), width: 920, height: 1300 });
   still.mockResolvedValue(new Uint8Array([3]));
-  story.writeStoryFile.mockResolvedValue(FILE);
+  story.writeShareFile.mockResolvedValue(FILE);
   story.instagramStoriesAvailable.mockResolvedValue(true);
   story.shareToInstagramStories.mockResolvedValue(undefined);
   story.shareMore.mockResolvedValue(undefined);
@@ -142,7 +144,7 @@ describe("Compartir screen", () => {
   it("collage: Stories is shared without a link", async () => {
     await open("collage");
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
-    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(FILE, undefined));
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(STORIES));
     expect(clipboard.setStringAsync).not.toHaveBeenCalled();
   });
 
@@ -179,7 +181,7 @@ describe("Compartir screen", () => {
     expect(invite.mock.calls[0]![0].swatches.length).toBeGreaterThan(0);
 
     await fireEvent.press(await screen.findByRole("button", { name: "Compartir en Stories" }));
-    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith(FILE, expect.stringContaining("HUB5FT")));
+    await waitFor(() => expect(story.shareToInstagramStories).toHaveBeenCalledWith({ ...STORIES, linkText: expect.stringContaining("HUB5FT") }));
     // The Stories pasteboard write replaces the clipboard: the link travels in the Stories call, not through expo-clipboard.
     expect(clipboard.setStringAsync).not.toHaveBeenCalled();
 

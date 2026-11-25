@@ -2,7 +2,7 @@ import { Linking, Share as NativeShare } from "react-native";
 import { File } from "expo-file-system";
 import Share from "react-native-share";
 import { META_APP_ID } from "@/config";
-import { instagramStoriesAvailable, isShareCancel, shareMore, shareToInstagramStories, writeStoryFile } from "../share-story";
+import { instagramStoriesAvailable, isShareCancel, shareMore, shareToInstagramStories, writeShareFile } from "../share-story";
 
 describe("instagramStoriesAvailable", () => {
   it("is false without an app id and doesn't ask the system", async () => {
@@ -24,25 +24,29 @@ describe("instagramStoriesAvailable", () => {
 });
 
 describe("shareToInstagramStories", () => {
-  it("opens the Stories editor with the image as background", async () => {
-    await shareToInstagramStories("file:///cache/rollo-collage.jpg");
+  const input = { stickerUri: "file:///cache/rollo-collage-card.png", backgroundVideoUri: "file:///assets/bg-dark.mp4", backgroundColor: "#0b0b0c" };
+
+  it("opens the Stories editor with the card as sticker over the background video", async () => {
+    await shareToInstagramStories(input);
     expect(Share.shareSingle).toHaveBeenCalledWith({
       social: Share.Social.INSTAGRAM_STORIES,
       appId: "1187882687102371",
-      backgroundImage: "file:///cache/rollo-collage.jpg",
+      stickerImage: "file:///cache/rollo-collage-card.png",
+      backgroundVideo: "file:///assets/bg-dark.mp4",
       backgroundTopColor: "#0b0b0c",
       backgroundBottomColor: "#0b0b0c",
     });
+    expect(Share.shareSingle).toHaveBeenLastCalledWith(expect.not.objectContaining({ backgroundImage: expect.anything() }));
     expect(META_APP_ID).toBe("1187882687102371");
   });
 
   it("sends the link as linkText when given", async () => {
-    await shareToInstagramStories("file:///cache/rollo-invite.jpg", "https://rolloproject.com/j/HUB5FT");
+    await shareToInstagramStories({ ...input, linkText: "https://rolloproject.com/j/HUB5FT" });
     expect(Share.shareSingle).toHaveBeenLastCalledWith(expect.objectContaining({ linkText: "https://rolloproject.com/j/HUB5FT" }));
   });
 
   it("has no linkText key without a link", async () => {
-    await shareToInstagramStories("file:///cache/rollo-collage.jpg");
+    await shareToInstagramStories(input);
     expect(Share.shareSingle).toHaveBeenLastCalledWith(expect.not.objectContaining({ linkText: expect.anything() }));
   });
 });
@@ -55,17 +59,17 @@ describe("shareMore", () => {
   });
 });
 
-describe("writeStoryFile", () => {
+describe("writeShareFile", () => {
   it("returns the cache uri", async () => {
-    expect(await writeStoryFile(new Uint8Array([1, 2]), "collage")).toBe("file:///cache/tmp");
+    expect(await writeShareFile(new Uint8Array([1, 2]), "rollo-collage-card.png")).toBe("file:///cache/tmp");
   });
 
-  it("writes rollo-<name>.jpg in the cache, overwriting the previous one", async () => {
+  it("writes the given name in the cache, overwriting the previous one", async () => {
     const create = jest.spyOn(File.prototype, "create");
     const write = jest.spyOn(File.prototype, "write");
     const bytes = new Uint8Array([1, 2]);
-    await writeStoryFile(bytes, "invite");
-    expect((File as unknown as { lastParts: unknown[] }).lastParts).toEqual(["file:///cache/", "rollo-invite.jpg"]);
+    await writeShareFile(bytes, "rollo-invite-still.jpg");
+    expect((File as unknown as { lastParts: unknown[] }).lastParts).toEqual(["file:///cache/", "rollo-invite-still.jpg"]);
     expect(create).toHaveBeenCalledWith({ overwrite: true });
     expect(write).toHaveBeenCalledWith(bytes);
   });
