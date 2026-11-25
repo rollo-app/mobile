@@ -386,6 +386,8 @@ describe("revealed roll: Galería | Rollo", () => {
       canSee: false,
       friendCount: 0,
       mutualCount: 0,
+      rollCount: null,
+      featuredCount: null,
       friendRequest: "none",
     });
     const base = detail();

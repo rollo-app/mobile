@@ -6754,6 +6754,10 @@ export interface components {
             canSee: boolean;
             /** @description How many friends this user has (always public) */
             friendCount: number;
+            /** @description Revealed rolls where this user is an active member; null without canSee */
+            rollCount: number | null;
+            /** @description Featured photos you can see on this profile; null without canSee */
+            featuredCount: number | null;
             /** @description How many of your friends are also this user's friends (0 for yourself) */
             mutualCount: number;
             /**

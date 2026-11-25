@@ -27,6 +27,8 @@ const profile = (blockedByMe: boolean): profileActions.UserProfile => ({
   canSee: false,
   friendCount: 0,
   mutualCount: 0,
+  rollCount: null,
+  featuredCount: null,
   friendRequest: "none",
 });
 

@@ -25,6 +25,8 @@ const profile = (friend: actions.Friend): profileActions.UserProfile => ({
   canSee: isFriend,
   friendCount: 4,
   mutualCount: 1,
+  rollCount: null,
+  featuredCount: null,
   friendRequest,
 });
 

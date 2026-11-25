@@ -11,7 +11,7 @@ import * as actions from "@/features/trips/actions";
 import { getActiveTripId } from "@/storage/active-trip";
 import { hasSeenPushPrimer, markPushPrimerSeen } from "@/storage/push-primer";
 import { clearSessionToken } from "@/storage/session";
-import { signInAs, tripSummary, USER } from "@/test/account";
+import { signInAs, stubOwnProfile, tripSummary, USER } from "@/test/account";
 import { routes } from "@/test/routes";
 import { syncMoments } from "@/features/moments/moment-sync";
 import { queryClient } from "@/api/query-client";
@@ -87,6 +87,7 @@ beforeEach(async () => {
   push.registerPushToken.mockResolvedValue();
   trips.fetchMyTrips.mockResolvedValue({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(OTRO, "Bariloche")] });
   friends.fetchFriends.mockResolvedValue([]);
+  stubOwnProfile();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur"), tripSummary(OTRO, "Bariloche")], active: SUR });
 });
 

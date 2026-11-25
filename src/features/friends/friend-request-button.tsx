@@ -13,17 +13,21 @@ export function FriendRequestButton({ userId, state }: { userId: string; state: 
 
   return (
     <View style={styles.box}>
-      {state === "add" && <Button label="Agregar amigo" onPress={request.send} />}
-      {state === "sent" && <Button label="Solicitud enviada" variant="secondary" onPress={request.cancel} />}
+      {state === "add" && <Button size="small" label="Agregar amigo" onPress={request.send} />}
+      {state === "sent" && <Button size="small" label="Solicitud enviada" variant="secondary" onPress={request.cancel} />}
       {state === "received" && (
-        <>
-          <Button label="Aceptar solicitud" onPress={request.accept} />
-          <Button label="Rechazar" variant="secondary" onPress={request.reject} />
-        </>
+        <View style={styles.row}>
+          <Button size="small" label="Aceptar solicitud" onPress={request.accept} />
+          <Button size="small" label="Rechazar" variant="secondary" onPress={request.reject} />
+        </View>
       )}
-      {!!request.error && <ErrorText>{request.error}</ErrorText>}
+      {!!request.error && <ErrorText style={styles.error}>{request.error}</ErrorText>}
     </View>
   );
 }
 
-const styles = StyleSheet.create({ box: { gap: spacing.sm } });
+const styles = StyleSheet.create({
+  box: { gap: spacing.sm, alignItems: "center" },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, justifyContent: "center" },
+  error: { textAlign: "center" },
+});

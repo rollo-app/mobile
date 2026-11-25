@@ -14,7 +14,7 @@ import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import * as actions from "@/features/trips/actions";
 import { getSessionToken } from "@/storage/session";
-import { signInAs, tripSummary, USER } from "@/test/account";
+import { signInAs, stubOwnProfile, tripSummary, USER } from "@/test/account";
 import { memoryDb } from "@/test/sqlite-memory";
 import "@/test/reanimated";
 import { routes } from "@/test/routes";
@@ -113,6 +113,7 @@ const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions");
 
 beforeEach(() => {
   jest.mocked(friendActions).fetchFriends.mockResolvedValue([]);
+  stubOwnProfile();
   jest.mocked(moderationActions).fetchBlocked.mockResolvedValue([]);
   mocked.fetchTrip.mockResolvedValue(tripDetail());
   mocked.fetchFeedPage.mockResolvedValue({ revealed: false, revealAt: Date.now() + DAY, items: [], nextCursor: null });

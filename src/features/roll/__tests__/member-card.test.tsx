@@ -76,6 +76,8 @@ const profileOf = (m: Member, bio: string | null) => ({
   canSee: false,
   friendCount: 0,
   mutualCount: 0,
+  rollCount: null,
+  featuredCount: null,
   friendRequest: "none" as const,
 });
 
