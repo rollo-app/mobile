@@ -4977,7 +4977,7 @@ export interface paths {
         };
         /**
          * Download a file (only after the reveal, except daily moment photos)
-         * @description Streamed from R2 with the same Bearer token. `display` is the 2048px version (the original for uploads that have none); `original` serves the display once the original was purged 30 days after the reveal. Before the reveal only the two images of a daily moment (main and linked) can be fetched, by active members; anything else is 403.
+         * @description Streamed from R2 with the same Bearer token. `display` is the 2048px version (the original for uploads that have none); `original` serves the display once the original was purged 14 days after the reveal. Before the reveal only the two images of a daily moment (main and linked) can be fetched, by active members; anything else is 403.
          */
         get: {
             parameters: {
@@ -6467,6 +6467,8 @@ export interface components {
             name: string;
             /** @description Path of the cover (prefix the API base URL), null if none */
             coverUrl: string | null;
+            /** @description Which vertical part of the cover to show when it is cropped wider (0 = top, 1 = bottom); null = middle. The website's link image uses it */
+            coverFocusY: number | null;
             /** @description Cover text set by the organizers; null if none */
             description: string | null;
             /** @description Start of the rollo, ms since epoch */
@@ -6954,7 +6956,7 @@ export interface components {
             originals: {
                 /** @description The rollo keeps its full-quality originals forever (rollos that existed before the policy, and later the paid pass) */
                 keep: boolean;
-                /** @description When the originals are deleted: 30 days after the reveal; null when `keep` */
+                /** @description When the originals are deleted: 14 days after the reveal; null when `keep` */
                 expiresAt: number | null;
                 /** @description The cron already deleted every purgeable original (the display versions stay) */
                 purged: boolean;
@@ -7377,7 +7379,7 @@ export interface components {
             /** @description Download paths; only after the reveal, except for the photos of a daily moment (main and linked image), which any active member gets as soon as they are uploaded */
             files?: {
                 thumb: string;
-                /** @description Always present. Once the original was purged (30 days after the reveal) the same path serves the display file instead; see `originalAvailable` */
+                /** @description Always present. Once the original was purged (14 days after the reveal) the same path serves the display file instead; see `originalAvailable` */
                 original: string;
                 /** @description 2048px version, kept forever; absent for uploads from builds that predate it (they keep their original) */
                 display?: string;
