@@ -355,6 +355,8 @@ describe("Roll board · people and settings", () => {
       canSee: false,
       friendCount: 0,
       mutualCount: 0,
+      rollCount: null,
+      featuredCount: null,
       friendRequest: "none",
     });
     mocked.fetchTrip.mockResolvedValue(detail());

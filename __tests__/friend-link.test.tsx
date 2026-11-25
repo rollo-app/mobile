@@ -4,7 +4,7 @@ import { ApiError } from "@/api/client";
 import * as friendActions from "@/features/friends/actions";
 import * as profileActions from "@/features/profile/actions";
 import { getPendingFriend, setPendingFriend } from "@/storage/pending-friend";
-import { signInAs, tripSummary, USER } from "@/test/account";
+import { signInAs, stubOwnProfile, tripSummary, USER } from "@/test/account";
 import "@/test/reanimated";
 import { routes } from "@/test/routes";
 import * as featuredActions from "@/features/featured/actions";
@@ -29,6 +29,7 @@ const claimed = (token = "ct1"): friendActions.FriendClaim => ({
 
 beforeEach(() => {
   for (const mock of [...Object.values(friends), ...Object.values(profile)]) (mock as Partial<jest.Mock>).mockReset?.();
+  stubOwnProfile();
   friends.fetchFriends.mockResolvedValue([cami]);
   friends.claimFriendLink.mockResolvedValue(claimed());
   friends.redeemFriend.mockResolvedValue(cami);

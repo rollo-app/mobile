@@ -92,6 +92,8 @@ const userProfile = (friend: actions.Friend, over: Partial<profileActions.UserPr
   canSee: true,
   friendCount: 12,
   mutualCount: 0,
+  rollCount: null,
+  featuredCount: null,
   friendRequest: "none",
   ...over,
 });
@@ -379,14 +381,40 @@ describe("Someone's profile header", () => {
   it("shows how many friends they have, singular and plural", async () => {
     fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 1, mutualCount: 1 }));
     await renderRouter(routes, { initialUrl: "/user/u9" });
-    expect(await screen.findByRole("button", { name: "1 amigo · 1 en común" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "1 amigo" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "1 amigo en común" })).toBeVisible();
   });
 
   it("adds how many are in common", async () => {
     fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 12, mutualCount: 3 }));
     await renderRouter(routes, { initialUrl: "/user/u9" });
 
-    expect(await screen.findByRole("button", { name: "12 amigos · 3 en común" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "12 amigos" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "3 amigos en común" })).toBeVisible();
+  });
+
+  it("shows their counts and mutual friends", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { friendCount: 48, mutualCount: 3, rollCount: 5, featuredCount: 21 }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByRole("button", { name: "5 rollos, 21 fotos, 48 amigos" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "3 amigos en común" })).toBeVisible();
+  });
+
+  it("shows only friends on a private profile", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { isFriend: false, canSee: false, friendCount: 48, mutualCount: 3, rollCount: null, featuredCount: null }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByRole("button", { name: "48 amigos" })).toBeVisible();
+    expect(screen.getByText("Este perfil es privado")).toBeVisible();
+  });
+
+  it("hides rolls and photos on a blocked profile even if the server sends them", async () => {
+    fetchUser.mockResolvedValue(userProfile(lu, { blockedByMe: true, friendCount: 48, mutualCount: 3, rollCount: 5, featuredCount: 21 }));
+    await renderRouter(routes, { initialUrl: "/user/u9" });
+
+    expect(await screen.findByRole("button", { name: "48 amigos" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /rollos|fotos/ })).toBeNull();
   });
 
   it("without friends in common it only shows the count", async () => {

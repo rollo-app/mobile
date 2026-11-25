@@ -28,6 +28,8 @@ export function useLeaveTrip(tripId: string, tripName: string, { revealed, copy 
       });
       await bestEffort(() => cancelMomentNotifications(tripId));
       await bestEffort(() => queryClient.invalidateQueries({ queryKey: myTripsKey }));
+      // Your own Perfil stays mounted with a cached `rollCount`: refresh every cached user (prefix) so it doesn't go stale.
+      await bestEffort(() => queryClient.invalidateQueries({ queryKey: ["user"] }));
       await bestEffort(() => queryClient.removeQueries({ queryKey: tripKey(tripId) }));
       if (copy === "board") router.dismissTo("/roll");
     },
