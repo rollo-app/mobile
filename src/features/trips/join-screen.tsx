@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { ApiError, errorMessage } from "@/api/client";
 import { EventDescription } from "@/features/events/event-description";
 import { EventHero } from "@/features/events/event-hero";
-import { joinedLine } from "@/features/events/event";
+import { joinedLine, previewDates, revealedMessage } from "@/features/events/event";
 import { PickGroups } from "@/features/events/pick-groups";
 import { offerPushAfterJoining } from "@/features/notifications/offer-push";
 import { ErrorText, Field, Footnote, Screen } from "@/ui/components";
@@ -12,9 +12,9 @@ import { colors, spacing, type } from "@/ui/theme";
 import { usePreviewEvent } from "@/features/events/use-preview-event";
 import type { EventPreview } from "./actions";
 import { rollHref } from "./roll-href";
+import { useActiveTrip } from "./use-active-trip";
 import { useJoinTrip } from "./use-join-trip";
 
-const REVEALED_EVENT = "Este evento ya se reveló.";
 const EVENT_NEEDS_UPDATE = "EVENT_NEEDS_UPDATE";
 
 export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
@@ -22,7 +22,9 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   const [event, setEvent] = useState<EventPreview | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const preview = usePreviewEvent();
+  const { trips } = useActiveTrip();
   const join = useJoinTrip();
+  const dates = event ? previewDates(event) : "";
   const joined = event ? joinedLine(event.memberCount) : null;
   const error = errorMessage(join.error, "No se pudo entrar al rollo");
 
@@ -37,7 +39,14 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
     setSelected([]);
     join.reset();
     if (linkCode.length !== 6) return;
-    // A regular rollo (or a failed lookup) just leaves the code filled in: joining it is up to the guest.
+    // A link to a rollo you're already in just opens it: no preview, no join.
+    const mine = trips.find((t) => t.joinCode.toUpperCase() === linkCode);
+    if (mine) {
+      router.dismissTo("/roll");
+      router.push(rollHref(mine.id));
+      return;
+    }
+    // A failed lookup just leaves the code filled in: joining it is up to the guest.
     preview.mutate(linkCode, { onSuccess: (found) => found && setEvent(found) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkCode]);
@@ -75,7 +84,8 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
       );
     preview.mutate(code, {
       onSuccess: (found) => {
-        if (!found) return joinDirectly();
+        // A regular rollo has no groups to pick: a typed code joins it right away.
+        if (!found || found.type === "trip") return joinDirectly();
         setEvent(found);
         setSelected([]);
       },
@@ -88,7 +98,10 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
   }
 
   const choosing = event !== null;
-  const action = choosing ? (!event.revealed && selected.length > 0 ? enter : undefined) : valid ? submit : undefined;
+  const isTrip = event?.type === "trip";
+  const action = choosing ? (!event.revealed && (isTrip || selected.length > 0) ? enter : undefined) : valid ? submit : undefined;
+  // A revealed regular rollo can't be joined: no button at all.
+  const showAction = !(isTrip && event.revealed);
 
   return (
     <Screen grouped>
@@ -96,13 +109,13 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
         <Stack.Toolbar.Button onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}>Cancelar</Stack.Toolbar.Button>
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
-        {busy ? (
+        {!showAction ? null : busy ? (
           <Stack.Toolbar.View>
             <ActivityIndicator />
           </Stack.Toolbar.View>
         ) : (
           <Stack.Toolbar.Button variant="done" disabled={!action} onPress={() => action?.()}>
-            {choosing ? "Entrar" : "Unirme"}
+            {choosing && !isTrip ? "Entrar" : "Unirme"}
           </Stack.Toolbar.Button>
         )}
       </Stack.Toolbar>
@@ -110,12 +123,19 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
       {event ? (
         <>
           {event.coverUrl ? (
-            <EventHero name={event.name} coverUrl={event.coverUrl} eyebrow="Te invitaron a" description={event.description} />
+            <EventHero
+              name={event.name}
+              coverUrl={event.coverUrl}
+              eyebrow="Te invitaron a"
+              caption={isTrip ? dates : undefined}
+              description={event.description}
+            />
           ) : (
             <>
               <Text accessibilityRole="header" style={styles.name}>
                 {event.name}
               </Text>
+              {isTrip && <Text style={styles.joined}>{dates}</Text>}
               {!!event.description && (
                 <View style={styles.description}>
                   <EventDescription text={event.description} />
@@ -124,7 +144,9 @@ export function JoinScreen({ initialCode = "" }: { initialCode?: string }) {
             </>
           )}
           {event.revealed ? (
-            <ErrorText>{REVEALED_EVENT}</ErrorText>
+            <ErrorText>{revealedMessage(event)}</ErrorText>
+          ) : isTrip ? (
+            joined !== null && <Text style={styles.joined}>{joined}</Text>
           ) : (
             <View style={styles.groups}>
               {joined !== null && <Text style={styles.joined}>{joined}</Text>}

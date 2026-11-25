@@ -66,7 +66,7 @@ export function peopleLabel(n: number): string {
 const part = (parts: Intl.DateTimeFormatPart[], type: "day" | "month") => parts.find((p) => p.type === type)?.value ?? "";
 
 /** A trip's dates in its own zone: "3 al 8 de enero", "28 de dic al 3 de enero", "3 de enero" for a single day. */
-function tripDates(startsAt: number, endsAt: number, timeZone: string): string {
+export function tripDates(startsAt: number, endsAt: number, timeZone: string): string {
   const long = dateFormatter("es-AR", { timeZone, day: "numeric", month: "long" });
   const short = dateFormatter("es-AR", { timeZone, day: "numeric", month: "short" });
   const from = long.formatToParts(startsAt);
@@ -75,6 +75,16 @@ function tripDates(startsAt: number, endsAt: number, timeZone: string): string {
   if (fromMonth === toMonth) return fromDay === toDay ? `${toDay} de ${toMonth}` : `${fromDay} al ${toDay} de ${toMonth}`;
   const shortMonth = part(short.formatToParts(startsAt), "month").replace(/\.$/, "");
   return `${fromDay} de ${shortMonth} al ${toDay} de ${toMonth}`;
+}
+
+/** The dates line of a rollo's public preview: the event's day or the trip's dates, in the rollo's own zone. */
+export function previewDates(preview: { type: "trip" | "event"; startsAt: number; endsAt: number; timezone: string }): string {
+  return preview.type === "event" ? eventDay(preview.startsAt, preview.timezone) : tripDates(preview.startsAt, preview.endsAt, preview.timezone);
+}
+
+/** What the join screen says about a rollo or event that was already revealed (nobody can join it any more). */
+export function revealedMessage(preview: { type: "trip" | "event" }): string {
+  return preview.type === "event" ? "Este evento ya se reveló." : "Este rollo ya se reveló.";
 }
 
 /** The line under the name on a rollo's cover: the event's day or the trip's dates, then how many people are in. */

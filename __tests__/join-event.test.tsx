@@ -6,7 +6,7 @@ import * as actions from "@/features/trips/actions";
 import { markAppIntroPending } from "@/storage/app-intro";
 import { getPendingJoin, setPendingJoin } from "@/storage/pending-join";
 import { markPushPrimerSeen } from "@/storage/push-primer";
-import { signInAs, USER } from "@/test/account";
+import { signInAs, tripSummary, USER } from "@/test/account";
 import "@/test/reanimated";
 import { routes } from "@/test/routes";
 import { setSessionToken } from "@/storage/session";
@@ -268,6 +268,76 @@ describe("Joining an event", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
 
     await waitFor(() => expect(screen).not.toHavePathname("/join"));
+  });
+});
+
+describe("Joining a regular rollo by link or code", () => {
+  beforeEach(async () => {
+    await signInAs({ trips: [] });
+    await markPushPrimerSeen();
+  });
+
+  const tripPreview = (over: Partial<actions.EventPreview> = {}) =>
+    preview({ type: "trip", groups: [], name: "Bariloche", description: "Con los pibes", startsAt: Date.UTC(2027, 0, 3, 12), endsAt: Date.UTC(2027, 0, 8, 12), memberCount: 7, ...over });
+
+  it("a regular rollo's link shows its preview and Unirme joins it", async () => {
+    mocked.previewEvent.mockResolvedValue(tripPreview({ coverUrl: "/covers/t/c.jpg" }));
+    mocked.joinTrip.mockResolvedValue({} as actions.Trip);
+    await renderRouter(routes, { initialUrl: "/join?code=hub5ft" });
+
+    const hero = await screen.findByTestId("event-hero");
+    expect(within(hero).getByText("Bariloche")).toBeVisible();
+    expect(within(hero).getByText("3 al 8 de enero")).toBeVisible();
+    expect(screen.getByText("Con los pibes")).toBeVisible();
+    expect(screen.getByText("7 personas ya se unieron")).toBeVisible();
+    expect(screen.queryByText(/Elegí tu/)).toBeNull();
+    expect(mocked.joinTrip).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Unirme" }));
+
+    await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT", groupIds: [] }));
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("a regular rollo without a cover shows the preview without the photo", async () => {
+    mocked.previewEvent.mockResolvedValue(tripPreview());
+    await renderRouter(routes, { initialUrl: "/join?code=HUB5FT" });
+
+    expect(await screen.findByText("Bariloche")).toBeVisible();
+    expect(screen.getByText("3 al 8 de enero")).toBeVisible();
+    expect(screen.getByText("Con los pibes")).toBeVisible();
+    expect(screen.queryByTestId("event-hero")).toBeNull();
+    expect(screen.getByRole("button", { name: "Unirme" })).toBeEnabled();
+  });
+
+  it("a revealed regular rollo says Este rollo ya se reveló and has no Unirme", async () => {
+    mocked.previewEvent.mockResolvedValue(tripPreview({ revealed: true }));
+    await renderRouter(routes, { initialUrl: "/join?code=HUB5FT" });
+
+    expect(await screen.findByText("Este rollo ya se reveló.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Unirme" })).toBeNull();
+    expect(screen.queryByText(/ya se unieron/)).toBeNull();
+  });
+
+  it("typing a regular rollo's code joins it directly", async () => {
+    mocked.previewEvent.mockResolvedValue(tripPreview());
+    mocked.joinTrip.mockResolvedValue({} as actions.Trip);
+    await renderRouter(routes, { initialUrl: "/join" });
+
+    await enterCode("hub5ft");
+
+    await waitFor(() => expect(mocked.joinTrip).toHaveBeenCalledWith({ code: "HUB5FT" }));
+    expect(screen.queryByText("Bariloche")).toBeNull();
+    await waitFor(() => expect(screen).toHavePathname("/roll"));
+  });
+
+  it("scanning the QR of a rollo you're in opens it", async () => {
+    await signInAs({ trips: [tripSummary("t1", "Bariloche", { joinCode: "HUB5FT" })] });
+    await renderRouter(routes, { initialUrl: "/join?code=hub5ft" });
+
+    await waitFor(() => expect(screen).toHavePathname("/roll/t1"));
+    expect(mocked.previewEvent).not.toHaveBeenCalled();
+    expect(mocked.joinTrip).not.toHaveBeenCalled();
   });
 });
 
