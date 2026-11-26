@@ -29,13 +29,35 @@ Cada vez que se arma, las fotos de cada parada se acomodan distinto (una sobre e
 
 ## No objetivos (esta etapa)
 
-- **Meter el recorrido dentro del revelado** ("el mapa se revela" en vez de la grilla del cuarto oscuro). Es la segunda etapa, con su propio diseño. Es solo JS: no necesita otro build.
-- Elegir a mano qué fotos entran (como "Elegir fotos" del collage).
+- **Un video para los rollos sin recorrido** (eventos, o todo en un solo lugar). El dueño lo quiere planear después, aparte.
 - Sonido o música. Instagram deja ponerle música a la historia.
 - Estilo claro. El video usa siempre el mapa oscuro.
 - La luz roja de cuarto oscuro sobre el mapa. El video para compartir va **sin tinte**: el mapa oscuro apenas atenuado, para que manden las fotos y la ruta se vea en cobalto *(dueño, 2026-11-26, entre rojo, sin tinte, cobalto y ámbar)*. Las fotos siguen revelándose de sepia borroso a nítido. El rojo queda para el revelado dentro de la app.
 - Botón directo a WhatsApp. Se llega por "Más opciones".
 - Android.
+
+## Decisiones del 2026-11-26 después de ver el motor en el iPhone *(dueño)*
+
+El dueño dio por bueno el video ("así el video está bien para mí") y decidió dos cosas más.
+
+### Elegir las fotos del video para compartir
+
+- Arranca con la selección automática, para que compartir siga siendo un toque.
+- La tira de fotos con el "+" abre la misma pantalla de elegir del collage (`/share-pick`), con tope de **15** y solo fotos compartibles con ubicación.
+- La ruta se arma con las elegidas: una parada sin fotos elegidas desaparece. Si queda una sola parada, no hay recorrido y la pantalla lo dice ahí mismo, sin ofrecer destinos.
+- Con pocas fotos el video dura menos (dos paradas, unos 15 s). Está bien.
+
+### El recorrido reemplaza la animación del revelado
+
+Etapa siguiente a "Recorrido" en Compartir; es solo JS.
+
+- Solo en rollos de viaje con recorrido (al menos 2 paradas). Los demás siguen con el revelado de hoy.
+- Usa el **corte corto** (unos 27 s), con la **luz roja**, **sin placa final**, con **todas las fotos** del rollo y la **ubicación exacta**: lo ven solo los miembros.
+- Tocar lo saltea y sigue a las historias, como hoy. Se abre solo una vez por rollo, como hoy.
+- Si el mapa no carga (sin señal, error) o está prendido "Reducir movimiento", cae al revelado actual.
+- Sin sonido de obturador ni háptico fuerte al final: asustan. Un toque suave como mucho.
+
+Son dos cortes del mismo motor: uno para adentro (rojo, corto, todas las fotos) y otro para afuera (sin tinte, largo, fotos elegidas y compartibles, con placa final).
 
 ## Lo que no puede pasar (aunque funcione)
 
@@ -111,7 +133,7 @@ Para el revelado, que solo ven los miembros, nada de esto aplica: son parámetro
 - En **Recorrido**:
   - La vista previa reproduce la película en el mismo recuadro 9:16 del collage. Mientras se arma (pide las imágenes del mapa: 14 para la demo, hasta 31) dice "Armando el recorrido…" con avance.
   - **"Otra versión"** sortea otro arreglo de las mismas fotos.
-  - No hay selector Oscuro/Claro ni tira de fotos.
+  - No hay selector Oscuro/Claro. La tira de fotos con el "+" sí está: ver "Elegir las fotos del video para compartir".
   - Botones: **"Compartir en Instagram"**, **"Guardar video"** y **"Más opciones"**.
 - Al tocar un destino se exporta, si no está ya exportada esa versión: "Armando el video… 42 %" con **"Cancelar"**. El archivo se reutiliza para los otros destinos mientras no cambie la versión.
 - Con "Reducir movimiento" la vista previa no arranca sola: muestra el cuadro final y un botón para reproducir. Compartir funciona igual. *(mi decisión)*
