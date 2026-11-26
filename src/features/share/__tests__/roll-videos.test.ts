@@ -1,6 +1,6 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
-import { bannerPhoto, rollVideos } from "../roll-videos";
+import { bannerPhoto, rollHasPoster, rollVideos } from "../roll-videos";
 
 const detail = (o: { revealed?: boolean; featuringDisabled?: boolean; type?: "trip" | "event" } = {}) =>
   ({ trip: { type: o.type ?? "trip", revealed: o.revealed ?? true, featuringDisabled: o.featuringDisabled ?? false } }) as unknown as TripDetail;
@@ -29,4 +29,16 @@ describe("bannerPhoto", () => {
     expect(bannerPhoto([photo("a", { likeCount: 9, archived: true }), photo("v", { likeCount: 8, type: "video" }), photo("c", { likeCount: 1 })])?.id).toBe("c"));
   it("keeps the earlier photo on a tie", () => expect(bannerPhoto([photo("a", { likeCount: 2 }), photo("b", { likeCount: 2 })])?.id).toBe("a"));
   it("is null without photos", () => expect(bannerPhoto([])).toBeNull());
+});
+
+describe("rollHasPoster", () => {
+  const poster = { detail: detail(), ready: true, feedFailed: false, poolStops: 2 };
+  it("is true for a revealed, non-private trip with two stops", () => expect(rollHasPoster(poster)).toBe(true));
+  it("is false for an event", () => expect(rollHasPoster({ ...poster, detail: detail({ type: "event" }) })).toBe(false));
+  it("is false for a private roll", () => expect(rollHasPoster({ ...poster, detail: detail({ featuringDisabled: true }) })).toBe(false));
+  it("is false for an unrevealed roll", () => expect(rollHasPoster({ ...poster, detail: detail({ revealed: false }) })).toBe(false));
+  it("is false with a single stop", () => expect(rollHasPoster({ ...poster, poolStops: 1 })).toBe(false));
+  it("is false until the feed is in", () => expect(rollHasPoster({ ...poster, ready: false })).toBe(false));
+  it("is false when the feed failed", () => expect(rollHasPoster({ ...poster, feedFailed: true })).toBe(false));
+  it("is false without the detail", () => expect(rollHasPoster({ ...poster, detail: null })).toBe(false));
 });

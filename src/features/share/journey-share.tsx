@@ -1,7 +1,7 @@
 // The video half of Compartir ("Recorrido" or "Resumen"): the film's preview, its photos and the export to a video. The arrangement is random (the screen draws one seed per visit) and not the user's to choose.
 import * as Burnt from "burnt";
 import { router } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import { sheetCounter } from "@/features/journey/sheet/sheet-photos";
 import { filmBlocked, filmPhotos, filmStopCount } from "@/features/journey/film-photos";
@@ -124,7 +124,7 @@ type FilmShareBase = {
 
 export type FilmShareProps = FilmShareBase &
   (
-    | { kind: "route"; /** `filmCandidates` of the roll. */ candidates: RevealedPhoto[]; selection: readonly string[] }
+    | { kind: "route"; /** `filmCandidates` of the roll. */ candidates: RevealedPhoto[]; selection: readonly string[]; /** Rendered right under the preview (the Video | Afiche control). */ accessory?: ReactNode }
     | { kind: "sheet"; /** `sheetPick` of the roll. */ pick: { cells: RevealedPhoto[]; highlights: string[] } }
   );
 
@@ -133,7 +133,7 @@ export function FilmShare(props: FilmShareProps) {
   return props.kind === "route" ? <RouteFilmShare {...props} /> : <SheetFilmShare {...props} />;
 }
 
-function RouteFilmShare({ tripId, detail, candidates, selection, token, seed, instagram }: FilmShareBase & { candidates: RevealedPhoto[]; selection: readonly string[] }) {
+function RouteFilmShare({ tripId, detail, candidates, selection, token, seed, instagram, accessory }: FilmShareBase & { candidates: RevealedPhoto[]; selection: readonly string[]; accessory?: ReactNode }) {
   const chosen = useMemo(() => filmPhotos(candidates, selection), [candidates, selection]);
   const { startsAt, timezone } = detail.trip;
   const stops = useMemo(() => filmStopCount(chosen, localDay(startsAt, timezone)), [chosen, startsAt, timezone]);
@@ -166,6 +166,7 @@ function RouteFilmShare({ tripId, detail, candidates, selection, token, seed, in
       film={film}
       stripPhotos={stripPhotos}
       subject="recorrido"
+      accessory={accessory}
       onAdd={onAdd}
       notice={noRoute ? "Con estas fotos no hay recorrido: elegí fotos de al menos dos lugares." : null}
       texts={{ loading: "Armando el recorrido", offline: "Para armar el recorrido hace falta conexión.", failed: "No se pudo armar el recorrido. Probá de nuevo." }}
@@ -210,6 +211,7 @@ function FilmBody({
   stripTotal,
   subject,
   counter,
+  accessory,
   onAdd,
   notice,
   texts,
@@ -223,6 +225,8 @@ function FilmBody({
   stripTotal?: number;
   subject: "recorrido" | "resumen";
   counter?: string;
+  /** Rendered right after the preview. */
+  accessory?: ReactNode;
   onAdd: (() => void) | null;
   notice: string | null;
   texts: { loading: string; offline: string | null; failed: string };
@@ -266,6 +270,7 @@ function FilmBody({
           </View>
         )}
       </View>
+      {accessory}
       {!!counter && <Text style={[type.footnote, styles.counter]}>{counter}</Text>}
       <CollageStrip photos={stripPhotos} total={stripTotal} token={token} subject={subject} onPress={onAdd} />
       {!!notice && <Footnote>{notice}</Footnote>}

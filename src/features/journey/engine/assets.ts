@@ -152,6 +152,25 @@ export async function loadLayers(specs: MapLayerSpec[], onProgress: (done: numbe
   return out;
 }
 
+/** The poster's one map image, kept for a retry or a second look: its own entry, apart from the film's `lastLayers`. */
+let lastPosterMap: { key: string; asset: LayerAsset } | null = null;
+
+/** One map image at `density` pixels per film point, without the map's names. One retry; throws if both attempts fail. */
+export async function loadPosterMap(spec: MapLayerSpec, density: number): Promise<LayerAsset> {
+  const key = JSON.stringify([density, spec]);
+  if (lastPosterMap?.key === key) return lastPosterMap.asset;
+  const f = PixelRatio.get() / density;
+  const style = spec.labels ? writeStyleFile("dark") : writeBareStyle();
+  let asset: LayerAsset;
+  try {
+    asset = await snapshot(spec, style, f, "poster map");
+  } catch {
+    asset = await snapshot(spec, style, f, "poster map retry");
+  }
+  lastPosterMap = { key, asset };
+  return asset;
+}
+
 /** The photos of the last film by URI, for the same reason as `lastLayers`. Authors' avatars go through here too, under `avatar:<authorId>`. */
 let lastPhotos = new Map<string, SkImage>();
 

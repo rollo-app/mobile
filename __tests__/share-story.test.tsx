@@ -8,6 +8,8 @@ import { setFilmSelection } from "@/features/share/film-selection";
 import { PermissionDeniedError } from "@/features/gallery/save";
 import * as shareVideo from "@/features/share/share-video";
 import * as filmHook from "@/features/journey/use-film";
+import { usePoster } from "@/features/journey/poster/use-poster";
+import Share from "react-native-share";
 import * as sheetHook from "@/features/journey/use-sheet-film";
 import { setSheetChoices } from "@/features/share/sheet-selection";
 import { cancelVideo } from "../modules/rollo-video";
@@ -547,16 +549,87 @@ describe("Compartir: Recorrido", () => {
     expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
   });
 
-  it("shows no control when the build has no video module", async () => {
+  it("still offers Recorrido (the poster) when the build has no video module", async () => {
     mockVideoAvailable = false;
     await open("collage", revealed(), TWO_PLACES);
     await filesReady();
-    expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Recorrido" })).toBeVisible();
   });
 
   it("kind=journey opens on Recorrido", async () => {
     await openFilm(revealed(), TWO_PLACES, "journey");
     expect(screen.getByTestId("film-player")).toBeVisible();
+  });
+
+  describe("Afiche (inside Recorrido)", () => {
+    const posterReady = { status: "ready", uri: "file:///cache/afiche.jpg", version: "v1" } as const;
+    const toAfiche = async () => {
+      await toRecorrido();
+      await fireEvent.press(await screen.findByRole("button", { name: "Afiche" }));
+    };
+
+    beforeEach(() => {
+      jest.mocked(usePoster).mockReset();
+      jest.mocked(usePoster).mockReturnValue({ status: "loading" });
+      story.instagramStoriesAvailable.mockResolvedValue(true);
+    });
+
+    it("has no Afiche in the top control; Recorrido offers Video | Afiche with the film by default", async () => {
+      await openFilm();
+      expect(screen.queryByRole("button", { name: "Afiche" })).toBeNull();
+      await toRecorrido();
+      expect(await screen.findByRole("button", { name: "Video" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "Afiche" })).toBeVisible();
+      expect(screen.getByTestId("film-player")).toBeVisible();
+      expect(screen.queryByLabelText("Vista previa del afiche")).toBeNull();
+    });
+
+    it("does not offer Recorrido (nor Afiche) without a route", async () => {
+      await open("collage", revealed(), [at("a", -41.13, -71.31), at("b", -41.14, -71.32)]);
+      await filesReady();
+      expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Afiche" })).toBeNull();
+    });
+
+    it("shows the poster instead of the film and shares it", async () => {
+      jest.mocked(usePoster).mockReturnValue(posterReady);
+      await openFilm();
+      await toAfiche();
+      expect(await screen.findByLabelText("Vista previa del afiche")).toBeVisible();
+      expect(screen.queryByTestId("film-player")).toBeNull();
+      await fireEvent.press(screen.getByRole("button", { name: "Instagram" }));
+      await waitFor(() => expect(Share.shareSingle).toHaveBeenCalledWith(expect.objectContaining({ backgroundImage: "file:///cache/afiche.jpg" })));
+      await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
+      await waitFor(() => expect(story.shareMore).toHaveBeenCalledWith("file:///cache/afiche.jpg"));
+    });
+
+    it("says there is no route when the chosen photos leave one place", async () => {
+      jest.mocked(usePoster).mockReturnValue({ status: "no-route" });
+      await openFilm();
+      await toAfiche();
+      expect(await screen.findByText("Con estas fotos no hay recorrido: elegí fotos de al menos dos lugares.")).toBeVisible();
+      expect(screen.queryByRole("button", { name: "Instagram" })).toBeNull();
+    });
+
+    it("offers a retry when the poster cannot be built", async () => {
+      const retry = jest.fn();
+      jest.mocked(usePoster).mockReturnValue({ status: "error", offline: true, retry });
+      await openFilm();
+      await toAfiche();
+      expect(await screen.findByText("Para armar el afiche hace falta conexión.")).toBeVisible();
+      await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+      expect(retry).toHaveBeenCalled();
+    });
+
+    it("in a build without the video module Recorrido shows the poster directly, with no Video | Afiche control", async () => {
+      mockVideoAvailable = false;
+      jest.mocked(usePoster).mockReturnValue(posterReady);
+      await openFilm();
+      await toRecorrido();
+      expect(await screen.findByLabelText("Vista previa del afiche")).toBeVisible();
+      expect(screen.queryByRole("button", { name: "Video" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Afiche" })).toBeNull();
+    });
   });
 
   it("Recorrido: shows the player and the three pills, with no Otra versión and one stable random seed", async () => {

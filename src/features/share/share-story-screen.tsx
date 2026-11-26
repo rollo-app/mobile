@@ -18,7 +18,8 @@ import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
 import { useFilmSelection } from "./film-selection";
 import { FilmShare } from "./journey-share";
-import { useRollVideos } from "./use-roll-videos";
+import { useRollPieces } from "./use-roll-videos";
+import { RouteShare } from "./route-share";
 import { useSheetChoices } from "./sheet-selection";
 import { canShareInvite, inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
@@ -99,12 +100,13 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const empty = isCollage && ready && candidates.length === 0 && !feedFailed;
   const filmPool = useMemo(() => filmCandidates(photos), [photos]);
   // Recorrido and Resumen are offered where the roll has them (the same decision as the gallery's banner).
-  const videos = useRollVideos({ detail, photos, ready: isCollage && ready, feedFailed });
+  const { videos, poster: canPoster } = useRollPieces({ detail, photos, ready: isCollage && ready, feedFailed });
   const canFilm = videos.includes("route");
   const canSheet = videos.includes("sheet");
   const sheetPhotos = useMemo(() => sheetCandidates(photos), [photos]);
   const sheet = useMemo(() => sheetPick(sheetPhotos, sheetChoices), [sheetPhotos, sheetChoices]);
-  const pieces = useMemo<SharePiece[]>(() => ["collage", ...(canFilm ? (["route"] as const) : []), ...(canSheet ? (["sheet"] as const) : [])], [canFilm, canSheet]);
+  // Recorrido holds the video and the poster (a Video | Afiche control under its preview): offered when the roll has either.
+  const pieces = useMemo<SharePiece[]>(() => ["collage", ...(canFilm || canPoster ? (["route"] as const) : []), ...(canSheet ? (["sheet"] as const) : [])], [canFilm, canPoster, canSheet]);
   // A film that is no longer offered falls back to Collage; "journey" with no route lands on the summary, as it always did.
   const selected: SharePiece = pieces.includes(picked) ? picked : picked === "route" && canSheet ? "sheet" : "collage";
   const journeyOn = selected !== "collage";
@@ -207,9 +209,20 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           onValueChange={(v) => setPicked(pieces.find((piece) => PIECE_LABEL[piece] === v) ?? "collage")}
         />
       )}
-      {/* One film at a time, keyed by kind: switching unmounts the other one, which cancels its export and drops its cached file. */}
+      {/* One piece at a time, keyed: switching unmounts the other one, which cancels its export and drops its cached file. */}
       {detail !== null && selected === "route" && (
-        <FilmShare key="route" kind="route" tripId={tripId} detail={detail} candidates={filmPool} selection={filmSelection} token={token} seed={filmSeed} instagram={instagram} />
+        <RouteShare
+          tripId={tripId}
+          detail={detail}
+          candidates={filmPool}
+          selection={filmSelection}
+          token={token}
+          seed={filmSeed}
+          instagram={instagram}
+          whatsapp={whatsapp}
+          video={canFilm}
+          poster={canPoster}
+        />
       )}
       {detail !== null && selected === "sheet" && (
         <FilmShare key="sheet" kind="sheet" tripId={tripId} detail={detail} pick={sheet} token={token} seed={filmSeed} instagram={instagram} />

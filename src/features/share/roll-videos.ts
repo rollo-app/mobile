@@ -18,6 +18,12 @@ export function rollVideoCounts(photos: RevealedPhoto[], firstDay: string | null
   };
 }
 
+/** Whether the roll has a poster: the Recorrido's own conditions, with no video module needed. */
+export function rollHasPoster(input: { detail: TripDetail | null; ready: boolean; feedFailed: boolean; poolStops: number }): boolean {
+  const { detail, ready, feedFailed, poolStops } = input;
+  return ready && !feedFailed && detail !== null && filmBlocked(detail, poolStops) === null;
+}
+
 /**
  * The videos this roll has, route first. `ready`: the roll's whole feed is in (or its loading was tried); `feedFailed`: it could not be loaded.
  * `videoAvailable` is false in a build without the video module.

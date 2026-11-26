@@ -1,6 +1,7 @@
 // Which photos of a roll may go in a shared film, and whether the roll has a film at all. Pure.
 import { isEvent } from "@/features/events/event";
-import type { RevealedPhoto } from "@/features/media/revealed";
+import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
+import { avatarUri } from "@/features/profile/avatar-style";
 import type { TripDetail } from "@/features/trips/actions";
 import { buildStops, FILM_CUTS, type FilmPhoto } from "./route";
 
@@ -16,6 +17,25 @@ export function filmPhotos(candidates: RevealedPhoto[], selection: readonly stri
   const chosen = new Set(selection);
   const picked = candidates.filter((p) => chosen.has(p.id));
   return picked.length > 0 ? picked : candidates;
+}
+
+/** A roll photo as the film engine sees it; null without coordinates. `token` signs its image URLs. */
+export function toFilmPhoto(p: RevealedPhoto, token: string): FilmPhoto | null {
+  if (p.lat === null || p.lng === null) return null;
+  const avatar = avatarUri(p.author.avatarUrl);
+  return {
+    id: p.id,
+    authorId: p.author.id,
+    authorName: p.author.name,
+    authorAvatar: avatar ? { uri: avatar } : null,
+    lat: p.lat,
+    lng: p.lng,
+    takenAt: p.takenAt,
+    day: p.day,
+    likeCount: p.likeCount,
+    thumb: mediaSource(p.thumbPath, token),
+    display: mediaSource(p.displayPath, token),
+  };
 }
 
 /** Why this roll has no film to share, or null. */
