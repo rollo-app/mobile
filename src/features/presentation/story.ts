@@ -1,6 +1,7 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
 import { formatDate } from "@/features/trips/phase";
 import { dateFormatter } from "@/lib/intl";
+import { computeCredits, type Award } from "./credits";
 
 export type StoryStats = {
   photos: number;
@@ -16,10 +17,16 @@ export type StoryStats = {
 export type StoryStep =
   | { kind: "day"; day: string; number: number; title: string; date: string; count: number; shown: number; trimmed: boolean }
   | { kind: "photo"; photo: RevealedPhoto }
-  | { kind: "outro"; stats: StoryStats };
+  | { kind: "credit"; award: Award }
+  /** `cast` is the credits' list of names; null when the roll gets no credits (events, blocked list unavailable). */
+  | { kind: "outro"; stats: StoryStats; cast: string[] | null };
+
+/** Turns the credits on: the viewer's blocked user ids are left out of every award and of the cast. */
+export type StoryCredits = { blockedUserIds: ReadonlySet<string> };
 
 export const PHOTO_MS = 4000;
 export const DAY_CARD_MS = 2000;
+export const CREDIT_MS = 4500;
 export const MAX_VIDEO_MS = 15_000;
 /** A day never lasts more than this many stories: past it, a selection of its best moments. */
 export const MAX_STORY_PER_DAY = 30;
@@ -66,10 +73,10 @@ export function pickDayHighlights(photos: RevealedPhoto[], max: number): Reveale
 
 /**
  * The presentation sequence: for each day a card followed by its photos in chronological order,
- * and the outro with the numbers. Days are cut in the roll's zone. The reveal intro isn't part of
+ * then, with `options.credits`, one step per award, and the outro with the numbers (and the cast). Days are cut in the roll's zone. The reveal intro isn't part of
  * it: it's its own screen (`/reveal`) that hands over to the stories.
  */
-export function buildStory(photos: RevealedPhoto[], timeZone: string): StoryStep[] {
+export function buildStory(photos: RevealedPhoto[], timeZone: string, options?: { credits?: StoryCredits }): StoryStep[] {
   const sorted = [...photos].sort((a, b) => a.takenAt - b.takenAt);
   const byDay = new Map<string, RevealedPhoto[]>();
   for (const p of sorted) {
@@ -99,7 +106,9 @@ export function buildStory(photos: RevealedPhoto[], timeZone: string): StoryStep
     });
     for (const photo of list) steps.push({ kind: "photo", photo });
   }
-  steps.push({ kind: "outro", stats: computeStats(sorted, days.length, trimmed) });
+  const credits = options?.credits ? computeCredits(photos, timeZone, options.credits.blockedUserIds) : null;
+  if (credits) for (const award of credits.awards) steps.push({ kind: "credit", award });
+  steps.push({ kind: "outro", stats: computeStats(sorted, days.length, trimmed), cast: credits ? credits.cast : null });
   return steps;
 }
 
@@ -131,6 +140,8 @@ export function stepDuration(step: StoryStep): number | null {
       return step.photo.type === "video" && step.photo.durationS
         ? Math.min(step.photo.durationS * 1000, MAX_VIDEO_MS)
         : PHOTO_MS;
+    case "credit":
+      return CREDIT_MS;
     case "outro":
       return null;
   }
@@ -138,12 +149,23 @@ export function stepDuration(step: StoryStep): number | null {
 
 /**
  * The segmented progress bar for the step at `index`: one segment per photo of its day, `current`
- * being the one on screen (-1 on the day card, before the first). null in the outro.
+ * being the one on screen (-1 on the day card, before the first). Credits have their own bar: one segment per
+ * award. null in the outro.
  */
 export function daySegments(steps: StoryStep[], index: number): { count: number; current: number } | null {
   const step = steps[index];
   if (!step || step.kind === "outro") return null;
   if (step.kind === "day") return { count: step.shown, current: -1 };
+  if (step.kind === "credit") {
+    let count = 0;
+    let current = 0;
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i]!.kind !== "credit") continue;
+      if (i === index) current = count;
+      count++;
+    }
+    return { count, current };
+  }
   let start = index;
   while (start > 0 && steps[start - 1]!.kind === "photo") start--;
   let end = index;

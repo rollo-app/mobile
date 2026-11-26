@@ -1,5 +1,6 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
-import { MAX_STORY_PER_DAY, buildStory, daySegments, elapsedProgress, pickDayHighlights, stepDuration } from "../story";
+import { computeCredits } from "../credits";
+import { CREDIT_MS, MAX_STORY_PER_DAY, buildStory, daySegments, elapsedProgress, pickDayHighlights, stepDuration } from "../story";
 
 const TZ = "America/Argentina/Buenos_Aires";
 
@@ -275,5 +276,64 @@ describe("buildStory with a huge day", () => {
     const steps = buildStory(big, TZ);
     expect(daySegments(steps, 0)).toEqual({ count: 30, current: -1 });
     expect(daySegments(steps, 30)).toEqual({ count: 30, current: 29 });
+  });
+});
+
+describe("credit steps", () => {
+  const cami = { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null };
+  const fede = { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null };
+  // Six photos by Cami (three with captions, three places, one at 03:17) and four by Fede (one at 06:42): all five awards.
+  const roll = () => [
+    photo("2027-01-12T06:17:00Z", { author: cami, caption: "de madrugada", lat: -34.6, lng: -58.4 }),
+    photo("2027-01-12T09:42:00Z", { author: fede }),
+    photo("2027-01-12T15:00:00Z", { author: cami, caption: "uno", lat: -34.7, lng: -58.5 }),
+    photo("2027-01-12T16:00:00Z", { author: cami, caption: "dos", lat: -34.8, lng: -58.6 }),
+    photo("2027-01-12T17:00:00Z", { author: cami }),
+    photo("2027-01-12T18:00:00Z", { author: cami }),
+    photo("2027-01-12T19:00:00Z", { author: fede }),
+    photo("2027-01-12T20:00:00Z", { author: fede }),
+    photo("2027-01-12T21:00:00Z", { author: fede }),
+    photo("2027-01-12T22:00:00Z", { author: cami }),
+  ];
+  const credits = { blockedUserIds: new Set<string>() };
+
+  it("puts one credit step per award between the last photo and the outro", () => {
+    const photos = roll();
+    const steps = buildStory(photos, TZ, { credits });
+    const computed = computeCredits(photos, TZ, credits.blockedUserIds);
+    expect(computed.awards.map((a) => a.kind)).toEqual(["firstLight", "nightShift", "script", "locations", "camera"]);
+    const kinds = steps.map((s) => s.kind);
+    expect(kinds.slice(-7)).toEqual(["photo", "credit", "credit", "credit", "credit", "credit", "outro"]);
+    expect(steps.filter((s) => s.kind === "credit").map((s) => (s as { award: unknown }).award)).toEqual(computed.awards);
+    expect(steps.at(-1)).toMatchObject({ kind: "outro", cast: computed.cast });
+  });
+
+  it("has no credit steps and a null cast without the option", () => {
+    const steps = buildStory(roll(), TZ);
+    expect(steps.some((s) => s.kind === "credit")).toBe(false);
+    expect(steps.at(-1)).toMatchObject({ kind: "outro", cast: null });
+  });
+
+  it("keeps the cast but no credit steps when the roll is too small for awards", () => {
+    const steps = buildStory([photo("2027-01-12T15:00:00Z")], TZ, { credits });
+    expect(steps.some((s) => s.kind === "credit")).toBe(false);
+    expect(steps.at(-1)).toMatchObject({ cast: ["Cami"] });
+  });
+
+  it("lasts 4.5 s per credit", () => {
+    expect(CREDIT_MS).toBe(4500);
+    const step = buildStory(roll(), TZ, { credits }).find((s) => s.kind === "credit")!;
+    expect(stepDuration(step)).toBe(4500);
+  });
+
+  it("gives credits one segment per award, and photos ignore the credits after them", () => {
+    const full = buildStory(roll(), TZ, { credits });
+    const first = full.findIndex((s) => s.kind === "credit");
+    // Keep three credits: photos, 3 credits, outro.
+    const steps = [...full.slice(0, first + 3), full.at(-1)!];
+    expect(daySegments(steps, first + 1)).toEqual({ count: 3, current: 1 });
+    expect(daySegments(steps, first)).toEqual({ count: 3, current: 0 });
+    expect(daySegments(steps, first - 1)).toEqual({ count: 10, current: 9 });
+    expect(daySegments(steps, steps.length - 1)).toBeNull();
   });
 });
