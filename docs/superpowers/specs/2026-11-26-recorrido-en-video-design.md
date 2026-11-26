@@ -19,7 +19,7 @@ Un video vertical de **1080×1920**, 30 cuadros por segundo, **de hasta 59 s** (
 3. Cierre: vuelve al mapa completo con la ruta entera, el nombre y "24 días · 1.858 km · 11 fotos".
 4. Placa final: fondo negro, el logo de Rollo y la insignia de la App Store (2,5 s).
 
-Cada vez que se arma, las fotos de cada parada se acomodan distinto (una sobre el pin, una grande, dos lado a lado, tres, o cuatro en una hoja), nunca igual que en la parada anterior. "Otra versión" lo vuelve a sortear.
+Cada vez que se abre Compartir, las fotos de cada parada se acomodan distinto (una sobre el pin, una grande, dos lado a lado, tres, o cuatro en una hoja), nunca igual que en la parada anterior.
 
 ## Objetivos
 
@@ -132,7 +132,7 @@ Para el revelado, que solo ven los miembros, nada de esto aplica: son parámetro
 - Para saber si hay recorrido hacen falta todas las páginas del feed (el collage ya las carga): el control aparece cuando terminan de cargar.
 - En **Recorrido**:
   - La vista previa reproduce la película en el mismo recuadro 9:16 del collage. Mientras se arma (pide las imágenes del mapa: 14 para la demo, hasta 31) dice "Armando el recorrido…" con avance.
-  - **"Otra versión"** sortea otro arreglo de las mismas fotos.
+  - El arreglo de las fotos se sortea una vez al abrir Compartir. **No hay botón "Otra versión"** *(dueño, 2026-11-26: "que sea siempre una versión aleatoria y el usuario no pueda elegir")*.
   - No hay selector Oscuro/Claro. La tira de fotos con el "+" sí está: ver "Elegir las fotos del video para compartir".
   - Botones: **"Compartir en Instagram"**, **"Guardar video"** y **"Más opciones"**.
 - Al tocar un destino se exporta, si no está ya exportada esa versión: "Armando el video… 42 %" con **"Cancelar"**. El archivo se reutiliza para los otros destinos mientras no cambie la versión.
