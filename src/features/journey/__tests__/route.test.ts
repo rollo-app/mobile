@@ -118,6 +118,21 @@ describe("buildStops", () => {
     expect(stops[1]!.shots).toHaveLength(1);
   });
 
+  it("share cut: consecutive stops never share a cell after merging, even when the merged median moves", () => {
+    // X, then two visits whose medians are in cell Y (the second one spread over both sides), then X again.
+    const photos = [
+      ...group("a", -41.13, -71.3, 2, 0),
+      ...[-41.14, -41.099, -41.08].map((lat, i) => photo(`b${i}`, lat, -71.3, 600 + i)),
+      ...[-41.11, -41.09, -41.07, -41.06].map((lat, i) => photo(`c${i}`, lat, -71.3, 700 + i)),
+      ...group("d", -40.0, -71.3, 2, 1200),
+      ...group("e", -41.13, -71.3, 2, 1800),
+    ];
+    const stops = buildStops(photos, FILM_CUTS.share, "2026-07-01");
+    stops.forEach((s, i) => {
+      if (i > 0) expect(cellKey(s)).not.toBe(cellKey(stops[i - 1]!));
+    });
+  });
+
   // The prototype's throwaway check data is not in the repo any more: this is the same situation rebuilt. Four people
   // start together, split on day 2 (two go to B, two to C, their photos alternating in time) and meet again at D.
   it.each([
@@ -195,6 +210,7 @@ describe("random trips", () => {
     let seed = 12345;
     const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
     let checked = 0;
+    const exact = new Set<string>();
     for (let trial = 0; trial < 300; trial++) {
       const places = 2 + Math.floor(rnd() * 18);
       const spread = 0.5 + rnd() * 25;
@@ -218,7 +234,9 @@ describe("random trips", () => {
           display: { uri: "" },
         });
       }
+      photos.forEach((p) => exact.add(`${p.lat},${p.lng}`));
       const stops = buildStops(photos, cut, "2026-06-01");
+      if (name === "share") stops.forEach((s) => expect(exact.has(`${s.lat},${s.lng}`)).toBe(false));
       if (stops.length < 2) continue;
       checked++;
       const tl = buildTimeline(stops, travelZoom(stops, FRAME_W, cut), FRAME_W, cut);

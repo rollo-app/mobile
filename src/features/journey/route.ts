@@ -23,9 +23,12 @@ export type Stop = {
   index: number;
   lat: number;
   lng: number;
-  /** Every photo taken here, in time order. */
+  /**
+   * Every photo taken here, in time order. This and `shots` keep the photos' EXACT coordinates: never draw or
+   * geocode them for a shared film, only `lat`/`lng` of the stop (the cell centre in the share cut).
+   */
   photos: FilmPhoto[];
-  /** The photos the film shows here, in time order: its share of the photo budget (at least one). The first is the one on the pin. */
+  /** The photos the film shows here (exact coordinates, see `photos`), in time order: its share of the photo budget (at least one). The first is the one on the pin. */
   shots: FilmPhoto[];
   /** Roll day (1 = the roll's first day) of each shot. */
   shotDays: number[];
@@ -276,16 +279,28 @@ function routeBySequence(sorted: FilmPhoto[], places: FilmPhoto[][]): FilmPhoto[
  * film would otherwise hop between two pins on the very same spot. The photo budget is shared after this.
  */
 function mergeSameCell(groups: FilmPhoto[][]): FilmPhoto[][] {
-  const out: FilmPhoto[][] = [];
-  let lastKey = "";
-  for (const group of groups) {
-    const key = cellKey({ lat: median(group.map((p) => p.lat)), lng: median(group.map((p) => p.lng)) });
-    const last = out[out.length - 1];
-    if (last && key === lastKey) last.push(...group);
-    else out.push([...group]);
-    lastKey = key;
+  const keyOf = (g: FilmPhoto[]) => cellKey({ lat: median(g.map((p) => p.lat)), lng: median(g.map((p) => p.lng)) });
+  let current = groups;
+  // Merging moves the median, so the keys are recomputed from the merged groups until none is left to merge: the
+  // stops `buildStops` places (at the cell of that very median) never share a cell with the next one. Each pass that
+  // changes anything has fewer groups, so it ends.
+  for (;;) {
+    const out: FilmPhoto[][] = [];
+    let lastKey = "";
+    for (const group of current) {
+      const key = keyOf(group);
+      const last = out[out.length - 1];
+      if (last && key === lastKey) {
+        last.push(...group);
+        lastKey = keyOf(last);
+      } else {
+        out.push([...group]);
+        lastKey = key;
+      }
+    }
+    if (out.length === current.length) return out.map((g) => g.sort(byTime));
+    current = out;
   }
-  return out.map((g) => g.sort(byTime));
 }
 
 /**
