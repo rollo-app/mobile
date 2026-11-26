@@ -42,6 +42,7 @@ Object.assign(require("react-native-reanimated"), {
   withSequence: (...steps: unknown[]) => steps[steps.length - 1],
   Easing: { bezier: () => (t: number) => t },
   cubicBezier: () => "ease-out",
+  useReducedMotion: () => false,
   ReduceMotion: { System: "system", Always: "always", Never: "never" },
 });
 

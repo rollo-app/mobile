@@ -18,6 +18,7 @@ import type { RevealedPhoto } from "@/features/media/revealed";
 import { useOpenProfile } from "@/features/profile/use-open-profile";
 import { easeOut } from "@/ui/motion";
 import { spacing } from "@/ui/theme";
+import { CreditCard } from "./credit-card";
 import { DayCard } from "./day-card";
 import { isDownwardDrag, shouldDismiss } from "./dismiss";
 import { Outro } from "./outro";
@@ -25,7 +26,7 @@ import { initialPlayer, playerReducer } from "./player";
 import { ProgressBar } from "./progress-bar";
 import { RoundButton } from "./round-button";
 import { Slide } from "./slide";
-import { buildStory, daySegments } from "./story";
+import { buildStory, daySegments, type StoryCredits } from "./story";
 import { useScreenReader } from "./use-accessibility";
 import { useStoryClock } from "./use-story-clock";
 import { useStoryPrefetch } from "./use-story-prefetch";
@@ -47,6 +48,7 @@ export function StoryPlayer({
   timeZone,
   onClose,
   onGallery = onClose,
+  credits,
 }: {
   photos: RevealedPhoto[];
   token: string;
@@ -54,15 +56,20 @@ export function StoryPlayer({
   onClose: () => void;
   /** Leaves the stories for the roll's gallery; defaults to just closing. */
   onGallery?: () => void;
+  /** Gives the roll credits (one story per award, the cast in the outro); undefined = none. */
+  credits?: StoryCredits;
 }) {
   // A refetch hands over a new array with the same photos: rebuild the story only when the photos really change,
   // otherwise the story would start over under the viewer.
   const photoKey = photos.map((p) => p.id).join(",");
   const photosRef = useRef(photos);
   photosRef.current = photos;
+  const creditsRef = useRef(credits);
+  creditsRef.current = credits;
+  const blockedKey = credits ? [...credits.blockedUserIds].sort().join(",") : null;
   const steps = useMemo(
-    () => buildStory(photosRef.current, timeZone),
-    [photoKey, timeZone], // eslint-disable-line react-hooks/exhaustive-deps
+    () => buildStory(photosRef.current, timeZone, creditsRef.current ? { credits: creditsRef.current } : undefined),
+    [photoKey, timeZone, blockedKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const [state, dispatch] = useReducer(playerReducer, steps, initialPlayer);
   const step = state.steps[state.index]!;
@@ -81,11 +88,12 @@ export function StoryPlayer({
     dispatch,
   });
 
-  // Soft haptic on each new day.
+  // Soft haptic on each new day and when the credits begin (not between awards).
   useEffect(() => {
-    if (step.kind === "day")
+    const entersCredits = step.kind === "credit" && state.steps[state.index - 1]?.kind !== "credit";
+    if (step.kind === "day" || entersCredits)
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [step]);
+  }, [step, state.steps, state.index]);
 
   useStoryPrefetch(state.steps, state.index, token);
 
@@ -243,9 +251,17 @@ export function StoryPlayer({
                 onToggleLike={() => void likes.toggle(latestOf(step.photo))}
               />
             )}
+            {step.kind === "credit" && (
+              <CreditCard
+                key={step.award.kind}
+                award={step.award}
+                token={token}
+              />
+            )}
             {step.kind === "outro" && (
               <Outro
                 stats={step.stats}
+                cast={step.cast}
                 onGallery={onGallery}
                 onReplay={() => dispatch({ type: "restart" })}
               />

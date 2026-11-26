@@ -53,3 +53,23 @@ describe("upcomingPhotos", () => {
     expect(upcomingPhotos(steps, 0, 3).map((p) => p.id)).toEqual(["a", "b", "c"]);
   });
 });
+
+describe("upcomingPhotos with credits", () => {
+  it("warms the photos of the first credits from the last photo", () => {
+    const cami = { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null };
+    const fede = { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null };
+    const photos = [
+      photo("a", "2027-01-12T06:17:00Z"),
+      photo("b", "2027-01-12T09:42:00Z"),
+      ...Array.from({ length: 8 }, (_, i) => photo(`c${i}`, `2027-01-12T${String(15 + i).padStart(2, "0")}:00:00Z`)),
+    ].map((p, i) => ({ ...p, author: i % 2 ? fede : cami }));
+    const steps = buildStory(photos, "America/Argentina/Buenos_Aires", { credits: { blockedUserIds: new Set() } });
+    const firstCredit = steps.findIndex((s) => s.kind === "credit");
+    expect(firstCredit).toBeGreaterThan(0);
+    const expected = steps
+      .filter((s) => s.kind === "credit")
+      .slice(0, 2)
+      .map((s) => (s as { award: { photo: RevealedPhoto } }).award.photo.id);
+    expect(upcomingPhotos(steps, firstCredit - 1).map((p) => p.id)).toEqual(expected);
+  });
+});

@@ -19,9 +19,9 @@ export function playerReducer(state: PlayerState, action: PlayerAction): PlayerS
     case "next":
       return { ...state, index: Math.min(index + 1, steps.length - 1), paused: false };
     case "prev": {
-      // Back means "the photo before": day cards are only crossed going forward.
+      // Back means "the photo or credit before": day cards are only crossed going forward.
       let i = index - 1;
-      while (i > 0 && steps[i]!.kind !== "photo") i--;
+      while (i > 0 && steps[i]!.kind !== "photo" && steps[i]!.kind !== "credit") i--;
       return { ...state, index: Math.max(i, 0), paused: false };
     }
     case "pause":

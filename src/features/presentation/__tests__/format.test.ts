@@ -1,4 +1,4 @@
-import { formatCount, galleryLabel, statCounts, topLine } from "../format";
+import { castLine, formatCount, galleryLabel, statCounts, topLine } from "../format";
 
 const stats = { photos: 120, videos: 0, people: 4, days: 9, top: { name: "Fede", count: 48 }, trimmed: false };
 
@@ -25,5 +25,17 @@ describe("outro formatting", () => {
 
   it("labels the gallery action with the total", () => {
     expect(galleryLabel({ ...stats, photos: 1800, videos: 200 })).toBe("Ver las 2.000 fotos en la galería");
+  });
+});
+
+describe("castLine", () => {
+  it("joins the names with a middle dot", () => {
+    expect(castLine(["Cami", "Lu"])).toBe("Cami · Lu");
+  });
+
+  it("shows up to 24 names and counts the rest", () => {
+    const names = Array.from({ length: 26 }, (_, i) => `N${i + 1}`);
+    expect(castLine(names)).toBe(`${names.slice(0, 24).join(" · ")} · y 2 más`);
+    expect(castLine(names.slice(0, 24))).toBe(names.slice(0, 24).join(" · "));
   });
 });

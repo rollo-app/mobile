@@ -82,3 +82,35 @@ describe("playerReducer", () => {
     expect(playerReducer(at(4), { type: "load", steps: fresh })).toEqual({ steps: fresh, index: 0, paused: false });
   });
 });
+
+describe("playerReducer with credits", () => {
+  const cami = { id: "m1", userId: "u-m1", name: "Cami", username: null, avatarUrl: null };
+  const fede = { id: "m2", userId: "u-m2", name: "Fede", username: null, avatarUrl: null };
+  const photos = [
+    photo("a", "2027-01-12T06:17:00Z"),
+    photo("b", "2027-01-12T09:42:00Z"),
+    ...Array.from({ length: 8 }, (_, i) => photo(`c${i}`, `2027-01-12T${String(15 + i).padStart(2, "0")}:00:00Z`)),
+  ].map((p, i) => ({ ...p, author: i % 2 ? fede : cami }));
+  const withCredits = buildStory(photos, TZ, { credits: { blockedUserIds: new Set() } });
+  const firstCredit = withCredits.findIndex((s) => s.kind === "credit");
+  const outro = withCredits.length - 1;
+  const on = (index: number) => ({ steps: withCredits, index, paused: false });
+
+  it("has credits to navigate", () => {
+    expect(firstCredit).toBeGreaterThan(0);
+    expect(outro - firstCredit).toBeGreaterThan(1);
+  });
+
+  it("prev from the outro goes to the last credit", () => {
+    expect(playerReducer(on(outro), { type: "prev" }).index).toBe(outro - 1);
+  });
+
+  it("prev between credits goes to the previous credit", () => {
+    expect(playerReducer(on(firstCredit + 1), { type: "prev" }).index).toBe(firstCredit);
+  });
+
+  it("prev from the first credit goes to the last photo", () => {
+    expect(playerReducer(on(firstCredit), { type: "prev" }).index).toBe(firstCredit - 1);
+    expect(withCredits[firstCredit - 1]!.kind).toBe("photo");
+  });
+});

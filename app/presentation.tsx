@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRevealedPhotos } from "@/features/media/revealed";
+import { useStoryCredits } from "@/features/presentation/use-story-credits";
 import { StoryPlayer } from "@/features/presentation/story-player";
 import { rollHref } from "@/features/trips/roll-href";
 import { useActiveTrip } from "@/features/trips/use-active-trip";
@@ -16,16 +17,17 @@ export default function PresentationScreen() {
   const { trip } = useActiveTrip();
   const { detail } = useTripDetail(trip?.id);
   const { photos, token, error, loading, refetch } = useRevealedPhotos(trip?.id);
+  const { ready, credits } = useStoryCredits(trip);
   const close = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
   // Close the modal and land on that roll's gallery view.
   const openGallery = () => trip && router.dismissTo(rollHref(trip.id, "gallery"));
 
-  if (detail && token && photos.length > 0) {
-    return <StoryPlayer photos={photos} token={token} timeZone={detail.trip.timezone} onClose={close} onGallery={openGallery} />;
+  if (detail && token && photos.length > 0 && ready) {
+    return <StoryPlayer photos={photos} token={token} timeZone={detail.trip.timezone} onClose={close} onGallery={openGallery} credits={credits} />;
   }
 
-  const waiting = !error && (loading || !detail || !token);
+  const waiting = !error && (loading || !detail || !token || !ready);
   return (
     <View style={styles.center}>
       {waiting ? (

@@ -22,3 +22,12 @@ export const formatCount = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d)
 
 /** The outro's gallery action when the stories were a selection: every photo and video of the roll. */
 export const galleryLabel = (stats: StoryStats) => `Ver las ${formatCount(stats.photos + stats.videos)} fotos en la galería`;
+
+/** Cast names shown in the outro before "y N más". */
+export const CAST_MAX = 24;
+
+/** Up to `max` names joined by " · "; the rest become "· y N más" after the last shown name. */
+export function castLine(cast: string[], max = CAST_MAX): string {
+  const shown = cast.slice(0, max).join(" · ");
+  return cast.length > max ? `${shown} · y ${cast.length - max} más` : shown;
+}
