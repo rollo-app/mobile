@@ -97,8 +97,9 @@ export function renderPoster(input: PosterInput): Uint8Array {
       drawCover(canvas, image, pin.x - r, pin.y - r, 2 * r, 2 * r, plain);
       canvas.restore();
     }
+    canvas.restore();
 
-    // 4. City labels, placed so they never overlap each other or a pin.
+    // 4. City labels, placed in film points and painted in pixels (outside the scale), so they never overlap each other or a pin.
     const bounds = { x: 0.03 * frame.w, y: POSTER_BAND.top * frame.h, w: 0.94 * frame.w, h: (POSTER_BAND.bottom - POSTER_BAND.top) * frame.h };
     const paragraphs = layout.cities.map((c) => cityLabel(c.text, bounds.w * POSTER_SCALE));
     const boxes = placeLabels({
@@ -112,7 +113,6 @@ export function renderPoster(input: PosterInput): Uint8Array {
     boxes.forEach((box, i) => {
       if (box) paragraphs[i]!.paint(canvas, box.x * POSTER_SCALE, box.y * POSTER_SCALE);
     });
-    canvas.restore();
 
     // 5. Scrims under the title and the numbers.
     const topEnd = 0.27 * STORY_H;
