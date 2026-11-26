@@ -5,6 +5,7 @@ import { Text } from "react-native";
 import { setCollageSelection } from "@/features/share/collage-selection";
 import * as filmExport from "@/features/share/film-export";
 import { setFilmSelection } from "@/features/share/film-selection";
+import { PermissionDeniedError } from "@/features/gallery/save";
 import * as shareVideo from "@/features/share/share-video";
 import * as filmHook from "@/features/journey/use-film";
 import { cancelVideo } from "../modules/rollo-video";
@@ -642,6 +643,7 @@ describe("Compartir: Recorrido", () => {
     await openFilm();
     await toRecorrido();
     await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    await waitFor(() => expect(exportFile).toHaveBeenCalledTimes(1));
     await fireEvent.press(await screen.findByTestId("film-cancel"));
     expect(await screen.findByRole("button", { name: "Guardar video" })).toBeVisible();
     await waitFor(() => expect(cancelVideo).toHaveBeenCalled());
@@ -655,6 +657,7 @@ describe("Compartir: Recorrido", () => {
     await toRecorrido();
     await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
     await screen.findByText(/Armando el video…/);
+    await waitFor(() => expect(exportFile).toHaveBeenCalledTimes(1));
     useFilm.mockReturnValue(readyFilm("v2"));
     await act(async () => setFilmSelection(SUR, ["a", "c"]));
     expect(await screen.findByRole("button", { name: "Guardar video" })).toBeVisible();
@@ -690,11 +693,106 @@ describe("Compartir: Recorrido", () => {
   });
 
   it("while loading, says it is building the film", async () => {
-    useFilm.mockReturnValue({ status: "loading", done: 0, total: 3 });
+    useFilm.mockReturnValue({ status: "loading", done: 0, total: 0 });
     await openFilm();
     await toRecorrido();
     expect(await screen.findByText("Armando el recorrido…")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Guardar video" })).toBeNull();
+  });
+
+  it("while loading, shows the progress as a percentage", async () => {
+    useFilm.mockReturnValue({ status: "loading", done: 2, total: 5 });
+    await openFilm();
+    await toRecorrido();
+    expect(await screen.findByText("Armando el recorrido… 40 %")).toBeVisible();
+  });
+
+  it("the player is already paused when the export starts drawing", async () => {
+    let labelAtStart: unknown;
+    exportFile.mockImplementationOnce(async () => {
+      labelAtStart = screen.getByTestId("film-player").props.accessibilityLabel;
+      return FILE;
+    });
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    await waitFor(() => expect(exportFile).toHaveBeenCalledTimes(1));
+    expect(labelAtStart).toBe("paused");
+  });
+
+  it("never shares a file of another version: after A, B and back to A it exports again", async () => {
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    await waitFor(() => expect(video.saveVideo).toHaveBeenCalledTimes(1));
+    useFilm.mockReturnValue(readyFilm("v2"));
+    await fireEvent.press(screen.getByRole("button", { name: "Otra versión" }));
+    useFilm.mockReturnValue(readyFilm("v1"));
+    await fireEvent.press(screen.getByRole("button", { name: "Otra versión" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Más opciones" }));
+    await waitFor(() => expect(video.shareVideoMore).toHaveBeenCalledTimes(1));
+    expect(exportFile).toHaveBeenCalledTimes(2);
+  });
+
+  it("a re-tap right after Cancelar waits for the cancelled run to finish", async () => {
+    let settle!: () => void;
+    exportFile.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          settle = () => resolve(null);
+        }),
+    );
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    await waitFor(() => expect(exportFile).toHaveBeenCalledTimes(1));
+    await fireEvent.press(await screen.findByTestId("film-cancel"));
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    // Give the second run every chance to start: it must still be waiting for the first.
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+    expect(exportFile).toHaveBeenCalledTimes(1);
+    await act(async () => settle());
+    await waitFor(() => expect(exportFile).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(video.saveVideo).toHaveBeenCalledTimes(1));
+  });
+
+  it("unmounting the Recorrido during an export cancels it", async () => {
+    const getOptions = hangingExport();
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    await screen.findByText(/Armando el video…/);
+    await waitFor(() => expect(exportFile).toHaveBeenCalledTimes(1));
+    // Back to Collage unmounts the Recorrido body, like leaving the screen does.
+    await fireEvent.press(screen.getByRole("button", { name: "Collage" }));
+    await waitFor(() => expect(getOptions().isCancelled()).toBe(true));
+  });
+
+  it("a denied Photos permission shows the gallery's notice, not the video error", async () => {
+    video.saveVideo.mockRejectedValueOnce(new PermissionDeniedError(false));
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    expect(await screen.findByText("Rollo no tiene permiso para guardar en Fotos.")).toBeVisible();
+    expect(screen.queryByText("No se pudo armar el video. Probá de nuevo.")).toBeNull();
+  });
+
+  it("a roll whose shareable photos have no coordinates shows no control", async () => {
+    await open("collage", revealed(), [item("a"), item("b")]);
+    await filesReady();
+    expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
+  });
+
+  it("useFilm only gets shareable geolocated photos, never a non-shareable or archived one", async () => {
+    const items = [...TWO_PLACES, at("hidden", -41.13, -71.31), at("gone", -42.9, -71.3)].map((it) =>
+      it.id === "hidden" ? { ...it, shareable: false } : it.id === "gone" ? { ...it, archived: true } : it,
+    );
+    await openFilm(revealed(), items as tripActions.Feed["items"], "journey");
+    await waitFor(() => expect(useFilm.mock.calls.some((c) => c[0].enabled && c[0].photos.length > 0)).toBe(true));
+    const ids = useFilm.mock.calls.flatMap((c) => c[0].photos.map((p) => p.id));
+    expect(new Set(ids)).toEqual(new Set(["a", "b", "c", "d"]));
   });
 
   it("no-route after a selection shows the line, keeps the strip and offers no pills", async () => {

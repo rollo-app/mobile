@@ -10,7 +10,7 @@ import { Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { COLLAGE_MAX, collageCandidates } from "./collage";
 import { collagePhotos, getCollageSelection, setCollageSelection, toggleSelection } from "./collage-selection";
-import { getFilmSelection, setFilmSelection } from "./film-selection";
+import { getFilmSelection, getFilmShown, setFilmSelection } from "./film-selection";
 import { PickCell } from "./pick-cell";
 import { PickTray, TRAY_HEIGHT } from "./pick-tray";
 
@@ -41,11 +41,15 @@ export function SharePickScreen({ tripId, seed, kind = "collage" }: { tripId: st
     const known = new Set(candidates.map((p) => p.id));
     let next = draftRef.current.filter((id) => known.has(id));
     // Nothing saved: start from the photos the collage shows right now (same seed as "Compartir"), in collage order.
-    if (next.length === 0 && journey) next = candidates.slice(0, FILM_MAX).map((p) => p.id);
+    if (next.length === 0 && journey) {
+      // The photos the film is made of now (Compartir saved them); without them, the first candidates.
+      const shown = getFilmShown(tripId).filter((id) => known.has(id));
+      next = shown.length > 0 ? shown : candidates.slice(0, FILM_MAX).map((p) => p.id);
+    }
     else if (next.length === 0 && seed !== undefined) next = collagePhotos(candidates, [], seed).map((p) => p.id);
     draftRef.current = next;
     setDraft(next);
-  }, [complete, candidates, seed, journey]);
+  }, [complete, candidates, seed, journey, tripId]);
   // The grid shows the whole roll: load the rest of the pages once.
   const asked = useRef(false);
   useEffect(() => {

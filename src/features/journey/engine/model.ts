@@ -1,5 +1,5 @@
 // The trip film engine: the contract between the pure scene and the Skia renderer.
-// Types only, no imports: `scene.ts` (pure, runs with `node --experimental-strip-types`) and `draw.ts` (Skia) both code against it.
+// Types only, no imports: `scene.ts` (pure: no Skia, no React) and `draw.ts` (Skia) both code against it.
 //
 // The idea of the engine: the film is a pure function of time. `frameAt(scene, t)` says what is on the frame at
 // millisecond `t` as plain data (a `FrameModel`), and the renderer paints that data. The same two functions play it on
@@ -162,5 +162,4 @@ export type FrameModel = {
   credit: { text: number; opacity: number };
 };
 
-// The paper's shape (`PAPER`, `printHeight`) lives in `scene.ts`, which must stay free of value imports to run under
-// node; the renderer imports it from there.
+// The paper's shape (`PAPER`, `printHeight`) lives in `scene.ts`, which stays pure (no Skia, no React); the renderer imports it from there.

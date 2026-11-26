@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen } from "expo-router/testing-library";
 import { collageCandidates, pickCollage } from "@/features/share/collage";
 import { getCollageSelection, setCollageSelection } from "@/features/share/collage-selection";
-import { getFilmSelection, setFilmSelection } from "@/features/share/film-selection";
+import { getFilmSelection, setFilmSelection, setFilmShown } from "@/features/share/film-selection";
 import { SharePickScreen } from "@/features/share/share-pick-screen";
 import * as tripActions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
@@ -216,6 +216,7 @@ describe("Elegir fotos for the recorrido", () => {
   });
 
   it("refuses the 16th tap and writes the film selection, not the collage's", async () => {
+    setFilmShown(SUR, []);
     await openJourney();
     await screen.findByText("En el recorrido · 15 de 15");
     // Starts from the photos the film shows (15 at most): drop one, then the cap lets exactly one more in.
@@ -230,6 +231,16 @@ describe("Elegir fotos for the recorrido", () => {
     expect(getFilmSelection(SUR)).toEqual(expect.arrayContaining(["q16", "q2"]));
     expect(getFilmSelection(SUR)).toHaveLength(15);
     expect(getCollageSelection(SUR)).toEqual([]);
+  });
+
+  it("starts from the photos the film shows now, so Listo without touching anything keeps the film", async () => {
+    setFilmShown(SUR, ["q3", "q9", "q16"]);
+    await openJourney();
+    await screen.findByText("En el recorrido · 3 de 15");
+    expect(badge("q3")).toHaveTextContent("✓");
+    expect(badge("q1")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
+    expect(getFilmSelection(SUR)).toEqual(["q3", "q9", "q16"]);
   });
 });
 

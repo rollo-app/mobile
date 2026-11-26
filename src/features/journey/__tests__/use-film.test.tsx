@@ -5,6 +5,9 @@ import type { TripDetail } from "@/features/trips/actions";
 import { loadLayers, loadPhotos } from "../engine/assets";
 import { useFilm } from "../use-film";
 
+// jest.setup.ts replaces useFilm for the screens that render it; this file tests the real one.
+jest.unmock("../use-film");
+
 jest.mock("../engine/assets", () => ({
   loadLayers: jest.fn(),
   loadPhotos: jest.fn(),

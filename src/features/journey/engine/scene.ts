@@ -1,5 +1,5 @@
 // The trip film engine, pure scene: `buildScene` lays the film out once, `frameAt` says what is on the frame at time t.
-// No Skia nor React here: only type imports from the contract and values from the pure `../route`.
+// Pure: no Skia, no React (it imports only types from the contract and values from the pure `../route`).
 import { buildTimeline, FILM_FRAME, shotTitle, toMercator, travelZoom, type FilmCut, type Stop } from "../route";
 import type { FrameModel, LayoutKind, Pt, PrintModel, PrintPhoto, Scene, SceneInput, SceneText } from "./model";
 
@@ -647,7 +647,7 @@ export function sceneInput(args: {
   for (const stop of stops) {
     for (const shot of stop.shots) {
       authors[shot.id] = {
-        initial: shot.authorName.trim().charAt(0).toUpperCase() || "?",
+        initial: Array.from(shot.authorName.trim())[0]?.toUpperCase() ?? "?",
         color: colorOf(shot.authorId),
         avatar: shot.authorAvatar ? `avatar:${shot.authorId}` : null,
       };

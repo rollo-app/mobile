@@ -10,10 +10,13 @@ import { localDay } from "@/features/capture/quota";
 import type { RevealedPhoto } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
 import { ErrorText, Footnote } from "@/ui/components";
+import { PermissionNotice } from "@/features/gallery/permission-notice";
+import { PermissionDeniedError } from "@/features/gallery/save";
 import { colors, spacing, type } from "@/ui/theme";
 import type { VideoFile } from "../../../modules/rollo-video";
 import { exportFilmToFile } from "./film-export";
 import { CollageStrip } from "./collage-strip";
+import { setFilmShown } from "./film-selection";
 import { RetryPill } from "./retry-pill";
 import { saveVideo, shareVideoMore, shareVideoToInstagramApp } from "./share-video";
 import { VideoPills } from "./share-pills";
@@ -36,7 +39,9 @@ export function useFilmExport(
   deliver: (destination: Destination, file: VideoFile, film: ReadyFilm) => Promise<void>,
 ) {
   const [state, setState] = useState<ExportState>(IDLE);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<"failed" | "denied" | null>(null);
+  // Settles when the previous run is completely over (the encoder released): a new `open` must not start before it.
+  const settled = useRef<Promise<void>>(Promise.resolve());
   const cache = useRef<{ version: string; file: VideoFile } | null>(null);
   const run = useRef<{ cancelled: boolean } | null>(null);
   const last = useRef<Destination>("save");
@@ -52,7 +57,9 @@ export function useFilmExport(
 
   // A film for another version (or none, or leaving the screen) makes the running export useless.
   useEffect(() => {
-    setFailed(false);
+    setFailed(null);
+    // Every version writes to the same path and the native `open` deletes what is there: a file of another version is gone.
+    cache.current = null;
     return cancel;
   }, [version, cancel]);
 
@@ -60,13 +67,21 @@ export function useFilmExport(
     async (destination: Destination) => {
       if (film.status !== "ready" || run.current) return;
       last.current = destination;
-      setFailed(false);
+      setFailed(null);
       const token = { cancelled: false };
       run.current = token;
+      const previous = settled.current;
+      let release!: () => void;
+      settled.current = new Promise<void>((resolve) => (release = resolve));
       try {
         let file = cache.current?.version === film.version ? cache.current.file : null;
         if (!file) {
+          cache.current = null;
           setState({ status: "exporting", done: 0, total: 0, destination });
+          await previous;
+          // The player must be paused on screen before this thread starts drawing the same scene: wait for the commit and a UI frame.
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(undefined))));
+          if (token.cancelled) return;
           const made = await exportFilmToFile(film, { tripId }, {
             isCancelled: () => token.cancelled,
             onProgress: (done, total) => {
@@ -79,9 +94,10 @@ export function useFilmExport(
         }
         if (!token.cancelled) setState(IDLE);
         await deliverRef.current(destination, file, film);
-      } catch {
-        if (!token.cancelled) setFailed(true);
+      } catch (error) {
+        if (!token.cancelled) setFailed(error instanceof PermissionDeniedError ? "denied" : "failed");
       } finally {
+        release();
         if (run.current === token) run.current = null;
         if (!token.cancelled) setState(IDLE);
       }
@@ -119,7 +135,8 @@ export function JourneyShare({
   const [area, setArea] = useState({ width: 0, height: 0 });
   const chosen = useMemo(() => filmPhotos(candidates, selection), [candidates, selection]);
   const { startsAt, timezone } = detail.trip;
-  const blocked = filmBlocked(detail, filmStopCount(chosen, localDay(startsAt, timezone)));
+  const stops = useMemo(() => filmStopCount(chosen, localDay(startsAt, timezone)), [chosen, startsAt, timezone]);
+  const blocked = filmBlocked(detail, stops);
   const film = useFilm({ tripId, photos: chosen, token, detail, seed, enabled: blocked === null });
 
   const [note, setNote] = useState<string | null>(null);
@@ -161,7 +178,9 @@ export function JourneyShare({
             {film.status === "loading" && !noRoute && (
               <>
                 <ActivityIndicator accessibilityLabel="Armando el recorrido" />
-                <Text style={[type.footnote, styles.loadingText]}>Armando el recorrido…</Text>
+                <Text style={[type.footnote, styles.loadingText]}>
+                  {film.total > 0 ? `Armando el recorrido… ${Math.round((film.done * 100) / film.total)} %` : "Armando el recorrido…"}
+                </Text>
               </>
             )}
           </View>
@@ -171,7 +190,15 @@ export function JourneyShare({
         photos={stripPhotos}
         token={token}
         subject="recorrido"
-        onPress={candidates.length >= 2 ? () => router.push({ pathname: "/share-pick", params: { tripId, kind: "journey" } }) : null}
+        onPress={
+          candidates.length >= 2
+            ? () => {
+                // The picker starts from what the film is made of now.
+                setFilmShown(tripId, stripPhotos.map((p) => p.id));
+                router.push({ pathname: "/share-pick", params: { tripId, kind: "journey" } });
+              }
+            : null
+        }
       />
       {noRoute && <Footnote>Con estas fotos no hay recorrido: elegí fotos de al menos dos lugares.</Footnote>}
       {!noRoute && film.status === "error" && (
@@ -203,7 +230,8 @@ export function JourneyShare({
             </>
           )}
           {!exporting && note === ready.version && <Text style={[type.caption, styles.hint]}>Lo guardamos en tus fotos. Elegilo en tu historia.</Text>}
-          {!exporting && exporter.failed && (
+          {!exporting && exporter.failed === "denied" && <PermissionNotice />}
+          {!exporting && exporter.failed === "failed" && (
             <View style={styles.failureInline}>
               <ErrorText>{EXPORT_FAILED}</ErrorText>
               <RetryPill onPress={exporter.retry} />

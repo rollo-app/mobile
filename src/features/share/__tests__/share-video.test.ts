@@ -32,6 +32,11 @@ describe("shareVideoToInstagramApp", () => {
     expect(shareVideoToInstagram).not.toHaveBeenCalled();
   });
 
+  it("treats Instagram not opening as a failure", async () => {
+    (shareVideoToInstagram as jest.Mock).mockResolvedValueOnce(false);
+    await expect(shareVideoToInstagramApp("file:///v.mp4", 19_000)).rejects.toThrow();
+  });
+
   it("rejects and opens nothing when Photos is denied", async () => {
     (requestPermissionsAsync as jest.Mock).mockResolvedValueOnce({ granted: false, canAskAgain: true });
     await expect(shareVideoToInstagramApp("file:///v.mp4", 30_000)).rejects.toBeInstanceOf(PermissionDeniedError);

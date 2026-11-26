@@ -2,10 +2,11 @@ import * as Burnt from "burnt";
 import * as Clipboard from "expo-clipboard";
 import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
+import { type LayoutChangeEvent, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { localDay } from "@/features/capture/quota";
 import { filmBlocked, filmCandidates, filmStopCount } from "@/features/journey/film-photos";
+import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
 import { memberTotal } from "@/features/trips/member-total";
@@ -13,12 +14,11 @@ import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Footnote, Loading } from "@/ui/components";
 import { videoAvailable } from "../../../modules/rollo-video";
-import { colors, spacing, type } from "@/ui/theme";
+import { colors, spacing, tintHex, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
 import { useFilmSelection } from "./film-selection";
 import { JourneyShare } from "./journey-share";
-import { ModeChips, type ShareMode } from "./mode-chips";
 import { canShareInvite, inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
@@ -34,6 +34,9 @@ import { RetryPill } from "./retry-pill";
 
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
+
+const MODES = ["Collage", "Recorrido"];
+type ShareMode = "collage" | "journey";
 
 /** Why this roll has nothing to share as `kind`, or null if it can be shared. */
 function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string | null {
@@ -56,6 +59,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const { feed, loading: feedLoading, error: feedError, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
   const selection = useCollageSelection(tripId);
   const filmSelection = useFilmSelection(tripId);
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const [mode, setMode] = useState<ShareMode>(kind === "journey" ? "journey" : "collage");
   const [filmSeed, setFilmSeed] = useState(1);
   const [style, setStyle] = useState(DEFAULT_STYLE);
@@ -97,8 +101,14 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const empty = isCollage && ready && candidates.length === 0 && !feedFailed;
   const filmPool = useMemo(() => filmCandidates(photos), [photos]);
   // Recorrido is offered only where the roll has a film (a route of at least two stops) and the build has the video module.
-  const canFilm =
-    isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && filmBlocked(detail, filmStopCount(filmPool, localDay(detail.trip.startsAt, detail.trip.timezone))) === null;
+  const startsAt = detail?.trip.startsAt;
+  const timezone = detail?.trip.timezone;
+  // buildStops over every candidate is not free: only when the candidates or the first day change.
+  const poolStops = useMemo(
+    () => (startsAt === undefined || timezone === undefined ? 0 : filmStopCount(filmPool, localDay(startsAt, timezone))),
+    [filmPool, startsAt, timezone],
+  );
+  const canFilm = isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && filmBlocked(detail, poolStops) === null;
   const journeyOn = mode === "journey" && canFilm;
   const stripPhotos = useMemo(() => (isCollage ? collagePhotos(candidates, selection, SEED) : []), [isCollage, candidates, selection]);
   const build = useMemo(() => {
@@ -191,7 +201,14 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <RetryPill onPress={assets.retry} />
         </View>
       )}
-      {canFilm && <ModeChips value={mode} onChange={setMode} />}
+      {canFilm && (
+        <SegmentedControl
+          values={MODES}
+          tintColor={tintHex[scheme]}
+          selectedIndex={journeyOn ? 1 : 0}
+          onValueChange={(v) => setMode(v === "Recorrido" ? "journey" : "collage")}
+        />
+      )}
       {journeyOn && detail !== null && (
         <JourneyShare
           tripId={tripId}

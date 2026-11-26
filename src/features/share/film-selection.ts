@@ -20,6 +20,17 @@ function subscribe(listener: () => void): () => void {
   return () => void listeners.delete(listener);
 }
 
+const shown = new Map<string, readonly string[]>();
+
+/** The photo ids the film shows right now (set when the picker opens, so it starts from what the film is made of). */
+export function getFilmShown(tripId: string): readonly string[] {
+  return shown.get(tripId) ?? NONE;
+}
+
+export function setFilmShown(tripId: string, ids: readonly string[]): void {
+  shown.set(tripId, [...ids]);
+}
+
 export function useFilmSelection(tripId: string): readonly string[] {
   return useSyncExternalStore(subscribe, () => getFilmSelection(tripId));
 }

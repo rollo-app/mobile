@@ -326,6 +326,12 @@ describe("sceneInput", () => {
     expect(sceneInput({ ...args, days: 24, km: 1858, photos: 11 }).closingStats).toBe("24 días · 1.858 km · 11 fotos");
   });
 
+  it("takes the initial from the first code point, not half a surrogate pair", () => {
+    const emoji = buildStops(tripPhotos().map((p) => (p.authorId === "u1" ? { ...p, authorName: "  \u{1F334}ana" } : p)), FILM_CUTS.share, "2026-07-01");
+    const si = sceneInput({ ...args, stops: emoji, days: 2, km: 10, photos: 6 });
+    expect(si.authors[emoji[0]!.shots[0]!.id]!.initial).toBe("\u{1F334}");
+  });
+
   it("fills authors, stops and timing from the stops and the cut", () => {
     const si = sceneInput({ ...args, days: 2, km: 10, photos: 6 });
     expect(si.frame).toEqual(FILM_FRAME);

@@ -28,7 +28,8 @@ export async function shareVideoMore(uri: string): Promise<void> {
 export async function shareVideoToInstagramApp(uri: string, durationMs: number): Promise<"stories" | "library"> {
   const route = instagramRoute(durationMs);
   if (route === "stories") {
-    await shareVideoToInstagram("stories", uri, META_APP_ID);
+    // false means Instagram could not be opened: the same failure as any other.
+    if (!(await shareVideoToInstagram("stories", uri, META_APP_ID))) throw new Error("Instagram could not be opened");
     return route;
   }
   await saveVideo(uri);
