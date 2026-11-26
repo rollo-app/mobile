@@ -33,6 +33,7 @@ Cada vez que se arma, las fotos de cada parada se acomodan distinto (una sobre e
 - Elegir a mano qué fotos entran (como "Elegir fotos" del collage).
 - Sonido o música. Instagram deja ponerle música a la historia.
 - Estilo claro. El video usa siempre el mapa oscuro.
+- La luz roja de cuarto oscuro sobre el mapa. El video para compartir va **sin tinte**: el mapa oscuro apenas atenuado, para que manden las fotos y la ruta se vea en cobalto *(dueño, 2026-11-26, entre rojo, sin tinte, cobalto y ámbar)*. Las fotos siguen revelándose de sepia borroso a nítido. El rojo queda para el revelado dentro de la app.
 - Botón directo a WhatsApp. Se llega por "Más opciones".
 - Android.
 
