@@ -61,8 +61,12 @@ describe("app config", () => {
     expect(configFor(undefined).ios?.usesAppleSignIn).toBeUndefined();
   });
 
-  it("is version 1.5.0 (runtimeVersion follows it)", () => {
-    expect(appJson.expo.version).toBe("1.5.0");
+  it("is version 1.6.0 (runtimeVersion follows it)", () => {
+    expect(appJson.expo.version).toBe("1.6.0");
+  });
+
+  it("can ask whether Instagram takes a Reel (the route for a video longer than 20 s)", () => {
+    expect(appJson.expo.ios.infoPlist.LSApplicationQueriesSchemes).toEqual(["instagram-stories", "instagram", "whatsapp", "instagram-reels"]);
   });
 
   it("talks to the API on rolloproject.com (the build profile and the fallback agree)", () => {
