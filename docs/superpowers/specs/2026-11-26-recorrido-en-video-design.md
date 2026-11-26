@@ -76,7 +76,7 @@ Lo marcado *(dueño)* lo dijo él. *(mi decisión)* y *(propuesta)* nacieron com
 - Entran solo fotos con `shareable === true` y con GPS. La regla ya la aplica el server (sin videos, archivadas ni momentos). **La ruta también se arma solo con esas fotos**: una parada donde nadie dejó compartir no aparece. *(mi decisión)*
 - **Tope de 15 fotos** y **59 s** *(dueño)*. Hasta 4 fotos por parada y hasta 15 paradas.
 - La ruta sigue la **secuencia de cada persona** *(dueño: "por secuencia sería lo correcto")*: las fotos se agrupan en lugares y la ruta avanza cuando alguien empieza una visita en otro lugar. Si eso da más paradas de las que entran, cada lugar aparece una vez, en el orden de la primera visita. Es `buildStops` del prototipo.
-- **Una sola línea para todo el grupo**, sin colores por persona *(propuesta; la duda era del dueño: "quizás marea")*. No se muestran nombres ni avatares de nadie. *(mi decisión)*
+- **Una sola línea para todo el grupo**, sin colores por persona *(propuesta; la duda era del dueño: "quizás marea")*. **Cada foto lleva la foto de perfil de su autor** (sin foto, el círculo con la inicial y su color, como en el resto de la app), para que se sepa quién la sacó *(dueño, 2026-11-26, al ver el motor en su iPhone)*. No se muestran nombres. Va en el plan del motor.
 - De cada parada se eligen las fotos **con más "me gusta"**; si empatan, repartidas en el tiempo. Se muestran en orden cronológico. *(mi decisión; hoy el prototipo solo reparte en el tiempo)*
 
 ### Textos del video *(mis decisiones)*
@@ -199,6 +199,17 @@ Medido fuera del teléfono:
 **No medido:** el motor nunca corrió en un iPhone. Fluidez, tiempo de carga de las imágenes del mapa, memoria y velocidad de exportación son estimaciones (unos 10–15 ms por cuadro: entre 12 y 18 s para la demo). Solo se puede medir en el iPhone del dueño: en teléfonos más viejos o de pantalla 2x queda sin probar hasta TestFlight. Si ahí falla, un update de JS puede esconder "Recorrido".
 
 **La demo del Reel** (el JSON, las fotos, los videos de prueba de 19 y 41 s, y los scripts que dibujan la película en la Mac) no está en ningún repo, porque son fotos personales y el repo es público. Vive en `~/Desktop/Rollo/.superpowers/recorrido-demo/` y se sirve por la red local: la app la lee de `EXPO_PUBLIC_JOURNEY_FIXTURE_URL`.
+
+## Primera corrida del motor en el iPhone (2026-11-26)
+
+iPhone 15 Pro Max, build 1.5.0 instalado, demo del Reel (8 paradas, 14 imágenes del mapa):
+
+- Todo cargado en **1,8 s** (las 14 imágenes del mapa y las 11 fotos; 245 MB decodificados).
+- **120 cuadros por segundo** sostenidos; armar cada cuadro lleva 0,2 a 0,6 ms.
+- Un solo tirón, de 67 ms, a los 4 s (la primera parada). El resto, entre 8 y 19 ms.
+- "Otra versión" reutiliza las 14 imágenes: vuelve a arrancar en 12 ms.
+
+Lo que pidió el dueño al verlo: un botón de cerrar a la vista durante la película (o cerrar deslizando hacia abajo) y la foto de perfil del autor en cada foto.
 
 ## Pendiente de probar en el iPhone del dueño
 
