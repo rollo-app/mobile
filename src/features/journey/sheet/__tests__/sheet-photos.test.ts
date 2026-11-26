@@ -109,6 +109,46 @@ describe("sheetStates, hand choices", () => {
     expect(states.p13).toBe("sheet");
   });
 
+  it("a hand out on a most-liked photo is not refilled by itself, but an untouched photo may enter", () => {
+    const c = many(40, (i) => i);
+    const states = sheetStates(c, { p39: "out" });
+    expect(states.p39).toBe("out");
+    // Free places: p9 (the 31st most liked) enters the sheet; nothing is highlighted automatically any more.
+    expect(states.p9).toBe("sheet");
+    expect(Object.values(states).filter((s) => s === "sheet")).toHaveLength(30);
+    expect(Object.values(states).filter((s) => s === "highlight")).toHaveLength(0);
+  });
+
+  it("a hand out plus a hand highlight: only that highlight, the rest of the sheet refills", () => {
+    const c = many(40, (i) => i);
+    const states = sheetStates(c, { p39: "out", p0: "highlight" });
+    expect(states.p39).toBe("out");
+    expect(states.p0).toBe("highlight");
+    expect(Object.values(states).filter((s) => s === "highlight")).toHaveLength(1);
+    expect(Object.values(states).filter((s) => s !== "out")).toHaveLength(30);
+  });
+
+  it("gives automatic highlights only while no candidate has a choice", () => {
+    const c = many(20);
+    expect(Object.values(sheetStates(c, {})).filter((s) => s === "highlight")).toHaveLength(12);
+    expect(Object.values(sheetStates(c, { ghost: "highlight" })).filter((s) => s === "highlight")).toHaveLength(12);
+    expect(Object.values(sheetStates(c, { p3: "sheet" })).filter((s) => s === "highlight")).toHaveLength(0);
+  });
+
+  it("with more than 30 hand choices keeps the highlights first, then by time", () => {
+    const c = many(40);
+    const choices: Record<string, "sheet" | "highlight"> = Object.fromEntries(c.slice(0, 35).map((p) => [p.id, "sheet" as const]));
+    choices.p33 = "highlight";
+    choices.p34 = "highlight";
+    const states = sheetStates(c, choices);
+    expect(Object.values(states).filter((s) => s !== "out")).toHaveLength(30);
+    expect(states.p33).toBe("highlight");
+    expect(states.p34).toBe("highlight");
+    expect(states.p0).toBe("sheet");
+    expect(states.p27).toBe("sheet");
+    expect(states.p28).toBe("out");
+  });
+
   it("ignores choices for ids that are not candidates", () => {
     const c = many(8);
     expect(sheetPick(c, { ghost: "highlight" }).highlights).toHaveLength(8);
@@ -127,8 +167,9 @@ describe("nextState", () => {
 describe("sheetCounter", () => {
   const pick = (cells: number, highlights: number) => ({ cells: many(cells), highlights: many(highlights).map((p) => p.id) });
   it("pluralises", () => {
-    expect(sheetCounter(pick(30, 8))).toBe("8 destacadas · 30 en la hoja");
-    expect(sheetCounter(pick(1, 1))).toBe("1 destacada · 1 en la hoja");
+    expect(sheetCounter(pick(30, 8))).toBe("8 destacadas · 22 en la hoja");
+    expect(sheetCounter(pick(30, 12))).toBe("12 destacadas · 18 en la hoja");
+    expect(sheetCounter(pick(2, 1))).toBe("1 destacada · 1 en la hoja");
     expect(sheetCounter(pick(6, 0))).toBe("0 destacadas · 6 en la hoja");
   });
 });

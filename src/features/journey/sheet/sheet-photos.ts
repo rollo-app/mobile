@@ -32,7 +32,12 @@ export function sheetStates(candidates: RevealedPhoto[], choices: SheetChoices):
     const choice = choices[r.photo.id];
     return choice === "sheet" || choice === "highlight";
   });
-  const handKept = [...hand].sort(byTime).slice(0, SHEET_MAX);
+  // Beyond the sheet's size the hand highlights are kept first, then the earliest; the result is still in time order.
+  const isHighlight = (r: Ranked) => (choices[r.photo.id] === "highlight" ? 1 : 0);
+  const handKept =
+    hand.length > SHEET_MAX
+      ? [...hand].sort((a, b) => isHighlight(b) - isHighlight(a) || byTime(a, b)).slice(0, SHEET_MAX).sort(byTime)
+      : [...hand].sort(byTime);
   const handHighlights = handKept.filter((r) => choices[r.photo.id] === "highlight");
   const handHighlightIds = new Set(handHighlights.slice(0, HIGHLIGHT_MAX).map((r) => r.photo.id));
   for (const { photo } of handKept) states[photo.id] = handHighlightIds.has(photo.id) ? "highlight" : "sheet";
@@ -41,8 +46,8 @@ export function sheetStates(candidates: RevealedPhoto[], choices: SheetChoices):
   const free = ranked.filter((r) => choices[r.photo.id] === undefined);
   for (const { photo } of [...free].sort(byLikes).slice(0, Math.max(0, SHEET_MAX - handKept.length))) states[photo.id] = "sheet";
 
-  // Automatic highlights only while the person has chosen none by hand.
-  if (handHighlights.length === 0) {
+  // The automatic highlights are only a starting point: they exist while no candidate has any choice. The first edit turns them into choices.
+  if (ranked.every((r) => choices[r.photo.id] === undefined)) {
     const onSheet = ranked.filter((r) => states[r.photo.id] === "sheet");
     for (const { photo } of [...onSheet].sort(byLikes).slice(0, HIGHLIGHT_MAX)) states[photo.id] = "highlight";
   }
@@ -67,10 +72,14 @@ export function nextState(current: SheetState, highlighted: number): SheetState 
   return "sheet";
 }
 
-/** "8 destacadas · 22 en la hoja" (singulars: "1 destacada", "1 en la hoja"). */
+/** "8 destacadas · 22 en la hoja" from the two counts (the sheet count is the photos that are not highlighted). */
+export function formatSheetCounter(highlighted: number, onSheet: number): string {
+  return `${highlighted} ${highlighted === 1 ? "destacada" : "destacadas"} · ${onSheet} en la hoja`;
+}
+
+/** The counter of a pick: highlights, and the sheet-only photos (every cell that is not a highlight). */
 export function sheetCounter(pick: { cells: RevealedPhoto[]; highlights: string[] }): string {
-  const h = pick.highlights.length;
-  return `${h} ${h === 1 ? "destacada" : "destacadas"} · ${pick.cells.length} en la hoja`;
+  return formatSheetCounter(pick.highlights.length, pick.cells.length - pick.highlights.length);
 }
 
 /** Why this roll has no summary film, or null. */

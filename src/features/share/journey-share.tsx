@@ -190,6 +190,7 @@ function SheetFilmShare({ tripId, detail, pick, token, seed, instagram }: FilmSh
       instagram={instagram}
       film={film}
       stripPhotos={stripPhotos}
+      stripTotal={pick.cells.length}
       subject="resumen"
       counter={counter}
       onAdd={() => router.push({ pathname: "/share-pick", params: { tripId, kind: "sheet" } })}
@@ -206,6 +207,7 @@ function FilmBody({
   instagram,
   film,
   stripPhotos,
+  stripTotal,
   subject,
   counter,
   onAdd,
@@ -217,6 +219,8 @@ function FilmBody({
   instagram: boolean;
   film: AnyFilmState;
   stripPhotos: RevealedPhoto[];
+  /** What the strip's hint says the film has, when that is not the strip's own photos (the summary: its whole sheet). */
+  stripTotal?: number;
   subject: "recorrido" | "resumen";
   counter?: string;
   onAdd: (() => void) | null;
@@ -263,7 +267,7 @@ function FilmBody({
         )}
       </View>
       {!!counter && <Text style={[type.footnote, styles.counter]}>{counter}</Text>}
-      <CollageStrip photos={stripPhotos} token={token} subject={subject} onPress={onAdd} />
+      <CollageStrip photos={stripPhotos} total={stripTotal} token={token} subject={subject} onPress={onAdd} />
       {!!notice && <Footnote>{notice}</Footnote>}
       {notice === null && film.status === "error" && (
         <View style={styles.failure}>

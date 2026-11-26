@@ -9,9 +9,10 @@ const SIZE = 52;
 const SHOWN = 4;
 
 /** The first 4 photos the collage uses right now, numbered, plus a "+" to change them. Tappable only when `onPress` is given. */
-export function CollageStrip({ photos, token, onPress, subject = "collage" }: { photos: RevealedPhoto[]; token: string | null; onPress: (() => void) | null; subject?: "collage" | "recorrido" | "resumen" }) {
-  const count = photos.length;
-  const extra = count - SHOWN;
+export function CollageStrip({ photos, total, token, onPress, subject = "collage" }: { photos: RevealedPhoto[]; total?: number; token: string | null; onPress: (() => void) | null; subject?: "collage" | "recorrido" | "resumen" }) {
+  const extra = photos.length - SHOWN;
+  // The hint may count more than the strip shows (the summary's whole sheet).
+  const count = total ?? photos.length;
   const content = (
     <>
       {photos.slice(0, SHOWN).map((photo, i) => (

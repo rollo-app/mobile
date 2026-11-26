@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { filmCandidates, FILM_MAX } from "@/features/journey/film-photos";
-import { nextState, type SheetChoices, sheetCandidates, sheetCounter, sheetPick, sheetStates } from "@/features/journey/sheet/sheet-photos";
+import { formatSheetCounter, nextState, SHEET_MAX, type SheetChoices, type SheetState, sheetCandidates, sheetStates } from "@/features/journey/sheet/sheet-photos";
 import { type RevealedPhoto, useRevealedPhotos } from "@/features/media/revealed";
 import { Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
@@ -141,18 +141,22 @@ function OrderedPickScreen({ tripId, seed, kind }: { tripId: string; seed?: numb
 
 /** The summary film's picker: the grid starts from the states the film has now; only "Listo" saves them. */
 function SheetPickScreen({ tripId }: { tripId: string }) {
-  const { photos, token, complete, loading, loadAll } = useRevealedPhotos(tripId);
+  const { photos, token, complete, loadAll } = useRevealedPhotos(tripId);
   const candidates = useMemo(() => sheetCandidates(photos), [photos]);
-  // Only the photos the person tapped enter the draft; the rest keep following the automatic pick.
+  // Only the photos the person tapped enter the draft (the first tap also seeds the shown highlights); the rest follow the automatic pick.
   const [draft, setDraft] = useState<SheetChoices>(() => getSheetChoices(tripId));
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  // The states are frozen by the first tap, so the grid opens only once every page is in (or loading them failed).
+  const [loadedAll, setLoadedAll] = useState(false);
   const asked = useRef(false);
   useEffect(() => {
     if (complete || asked.current) return;
     asked.current = true;
-    void loadAll();
+    const done = () => setLoadedAll(true);
+    loadAll().then(done, done);
   }, [complete, loadAll]);
+  const ready = complete || loadedAll;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const edge = PADDING - GAP / 2;
@@ -160,16 +164,35 @@ function SheetPickScreen({ tripId }: { tripId: string }) {
   const states = useMemo(() => sheetStates(candidates, draft), [candidates, draft]);
   const statesRef = useRef(states);
   statesRef.current = states;
-  const counter = useMemo(() => sheetCounter(sheetPick(candidates, draft)), [candidates, draft]);
+  const candidatesRef = useRef(candidates);
+  candidatesRef.current = candidates;
+  const counter = useMemo(() => {
+    const values = Object.values(states);
+    return formatSheetCounter(values.filter((s) => s === "highlight").length, values.filter((s) => s === "sheet").length);
+  }, [states]);
 
   const onPress = useCallback((id: string) => {
     const current = statesRef.current[id];
     if (current === undefined) return;
-    const highlighted = Object.values(statesRef.current).filter((state) => state === "highlight").length;
+    const shown = statesRef.current;
+    const highlighted = Object.values(shown).filter((state) => state === "highlight").length;
     // The 13th highlight is skipped: the photo goes out instead, with the same haptic as a full collage.
     const next = nextState(current, highlighted);
     if (current === "sheet" && next === "out") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const choices = { ...draftRef.current, [id]: next };
+    const hand = candidatesRef.current.filter((p) => {
+      const choice = draftRef.current[p.id];
+      return choice === "sheet" || choice === "highlight";
+    }).length;
+    // Out to sheet is refused when 30 photos already hold a hand-made place: the sheet holds no more.
+    if (current === "out" && hand >= SHEET_MAX) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      return;
+    }
+    // The automatic pick is only a starting point: the first edit turns the highlights shown into hand-made choices.
+    const untouched = candidatesRef.current.every((p) => draftRef.current[p.id] === undefined);
+    const seeded: Record<string, SheetState> = { ...draftRef.current };
+    if (untouched) for (const [photoId, state] of Object.entries(shown)) if (state === "highlight") seeded[photoId] = "highlight";
+    const choices = { ...seeded, [id]: next };
     draftRef.current = choices;
     setDraft(choices);
   }, []);
@@ -209,7 +232,7 @@ function SheetPickScreen({ tripId }: { tripId: string }) {
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
 
-      {!complete && loading ? (
+      {!ready ? (
         <Loading />
       ) : (
         <FlashList

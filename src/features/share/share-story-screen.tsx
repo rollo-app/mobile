@@ -6,7 +6,7 @@ import { type LayoutChangeEvent, StyleSheet, Text, useColorScheme, View } from "
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { localDay } from "@/features/capture/quota";
 import { filmBlocked, filmCandidates, filmStopCount } from "@/features/journey/film-photos";
-import { sheetBlocked, sheetCandidates, sheetPick, type SheetChoices } from "@/features/journey/sheet/sheet-photos";
+import { SHEET_MAX, sheetBlocked, sheetCandidates, sheetPick, type SheetChoices } from "@/features/journey/sheet/sheet-photos";
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
@@ -36,8 +36,6 @@ import { RetryPill } from "./retry-pill";
 
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
-
-const NO_SHEET_CHOICES: SheetChoices = Object.freeze({});
 
 type ShareMode = "collage" | "film";
 
@@ -111,7 +109,7 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const sheetPhotos = useMemo(() => sheetCandidates(photos), [photos]);
   const sheet = useMemo(() => sheetPick(sheetPhotos, sheetChoices), [sheetPhotos, sheetChoices]);
   // Offered from the candidates alone: taking photos out (even below the minimum) must not remove the way back to the picker.
-  const sheetOffered = useMemo(() => sheetPick(sheetPhotos, NO_SHEET_CHOICES).cells.length, [sheetPhotos]);
+  const sheetOffered = useMemo(() => Math.min(sheetPhotos.length, SHEET_MAX), [sheetPhotos]);
   const canSheet =
     !canFilm && isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && sheetBlocked(detail, sheetOffered) === null;
   const secondKind = canFilm ? "route" : canSheet ? "sheet" : null;

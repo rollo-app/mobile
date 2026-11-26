@@ -889,11 +889,18 @@ describe("Compartir: Resumen", () => {
     await openSheet();
     await toResumen();
     expect(await screen.findByTestId("film-player")).toHaveProp("accessibilityLabel", "playing");
-    expect(screen.getByText("10 destacadas · 10 en la hoja")).toBeVisible();
+    expect(screen.getByText("10 destacadas · 0 en la hoja")).toBeVisible();
     expect(screen.getByRole("button", { name: "Instagram" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Guardar video" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeVisible();
     expect(screen.getByLabelText("Elegir fotos")).toHaveProp("accessibilityHint", "El resumen tiene 10 fotos");
+  });
+
+  it("Resumen: the strip's hint counts the sheet's photos, not the highlights", async () => {
+    await openSheet(revealed(), many(14));
+    await toResumen();
+    expect(await screen.findByText("12 destacadas · 2 en la hoja")).toBeVisible();
+    expect(screen.getByLabelText("Elegir fotos")).toHaveProp("accessibilityHint", "El resumen tiene 14 fotos");
   });
 
   it("Resumen: the strip's plus opens the sheet picker", async () => {
@@ -921,7 +928,7 @@ describe("Compartir: Resumen", () => {
     expect(await screen.findByText("Faltan fotos para el resumen: dejá al menos 6 en la hoja.")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Guardar video" })).toBeNull();
     expect(screen.getByLabelText("Elegir fotos")).toBeVisible();
-    expect(screen.getByText("10 destacadas · 10 en la hoja")).toBeVisible();
+    expect(screen.getByText("10 destacadas · 0 en la hoja")).toBeVisible();
   });
 
   it("taking photos out until fewer than 6 remain keeps Resumen, the notice and the plus", async () => {
