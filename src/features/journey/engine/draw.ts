@@ -2,7 +2,7 @@
 // Every function here is a worklet (it runs on the UI thread, inside a derived value): no logging, nothing non-worklet.
 import { BlurStyle, ClipOp, FilterMode, MipmapMode, PaintStyle, Skia, StrokeCap, StrokeJoin, TileMode, type SkCanvas, type SkImage, type SkParagraph } from "@shopify/react-native-skia";
 import { BADGE_HEIGHT, BADGE_SVG, BADGE_WIDTH } from "./badge";
-import type { FrameModel, PrintModel, Scene } from "./model";
+import type { FrameModel, PrintModel, Scene, Size } from "./model";
 import { PAPER, printHeight } from "./scene";
 
 /** A map image the renderer paints from: the decoded picture and the window of it that holds the layer. */
@@ -16,7 +16,7 @@ const IDENTITY = [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0];
 const ROUTE = "#5C7CFF";
 const EMPTY = "#d9d4c8";
 
-function fillPaint(color: string, alpha?: number) {
+export function fillPaint(color: string, alpha?: number) {
   "worklet";
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
@@ -25,7 +25,7 @@ function fillPaint(color: string, alpha?: number) {
   return paint;
 }
 
-function strokePaint(color: string, width: number, alpha: number) {
+export function strokePaint(color: string, width: number, alpha: number) {
   "worklet";
   const paint = Skia.Paint();
   paint.setAntiAlias(true);
@@ -39,7 +39,7 @@ function strokePaint(color: string, width: number, alpha: number) {
 }
 
 /** Draws `image` filling the window (x, y, w, h), cropped in the middle; `paint` may be null. */
-function drawCover(canvas: SkCanvas, image: SkImage, x: number, y: number, w: number, h: number, paint: ReturnType<typeof Skia.Paint>) {
+export function drawCover(canvas: SkCanvas, image: SkImage, x: number, y: number, w: number, h: number, paint: ReturnType<typeof Skia.Paint>) {
   "worklet";
   const iw = image.width();
   const ih = image.height();
@@ -157,8 +157,8 @@ function drawScrim(canvas: SkCanvas, scene: Scene) {
   canvas.drawRect(Skia.XYWHRect(0, 0, w, 0.34 * h), paint);
 }
 
-/** One photo window of a print: the empty paper, then the photo developing in it. */
-function drawWindow(canvas: SkCanvas, image: SkImage | null | undefined, develop: number, zoomIn: number, x: number, y: number, w: number, h: number) {
+/** One photo window of a print: the empty paper, then the photo developing in it. `blur` is the develop blur's radius, in the units of the window (14 for a print). */
+export function drawWindow(canvas: SkCanvas, image: SkImage | null | undefined, develop: number, zoomIn: number, x: number, y: number, w: number, h: number, blur = 14) {
   "worklet";
   canvas.drawRect(Skia.XYWHRect(x, y, w, h), fillPaint(EMPTY));
   if (develop < 0 || !image) return;
@@ -174,7 +174,7 @@ function drawWindow(canvas: SkCanvas, image: SkImage | null | undefined, develop
   const d = 1 - (1 - linear) * (1 - linear);
   const paint = Skia.Paint();
   paint.setAlphaf(0.55 + 0.45 * d);
-  if (d < 0.999 && 14 * (1 - d) > 0.3) paint.setImageFilter(Skia.ImageFilter.MakeBlur(14 * (1 - d), 14 * (1 - d), TileMode.Clamp, null));
+  if (d < 0.999 && blur * (1 - d) > (0.3 * blur) / 14) paint.setImageFilter(Skia.ImageFilter.MakeBlur(blur * (1 - d), blur * (1 - d), TileMode.Clamp, null));
   if (d < 0.999) {
     const m = SEPIA.map((v, i) => v + (IDENTITY[i]! - v) * d);
     paint.setColorFilter(Skia.ColorFilter.MakeMatrix(m));
@@ -184,13 +184,23 @@ function drawWindow(canvas: SkCanvas, image: SkImage | null | undefined, develop
 }
 
 /**
- * The author's round avatar centred at (cx, cy), `d` across, with a 2 pt white ring: their picture, or their initial on
- * their colour. It fades in with the photo's development and is not there while the paper is still empty.
+ * The author's round seal centred at (cx, cy), `d` across, with a `ring`-wide white ring (2 pt by default): their picture,
+ * or their initial on their colour. `initialText` is the index in `assets.texts` of their initial. It fades in with
+ * `develop` (0..1) and is not there while that is negative (the paper still empty).
  */
-function drawAvatar(canvas: SkCanvas, scene: Scene, assets: Assets, photo: string, develop: number, cx: number, cy: number, d: number) {
+export function drawSeal(
+  canvas: SkCanvas,
+  assets: Pick<Assets, "photos" | "texts">,
+  author: { initial: string; color: string; avatar: string | null },
+  initialText: number,
+  develop: number,
+  cx: number,
+  cy: number,
+  d: number,
+  ring = 2,
+) {
   "worklet";
-  const author = scene.input.authors[photo];
-  if (!author || develop < 0) return;
+  if (develop < 0) return;
   const alpha = develop > 1 ? 1 : develop;
   if (alpha <= 0.01) return;
   const layered = alpha < 0.999;
@@ -204,24 +214,33 @@ function drawAvatar(canvas: SkCanvas, scene: Scene, assets: Assets, photo: strin
   const image = author.avatar !== null ? assets.photos[author.avatar] : null;
   if (image) {
     canvas.save();
-    canvas.clipPath(Skia.PathBuilder.Make().addCircle(cx, cy, r - 2).build(), ClipOp.Intersect, true);
+    canvas.clipPath(Skia.PathBuilder.Make().addCircle(cx, cy, r - ring).build(), ClipOp.Intersect, true);
     drawCover(canvas, image, cx - r, cy - r, d, d, Skia.Paint());
     canvas.restore();
   } else {
-    canvas.drawCircle(cx, cy, r - 2, fillPaint(author.color));
-    const index = scene.authorTexts[photo];
-    const paragraph = index !== undefined ? assets.texts[index] : null;
+    canvas.drawCircle(cx, cy, r - ring, fillPaint(author.color));
+    const paragraph = initialText >= 0 ? assets.texts[initialText] : null;
     if (paragraph) {
-      // Laid out for the full size (centred in a 0.88 w box): scaled about the circle's centre for a smaller one.
-      const k = d / (0.075 * scene.input.frame.w);
+      // Laid out for the full size (0.075 w across, centred in a 0.88 w box, the paragraph's width): scaled about the circle's centre for a smaller one.
+      const box = paragraph.getMaxWidth();
+      const k = (d * 0.88) / (0.075 * box);
       canvas.save();
       canvas.translate(cx, cy);
       canvas.scale(k, k);
-      paragraph.paint(canvas, -0.44 * scene.input.frame.w, -paragraph.getHeight() / 2);
+      paragraph.paint(canvas, -box / 2, -paragraph.getHeight() / 2);
       canvas.restore();
     }
   }
   if (layered) canvas.restore();
+}
+
+/** A print's author seal: `drawSeal` for the author of `photo`. */
+function drawAvatar(canvas: SkCanvas, scene: Scene, assets: Assets, photo: string, develop: number, cx: number, cy: number, d: number) {
+  "worklet";
+  const author = scene.input.authors[photo];
+  if (!author) return;
+  const index = scene.authorTexts[photo];
+  drawSeal(canvas, assets, author, index !== undefined ? index : -1, develop, cx, cy, d);
 }
 
 function drawPrint(canvas: SkCanvas, scene: Scene, print: PrintModel, assets: Assets) {
@@ -281,7 +300,7 @@ function drawPrint(canvas: SkCanvas, scene: Scene, print: PrintModel, assets: As
   canvas.restore();
 }
 
-function drawText(canvas: SkCanvas, assets: Assets, index: number, x: number, y: number, opacity: number): number {
+export function drawText(canvas: SkCanvas, assets: Pick<Assets, "texts">, index: number, x: number, y: number, opacity: number): number {
   "worklet";
   const paragraph = index >= 0 ? assets.texts[index] : null;
   if (!paragraph || opacity <= 0.01) return y;
@@ -350,11 +369,15 @@ function drawCredit(canvas: SkCanvas, scene: Scene, model: FrameModel, assets: A
   drawText(canvas, assets, credit.text, 16, scene.input.frame.h - 10 - paragraph.getHeight(), credit.opacity);
 }
 
-function drawEndCard(canvas: SkCanvas, scene: Scene, model: FrameModel, assets: Assets) {
+export function drawEndCard(
+  canvas: SkCanvas,
+  frame: Size,
+  card: { opacity: number; name: number; badgeSmall: number; badgeBig: number },
+  assets: Pick<Assets, "texts">,
+) {
   "worklet";
-  const card = model.endCard;
   if (card.opacity <= 0.001) return;
-  const { w, h } = scene.input.frame;
+  const { w, h } = frame;
   const o = card.opacity > 1 ? 1 : card.opacity;
   canvas.drawRect(Skia.XYWHRect(0, 0, w, h), fillPaint("#000000", o));
 
@@ -398,7 +421,7 @@ export function drawFrame(canvas: SkCanvas, scene: Scene, model: FrameModel, ass
   canvas.drawColor(Skia.Color("#1c1c1e"));
   // Fully black: nothing under the card shows, so none of it is drawn.
   if (model.endCard.opacity >= 0.999) {
-    drawEndCard(canvas, scene, model, assets);
+    drawEndCard(canvas, scene.input.frame, model.endCard, assets);
     return;
   }
   warmUp(canvas, model, assets);
@@ -411,5 +434,5 @@ export function drawFrame(canvas: SkCanvas, scene: Scene, model: FrameModel, ass
   drawTexts(canvas, scene, model, assets);
   drawCredit(canvas, scene, model, assets);
   if (model.flash > 0.001) canvas.drawRect(Skia.XYWHRect(0, 0, w, h), fillPaint("#ffffff", Math.min(1, model.flash)));
-  drawEndCard(canvas, scene, model, assets);
+  drawEndCard(canvas, scene.input.frame, model.endCard, assets);
 }
