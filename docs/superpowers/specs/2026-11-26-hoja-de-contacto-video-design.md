@@ -1,6 +1,6 @@
 # La hoja de contacto en video — diseño
 
-Fecha: 2026-11-26 · Estado: **borrador**. El dueño eligió el concepto y vio un prototipo dibujado en la Mac; falta que lo vea en su iPhone y apruebe este documento.
+Fecha: 2026-11-26 · Estado: **aprobado por el dueño (2026-11-26)** para pasar al plan, después de ver el prototipo dibujado en la Mac; en su iPhone todavía no lo vio. Plan: `docs/superpowers/plans/2026-11-26-hoja-de-contacto-video.md`.
 
 Es el video para los rollos **sin recorrido**. Se apoya en `2026-11-26-recorrido-en-video-design.md`: mismo motor, misma exportación, mismos destinos.
 
@@ -51,7 +51,7 @@ Dos dudas de C y cómo se resolvieron:
 
 ### Cuándo se usa *(dueño)*
 
-Sola, cuando el rollo no tiene recorrido para compartir: no llega a 2 paradas con la regla de zonas de ~5 km (eventos, rollos en una ciudad, fotos sin ubicación). Nadie lo elige: en Compartir la segunda pieza se llama "Recorrido" si hay recorrido y, si no, es esta. *(el nombre visible de esta pieza queda para definir)*
+Sola, cuando el rollo no tiene recorrido para compartir: no llega a 2 paradas con la regla de zonas de ~5 km (eventos, rollos en una ciudad, fotos sin ubicación). Nadie lo elige: en Compartir la segunda pieza se llama "Recorrido" si hay recorrido y, si no, es esta, con la etiqueta **"Resumen"** *(mi decisión; el dueño dejó el nombre abierto y es un solo texto)*. Hace falta un mínimo de 6 fotos en la hoja *(mi decisión)*.
 
 ### Qué fotos
 
@@ -102,6 +102,5 @@ Sin tinte rojo, sello del autor al 11,5 % del ancho, placa final, crédito del m
 
 ## Lo que queda para quien lo construya
 
-- El nombre visible de la pieza en el control de Compartir.
 - El diseño fino de la pantalla de elegir con tres estados.
 - Qué se hace con una sola foto compartible, o con ninguna destacada (el prototipo acepta cero: portada, revelado, cierre).
