@@ -97,6 +97,7 @@ do {
   let writer = try VideoWriter(url: url, width: W, height: H, fps: 30, bitrate: 6_000_000)
   let frame = solid(blue: 10, green: 20, red: 30)
   for _ in 0..<5 { try frame.withUnsafeBytes { try writer.append(pixels: $0.baseAddress!, byteCount: $0.count, bytesPerRow: W * 4) } }
+  check("the file exists before cancel", FileManager.default.fileExists(atPath: url.path))
   writer.cancel()
   writer.cancel()
   check("cancel removes the file", !FileManager.default.fileExists(atPath: url.path))
@@ -115,6 +116,47 @@ do {
   check("finish with no frames leaves no file", !FileManager.default.fileExists(atPath: url.path))
 } catch {
   failures.append("empty: threw \(error)")
+}
+
+// 3b. A dead encoder: finish throws (it must not crash), the file is gone, and a frame is refused.
+do {
+  let url = dir.appendingPathComponent("dead.mp4")
+  let writer = try VideoWriter(url: url, width: W, height: H, fps: 30, bitrate: 6_000_000)
+  let frame = solid(blue: 10, green: 20, red: 30)
+  try frame.withUnsafeBytes { try writer.append(pixels: $0.baseAddress!, byteCount: $0.count, bytesPerRow: W * 4) }
+  writer.cancelEncoderForTesting()
+  var threw = false
+  do { _ = try await writer.finish() } catch { threw = true }
+  check("finish after the encoder died throws", threw)
+  check("finish after the encoder died leaves no file", !FileManager.default.fileExists(atPath: url.path))
+  let url2 = dir.appendingPathComponent("dead2.mp4")
+  let second = try VideoWriter(url: url2, width: W, height: H, fps: 30, bitrate: 6_000_000)
+  try frame.withUnsafeBytes { try second.append(pixels: $0.baseAddress!, byteCount: $0.count, bytesPerRow: W * 4) }
+  second.cancelEncoderForTesting()
+  check("append after the encoder died throws", throwsError { try frame.withUnsafeBytes { try second.append(pixels: $0.baseAddress!, byteCount: $0.count, bytesPerRow: W * 4) } })
+  check("a failed append removes the partial file", !FileManager.default.fileExists(atPath: url2.path))
+} catch {
+  failures.append("dead encoder: threw \(error)")
+}
+
+// 3c. A caller mistake does not cancel the video; dropping an open writer removes its file.
+do {
+  let url = dir.appendingPathComponent("mistake.mp4")
+  let writer = try VideoWriter(url: url, width: W, height: H, fps: 30, bitrate: 6_000_000)
+  let small = [UInt8](repeating: 0, count: 100)
+  check("a bad buffer is refused", throwsError { try small.withUnsafeBytes { try writer.append(pixels: $0.baseAddress!, byteCount: $0.count, bytesPerRow: W * 4) } })
+  let frame = solid(blue: 0, green: 0, red: 255)
+  try frame.withUnsafeBytes { try writer.append(pixels: $0.baseAddress!, byteCount: $0.count, bytesPerRow: W * 4) }
+  let result = try await writer.finish()
+  check("a bad buffer does not cancel the video", result.frames == 1 && FileManager.default.fileExists(atPath: url.path), "\(result)")
+  let dropped = dir.appendingPathComponent("dropped.mp4")
+  do {
+    let abandoned = try VideoWriter(url: dropped, width: W, height: H, fps: 30, bitrate: 6_000_000)
+    try frame.withUnsafeBytes { try abandoned.append(pixels: $0.baseAddress!, byteCount: $0.count, bytesPerRow: W * 4) }
+  }
+  check("dropping an open writer removes its file", !FileManager.default.fileExists(atPath: dropped.path))
+} catch {
+  failures.append("caller mistake: threw \(error)")
 }
 
 // 5. Bad parameters and an unwritable place are refused at open.

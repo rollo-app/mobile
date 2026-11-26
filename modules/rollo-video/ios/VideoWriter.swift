@@ -83,7 +83,8 @@ public final class VideoWriter {
 
   /// One frame as bytes: BGRA premultiplied, top row first.
   public func append(pixels: UnsafeRawPointer, byteCount: Int, bytesPerRow: Int) throws {
-    guard bytesPerRow >= width * 4, byteCount >= bytesPerRow * height else {
+    let (needed, overflow) = bytesPerRow.multipliedReportingOverflow(by: height)
+    guard bytesPerRow >= width * 4, !overflow, byteCount >= needed else {
       throw VideoWriterError("frame buffer too small: \(byteCount) bytes, \(bytesPerRow) per row, for \(width)x\(height)")
     }
     let height = self.height
@@ -114,6 +115,12 @@ public final class VideoWriter {
       cancel()
       throw VideoWriterError("no frames were written")
     }
+    // The encoder fails on its own thread, so it can be dead by now; AVFoundation raises (not throws) on a dead writer.
+    guard writer.status == .writing else {
+      let reason = writer.error?.localizedDescription ?? "status \(writer.status.rawValue)"
+      cancel()
+      throw VideoWriterError("the encoder stopped before the end: \(reason)")
+    }
     closed = true
     input.markAsFinished()
     writer.endSession(atSourceTime: CMTime(value: CMTimeValue(frames), timescale: CMTimeScale(fps)))
@@ -123,9 +130,19 @@ public final class VideoWriter {
       try? FileManager.default.removeItem(at: url)
       throw VideoWriterError("could not finish the video: \(reason)")
     }
-    let bytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+    guard let bytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size]) as? Int, bytes > 0 else {
+      try? FileManager.default.removeItem(at: url)
+      throw VideoWriterError("the video file is missing or empty")
+    }
     return (bytes, frames)
   }
+
+  deinit {
+    if !closed { cancel() }
+  }
+
+  /// Cancels the encoder from the outside, as if it had died on its own. Only for the checks.
+  func cancelEncoderForTesting() { writer.cancelWriting() }
 
   /// Stops and removes whatever was written. Safe to call more than once.
   public func cancel() {
@@ -136,31 +153,35 @@ public final class VideoWriter {
     try? FileManager.default.removeItem(at: url)
   }
 
+  /// An encoder-side failure ends the video: nothing partial is left behind. Caller mistakes (bad buffers) never come here.
+  private func abandon(_ message: String) -> VideoWriterError {
+    cancel()
+    return VideoWriterError(message)
+  }
+
   private func write(_ fill: (UnsafeMutableRawPointer, Int) -> Void) throws {
     guard !closed else { throw VideoWriterError("the video is already closed") }
     var waited = 0
     while !input.isReadyForMoreMediaData {
-      guard writer.status == .writing else {
-        throw VideoWriterError("the encoder stopped: \(writer.error?.localizedDescription ?? "unknown")")
-      }
-      guard waited < VideoWriter.readyTimeoutMs else { throw VideoWriterError("the encoder did not take the frame in time") }
+      guard writer.status == .writing else { throw abandon("the encoder stopped: \(writer.error?.localizedDescription ?? "unknown")") }
+      guard waited < VideoWriter.readyTimeoutMs else { throw abandon("the encoder did not take the frame in time") }
       usleep(1000)
       waited += 1
     }
-    guard let pool = adaptor.pixelBufferPool else { throw VideoWriterError("no pixel buffer pool") }
+    guard let pool = adaptor.pixelBufferPool else { throw abandon("no pixel buffer pool") }
     var made: CVPixelBuffer?
     CVPixelBufferPoolCreatePixelBuffer(nil, pool, &made)
-    guard let buffer = made else { throw VideoWriterError("the pool gave no buffer") }
+    guard let buffer = made else { throw abandon("the pool gave no buffer") }
     CVPixelBufferLockBaseAddress(buffer, [])
     guard let base = CVPixelBufferGetBaseAddress(buffer) else {
       CVPixelBufferUnlockBaseAddress(buffer, [])
-      throw VideoWriterError("the buffer has no memory")
+      throw abandon("the buffer has no memory")
     }
     fill(base, CVPixelBufferGetBytesPerRow(buffer))
     CVPixelBufferUnlockBaseAddress(buffer, [])
     let time = CMTime(value: CMTimeValue(frames), timescale: CMTimeScale(fps))
     guard adaptor.append(buffer, withPresentationTime: time) else {
-      throw VideoWriterError("the encoder rejected the frame: \(writer.error?.localizedDescription ?? "unknown")")
+      throw abandon("the encoder rejected the frame: \(writer.error?.localizedDescription ?? "unknown")")
     }
     frames += 1
   }
