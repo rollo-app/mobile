@@ -133,7 +133,7 @@ Para el revelado, que solo ven los miembros, nada de esto aplica: son parámetro
 - **Placa final** *(dueño, 2026-11-26)*: después del cierre, la pantalla pasa a negro con el logo de Rollo y la insignia oficial de la App Store. Solo en el video para compartir, no en el revelado. Reemplaza a la marca chica del cierre. Esto cambia lo que decía el diseño base de Compartir ("sin 'Descargá la app'"), que sigue valiendo para el collage.
   - Dura **2,5 s** y **cuenta dentro de los 59 s**: el recorrido en sí tiene como tope **56,5 s** y el tiempo se recorta de los traslados, como hoy. *(mi decisión)*
   - La insignia es el arte oficial de Apple en español ("Consíguelo en el App Store"), sin modificar y con su margen libre, como piden sus pautas. Va como asset de la app. *(mi decisión)*
-  - Bajo el logo va "Rollo Project", la marca. El nombre con que figura en la App Store es otro: hay que revisar que la placa no confunda. *(pendiente del dueño)*
+  - Bajo el logo va **"Rollo Project"** *(dueño, 2026-11-26)*.
   - Durante la placa no hay mapa, así que el crédito del mapa no se muestra ahí.
 - **El video lleva el crédito del mapa, "© OpenStreetMap · OpenFreeMap", durante toda la película.** La licencia lo exige mientras el mapa se ve (`map/roll-map.tsx`). Hoy es un texto de React Native encima del lienzo, así que no saldría en el archivo: pasa a dibujarlo el motor, chico y en una esquina. No es publicidad: no choca con "que no parezca un aviso". *(mi decisión)*
 
