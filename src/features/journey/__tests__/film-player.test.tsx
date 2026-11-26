@@ -2,6 +2,8 @@ import { act, fireEvent, render } from "@testing-library/react-native";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
 import type { Assets } from "../engine/draw";
 import type { Scene } from "../engine/model";
+import { drawFrame } from "../engine/draw";
+import { frameAt } from "../engine/scene";
 import { FilmPlayer } from "../film-player";
 
 // jest.setup mocks it for screen tests; here it's the real component over a mocked Skia.
@@ -12,7 +14,11 @@ jest.mock("@shopify/react-native-skia", () => {
   return {
     Canvas: (props: object) => <View testID="film-canvas" {...props} />,
     Group: passthrough,
-    Picture: () => null,
+    Picture: ({ picture }: { picture: { value: unknown } }) => {
+      // Reading it builds the picture, as Skia does on each frame.
+      void picture.value;
+      return null;
+    },
     useClock: () => ({ value: 0 }),
     Skia: {
       PictureRecorder: () => ({
@@ -48,6 +54,8 @@ function player(extra: Partial<Parameters<typeof FilmPlayer>[0]> = {}) {
 }
 
 beforeEach(() => {
+  jest.mocked(drawFrame).mockClear();
+  jest.mocked(frameAt).mockClear();
   jest.useFakeTimers();
   useReduceMotionMock.mockReturnValue(false);
 });
@@ -105,5 +113,47 @@ describe("FilmPlayer", () => {
       jest.advanceTimersByTime(5000);
     });
     expect(onEnd).not.toHaveBeenCalled();
+  });
+
+  it("replays: playing false then true again ends a second time", async () => {
+    const onEnd = jest.fn();
+    const { rerender } = await render(player({ onEnd }));
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    await rerender(player({ onEnd, playing: false }));
+    await rerender(player({ onEnd, playing: true }));
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(onEnd).toHaveBeenCalledTimes(2);
+  });
+
+  it("draws nothing while paused and draws when not", async () => {
+    const { rerender } = await render(player({ paused: true }));
+    expect(drawFrame).not.toHaveBeenCalled();
+    await rerender(player({ paused: false }));
+    // The mocked shared values do not re-trigger the derived value: one more render after the effects ran.
+    await rerender(player({ paused: false }));
+    expect(drawFrame).toHaveBeenCalled();
+  });
+
+  it("holds the frame at doneAt after the end", async () => {
+    const { rerender } = await render(player());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    jest.mocked(frameAt).mockClear();
+    await rerender(player());
+    expect(frameAt).toHaveBeenLastCalledWith(scene, 800);
+  });
+
+  it("with reduce motion and playing false shows the held frame but no button", async () => {
+    useReduceMotionMock.mockReturnValue(true);
+    const { queryByRole, rerender } = await render(player({ playing: false }));
+    expect(queryByRole("button", { name: "Reproducir" })).toBeNull();
+    await rerender(player({ playing: false }));
+    expect(frameAt).toHaveBeenLastCalledWith(scene, 800);
   });
 });

@@ -14,7 +14,10 @@ const IDLE = 0;
 const RUNNING = 1;
 const HELD = 2;
 
-/** The film in a 9:16 box of `height`. Plays once from the start when `playing`, holds the closing title (before the end card) when it ends, and draws nothing while `paused` (an export is drawing the same scene on another thread). */
+/**
+ * The film in a 9:16 box of `height`. Plays once from the start when `playing`, holds the closing title (before the end card) when it ends, and draws nothing while `paused` (an export is drawing the same scene on another thread).
+ * A new `scene` while playing restarts from 0, and `onEnd` fires again at its end.
+ */
 export function FilmPlayer({
   scene,
   assets,
@@ -71,7 +74,8 @@ export function FilmPlayer({
   const picture = useDerivedValue(() => {
     const recorder = Skia.PictureRecorder();
     const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, FILM_FRAME.w, FILM_FRAME.h));
-    if (!pausedSv.value) {
+    // The prop itself is read too: the first run after it changes must already be empty, before the effect writes the shared value.
+    if (!paused && !pausedSv.value) {
       const m = mode.value;
       const elapsed = clock.value - startAt.value;
       let t = 0;
@@ -93,7 +97,7 @@ export function FilmPlayer({
           <Picture picture={picture} />
         </Group>
       </Canvas>
-      {still ? (
+      {still && playing ? (
         <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
           <View style={styles.center} pointerEvents="box-none">
             <Pressable accessibilityRole="button" accessibilityLabel="Reproducir" onPress={() => setManual(true)} style={styles.pill}>
