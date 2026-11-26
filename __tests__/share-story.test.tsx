@@ -123,7 +123,7 @@ const item = (id: string, over: Partial<tripActions.Feed["items"][number]> = {})
 
 const feed = (items: tripActions.Feed["items"], revealed = true): tripActions.Feed => ({ revealed, revealAt: Date.now() - DAY, items, nextCursor: null });
 
-async function open(kind: "collage" | "invite" | "journey", d = detail(), items = [item("a"), item("b")]) {
+async function open(kind: "collage" | "invite" | "journey" | "sheet", d = detail(), items = [item("a"), item("b")]) {
   trips.fetchTrip.mockResolvedValue(d);
   trips.fetchFeedPage.mockResolvedValue(feed(items, d.trip.revealed));
   await renderRouter({ ...routes, "share-pick": () => <Text>pick stub</Text> }, { initialUrl: `/share-story?tripId=${SUR}&kind=${kind}` });
@@ -855,12 +855,12 @@ describe("Compartir: Resumen", () => {
     expect(screen.getByRole("button", { name: "Resumen" })).toBeVisible();
   });
 
-  it("a trip roll with a route still shows Recorrido, not Resumen", async () => {
+  it("a trip roll with a route and 10 photos shows Recorrido and Resumen", async () => {
     const at = (id: string, lat: number, lng: number) => item(id, { lat, lng });
     const places = [at("a", -41.13, -71.31), at("b", -41.14, -71.32), at("c", -42.9, -71.3), at("d", -42.91, -71.31), ...many(6).map((it) => at(it.id, -41.2, -71.3))];
     await openSheet(revealed(), places);
     expect(screen.getByRole("button", { name: "Recorrido" })).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Resumen" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Resumen" })).toBeVisible();
   });
 
   it.each([
@@ -990,5 +990,107 @@ describe("Compartir: Resumen", () => {
     await waitFor(() => expect(useSheetFilm.mock.calls.some((c) => c[0].cells.length > 0)).toBe(true));
     const last = useSheetFilm.mock.calls.at(-1)![0];
     expect(last.cells.map((p) => p.id)).toEqual(ids(8));
+  });
+});
+
+
+describe("Compartir: Recorrido y Resumen juntos", () => {
+  const useFilm = jest.mocked(filmHook.useFilm);
+  const useSheetFilm = jest.mocked(sheetHook.useSheetFilm);
+  const exportFile = jest.mocked(filmExport.exportFilmToFile);
+  const video = jest.mocked(shareVideo);
+  const FILE = { uri: "file:///cache/rollo-video.mp4", bytes: 1000, frames: 30 };
+  const routeFilm = () =>
+    ({ status: "ready", film: { kind: "route", scene: {}, assets: {}, durationMs: 30_000, restAt: 0, version: "r1" }, stops: [], photos: [] }) as unknown as filmHook.Film;
+  const sheetFilm = () =>
+    ({ status: "ready", film: { kind: "sheet", scene: {}, assets: {}, durationMs: 40_000, restAt: 0, version: "s1" }, photos: [] }) as unknown as sheetHook.SheetFilm;
+  const at = (id: string, lat: number, lng: number) => item(id, { lat, lng, takenAt: Date.parse("2027-01-12T16:10:00Z") + id.length * 60_000 });
+  const TWO_PLACES = [at("a", -41.13, -71.31), at("b", -41.14, -71.32), at("c", -42.9, -71.3), at("d", -42.91, -71.31)];
+  const filler = (n: number) => Array.from({ length: n }, (_, i) => at(`f${String(i).padStart(2, "0")}`, -41.2, -71.3));
+  const revealed = () => detail({ revealed: true });
+  const press = async (name: string) => fireEvent.press(await screen.findByRole("button", { name }));
+
+  beforeEach(() => {
+    useFilm.mockReset();
+    useFilm.mockReturnValue(routeFilm());
+    useSheetFilm.mockReset();
+    useSheetFilm.mockReturnValue(sheetFilm());
+    exportFile.mockReset();
+    exportFile.mockResolvedValue(FILE);
+    video.saveVideo.mockResolvedValue(undefined);
+    video.shareVideoMore.mockResolvedValue(undefined);
+    video.shareVideoToInstagramApp.mockResolvedValue("stories");
+  });
+
+  async function openBoth(kind: "collage" | "journey" | "sheet" = "collage") {
+    await open(kind, revealed(), [...TWO_PLACES, ...filler(6)]);
+    await screen.findByRole("button", { name: kind === "collage" ? "Instagram" : "Más opciones" });
+  }
+
+  it("a roll with a route and 10 shareable photos shows the three segments, each rendering its piece", async () => {
+    await openBoth();
+    for (const name of ["Collage", "Recorrido", "Resumen"]) expect(screen.getByRole("button", { name })).toBeVisible();
+    expect(screen.queryByTestId("film-player")).toBeNull();
+    await press("Recorrido");
+    expect(await screen.findByTestId("film-player")).toBeVisible();
+    expect(screen.queryByText(/destacadas · /)).toBeNull();
+    await press("Resumen");
+    expect(await screen.findByText("10 destacadas · 0 en la hoja")).toBeVisible();
+    await press("Collage");
+    expect(await screen.findByLabelText("Vista previa")).toBeVisible();
+    expect(screen.queryByTestId("film-player")).toBeNull();
+  });
+
+  it("a route with fewer than 6 shareable photos shows only Collage | Recorrido", async () => {
+    await open("collage", revealed(), TWO_PLACES);
+    await screen.findByRole("button", { name: "Instagram" });
+    expect(screen.getByRole("button", { name: "Recorrido" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Resumen" })).toBeNull();
+  });
+
+  it("no route shows Collage | Resumen", async () => {
+    await open("collage", revealed(), filler(8).map((it) => ({ ...it, lat: null, lng: null })));
+    await screen.findByRole("button", { name: "Instagram" });
+    expect(screen.getByRole("button", { name: "Resumen" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
+  });
+
+  it("kind=sheet opens on Resumen", async () => {
+    await openBoth("sheet");
+    expect(screen.getByTestId("film-player")).toBeVisible();
+    expect(screen.getByText("10 destacadas · 0 en la hoja")).toBeVisible();
+  });
+
+  it("kind=journey with both opens on Recorrido", async () => {
+    await openBoth("journey");
+    expect(screen.getByTestId("film-player")).toBeVisible();
+    expect(screen.queryByText(/destacadas · /)).toBeNull();
+  });
+
+  it("switching from Recorrido to Resumen mid-export cancels it, and Resumen exports its own file", async () => {
+    let first!: Parameters<typeof filmExport.exportFilmToFile>[2];
+    exportFile.mockImplementationOnce(
+      (_film, _input, o) =>
+        new Promise((resolve) => {
+          first = o;
+          const timer = setInterval(() => {
+            if (o.isCancelled()) {
+              clearInterval(timer);
+              resolve(null);
+            }
+          }, 5);
+        }),
+    );
+    await openBoth();
+    await press("Recorrido");
+    await press("Guardar video");
+    await waitFor(() => expect(exportFile).toHaveBeenCalledTimes(1));
+    await press("Resumen");
+    await waitFor(() => expect(first.isCancelled()).toBe(true));
+    expect(video.saveVideo).not.toHaveBeenCalled();
+    await press("Guardar video");
+    await waitFor(() => expect(video.saveVideo).toHaveBeenCalledTimes(1));
+    expect(exportFile).toHaveBeenCalledTimes(2);
+    expect(exportFile.mock.calls[1]![0]).toMatchObject({ kind: "sheet" });
   });
 });

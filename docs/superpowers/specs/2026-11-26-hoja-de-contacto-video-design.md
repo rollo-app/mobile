@@ -55,6 +55,8 @@ Dos dudas de C y cómo se resolvieron:
 
 Sola, cuando el rollo no tiene recorrido para compartir: no llega a 2 paradas con la regla de zonas de ~5 km (eventos, rollos en una ciudad, fotos sin ubicación). Nadie lo elige: en Compartir la segunda pieza se llama "Recorrido" si hay recorrido y, si no, es esta, con la etiqueta **"Resumen"** *(mi decisión; el dueño dejó el nombre abierto y es un solo texto)*. Hace falta un mínimo de 6 fotos en la hoja *(mi decisión)*.
 
+**Cambio del dueño (2026-11-26):** cuando el rollo da para los dos videos, el usuario elige: el control muestra "Collage | Recorrido | Resumen".
+
 ### Qué fotos
 
 - Solo `shareable`, de tipo foto, no archivadas. No hace falta ubicación. Rollo revelado y no privado; **vale también para eventos**.

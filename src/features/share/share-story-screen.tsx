@@ -37,7 +37,9 @@ import { RetryPill } from "./retry-pill";
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
 
-type ShareMode = "collage" | "film";
+type SharePiece = "collage" | "route" | "sheet";
+
+const PIECE_LABEL: Record<SharePiece, string> = { collage: "Collage", route: "Recorrido", sheet: "Resumen" };
 
 /** Why this roll has nothing to share as `kind`, or null if it can be shared. */
 function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string | null {
@@ -47,7 +49,7 @@ function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string |
 }
 
 /** "Compartir": builds the Stories image (collage or invitation), previews it and offers Instagram Stories, the system sheet and, for the collage, choosing the photos. */
-export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" | "journey" }) {
+export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" | "journey" | "sheet" }) {
   const { detail, error: detailError } = useTripDetail(tripId);
   const { photos, token, complete, loadAll } = useRevealedPhotos(tripId);
   const { feed, loading: feedLoading, error: feedError, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
@@ -55,7 +57,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const filmSelection = useFilmSelection(tripId);
   const sheetChoices = useSheetChoices(tripId);
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  const [mode, setMode] = useState<ShareMode>(kind === "journey" ? "film" : "collage");
+  // The piece the user picked; "journey" and "sheet" open on their film when the roll has it (resolved below).
+  const [picked, setPicked] = useState<SharePiece>(kind === "journey" ? "route" : kind === "sheet" ? "sheet" : "collage");
   // Drawn once per visit: the preview and the exported video of one visit always match, and nothing changes it.
   const [filmSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff) + 1);
   const [style, setStyle] = useState(DEFAULT_STYLE);
@@ -105,15 +108,17 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
     [filmPool, startsAt, timezone],
   );
   const canFilm = isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && filmBlocked(detail, poolStops) === null;
-  // The summary film is the second piece only where there is no route.
+  // The summary film is offered wherever the roll qualifies, alongside the route when there is one.
   const sheetPhotos = useMemo(() => sheetCandidates(photos), [photos]);
   const sheet = useMemo(() => sheetPick(sheetPhotos, sheetChoices), [sheetPhotos, sheetChoices]);
   // Offered from the candidates alone: taking photos out (even below the minimum) must not remove the way back to the picker.
   const sheetOffered = useMemo(() => Math.min(sheetPhotos.length, SHEET_MAX), [sheetPhotos]);
   const canSheet =
-    !canFilm && isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && sheetBlocked(detail, sheetOffered) === null;
-  const secondKind = canFilm ? "route" : canSheet ? "sheet" : null;
-  const journeyOn = mode === "film" && secondKind !== null;
+    isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && sheetBlocked(detail, sheetOffered) === null;
+  const pieces = useMemo<SharePiece[]>(() => ["collage", ...(canFilm ? (["route"] as const) : []), ...(canSheet ? (["sheet"] as const) : [])], [canFilm, canSheet]);
+  // A film that is no longer offered falls back to Collage; "journey" with no route lands on the summary, as it always did.
+  const selected: SharePiece = pieces.includes(picked) ? picked : picked === "route" && canSheet ? "sheet" : "collage";
+  const journeyOn = selected !== "collage";
   const stripPhotos = useMemo(() => (isCollage ? collagePhotos(candidates, selection, SEED) : []), [isCollage, candidates, selection]);
   const build = useMemo(() => {
     if (!detail || !ready || empty || feedFailed || journeyOn) return null;
@@ -205,19 +210,20 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <RetryPill onPress={assets.retry} />
         </View>
       )}
-      {secondKind !== null && (
+      {pieces.length > 1 && (
         <SegmentedControl
-          values={["Collage", secondKind === "route" ? "Recorrido" : "Resumen"]}
+          values={pieces.map((piece) => PIECE_LABEL[piece])}
           tintColor={tintHex[scheme]}
-          selectedIndex={journeyOn ? 1 : 0}
-          onValueChange={(v) => setMode(v === "Collage" ? "collage" : "film")}
+          selectedIndex={pieces.indexOf(selected)}
+          onValueChange={(v) => setPicked(pieces.find((piece) => PIECE_LABEL[piece] === v) ?? "collage")}
         />
       )}
-      {journeyOn && detail !== null && secondKind === "route" && (
-        <FilmShare kind="route" tripId={tripId} detail={detail} candidates={filmPool} selection={filmSelection} token={token} seed={filmSeed} instagram={instagram} />
+      {/* One film at a time, keyed by kind: switching unmounts the other one, which cancels its export and drops its cached file. */}
+      {detail !== null && selected === "route" && (
+        <FilmShare key="route" kind="route" tripId={tripId} detail={detail} candidates={filmPool} selection={filmSelection} token={token} seed={filmSeed} instagram={instagram} />
       )}
-      {journeyOn && detail !== null && secondKind === "sheet" && (
-        <FilmShare kind="sheet" tripId={tripId} detail={detail} pick={sheet} token={token} seed={filmSeed} instagram={instagram} />
+      {detail !== null && selected === "sheet" && (
+        <FilmShare key="sheet" kind="sheet" tripId={tripId} detail={detail} pick={sheet} token={token} seed={filmSeed} instagram={instagram} />
       )}
       {!journeyOn && !detailError && !blocked && !empty && !feedFailed && !assets.error && build === null && <Loading />}
       {!journeyOn && build !== null && !assets.error && (
