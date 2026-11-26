@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SymbolView } from "expo-symbols";
 import { type ReactNode, useMemo, useState } from "react";
-import { ActivityIndicator, type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, type LayoutChangeEvent, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { filmBlocked, filmCandidates, filmPhotos, filmStopCount } from "@/features/journey/film-photos";
 import { FilmPlayer } from "@/features/journey/film-player";
@@ -13,13 +13,15 @@ import { localDay } from "@/features/capture/quota";
 import { useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
-import { colors, radius, spacing, type } from "@/ui/theme";
+import { SegmentedControl } from "@expo/ui/community/segmented-control";
+import { colors, radius, spacing, tintHex, type } from "@/ui/theme";
 import { useFilmSelection } from "./film-selection";
 import type { RollVideoKind } from "./roll-videos";
 import { useSheetChoices } from "./sheet-selection";
 import { STORY_RATIO } from "./story-preview";
 import { useRollVideos } from "./use-roll-videos";
 
+const KIND_LABEL: Record<RollVideoKind, string> = { route: "Recorrido", sheet: "Resumen" };
 const NO_VIDEO = "Este rollo todavía no tiene video.";
 const FAILED = "No se pudo armar el video.";
 const OFFLINE = "Sin conexión no se puede armar el video.";
@@ -40,20 +42,38 @@ export function RollVideoScreen({ tripId, kind }: { tripId: string; kind: string
   const [seed] = useState(() => Math.floor(Math.random() * 0x7fffffff) + 1);
   const videos = useRollVideos({ detail, photos, ready: complete, feedFailed: !!feedError });
   const known = kind === "route" || kind === "sheet";
+  const insets = useSafeAreaInsets();
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  const [picked, setPicked] = useState<RollVideoKind | null>(null);
+  // With both videos the user chooses (starting on the kind it was opened with); with one, only that kind plays.
+  const both = known && !feedError && !detailError && detail !== null && complete && videos.length > 1;
+  const selected: string = both ? (picked ?? (kind as RollVideoKind)) : kind;
 
   let body: ReactNode;
   if (!known) body = <Stage stage={{ status: "none" }} kind="route" />;
   else if (detailError || feedError)
     body = <Stage stage={{ status: "error", offline: false, retry: () => void Promise.all([refetchDetail(), refetchFeed()]) }} kind={kind} tripId={tripId} />;
   else if (detail === null || !complete) body = <Stage stage={{ status: "loading" }} kind={kind} tripId={tripId} />;
-  else if (!videos.includes(kind)) body = <Stage stage={{ status: "none" }} kind={kind} tripId={tripId} />;
-  else if (kind === "route") body = <RouteStage tripId={tripId} detail={detail} photos={photos} token={token} seed={seed} />;
-  else body = <SheetStage tripId={tripId} detail={detail} photos={photos} token={token} seed={seed} />;
+  else if (!videos.includes(selected as RollVideoKind)) body = <Stage stage={{ status: "none" }} kind={kind} tripId={tripId} />;
+  else if (selected === "route") body = <RouteStage key="route" tripId={tripId} detail={detail} photos={photos} token={token} seed={seed} />;
+  else body = <SheetStage key="sheet" tripId={tripId} detail={detail} photos={photos} token={token} seed={seed} />;
 
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
       {body}
+      {both && (
+        <View pointerEvents="box-none" style={[styles.control, { top: insets.top + spacing.sm }]}>
+          <View style={styles.controlBox}>
+            <SegmentedControl
+              values={videos.map((k) => KIND_LABEL[k])}
+              tintColor={tintHex[scheme]}
+              selectedIndex={Math.max(0, videos.indexOf(selected as RollVideoKind))}
+              onValueChange={(v) => setPicked(videos.find((k) => KIND_LABEL[k] === v) ?? null)}
+            />
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -147,6 +167,8 @@ const styles = StyleSheet.create({
   area: { flex: 1, alignItems: "center", justifyContent: "center" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, padding: spacing.lg },
   message: { color: "#FFFFFF", textAlign: "center" },
+  control: { position: "absolute", left: 0, right: 0, alignItems: "center" },
+  controlBox: { width: 220 },
   close: { position: "absolute", right: spacing.md, width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.45)" },
   bottom: { position: "absolute", left: 0, right: 0, alignItems: "center" },
   pill: { minHeight: 50, minWidth: 160, borderRadius: radius.full, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 },

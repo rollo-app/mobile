@@ -119,9 +119,14 @@ describe("Gallery: the roll's video banner", () => {
   it("shows the title and Recorrido when the roll has a route", async () => {
     await open();
     expect(await screen.findByText("El video de tu rollo")).toBeVisible();
-    expect(screen.getByText("Recorrido")).toBeVisible();
+    expect(screen.getByText("Recorrido · Resumen")).toBeVisible();
     expect(screen.getByRole("button", { name: "Ver el video" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Compartir el video" })).toBeVisible();
+  });
+
+  it("shows only Recorrido when only the route exists", async () => {
+    await open(detail(), TWO_PLACES);
+    expect(await screen.findByText("Recorrido")).toBeVisible();
   });
 
   it("shows Resumen when only the sheet exists", async () => {

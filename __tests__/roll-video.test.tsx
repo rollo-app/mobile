@@ -207,4 +207,29 @@ describe("Roll video player", () => {
     await waitFor(() => expect(screen).toHavePathname("/share-story"));
     expect(screen).toHaveSearchParams({ tripId: SUR, kind: "sheet" });
   });
+
+  it("with both kinds shows Recorrido | Resumen, starting on the kind it was opened with", async () => {
+    await open("sheet");
+    expect(await screen.findByRole("button", { name: "Recorrido" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Resumen" })).toBeVisible();
+    expect(useFilm.mock.calls.length).toBe(0);
+  });
+
+  it("switching swaps the film and Compartir uses the selected kind", async () => {
+    await open("route");
+    await screen.findByTestId("film-player");
+    await fireEvent.press(screen.getByRole("button", { name: "Resumen" }));
+    await waitFor(() => expect(useSheetFilm).toHaveBeenCalled());
+    expect(screen.getAllByTestId("film-player")).toHaveLength(1);
+    await fireEvent.press(screen.getByRole("button", { name: "Compartir" }));
+    await waitFor(() => expect(screen).toHavePathname("/share-story"));
+    expect(screen).toHaveSearchParams({ tripId: SUR, kind: "sheet" });
+  });
+
+  it("with one kind there is no control", async () => {
+    await open("sheet", detail(), filler(8));
+    await screen.findByTestId("film-player");
+    expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Resumen" })).toBeNull();
+  });
 });

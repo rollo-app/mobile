@@ -52,7 +52,7 @@ export const RollVideoBanner = memo(function RollVideoBanner({ tripId }: { tripI
       <View style={styles.row}>
         <View style={styles.text}>
           <Text style={[type.headline, styles.title]} numberOfLines={1}>El video de tu rollo</Text>
-          <Text style={[type.footnote, styles.kind]} numberOfLines={1}>{KIND_LABEL[kind]}</Text>
+          <Text style={[type.footnote, styles.kind]} numberOfLines={1}>{kinds.map((k) => KIND_LABEL[k]).join(" · ")}</Text>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel="Compartir el video" hitSlop={4} onPress={share} style={[styles.button, styles.shareButton]}>
           <SymbolView name="square.and.arrow.up" size={16} weight="semibold" tintColor="#FFFFFF" />
