@@ -549,11 +549,11 @@ describe("Compartir: Recorrido", () => {
     expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
   });
 
-  it("shows no control when the build has no video module", async () => {
+  it("still offers Recorrido (the poster) when the build has no video module", async () => {
     mockVideoAvailable = false;
     await open("collage", revealed(), TWO_PLACES);
     await filesReady();
-    expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Recorrido" })).toBeVisible();
   });
 
   it("kind=journey opens on Recorrido", async () => {
@@ -561,9 +561,12 @@ describe("Compartir: Recorrido", () => {
     expect(screen.getByTestId("film-player")).toBeVisible();
   });
 
-  describe("Afiche", () => {
+  describe("Afiche (inside Recorrido)", () => {
     const posterReady = { status: "ready", uri: "file:///cache/afiche.jpg", version: "v1" } as const;
-    const toAfiche = async () => fireEvent.press(await screen.findByRole("button", { name: "Afiche" }));
+    const toAfiche = async () => {
+      await toRecorrido();
+      await fireEvent.press(await screen.findByRole("button", { name: "Afiche" }));
+    };
 
     beforeEach(() => {
       jest.mocked(usePoster).mockReset();
@@ -571,27 +574,29 @@ describe("Compartir: Recorrido", () => {
       story.instagramStoriesAvailable.mockResolvedValue(true);
     });
 
-    it("offers Afiche before Recorrido on a roll with a route", async () => {
+    it("has no Afiche in the top control; Recorrido offers Video | Afiche with the film by default", async () => {
       await openFilm();
-      const labels = ["Collage", "Afiche", "Recorrido"].map((name) => screen.getByRole("button", { name }));
-      expect(labels).toHaveLength(3);
+      expect(screen.queryByRole("button", { name: "Afiche" })).toBeNull();
+      await toRecorrido();
+      expect(await screen.findByRole("button", { name: "Video" })).toBeVisible();
       expect(screen.getByRole("button", { name: "Afiche" })).toBeVisible();
-      // Relative order in the control: the two images first (Collage, Afiche), then the videos.
-      const names = screen.getAllByRole("button").map((b) => b.props.accessibilityLabel).filter((n) => ["Collage", "Recorrido", "Afiche"].includes(n));
-      expect(names).toEqual(["Collage", "Afiche", "Recorrido"]);
+      expect(screen.getByTestId("film-player")).toBeVisible();
+      expect(screen.queryByLabelText("Vista previa del afiche")).toBeNull();
     });
 
-    it("does not offer Afiche without a route", async () => {
+    it("does not offer Recorrido (nor Afiche) without a route", async () => {
       await open("collage", revealed(), [at("a", -41.13, -71.31), at("b", -41.14, -71.32)]);
       await filesReady();
+      expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Afiche" })).toBeNull();
     });
 
-    it("shows the poster and shares it to Instagram", async () => {
+    it("shows the poster instead of the film and shares it", async () => {
       jest.mocked(usePoster).mockReturnValue(posterReady);
       await openFilm();
       await toAfiche();
       expect(await screen.findByLabelText("Vista previa del afiche")).toBeVisible();
+      expect(screen.queryByTestId("film-player")).toBeNull();
       await fireEvent.press(screen.getByRole("button", { name: "Instagram" }));
       await waitFor(() => expect(Share.shareSingle).toHaveBeenCalledWith(expect.objectContaining({ backgroundImage: "file:///cache/afiche.jpg" })));
       await fireEvent.press(screen.getByRole("button", { name: "Más opciones" }));
@@ -614,6 +619,16 @@ describe("Compartir: Recorrido", () => {
       expect(await screen.findByText("Para armar el afiche hace falta conexión.")).toBeVisible();
       await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
       expect(retry).toHaveBeenCalled();
+    });
+
+    it("in a build without the video module Recorrido shows the poster directly, with no Video | Afiche control", async () => {
+      mockVideoAvailable = false;
+      jest.mocked(usePoster).mockReturnValue(posterReady);
+      await openFilm();
+      await toRecorrido();
+      expect(await screen.findByLabelText("Vista previa del afiche")).toBeVisible();
+      expect(screen.queryByRole("button", { name: "Video" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Afiche" })).toBeNull();
     });
   });
 

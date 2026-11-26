@@ -2,7 +2,7 @@
 
 Fecha: 2026-11-26 · Estado: **aprobado por el dueño (2026-11-26)**. La versión del afiche (pines con foto + nombres de ciudad) la eligió el dueño de tres maquetas el 2026-11-26.
 
-Es la cuarta pieza de "Compartir", después del collage, el Recorrido y el Resumen (`2026-11-25-compartir-en-stories-design.md`, `2026-11-26-recorrido-en-video-design.md`).
+Es el formato quieto del Recorrido en "Compartir" (junto al collage, el Recorrido en video y el Resumen) (`2026-11-25-compartir-en-stories-design.md`, `2026-11-26-recorrido-en-video-design.md`).
 
 ## Para qué
 
@@ -41,7 +41,7 @@ Exactamente los rollos que tienen Recorrido: viaje (no evento), revelado, no pri
 
 ## Dónde vive
 
-Un segmento más en "Compartir": **Collage | Afiche | Recorrido | Resumen** (primero las dos imágenes, después los dos videos; *dueño, 2026-11-26*), visible solo cuando el rollo tiene Recorrido. Muestra la vista previa del afiche y las mismas píldoras que el collage: **Instagram** (el afiche va como fondo de la historia, a pantalla completa), **WhatsApp** y **Más opciones**. No hay "Guardar en Fotos" (el collage tampoco lo ofrece; se llega por "Más opciones").
+El control de arriba de "Compartir" queda **Collage | Recorrido | Resumen** (dueño, 2026-11-26: cuatro opciones arriba eran demasiadas). El afiche vive dentro de "Recorrido", detrás de un segundo control **Video | Afiche** justo debajo de la vista previa (`route-share.tsx`); "Recorrido" se ofrece cuando el rollo tiene el video o el afiche, y si el build no tiene módulo de video se muestra el afiche directo, sin control. Muestra la vista previa del afiche y las mismas píldoras que el collage: **Instagram** (el afiche va como fondo de la historia, a pantalla completa), **WhatsApp** y **Más opciones**. No hay "Guardar en Fotos" (el collage tampoco lo ofrece; se llega por "Más opciones").
 
 Usa las mismas fotos que el Recorrido: si el usuario eligió fotos para el video, el afiche sale de esas. No tiene selector propio.
 
@@ -76,9 +76,10 @@ Las reglas del Recorrido, sin excepciones:
 - `src/features/journey/poster/render-poster.ts` (Skia, mockeado en `jest.setup.ts`): dibuja en una superficie de 1080×1920 (escala 2,5 sobre el cuadro) el mapa **sin sus propios nombres** (el estilo "bare" que ya usa el video, para que no se dupliquen con los nuestros), la ruta, los pines, los nombres, las franjas, el título, los números, la marca (`drawBrand`) y el crédito. Devuelve el JPEG.
 - `engine/assets.ts`: una función para pedir **una** imagen de mapa a la densidad del afiche (1080 px de ancho) con su propia memoria, sin tocar la de las capas del video.
 - `src/features/journey/poster/use-poster.ts` (mockeado en tests de pantalla como `use-film`): paradas → nombres → mapa y fotos → render → archivo en caché. Estados `loading | error (offline) | no-route | ready { uri }`.
-- `src/features/share/poster-share.tsx`: el cuerpo del segmento (vista previa 9:16, píldoras, errores con reintento), montado solo mientras el segmento está elegido, como `FilmShare`.
+- `src/features/share/poster-share.tsx`: el cuerpo del afiche (vista previa 9:16, píldoras, errores con reintento), montado solo mientras el formato "Afiche" está elegido, como `FilmShare`; acepta `accessory` para dibujar el control "Video | Afiche" bajo la vista previa.
+- `src/features/share/route-share.tsx`: `RouteShare`, el cuerpo de "Recorrido": elige entre `FilmShare` y `PosterShare` (uno solo montado) y dibuja el control "Video | Afiche" cuando hay los dos.
 - `share-story.ts`: `shareImageToInstagramStories(uri)` con `backgroundImage` de `react-native-share` (ya soportado por el módulo instalado).
-- `share-story-screen.tsx`: el segmento "Afiche" cuando el rollo no está bloqueado para el Recorrido (`filmBlocked` con las paradas de `rollVideoCounts`); no depende de que el módulo de video exista en el build, porque el afiche no lo usa.
+- `share-story-screen.tsx`: "Recorrido" se ofrece (con `RouteShare`) cuando el rollo tiene el video o el afiche; el afiche existe cuando el rollo no está bloqueado para el Recorrido (`filmBlocked` con las paradas de `rollVideoCounts`); no depende de que el módulo de video exista en el build, porque el afiche no lo usa.
 
 ## Decisiones mías (no del dueño)
 

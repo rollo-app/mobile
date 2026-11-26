@@ -1,6 +1,6 @@
 // The "Afiche" half of Compartir: the still poster of the route, its preview and the destinations. Mounted only while its segment is selected.
 import { Image } from "expo-image";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { ActivityIndicator, type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 import { localDay } from "@/features/capture/quota";
 import { filmBlocked, filmPhotos, filmStopCount } from "@/features/journey/film-photos";
@@ -23,6 +23,7 @@ export function PosterShare({
   token,
   instagram,
   whatsapp,
+  accessory,
 }: {
   tripId: string;
   detail: TripDetail;
@@ -33,6 +34,8 @@ export function PosterShare({
   token: string | null;
   instagram: boolean;
   whatsapp: boolean;
+  /** Rendered right under the preview (the Video | Afiche control). */
+  accessory?: ReactNode;
 }) {
   const chosen = useMemo(() => filmPhotos(candidates, selection), [candidates, selection]);
   const { startsAt, timezone } = detail.trip;
@@ -79,6 +82,7 @@ export function PosterShare({
           </View>
         )}
       </View>
+      {accessory}
       {noRoute && <Footnote>Con estas fotos no hay recorrido: elegí fotos de al menos dos lugares.</Footnote>}
       {!noRoute && poster.status === "error" && (
         <View style={styles.failure}>
