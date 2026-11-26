@@ -81,6 +81,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "typecheck": "tsc --noEmit",
+    "check:video-writer": "sh modules/rollo-video/check/run.sh",
     "icons": "node scripts/build-icons.mjs",
     "share-logos": "node scripts/build-share-logos.mjs",
     "lottie": "node scripts/build-lottie.mjs",
