@@ -143,6 +143,78 @@ describe("export-film", () => {
     expect(calls.filter((c) => c === "open")).toHaveLength(MAX_RESTARTS + 1);
   });
 
+  it("restarts when the encoder fails while the app is in the background mid-slice, with no earlier wait", async () => {
+    let active = true;
+    let failed = false;
+    const { input, calls, written } = setup();
+    const write = input.writeFrame;
+    input.isActive = () => active;
+    input.untilActive = async () => void (active = true);
+    input.writeFrame = (i, t) => {
+      if (i === 1 && !failed) {
+        failed = true;
+        active = false;
+        throw new Error("the encoder stopped");
+      }
+      write(i, t);
+    };
+    const file = await exportFilm(input);
+    expect(calls.filter((c) => c === "open")).toHaveLength(2);
+    expect(file?.frames).toBe(31);
+  });
+
+  it("ends a slice early when the app leaves the foreground", async () => {
+    let active = true;
+    const { input, written } = setup();
+    const write = input.writeFrame;
+    input.isActive = () => active;
+    input.untilActive = async () => void (active = true);
+    input.writeFrame = (i, t) => {
+      write(i, t);
+      if (i === 0) active = false;
+    };
+    const pause = input.pause;
+    let waits = 0;
+    input.untilActive = async () => {
+      waits += 1;
+      expect(written).toHaveLength(1);
+      active = true;
+    };
+    await exportFilm({ ...input, pause });
+    expect(waits).toBe(1);
+  });
+
+  it("restarts when finish rejects after a run that waited in the background", async () => {
+    let active = false;
+    let finishes = 0;
+    const { input, calls } = setup();
+    input.isActive = () => active;
+    input.untilActive = async () => void (active = true);
+    input.sink.finish = async () => {
+      finishes += 1;
+      if (finishes === 1) throw new Error("could not finish");
+      return { uri: "file:///cache/film.mp4", bytes: 1, frames: 30 };
+    };
+    const open = input.sink.open;
+    input.sink.open = (o) => {
+      if (finishes === 0) active = false;
+      open(o);
+    };
+    await expect(exportFilm(input)).resolves.toEqual({ uri: "file:///cache/film.mp4", bytes: 1, frames: 30 });
+    expect(calls.filter((c) => c === "open")).toHaveLength(2);
+    expect(finishes).toBe(2);
+  });
+
+  it("observes cancel while waiting in the background", async () => {
+    let cancelled = false;
+    const { input, calls, written } = setup({ isActive: () => false, isCancelled: () => cancelled });
+    input.untilActive = async () => void (cancelled = true);
+    await expect(exportFilm(input)).resolves.toBeNull();
+    expect(written).toHaveLength(0);
+    expect(calls).toContain("cancel");
+    expect(calls).not.toContain("finish");
+  });
+
   it("a failing open or finish leaves nothing behind", async () => {
     const a = setup();
     a.input.sink.open = () => {

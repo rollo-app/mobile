@@ -55,6 +55,16 @@ describe("RolloVideo wrapper", () => {
     fake.finish.mockResolvedValue({ uri: OPTIONS.uri, bytes: 28280042, frames: 1226 });
     await expect(load(fake).finishVideo()).resolves.toEqual({ uri: OPTIONS.uri, bytes: 28280042, frames: 1226 });
   });
+  it("forwards cancel to the native module", () => {
+    const fake = native();
+    load(fake).cancelVideo();
+    expect(fake.cancel).toHaveBeenCalledTimes(1);
+  });
+  it("propagates a native finish rejection", async () => {
+    const fake = native();
+    fake.finish.mockRejectedValue(new Error("could not finish"));
+    await expect(load(fake).finishVideo()).rejects.toThrow("could not finish");
+  });
   it("asks the native module to open Instagram with the target, the file and the app id", async () => {
     const fake = native();
     fake.shareToInstagram.mockResolvedValue(true);

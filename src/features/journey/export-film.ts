@@ -56,12 +56,18 @@ export async function exportFilm(input: ExportInput): Promise<VideoFile | null> 
         if (!input.isActive()) {
           await input.untilActive();
           waited = true;
+          // Cancel is observed while waiting in the background too.
+          if (input.isCancelled()) {
+            sink.cancel();
+            return null;
+          }
         }
         const sliceStart = input.now();
         do {
           input.writeFrame(done, (done * 1000) / video.fps);
           done += 1;
-        } while (done < total && input.now() - sliceStart < SLICE_MS);
+          // A slice also ends when the app leaves the foreground, so no frame is drawn in the background.
+        } while (done < total && input.isActive() && input.now() - sliceStart < SLICE_MS);
         input.onProgress?.(done, total);
         if (done < total) {
           await input.pause();
@@ -73,7 +79,8 @@ export async function exportFilm(input: ExportInput): Promise<VideoFile | null> 
       }
       return await sink.finish();
     } catch (error) {
-      if (!waited || restarts >= MAX_RESTARTS) {
+      // A failure is restartable when the run waited in the background or the app has left the foreground since.
+      if (!(waited || !input.isActive()) || restarts >= MAX_RESTARTS) {
         sink.cancel();
         throw error;
       }

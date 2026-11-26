@@ -8,7 +8,8 @@ public struct VideoWriterError: Error, CustomStringConvertible {
   public init(_ description: String) { self.description = description }
 }
 
-/// Frames in, an H.264 mp4 out. No Expo imports: it also compiles on macOS, where `check/main.swift` exercises it.
+/// Frames in, an H.264 mp4 out. Not thread-safe: one caller at a time must use a writer (the module serializes access with a lock).
+/// No Expo imports: it also compiles on macOS, where `check/main.swift` exercises it.
 /// The classic AVAssetWriter calls are marked deprecated in the iOS 27 SDK; they are the only ones that exist before iOS 27.
 public final class VideoWriter {
   public let url: URL

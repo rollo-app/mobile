@@ -21,13 +21,15 @@ enum InstagramVideoShare {
     guard let file = URL(string: videoUri), file.isFileURL else {
       throw Exception(name: "RolloVideoError", description: "not a file uri")
     }
+    // Check that Instagram can be opened before reading the file or touching the pasteboard.
+    guard UIApplication.shared.canOpenURL(url) else { return false }
+
     let data: Data
     do {
       data = try Data(contentsOf: file)
     } catch {
       throw Exception(name: "RolloVideoError", description: "cannot read the video: \(error.localizedDescription)")
     }
-    guard UIApplication.shared.canOpenURL(url) else { return false }
 
     var item: [String: Any] = [backgroundVideoKey: data]
     if target == "reels" { item[appIdKey] = appId }

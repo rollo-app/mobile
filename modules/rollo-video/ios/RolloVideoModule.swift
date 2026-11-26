@@ -20,14 +20,28 @@ private func videoError(_ description: String) -> Exception {
 }
 
 public class RolloVideoModule: Module {
-  /// At most one video is written at a time.
+  /// At most one video is written at a time. `lock` guards all three fields: the sync functions run on the JS
+  /// thread while `finish` resumes on another one.
+  private let lock = NSLock()
   private var writer: VideoWriter?
   private var writerUri: String?
+  /// True from the start of `finish` until it resolves or throws: `open` is refused meanwhile, because a new
+  /// writer would delete the file the old one is still finalising.
+  private var finishing = false
+
+  private func currentWriter() -> VideoWriter? {
+    lock.lock()
+    defer { lock.unlock() }
+    return writer
+  }
 
   public func definition() -> ModuleDefinition {
     Name("RolloVideo")
 
     Function("open") { (options: VideoOpenOptions) in
+      self.lock.lock()
+      defer { self.lock.unlock() }
+      guard !self.finishing else { throw videoError("a video is still being finished") }
       guard self.writer == nil else { throw videoError("a video is already open") }
       guard let url = URL(string: options.uri), url.isFileURL else { throw videoError("not a file uri") }
       do {
@@ -40,7 +54,8 @@ public class RolloVideoModule: Module {
     }
 
     Function("append") { (pixels: Uint8Array, bytesPerRow: Int) in
-      guard let writer = self.writer else { throw videoError("no video is open") }
+      let current = self.currentWriter()
+      guard let writer = current else { throw videoError("no video is open") }
       do {
         try autoreleasepool {
           try writer.append(pixels: pixels.rawPointer, byteCount: pixels.byteLength, bytesPerRow: bytesPerRow)
@@ -50,8 +65,10 @@ public class RolloVideoModule: Module {
       }
     }
 
+    /// The caller keeps the texture's surface alive during the call: the address is only borrowed.
     Function("appendTexture") { (pointer: String) in
-      guard let writer = self.writer else { throw videoError("no video is open") }
+      let current = self.currentWriter()
+      guard let writer = current else { throw videoError("no video is open") }
       guard let address = UInt(pointer), let raw = UnsafeRawPointer(bitPattern: address) else {
         throw videoError("not a Metal texture")
       }
@@ -65,10 +82,21 @@ public class RolloVideoModule: Module {
     }
 
     AsyncFunction("finish") { () async throws -> [String: Any] in
-      guard let writer = self.writer, let uri = self.writerUri else { throw videoError("no video is open") }
-      // The writer is forgotten whether finishing succeeds or throws.
+      self.lock.lock()
+      guard !self.finishing, let writer = self.writer, let uri = self.writerUri else {
+        self.lock.unlock()
+        throw videoError("no video is open")
+      }
+      // The writer is forgotten whether finishing succeeds or throws; `finishing` blocks `open` until then.
       self.writer = nil
       self.writerUri = nil
+      self.finishing = true
+      self.lock.unlock()
+      defer {
+        self.lock.lock()
+        self.finishing = false
+        self.lock.unlock()
+      }
       do {
         let result = try await writer.finish()
         return ["uri": uri, "bytes": result.bytes, "frames": result.frames]
@@ -78,6 +106,8 @@ public class RolloVideoModule: Module {
     }
 
     Function("cancel") { () -> Void in
+      self.lock.lock()
+      defer { self.lock.unlock() }
       self.writer?.cancel()
       self.writer = nil
       self.writerUri = nil

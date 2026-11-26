@@ -80,6 +80,23 @@ describe("createFrameSource", () => {
     expect(canvasCalls).toEqual(["save", "scale 2.5 2.5", "restore"]);
     expect(drawn).toEqual([100]);
   });
+  it("restores the canvas when draw throws, so a later frame is not drawn at the wrong scale", () => {
+    const { options, canvasCalls } = setup({ input: "bytes" });
+    let first = true;
+    const source = createFrameSource({
+      ...options,
+      draw: () => {
+        if (first) {
+          first = false;
+          throw new Error("draw failed");
+        }
+      },
+    });
+    expect(() => source.writeFrame(0, 0)).toThrow("draw failed");
+    expect(canvasCalls.at(-1)).toBe("restore");
+    source.writeFrame(1, 33);
+    expect(canvasCalls.filter((c) => c === "save")).toHaveLength(canvasCalls.filter((c) => c === "restore").length);
+  });
   it("bytes: reads into the same array every frame and appends it with the row size", () => {
     const { options, readInto, appended } = setup({ input: "bytes" });
     const source = createFrameSource(options);

@@ -72,8 +72,11 @@ export function createFrameSource(options: FrameSourceOptions): FrameSource {
       const t0 = now();
       canvas.save();
       canvas.scale(scale, scale);
-      draw(canvas, timeMs);
-      canvas.restore();
+      try {
+        draw(canvas, timeMs);
+      } finally {
+        canvas.restore();
+      }
       const t1 = now();
       stages.drawMs += t1 - t0;
 

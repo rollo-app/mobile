@@ -34,7 +34,10 @@ export function appendFrame(pixels: Uint8Array, bytesPerRow: number): void {
   need().append(pixels, bytesPerRow);
 }
 
-/** One frame from a Metal texture, given as its address (it does not fit a JS number safely). */
+/**
+ * One frame from a Metal texture, given as its address (it does not fit a JS number safely).
+ * The caller keeps the texture's surface alive for the duration of the call.
+ */
 export function appendTexture(pointer: bigint): void {
   need().appendTexture(pointer.toString());
 }
