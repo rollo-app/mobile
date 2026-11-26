@@ -6,6 +6,7 @@ import { fireGestureHandler, getByGestureTestId } from "react-native-gesture-han
 import { State } from "react-native-gesture-handler";
 import { fireEvent, renderRouter, screen, waitFor, within } from "expo-router/testing-library";
 import * as likeActions from "@/features/likes/actions";
+import * as moderationActions from "@/features/moderation/actions";
 import * as actions from "@/features/trips/actions";
 import { PHOTO_MS } from "@/features/presentation/story";
 import { markPresentationSeen } from "@/storage/presentation";
@@ -15,6 +16,7 @@ import { routes } from "@/test/routes";
 
 jest.mock("@/features/trips/actions");
 jest.mock("@/features/likes/actions");
+jest.mock("@/features/moderation/actions");
 jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(), ImpactFeedbackStyle: { Light: "light" } }));
 jest.mock("expo-video", () => ({
   useVideoPlayer: () => ({ play: jest.fn(), pause: jest.fn(), muted: true, loop: false }),
@@ -22,6 +24,7 @@ jest.mock("expo-video", () => ({
 }));
 const mocked = jest.mocked(actions);
 const likes = jest.mocked(likeActions);
+const moderation = jest.mocked(moderationActions);
 
 const SUR = "11111111-1111-4111-8111-111111111111";
 const TZ = "America/Argentina/Buenos_Aires";
@@ -91,6 +94,7 @@ const tap = async (x = 600) => {
 beforeEach(async () => {
   likes.likeMedia.mockReset().mockResolvedValue(undefined);
   likes.unlikeMedia.mockReset().mockResolvedValue(undefined);
+  moderation.fetchBlocked.mockReset().mockResolvedValue([]);
   mocked.fetchTrip.mockResolvedValue(detail());
   mocked.fetchFeedPage.mockResolvedValue({
     nextCursor: null,
@@ -127,7 +131,18 @@ describe("Presentation", () => {
     expect(screen.getByLabelText("3 fotos")).toBeTruthy();
     expect(screen.getByLabelText("2 personas")).toBeTruthy();
     expect(screen.getByLabelText("2 días")).toBeTruthy();
+    expect(screen.getByText("Elenco")).toBeTruthy();
+    expect(screen.getByText("Fede · Juani")).toBeTruthy();
+  });
+
+  it("closes as before, without the cast, when the blocked list can't be loaded", async () => {
+    moderation.fetchBlocked.mockRejectedValue(new Error("offline"));
+    await renderRouter(routes, { initialUrl: "/presentation" });
+    await screen.findByText("Día 1");
+    for (let i = 0; i < 5; i++) await tap(); // day, a, b, day, c ... then the outro
+    await screen.findByText("Así fue");
     expect(screen.getByText("Fede sacó más fotos: 2 fotos")).toBeTruthy();
+    expect(screen.queryByText("Elenco")).toBeNull();
   });
 
   it("shows the display version of a photo, or its original when the upload has no display", async () => {
@@ -257,7 +272,8 @@ describe("Presentation: a huge day", () => {
     );
   const toOutro = async () => {
     await screen.findByText("Día 1");
-    for (let i = 0; i < 31; i++) await tap(); // 30 photos, then the outro
+    for (let i = 0; i < 31; i++) await tap(); // 30 photos, then the credits (two authors, 2.000 photos)
+    for (let i = 0; i < 6 && !screen.queryByText("Así fue"); i++) await tap(); // ...then the outro
     await screen.findByText("Así fue");
   };
 

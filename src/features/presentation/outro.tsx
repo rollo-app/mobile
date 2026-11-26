@@ -1,15 +1,18 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { tintHex, radius, spacing, type } from "@/ui/theme";
-import { formatCount, galleryLabel, statCounts, topLine } from "./format";
+import { castLine, formatCount, galleryLabel, statCounts, topLine } from "./format";
 import type { StoryStats } from "./story";
 
 /** The closing numbers, then "Ver la galería" (or, when days were trimmed, "Ver las N fotos en la galería"; both close the modal and open it) or "Ver de nuevo". */
 export function Outro({
   stats,
+  cast,
   onGallery,
   onReplay,
 }: {
   stats: StoryStats;
+  /** The credits' cast, shown instead of who took the most photos; null when the roll has no credits. */
+  cast: string[] | null;
   onGallery: () => void;
   onReplay: () => void;
 }) {
@@ -29,7 +32,16 @@ export function Outro({
             </View>
           ))}
         </View>
-        {top ? <Text style={styles.top}>{top}</Text> : null}
+        {cast && cast.length > 0 ? (
+          <View style={styles.cast}>
+            <Text style={styles.label}>Elenco</Text>
+            <Text style={styles.castNames} numberOfLines={6}>
+              {castLine(cast)}
+            </Text>
+          </View>
+        ) : top ? (
+          <Text style={styles.top}>{top}</Text>
+        ) : null}
       </View>
       <View style={styles.actions}>
         <Pressable
@@ -61,6 +73,8 @@ const styles = StyleSheet.create({
   stat: { minWidth: "40%" },
   value: { ...type.largeTitle, fontSize: 48, lineHeight: 54, color: "#fff" },
   label: { ...type.body, color: "rgba(255,255,255,0.7)" },
+  cast: { gap: spacing.xs },
+  castNames: { ...type.body, color: "#fff" },
   top: { ...type.quote, color: "#fff" },
   actions: { gap: spacing.sm },
   button: { minHeight: 50, borderRadius: radius.full, alignItems: "center", justifyContent: "center" },
