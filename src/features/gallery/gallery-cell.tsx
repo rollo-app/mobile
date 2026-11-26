@@ -34,7 +34,7 @@ export type CellProps = {
  * The feed is rebuilt into new photo objects on every change (featuring one photo included), so cells
  * compare what they draw instead of the object: toggling one photo re-renders only that cell.
  */
-function sameCell(a: CellProps, b: CellProps) {
+export function sameCell(a: CellProps, b: CellProps) {
   return (
     a.photo.id === b.photo.id &&
     a.photo.thumbPath === b.photo.thumbPath &&

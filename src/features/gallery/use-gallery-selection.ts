@@ -15,13 +15,16 @@ export function useGallerySelection(shown: RevealedPhoto[]) {
   }, []);
 
   const allSelected = shown.length > 0 && shown.every((p) => selected.has(p.id));
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(shown.map((p) => p.id)));
+  const toggleAll = useCallback(
+    () => setSelected(allSelected ? new Set() : new Set(shown.map((p) => p.id))),
+    [allSelected, shown],
+  );
 
-  const start = () => setSelecting(true);
-  const stop = () => {
+  const start = useCallback(() => setSelecting(true), []);
+  const stop = useCallback(() => {
     setSelecting(false);
     setSelected(new Set());
-  };
+  }, []);
 
   return { selecting, selected, allSelected, toggle, toggleAll, start, stop };
 }

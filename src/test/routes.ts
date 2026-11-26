@@ -53,6 +53,7 @@ import OfflineMapsScreen from "../../app/offline-maps";
 import PushPrimerRoute from "../../app/push-primer";
 import PresentationScreen from "../../app/presentation";
 import RevealRoute from "../../app/reveal";
+import RollVideoRoute from "../../app/roll-video";
 import IntroRoute from "../../app/intro";
 import MemberRoute from "../../app/member";
 import RollMembersRoute from "../../app/roll-members";
@@ -90,6 +91,7 @@ export const routes = {
   "push-primer": PushPrimerRoute,
   presentation: PresentationScreen,
   reveal: RevealRoute,
+  "roll-video": RollVideoRoute,
   intro: IntroRoute,
   member: MemberRoute,
   "roll-members": RollMembersRoute,

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rollo",
     "slug": "rollo",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -20,7 +20,8 @@
         "LSApplicationQueriesSchemes": [
           "instagram-stories",
           "instagram",
-          "whatsapp"
+          "whatsapp",
+          "instagram-reels"
         ]
       },
       "bundleIdentifier": "com.juanifraga.rollo",

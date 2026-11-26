@@ -10,7 +10,7 @@ import { signInAs, tripSummary } from "@/test/account";
 import { routes } from "@/test/routes";
 import { RollDates } from "@/features/roll/roll-dates";
 import { UploadStatusSection } from "@/features/capture/upload-status-section";
-import { colors, spacing } from "@/ui/theme";
+import { colors, spacing, type } from "@/ui/theme";
 // The navigation bar is drawn natively: its options are read from the container instead.
 import { navigationRef } from "expo-router/build/global-state/navigationRef";
 
@@ -90,7 +90,8 @@ describe("revealed roll", () => {
     await renderRouter(testRoutes, { initialUrl: `/roll/${OTRO}` });
     await screen.findByText("Este rollo no tiene fotos");
     await waitFor(() => expect(headerOptions().title).toBe("Bariloche"));
-    expect(headerOptions().headerTitle).toBeUndefined();
+    // `title` stays the name (back button, VoiceOver); the bar shows the Galería | Rollo control instead.
+    expect(headerOptions().headerTitle).toEqual(expect.any(Function));
 
     await act(async () => {
       await setActiveTripId(SUR);
@@ -141,7 +142,25 @@ describe("revealed roll", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
     await waitFor(() => expect(screen.queryByRole("header", { name: /seleccion/i })).toBeNull());
     expect(headerOptions().title).toBe("Viaje al sur");
-    expect(headerOptions().headerTitle).toBeUndefined();
+    // Back to the idle state: the bar's title is the Galería | Rollo control again.
+    expect(headerOptions().headerTitle).toEqual(expect.any(Function));
+    expect(screen.getByRole("button", { name: "Galería" })).toBeTruthy();
+  });
+
+  it("while selecting, the Galería | Rollo control leaves the bar (the selection count takes its place)", async () => {
+    mocked.fetchTrip.mockResolvedValue(detail());
+    mocked.fetchFeedPage.mockResolvedValue({
+      nextCursor: null,
+      revealed: true,
+      revealAt: Date.now() - DAY,
+      items: [item("a", "photo")],
+    });
+    await markPresentationSeen(SUR);
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
+    await fireEvent.press(await screen.findByRole("button", { name: "Seleccionar" }));
+    await screen.findByRole("header", { name: "Seleccioná fotos" });
+    expect(screen.queryByRole("button", { name: "Galería" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Rollo" })).toBeNull();
   });
 
   it("opens the reveal automatically the first time, and only once", async () => {
@@ -218,17 +237,54 @@ describe("revealed roll: Galería | Rollo", () => {
     expect(screen.queryByText("Fechas")).toBeNull();
   });
 
-  // The header is opaque, so the row sits in the normal flow right under it, and nothing pads the views' tops.
-  it("puts the Galería | Rollo row in the flow under the header, and the gallery right below it", async () => {
+  it("the Galería | Rollo control is the bar's title view and there is no row under the bar", async () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
     const list = await screen.findByTestId("gallery-list");
 
-    const row = StyleSheet.flatten(screen.getByTestId("revealed-roll-controls").props.style);
-    expect(row).toMatchObject({ paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.background });
-    expect(row.position).toBeUndefined();
-    expect(row.top).toBeUndefined();
+    expect(screen.queryByTestId("revealed-roll-controls")).toBeNull();
+    expect((navigationRef.getCurrentOptions() as { headerTitle?: unknown }).headerTitle).toEqual(expect.any(Function));
     expect(StyleSheet.flatten(list.props.contentContainerStyle).paddingTop).toBeUndefined();
+  });
+
+  it.each([
+    ["gallery", ""],
+    ["Rollo", "?view=roll"],
+  ])("the roll's name is a large header at the top of %s", async (_name, query) => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}${query}` });
+    const title = await screen.findByRole("header", { name: "Viaje al sur" });
+
+    expect(title.props.numberOfLines).toBe(2);
+    expect(StyleSheet.flatten(title.props.style)).toMatchObject({ fontSize: type.largeTitle.fontSize });
+  });
+
+  it("shows Seleccionar in Galería only, and pressing it starts selecting", async () => {
+    await revealedWithMedia();
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
+    await screen.findByTestId("gallery-list");
+    expect(screen.getByText("1 foto · 1 video · 1 persona · 4 días")).toBeVisible();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Rollo" }));
+    await screen.findByText("Personas");
+    expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Galería" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+    expect(await screen.findByRole("header", { name: "Seleccioná fotos" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
+  });
+
+  it("a very long name wraps in two lines and keeps Seleccionar on screen", async () => {
+    await revealedWithMedia();
+    const long = "Un viaje larguísimo por toda la Patagonia con todos los amigos de la facultad y más";
+    mocked.fetchTrip.mockResolvedValue(detail({ name: long }));
+    await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}` });
+
+    const title = await screen.findByRole("header", { name: long });
+    expect(title.props.numberOfLines).toBe(2);
+    expect(title.props.ellipsizeMode).toBe("tail");
+    expect(screen.getByRole("button", { name: "Seleccionar" })).toBeVisible();
   });
 
   describe("full-quality originals notice", () => {
@@ -270,16 +326,15 @@ describe("revealed roll: Galería | Rollo", () => {
     });
   });
 
-  it("'Rollo' starts right below the row, on the grouped background", async () => {
+  it("'Rollo' starts with the name, on the grouped background, without extra padding on top", async () => {
     await revealedWithMedia();
     await renderRouter(testRoutes, { initialUrl: `/roll/${SUR}?view=roll` });
     await screen.findByText("Personas");
 
-    const row = StyleSheet.flatten(screen.getByTestId("revealed-roll-controls").props.style);
-    expect(row.backgroundColor).toBe(colors.groupedBackground);
     const overview = StyleSheet.flatten(screen.getByTestId("roll-overview").props.contentContainerStyle);
     expect(overview).toMatchObject({ padding: spacing.md });
     expect(overview.paddingTop).toBeUndefined();
+    expect(screen.getAllByText("1 foto · 1 video · 1 persona · 4 días")).toHaveLength(1);
   });
 
   it("after the reveal the header is solid with the same background as the row, without a hairline", async () => {

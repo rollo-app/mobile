@@ -8,6 +8,9 @@ const THUMB = 36;
 /** Height of the tray without the bottom safe area: padding, label, gap and the row of thumbnails. */
 export const TRAY_HEIGHT = StyleSheet.hairlineWidth + spacing.sm + 16 + spacing.sm + THUMB + spacing.sm;
 
+/** Height of the summary tray: just the counter line. */
+export const SHEET_TRAY_HEIGHT = StyleSheet.hairlineWidth + spacing.sm + 16 + spacing.sm;
+
 export type PickTrayProps = {
   /** Selected photo ids, in collage order (the first is the big photo). */
   selection: string[];
@@ -17,14 +20,19 @@ export type PickTrayProps = {
   /** Bottom safe area, added below the row. */
   bottomInset: number;
   onRemove: (id: string) => void;
+  /** The cap and what the selection is for; the collage by default. */
+  max?: number;
+  subject?: "collage" | "recorrido";
+  /** Number the thumbnails (collage order); false for the film, where the order does not matter. */
+  numbered?: boolean;
 };
 
 /** Bottom tray of the picker: the chosen photos in order, then dashed slots showing how many are left. */
-export function PickTray({ selection, photos, token, bottomInset, onRemove }: PickTrayProps) {
-  const empty = Array.from({ length: Math.max(0, COLLAGE_MAX - selection.length) }, (_, i) => i);
+export function PickTray({ selection, photos, token, bottomInset, onRemove, max = COLLAGE_MAX, subject = "collage", numbered = true }: PickTrayProps) {
+  const empty = Array.from({ length: Math.max(0, max - selection.length) }, (_, i) => i);
   return (
     <View style={[styles.tray, { height: TRAY_HEIGHT + bottomInset, paddingBottom: bottomInset + spacing.sm }]}>
-      <Text style={[type.caption, styles.label]}>{`En el collage · ${selection.length} de ${COLLAGE_MAX}`}</Text>
+      <Text style={[type.caption, styles.label]}>{`En el ${subject} · ${selection.length} de ${max}`}</Text>
       <View style={styles.row}>
         {selection.map((id, i) => {
           const photo = photos.get(id);
@@ -33,7 +41,7 @@ export function PickTray({ selection, photos, token, bottomInset, onRemove }: Pi
               key={id}
               testID={`pick-tray-${id}`}
               accessibilityRole="button"
-              accessibilityLabel={`Quitar foto ${i + 1} del collage`}
+              accessibilityLabel={`Quitar foto ${i + 1} del ${subject}`}
               onPress={() => onRemove(id)}
               style={styles.thumb}
             >
@@ -48,7 +56,7 @@ export function PickTray({ selection, photos, token, bottomInset, onRemove }: Pi
               )}
               <View style={styles.badge}>
                 <Text testID={`pick-tray-badge-${id}`} style={styles.badgeText}>
-                  {i + 1}
+                  {numbered ? i + 1 : "✓"}
                 </Text>
               </View>
             </Pressable>
@@ -58,6 +66,17 @@ export function PickTray({ selection, photos, token, bottomInset, onRemove }: Pi
           <View key={`empty-${i}`} testID="pick-tray-empty" style={styles.empty} />
         ))}
       </View>
+    </View>
+  );
+}
+
+/** Bottom bar of the summary picker: how many photos are highlighted and how many are on the sheet. */
+export function SheetPickTray({ counter, bottomInset }: { counter: string; bottomInset: number }) {
+  return (
+    <View style={[styles.tray, { height: SHEET_TRAY_HEIGHT + bottomInset, paddingBottom: bottomInset }]}>
+      <Text testID="pick-sheet-counter" style={[type.caption, styles.label]}>
+        {counter}
+      </Text>
     </View>
   );
 }

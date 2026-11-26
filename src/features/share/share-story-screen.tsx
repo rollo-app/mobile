@@ -2,17 +2,24 @@ import * as Burnt from "burnt";
 import * as Clipboard from "expo-clipboard";
 import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
+import { type LayoutChangeEvent, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { filmCandidates } from "@/features/journey/film-photos";
+import { sheetCandidates, sheetPick } from "@/features/journey/sheet/sheet-photos";
+import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
 import { memberTotal } from "@/features/trips/member-total";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Footnote, Loading } from "@/ui/components";
-import { colors, spacing, type } from "@/ui/theme";
+import { colors, spacing, tintHex, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
+import { useFilmSelection } from "./film-selection";
+import { FilmShare } from "./journey-share";
+import { useRollVideos } from "./use-roll-videos";
+import { useSheetChoices } from "./sheet-selection";
 import { canShareInvite, inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
@@ -29,6 +36,10 @@ import { RetryPill } from "./retry-pill";
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
 
+type SharePiece = "collage" | "route" | "sheet";
+
+const PIECE_LABEL: Record<SharePiece, string> = { collage: "Collage", route: "Recorrido", sheet: "Resumen" };
+
 /** Why this roll has nothing to share as `kind`, or null if it can be shared. */
 function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string | null {
   if (kind === "collage") return detail.trip.featuringDisabled ? "Este rollo es privado: sus fotos no se comparten fuera del rollo." : null;
@@ -37,11 +48,18 @@ function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string |
 }
 
 /** "Compartir": builds the Stories image (collage or invitation), previews it and offers Instagram Stories, the system sheet and, for the collage, choosing the photos. */
-export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" }) {
+export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" | "journey" | "sheet" }) {
   const { detail, error: detailError } = useTripDetail(tripId);
   const { photos, token, complete, loadAll } = useRevealedPhotos(tripId);
   const { feed, loading: feedLoading, error: feedError, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
   const selection = useCollageSelection(tripId);
+  const filmSelection = useFilmSelection(tripId);
+  const sheetChoices = useSheetChoices(tripId);
+  const scheme = useColorScheme() === "dark" ? "dark" : "light";
+  // The piece the user picked; "journey" and "sheet" open on their film when the roll has it (resolved below).
+  const [picked, setPicked] = useState<SharePiece>(kind === "journey" ? "route" : kind === "sheet" ? "sheet" : "collage");
+  // Drawn once per visit: the preview and the exported video of one visit always match, and nothing changes it.
+  const [filmSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff) + 1);
   const [style, setStyle] = useState(DEFAULT_STYLE);
   const [loadedAll, setLoadedAll] = useState(false);
   const [instagram, setInstagram] = useState(false);
@@ -49,7 +67,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const [shareFailed, setShareFailed] = useState(false);
   const insets = useSafeAreaInsets();
   const [area, setArea] = useState({ width: 0, height: 0 });
-  const isCollage = kind === "collage";
+  // The collage tab and the film tab both pick from the whole roll; only the invitation is its own thing.
+  const isCollage = kind !== "invite";
 
   useEffect(() => {
     let active = true;
@@ -73,14 +92,25 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const thumbhashes = useMemo(() => feed?.items.map((i) => i.thumbhash) ?? [], [feed]);
 
   // The list offers Compartir on every roll without knowing these: say why there's nothing to share instead of drawing a card.
-  const blocked = detail === null ? null : blockedReason(detail, kind);
+  const blocked = detail === null ? null : blockedReason(detail, isCollage ? "collage" : "invite");
   const ready = detail !== null && !blocked && (isCollage ? complete || loadedAll : !feedLoading);
   // No photos because the feed failed to load is an error with a retry, not "no photos".
   const feedFailed = isCollage && !!feedError;
   const empty = isCollage && ready && candidates.length === 0 && !feedFailed;
+  const filmPool = useMemo(() => filmCandidates(photos), [photos]);
+  // Recorrido and Resumen are offered where the roll has them (the same decision as the gallery's banner).
+  const videos = useRollVideos({ detail, photos, ready: isCollage && ready, feedFailed });
+  const canFilm = videos.includes("route");
+  const canSheet = videos.includes("sheet");
+  const sheetPhotos = useMemo(() => sheetCandidates(photos), [photos]);
+  const sheet = useMemo(() => sheetPick(sheetPhotos, sheetChoices), [sheetPhotos, sheetChoices]);
+  const pieces = useMemo<SharePiece[]>(() => ["collage", ...(canFilm ? (["route"] as const) : []), ...(canSheet ? (["sheet"] as const) : [])], [canFilm, canSheet]);
+  // A film that is no longer offered falls back to Collage; "journey" with no route lands on the summary, as it always did.
+  const selected: SharePiece = pieces.includes(picked) ? picked : picked === "route" && canSheet ? "sheet" : "collage";
+  const journeyOn = selected !== "collage";
   const stripPhotos = useMemo(() => (isCollage ? collagePhotos(candidates, selection, SEED) : []), [isCollage, candidates, selection]);
   const build = useMemo(() => {
-    if (!detail || !ready || empty || feedFailed) return null;
+    if (!detail || !ready || empty || feedFailed || journeyOn) return null;
     const { trip } = detail;
     if (isCollage) {
       const caption = collageCaption({ startsAt: trip.startsAt, endsAt: trip.endsAt, timeZone: trip.timezone, people: memberTotal(detail) });
@@ -95,10 +125,10 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
         swatches: inviteSwatches(thumbhashes),
         style,
       });
-  }, [detail, ready, empty, feedFailed, isCollage, candidates, selection, thumbhashes, style]);
+  }, [detail, ready, empty, feedFailed, journeyOn, isCollage, candidates, selection, thumbhashes, style]);
 
-  const version = `${tripId}:${kind}:${isCollage ? selection.join(",") : ""}`;
-  const assets = useStoryAssets(build, version, kind, style);
+  const version = `${tripId}:${isCollage ? "collage" : "invite"}:${isCollage ? selection.join(",") : ""}`;
+  const assets = useStoryAssets(build, version, isCollage ? "collage" : "invite", style);
 
   /** The invitation has no link inside the image: it travels with the share. `copy`: also in the clipboard (the system sheet doesn't touch it). */
   async function share(send: (link: string | undefined) => Promise<void>, copy: boolean) {
@@ -163,14 +193,29 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <RetryPill onPress={() => void refetchFeed()} />
         </View>
       )}
-      {assets.error && (
+      {!journeyOn && assets.error && (
         <View style={styles.failure}>
           <ErrorText>No se pudo armar la imagen. Probá de nuevo.</ErrorText>
           <RetryPill onPress={assets.retry} />
         </View>
       )}
-      {!detailError && !blocked && !empty && !feedFailed && !assets.error && build === null && <Loading />}
-      {build !== null && !assets.error && (
+      {pieces.length > 1 && (
+        <SegmentedControl
+          values={pieces.map((piece) => PIECE_LABEL[piece])}
+          tintColor={tintHex[scheme]}
+          selectedIndex={pieces.indexOf(selected)}
+          onValueChange={(v) => setPicked(pieces.find((piece) => PIECE_LABEL[piece] === v) ?? "collage")}
+        />
+      )}
+      {/* One film at a time, keyed by kind: switching unmounts the other one, which cancels its export and drops its cached file. */}
+      {detail !== null && selected === "route" && (
+        <FilmShare key="route" kind="route" tripId={tripId} detail={detail} candidates={filmPool} selection={filmSelection} token={token} seed={filmSeed} instagram={instagram} />
+      )}
+      {detail !== null && selected === "sheet" && (
+        <FilmShare key="sheet" kind="sheet" tripId={tripId} detail={detail} pick={sheet} token={token} seed={filmSeed} instagram={instagram} />
+      )}
+      {!journeyOn && !detailError && !blocked && !empty && !feedFailed && !assets.error && build === null && <Loading />}
+      {!journeyOn && build !== null && !assets.error && (
         <>
           <View style={styles.previewArea} onLayout={onPreviewArea}>
             <StoryPreview style={style} card={assets.card} height={previewHeight} />

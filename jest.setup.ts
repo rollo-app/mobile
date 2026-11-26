@@ -556,6 +556,22 @@ jest.mock("@/features/events/qr-canvas", () => {
 jest.mock("@/features/share/render-collage", () => ({ renderCollageCard: jest.fn(async () => ({ png: new Uint8Array(), width: 920, height: 1200 })) }));
 jest.mock("@/features/share/render-invite", () => ({ renderInviteCard: jest.fn(async () => ({ png: new Uint8Array(), width: 920, height: 1300 })) }));
 jest.mock("@/features/share/compose-still", () => ({ composeStill: jest.fn(async () => new Uint8Array()) }));
+// The film export (Skia offscreen surface + the video module) writes nothing in tests; the share screen's test sets what it resolves.
+jest.mock("@/features/share/film-export", () => ({
+  FRAME_INPUT: "bytes",
+  exportFilmToFile: jest.fn(async () => ({ uri: "file:///cache/rollo-recorrido.mp4", bytes: 1000, frames: 30 })),
+}));
+// useFilm pulls in Skia and the map's native modules: tests that render Compartir get a film that never finishes loading, and the share screen's own test sets what it returns.
+jest.mock("@/features/journey/use-film", () => ({ useFilm: jest.fn(() => ({ status: "loading", done: 0, total: 0 })) }));
+jest.mock("@/features/journey/use-sheet-film", () => ({ useSheetFilm: jest.fn(() => ({ status: "loading", done: 0, total: 0 })) }));
+jest.mock("@/features/journey/film-player", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    FilmPlayer: ({ playing, paused }: { playing: boolean; paused: boolean }) =>
+      React.createElement(View, { testID: "film-player", accessibilityLabel: paused ? "paused" : playing ? "playing" : "idle" }),
+  };
+});
 jest.mock("@/features/capture/roll-started", () => ({ RollStarted: () => null }));
 jest.mock("@/features/capture/use-roll-started", () => ({ useRollStarted: () => undefined }));
 jest.mock("react-native-pulsar", () => require("react-native-pulsar/jest-mock"));

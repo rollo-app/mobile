@@ -30,6 +30,7 @@ import { GalleryToolbar } from "./gallery-toolbar";
 import { chapterCenter } from "./place";
 import { authorsOf, filterByAuthor, filterByGroup } from "./group";
 import { diaryItems, type GridItem } from "./grid-items";
+import { GalleryHeading, type HeadingAction } from "./gallery-heading";
 import { HeroCell } from "./hero-cell";
 import { peopleOrder } from "./people-order";
 import { PeopleRow } from "./people-row";
@@ -46,7 +47,7 @@ const GAP = 2;
 
 const keyExtractor = (item: GridItem) => item.key;
 const getItemType = (item: GridItem) => item.kind;
-// Chapter headers, heroes and quotes take the whole row.
+// Chapter headers, heroes and quote rows (a cell plus its text) take the whole row; a quote row is one cell tall.
 const overrideItemLayout = (layout: { span?: number }, item: GridItem) => {
   if (item.kind !== "photo") layout.span = COLUMNS;
 };
@@ -63,12 +64,15 @@ export function GalleryScreen({
   toolbar: showToolbar = true,
   onSelectionChange,
   header,
+  videoBanner,
   onShare,
 }: {
   tripId: string;
   toolbar?: boolean;
   /** Shown at the very top of the grid (the contest card). */
   header?: ReactNode;
+  /** The roll's video card: between the summary and the faces, and never while selecting. */
+  videoBanner?: ReactNode;
   /** How many photos are selected while selecting, null otherwise: the screen that owns the header shows it as the title. */
   onSelectionChange?: (count: number | null) => void;
   /** "Compartir" in the toolbar; given by the roll screen when the roll can be shared. */
@@ -204,7 +208,21 @@ export function GalleryScreen({
       const { photo } = item;
       const own = revealed && !!me && photo.authorUserId === me.id;
       if (item.kind === "quote")
-        return <QuoteRow photo={photo} timeZone={timeZone} selecting={selecting} selected={selected.has(photo.id)} onPress={onCellPress} />;
+        return (
+          <QuoteRow
+            photo={photo}
+            token={token}
+            size={size}
+            timeZone={timeZone}
+            side={item.side}
+            selecting={selecting}
+            selected={selected.has(photo.id)}
+            own={own}
+            onPress={onCellPress}
+            onToggleFeatured={onToggleFeatured}
+            onOwnAction={onOwnAction}
+          />
+        );
       if (item.kind === "hero")
         return (
           <View style={styles.hero}>
@@ -242,11 +260,21 @@ export function GalleryScreen({
   );
   const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
 
+  // The action only shows in the view in front: "Seleccionar" when idle with photos, "Seleccionar todo" while selecting.
+  const selectAllDisabled = !allSelected && !complete;
+  const action = useMemo<HeadingAction | undefined>(() => {
+    if (!showToolbar) return undefined;
+    if (selecting) return { kind: "select-all", allSelected, onPress: toggleAll, disabled: selectAllDisabled };
+    return photos.length > 0 ? { kind: "select", onPress: startSelecting, disabled: busy } : undefined;
+  }, [showToolbar, selecting, allSelected, toggleAll, selectAllDisabled, photos.length, startSelecting, busy]);
+  const heading = <GalleryHeading name={detail?.trip.name} summary={summary} action={action} />;
+
   let body;
-  if (loading) body = <>{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
+  if (loading) body = <>{heading}{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
   else if (error && photos.length === 0)
     body = (
       <>
+        {heading}
         {header}
         <View style={styles.center}>
           <ErrorText>{error}</ErrorText>
@@ -255,10 +283,11 @@ export function GalleryScreen({
       </>
     );
   else if (photos.length === 0 && (hasMore || loadingMore) && !loadMoreError)
-    body = <>{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
+    body = <>{heading}{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
   else if (photos.length === 0)
     body = (
       <>
+        {heading}
         {header}
         <View style={styles.center}>
           <Text style={[type.body, { color: colors.secondaryLabel }]}>Este rollo no tiene fotos</Text>
@@ -285,7 +314,8 @@ export function GalleryScreen({
         }
         ListHeaderComponent={
           <>
-            {summary !== null && <Text style={[type.subhead, styles.summary]}>{summary}</Text>}
+            {heading}
+            {!selecting && videoBanner}
             {people.length > 0 && (
               <View style={styles.people}>
                 <PeopleRow people={people} selectedId={authorId} onSelect={setAuthorId} />
@@ -324,16 +354,10 @@ export function GalleryScreen({
       {showToolbar && (
         <GalleryToolbar
           selecting={selecting}
-          allSelected={allSelected}
-          canSelectAll={complete}
-          busy={busy}
-          hasPhotos={photos.length > 0}
           canSaveAll={canSaveAll}
           groups={groups}
           groupId={groupId}
-          onToggleAll={toggleAll}
           onStopSelecting={stopSelecting}
-          onStartSelecting={startSelecting}
           onSelectGroup={setGroupId}
           onSaveAll={confirmSaveAll}
           onShare={onShare}
@@ -365,7 +389,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
-  summary: { color: colors.secondaryLabel, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   people: { paddingTop: spacing.md },
   hero: { paddingBottom: GAP },
   // Columns split the width evenly; the cell hugs the outer edge in the first and last column and sits centered in the

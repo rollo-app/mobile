@@ -251,6 +251,38 @@ describe("Gallery", () => {
     await waitFor(() => expect(screen).toHavePathname("/photo/b"));
   });
 
+  it("shows the captioned photo next to its text, as a regular cell, once", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    await screen.findByRole("button", { name: /^Cita: el glaciar/ });
+    expect(screen.getAllByTestId("gallery-thumb-b")).toHaveLength(1);
+  });
+
+  it("a mirrored quote row opens the viewer from its text and from its photo", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(
+      feed([
+        item("a", { takenAt: Date.parse("2027-01-12T15:00:00Z"), caption: "primera" }),
+        item("b", { day: "2027-01-13", takenAt: Date.parse("2027-01-13T16:00:00Z"), caption: "segunda" }),
+      ]),
+    );
+    await open();
+    await fireEvent.press(await screen.findByRole("button", { name: /^Cita: segunda/ }));
+    await waitFor(() => expect(screen).toHavePathname("/photo/b"));
+    router.back();
+    await waitFor(() => expect(screen).toHavePathname("/gallery"));
+    await fireEvent.press(await screen.findByTestId("gallery-thumb-b"));
+    await waitFor(() => expect(screen).toHavePathname("/photo/b"));
+  });
+
+  it("selects the photo when its text is pressed while selecting", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    await fireEvent.press(await screen.findByRole("button", { name: "Seleccionar" }));
+    await fireEvent.press(screen.getByRole("button", { name: /^Cita: el glaciar/ }));
+    expect(screen.getByRole("button", { name: "Guardar (1)" })).toBeVisible();
+    expect(screen).not.toHavePathname("/photo/b");
+  });
+
   it("filters by tapping a face and back with Todos", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
@@ -399,7 +431,7 @@ describe("Gallery", () => {
     expect(screen.getByRole("header", { name: "Otras fotos" })).toBeVisible();
   });
 
-  it("has Seleccionar and the ⋯ menu together in the header toolbar", async () => {
+  it("has Seleccionar in the content under the name and the ⋯ menu in the header toolbar", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
@@ -419,6 +451,24 @@ describe("Gallery", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Deseleccionar todo" }));
     expect(screen.getByRole("button", { name: "Guardar" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Seleccionar todo" })).toBeVisible();
+  });
+
+  it("while selecting, the heading row holds Seleccionar todo and the bar only a round Cancelar", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    await screen.findByText("Martes 12 de enero");
+    expect(screen.queryByRole("button", { name: "Seleccionar todo" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Seleccionar" }));
+
+    // The idle action is replaced in the same place; the bar has no text buttons.
+    expect(screen.queryByRole("button", { name: "Seleccionar" })).toBeNull();
+    const selectAll = screen.getByRole("button", { name: "Seleccionar todo" });
+    expect(within(screen.getByTestId("gallery-heading")).getByRole("button", { name: "Seleccionar todo" })).toBe(selectAll);
+    expect(screen.getAllByRole("button", { name: "Cancelar" })).toHaveLength(1);
+
+    await fireEvent.press(selectAll);
+    expect(screen.getByRole("button", { name: "Guardar (3)" })).toBeVisible();
+    expect(within(screen.getByTestId("gallery-heading")).getByRole("button", { name: "Deseleccionar todo" })).toBeTruthy();
   });
 
   it("Seleccionar todo respects the person filter", async () => {

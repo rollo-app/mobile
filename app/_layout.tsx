@@ -192,6 +192,8 @@ function RootStack() {
             name="reveal"
             options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: screenBackgrounds.reveal } }}
           />
+          {/* The roll's video (route or summary), full screen over black. */}
+          <Stack.Screen name="roll-video" options={{ presentation: "fullScreenModal", headerShown: false, contentStyle: { backgroundColor: "#000000" } }} />
           <Stack.Screen
             name="presentation"
             options={{
