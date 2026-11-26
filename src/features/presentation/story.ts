@@ -25,8 +25,8 @@ export const MAX_VIDEO_MS = 15_000;
 export const MAX_STORY_PER_DAY = 30;
 
 const DAY_MS = 86_400_000;
-const localDay = (ms: number, timeZone: string) => dateFormatter("en-CA", { timeZone }).format(ms);
-const dayNumber = (day: string) => {
+export const localDay = (ms: number, timeZone: string) => dateFormatter("en-CA", { timeZone }).format(ms);
+export const dayNumber = (day: string) => {
   const [y, m, d] = day.split("-").map(Number);
   return Date.UTC(y!, m! - 1, d!) / DAY_MS;
 };
