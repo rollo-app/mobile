@@ -924,6 +924,18 @@ describe("Compartir: Resumen", () => {
     expect(screen.getByText("10 destacadas · 10 en la hoja")).toBeVisible();
   });
 
+  it("taking photos out until fewer than 6 remain keeps Resumen, the notice and the plus", async () => {
+    useSheetFilm.mockReturnValue({ status: "few" });
+    await act(async () => setSheetChoices(SUR, Object.fromEntries(ids(10).map((id) => [id, "out" as const]))));
+    await openSheet();
+    await toResumen();
+    expect(await screen.findByText("Faltan fotos para el resumen: dejá al menos 6 en la hoja.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Resumen" })).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Elegir fotos" }));
+    expect(screen).toHavePathname("/share-pick");
+    expect(screen).toHaveSearchParams({ tripId: SUR, kind: "sheet" });
+  });
+
   it("loading and error texts are the summary's", async () => {
     useSheetFilm.mockReturnValue({ status: "loading", done: 2, total: 5 });
     await openSheet();

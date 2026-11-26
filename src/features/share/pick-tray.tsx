@@ -8,6 +8,9 @@ const THUMB = 36;
 /** Height of the tray without the bottom safe area: padding, label, gap and the row of thumbnails. */
 export const TRAY_HEIGHT = StyleSheet.hairlineWidth + spacing.sm + 16 + spacing.sm + THUMB + spacing.sm;
 
+/** Height of the summary tray: just the counter line. */
+export const SHEET_TRAY_HEIGHT = StyleSheet.hairlineWidth + spacing.sm + 16 + spacing.sm;
+
 export type PickTrayProps = {
   /** Selected photo ids, in collage order (the first is the big photo). */
   selection: string[];
@@ -63,6 +66,17 @@ export function PickTray({ selection, photos, token, bottomInset, onRemove, max 
           <View key={`empty-${i}`} testID="pick-tray-empty" style={styles.empty} />
         ))}
       </View>
+    </View>
+  );
+}
+
+/** Bottom bar of the summary picker: how many photos are highlighted and how many are on the sheet. */
+export function SheetPickTray({ counter, bottomInset }: { counter: string; bottomInset: number }) {
+  return (
+    <View style={[styles.tray, { height: SHEET_TRAY_HEIGHT + bottomInset, paddingBottom: bottomInset }]}>
+      <Text testID="pick-sheet-counter" style={[type.caption, styles.label]}>
+        {counter}
+      </Text>
     </View>
   );
 }

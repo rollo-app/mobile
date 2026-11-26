@@ -5,14 +5,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { filmCandidates, FILM_MAX } from "@/features/journey/film-photos";
+import { nextState, type SheetChoices, sheetCandidates, sheetCounter, sheetPick, sheetStates } from "@/features/journey/sheet/sheet-photos";
 import { type RevealedPhoto, useRevealedPhotos } from "@/features/media/revealed";
 import { Loading } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
 import { COLLAGE_MAX, collageCandidates } from "./collage";
 import { collagePhotos, getCollageSelection, setCollageSelection, toggleSelection } from "./collage-selection";
 import { getFilmSelection, getFilmShown, setFilmSelection } from "./film-selection";
-import { PickCell } from "./pick-cell";
-import { PickTray, TRAY_HEIGHT } from "./pick-tray";
+import { PickCell, SheetPickCell } from "./pick-cell";
+import { PickTray, SHEET_TRAY_HEIGHT, SheetPickTray, TRAY_HEIGHT } from "./pick-tray";
+import { getSheetChoices, setSheetChoices } from "./sheet-selection";
 
 const COLUMNS = 4;
 const GAP = 4;
@@ -22,9 +24,15 @@ const keyExtractor = (photo: RevealedPhoto) => photo.id;
 
 /**
  * "Elegir fotos": pick up to 8 shareable photos for the collage (the tap order is the collage order, 1 is the big photo), or for
- * `kind="journey"` up to 15 photos with coordinates for the film (the order does not matter).
+ * `kind="journey"` up to 15 photos with coordinates for the film (the order does not matter), or for `kind="sheet"` the state of
+ * each photo of the summary film (on the sheet, highlighted or out).
  */
-export function SharePickScreen({ tripId, seed, kind = "collage" }: { tripId: string; seed?: number; kind?: "collage" | "journey" }) {
+export function SharePickScreen({ tripId, seed, kind = "collage" }: { tripId: string; seed?: number; kind?: "collage" | "journey" | "sheet" }) {
+  if (kind === "sheet") return <SheetPickScreen tripId={tripId} />;
+  return <OrderedPickScreen tripId={tripId} seed={seed} kind={kind} />;
+}
+
+function OrderedPickScreen({ tripId, seed, kind }: { tripId: string; seed?: number; kind: "collage" | "journey" }) {
   const journey = kind === "journey";
   const max = journey ? FILM_MAX : COLLAGE_MAX;
   const { photos, token, complete, loading, loadAll } = useRevealedPhotos(tripId);
@@ -101,7 +109,7 @@ export function SharePickScreen({ tripId, seed, kind = "collage" }: { tripId: st
           headerStyle: { backgroundColor: colors.background },
           headerShadowVisible: false,
           headerBlurEffect: "none",
-          headerTitle: () => <HeaderTitle journey={journey} />,
+          headerTitle: () => <HeaderTitle subtitle={journey ? undefined : "la 1 va grande"} />,
         }}
       />
       <Stack.Toolbar placement="left">
@@ -131,11 +139,99 @@ export function SharePickScreen({ tripId, seed, kind = "collage" }: { tripId: st
   );
 }
 
-function HeaderTitle({ journey }: { journey: boolean }) {
+/** The summary film's picker: the grid starts from the states the film has now; only "Listo" saves them. */
+function SheetPickScreen({ tripId }: { tripId: string }) {
+  const { photos, token, complete, loading, loadAll } = useRevealedPhotos(tripId);
+  const candidates = useMemo(() => sheetCandidates(photos), [photos]);
+  // Only the photos the person tapped enter the draft; the rest keep following the automatic pick.
+  const [draft, setDraft] = useState<SheetChoices>(() => getSheetChoices(tripId));
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const asked = useRef(false);
+  useEffect(() => {
+    if (complete || asked.current) return;
+    asked.current = true;
+    void loadAll();
+  }, [complete, loadAll]);
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const edge = PADDING - GAP / 2;
+  const size = Math.floor((width - edge * 2) / COLUMNS - GAP);
+  const states = useMemo(() => sheetStates(candidates, draft), [candidates, draft]);
+  const statesRef = useRef(states);
+  statesRef.current = states;
+  const counter = useMemo(() => sheetCounter(sheetPick(candidates, draft)), [candidates, draft]);
+
+  const onPress = useCallback((id: string) => {
+    const current = statesRef.current[id];
+    if (current === undefined) return;
+    const highlighted = Object.values(statesRef.current).filter((state) => state === "highlight").length;
+    // The 13th highlight is skipped: the photo goes out instead, with the same haptic as a full collage.
+    const next = nextState(current, highlighted);
+    if (current === "sheet" && next === "out") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const choices = { ...draftRef.current, [id]: next };
+    draftRef.current = choices;
+    setDraft(choices);
+  }, []);
+
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  const done = () => {
+    setSheetChoices(tripId, draft);
+    goBack();
+  };
+
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<RevealedPhoto>) => (
+      <View style={styles.slot}>
+        <SheetPickCell photo={item} token={token} size={size} state={states[item.id] ?? "out"} onPress={onPress} />
+      </View>
+    ),
+    [token, size, states, onPress],
+  );
+
+  return (
+    <View style={styles.screen}>
+      <Stack.Screen
+        options={{
+          headerTransparent: false,
+          headerStyle: { backgroundColor: colors.background },
+          headerShadowVisible: false,
+          headerBlurEffect: "none",
+          headerTitle: () => <HeaderTitle subtitle="tocá para destacar, dejar o sacar" />,
+        }}
+      />
+      <Stack.Toolbar placement="left">
+        <Stack.Toolbar.Button onPress={goBack}>Cancelar</Stack.Toolbar.Button>
+      </Stack.Toolbar>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button variant="done" onPress={done}>
+          Listo
+        </Stack.Toolbar.Button>
+      </Stack.Toolbar>
+
+      {!complete && loading ? (
+        <Loading />
+      ) : (
+        <FlashList
+          data={candidates}
+          numColumns={COLUMNS}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          extraData={states}
+          contentInsetAdjustmentBehavior="never"
+          contentContainerStyle={{ paddingHorizontal: edge, paddingTop: GAP / 2, paddingBottom: SHEET_TRAY_HEIGHT + insets.bottom + spacing.sm }}
+        />
+      )}
+      <SheetPickTray counter={counter} bottomInset={insets.bottom} />
+    </View>
+  );
+}
+
+function HeaderTitle({ subtitle }: { subtitle?: string }) {
   return (
     <View style={styles.titleBlock}>
       <Text style={[type.headline, styles.title]}>Elegir fotos</Text>
-      {!journey && <Text style={[type.caption, styles.subtitle]}>la 1 va grande</Text>}
+      {!!subtitle && <Text style={[type.caption, styles.subtitle]}>{subtitle}</Text>}
     </View>
   );
 }

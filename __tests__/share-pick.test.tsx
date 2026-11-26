@@ -4,6 +4,7 @@ import { act, fireEvent, renderRouter, screen } from "expo-router/testing-librar
 import { collageCandidates, pickCollage } from "@/features/share/collage";
 import { getCollageSelection, setCollageSelection } from "@/features/share/collage-selection";
 import { getFilmSelection, setFilmSelection, setFilmShown } from "@/features/share/film-selection";
+import { getSheetChoices, setSheetChoices } from "@/features/share/sheet-selection";
 import { SharePickScreen } from "@/features/share/share-pick-screen";
 import * as tripActions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
@@ -244,3 +245,71 @@ describe("Elegir fotos for the recorrido", () => {
   });
 });
 
+
+describe("Elegir fotos for the resumen", () => {
+  const label = (id: string) => cell(id).props.accessibilityLabel;
+
+  async function openSheet(choices: Parameters<typeof setSheetChoices>[1], items = ids.map(item)) {
+    setSheetChoices(SUR, choices);
+    trips.fetchFeedPage.mockResolvedValue({ revealed: true, revealAt: Date.now() - 1000, items, nextCursor: null });
+    await renderRouter({ ...routes, "share-pick": () => <SharePickScreen tripId={SUR} kind="sheet" /> }, { initialUrl: "/blocked" });
+    await act(async () => router.push("/share-pick"));
+    await screen.findByTestId("pick-cell-p1");
+  }
+
+  afterEach(() => setSheetChoices(SUR, {}));
+
+  it("rotates a photo sheet, highlight, out, sheet and the counter follows", async () => {
+    await openSheet({ p1: "highlight" });
+    expect(label("p2")).toBe("Foto en la hoja");
+    expect(screen.getByText("1 destacada · 10 en la hoja")).toBeVisible();
+    await fireEvent.press(cell("p2"));
+    expect(label("p2")).toBe("Foto destacada");
+    expect(screen.getByText("2 destacadas · 10 en la hoja")).toBeVisible();
+    await fireEvent.press(cell("p2"));
+    expect(label("p2")).toBe("Foto fuera del video");
+    expect(screen.getByText("1 destacada · 9 en la hoja")).toBeVisible();
+    await fireEvent.press(cell("p2"));
+    expect(label("p2")).toBe("Foto en la hoja");
+    expect(screen.getByText("1 destacada · 10 en la hoja")).toBeVisible();
+  });
+
+  it("with 12 highlights a tap on a sheet photo takes it out, with a haptic", async () => {
+    const many = Array.from({ length: 14 }, (_, i) => `p${i + 1}`);
+    await openSheet(Object.fromEntries(many.slice(0, 12).map((id) => [id, "highlight" as const])), many.map(item));
+    expect(label("p13")).toBe("Foto en la hoja");
+    await fireEvent.press(cell("p13"));
+    expect(label("p13")).toBe("Foto fuera del video");
+    expect(haptics.impactAsync).toHaveBeenCalledWith("light");
+  });
+
+  it("Listo saves only the tapped photos and leaves the collage and the route film alone", async () => {
+    setCollageSelection(SUR, ["p4"]);
+    setFilmSelection(SUR, ["p5"]);
+    await openSheet({ p1: "highlight" });
+    await fireEvent.press(cell("p2"));
+    expect(getSheetChoices(SUR)).toEqual({ p1: "highlight" });
+    await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
+    expect(getSheetChoices(SUR)).toEqual({ p1: "highlight", p2: "highlight" });
+    expect(getCollageSelection(SUR)).toEqual(["p4"]);
+    expect(getFilmSelection(SUR)).toEqual(["p5"]);
+  });
+
+  it("Cancelar changes nothing", async () => {
+    await openSheet({ p1: "highlight" });
+    await fireEvent.press(cell("p2"));
+    await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
+    expect(getSheetChoices(SUR)).toEqual({ p1: "highlight" });
+  });
+
+  it("reopening shows a photo set out as out", async () => {
+    await openSheet({ p1: "highlight", p2: "out" });
+    expect(label("p2")).toBe("Foto fuera del video");
+    expect(label("p1")).toBe("Foto destacada");
+  });
+
+  it("does not offer a photo that is not shareable", async () => {
+    await openSheet({ p1: "highlight" }, [...ids.map(item), { ...item("hidden"), shareable: false }]);
+    expect(screen.queryByTestId("pick-cell-hidden")).toBeNull();
+  });
+});
