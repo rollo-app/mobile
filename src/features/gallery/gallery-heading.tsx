@@ -3,30 +3,38 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { RollTitle } from "@/features/roll/roll-title";
 import { colors, spacing, type } from "@/ui/theme";
 
+/** What sits on the right of the summary: "Seleccionar" when idle, "Seleccionar todo" / "Deseleccionar todo" while selecting. */
+export type HeadingAction =
+  | { kind: "select"; onPress: () => void; disabled?: boolean }
+  | { kind: "select-all"; allSelected: boolean; onPress: () => void; disabled?: boolean };
+
+function actionLabel(action: HeadingAction) {
+  if (action.kind === "select") return "Seleccionar";
+  return action.allSelected ? "Deseleccionar todo" : "Seleccionar todo";
+}
+
 /**
  * Top of the gallery's list: the roll's name, then the summary on the left and, when there is something
- * to select, "Seleccionar" on the right. It scrolls away with the content.
+ * to do, a plain text action on the right. It scrolls away with the content.
  */
 export const GalleryHeading = memo(function GalleryHeading({
   name,
   summary,
-  onSelect,
-  selectDisabled,
+  action,
 }: {
   name?: string;
   summary: string | null;
-  /** Starts selecting; not given when the gallery has nothing to select or isn't the view in front. */
-  onSelect?: () => void;
-  selectDisabled?: boolean;
+  /** Not given when the gallery has nothing to select or isn't the view in front. */
+  action?: HeadingAction;
 }) {
   return (
-    <View style={styles.root}>
+    <View testID="gallery-heading" style={styles.root}>
       {!!name && <RollTitle name={name} />}
       <View style={styles.row}>
         <Text style={[type.subhead, styles.summary]}>{summary}</Text>
-        {!!onSelect && (
-          <Pressable accessibilityRole="button" disabled={selectDisabled} onPress={onSelect} style={styles.action}>
-            <Text style={[type.body, { color: colors.tint, opacity: selectDisabled ? 0.4 : 1 }]}>Seleccionar</Text>
+        {!!action && (
+          <Pressable accessibilityRole="button" disabled={action.disabled} onPress={action.onPress} style={styles.action}>
+            <Text style={[type.body, { color: colors.tint, opacity: action.disabled ? 0.4 : 1 }]}>{actionLabel(action)}</Text>
           </Pressable>
         )}
       </View>

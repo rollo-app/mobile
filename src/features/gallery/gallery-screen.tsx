@@ -30,7 +30,7 @@ import { GalleryToolbar } from "./gallery-toolbar";
 import { chapterCenter } from "./place";
 import { authorsOf, filterByAuthor, filterByGroup } from "./group";
 import { diaryItems, type GridItem } from "./grid-items";
-import { GalleryHeading } from "./gallery-heading";
+import { GalleryHeading, type HeadingAction } from "./gallery-heading";
 import { HeroCell } from "./hero-cell";
 import { peopleOrder } from "./people-order";
 import { PeopleRow } from "./people-row";
@@ -243,15 +243,14 @@ export function GalleryScreen({
   );
   const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
 
-  // "Seleccionar" only in the view in front, when there are photos, and not while already selecting.
-  const heading = (
-    <GalleryHeading
-      name={detail?.trip.name}
-      summary={summary}
-      onSelect={showToolbar && !selecting && photos.length > 0 ? startSelecting : undefined}
-      selectDisabled={busy}
-    />
-  );
+  // The action only shows in the view in front: "Seleccionar" when idle with photos, "Seleccionar todo" while selecting.
+  const selectAllDisabled = !allSelected && !complete;
+  const action = useMemo<HeadingAction | undefined>(() => {
+    if (!showToolbar) return undefined;
+    if (selecting) return { kind: "select-all", allSelected, onPress: toggleAll, disabled: selectAllDisabled };
+    return photos.length > 0 ? { kind: "select", onPress: startSelecting, disabled: busy } : undefined;
+  }, [showToolbar, selecting, allSelected, toggleAll, selectAllDisabled, photos.length, startSelecting, busy]);
+  const heading = <GalleryHeading name={detail?.trip.name} summary={summary} action={action} />;
 
   let body;
   if (loading) body = <>{heading}{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
@@ -337,12 +336,9 @@ export function GalleryScreen({
       {showToolbar && (
         <GalleryToolbar
           selecting={selecting}
-          allSelected={allSelected}
-          canSelectAll={complete}
           canSaveAll={canSaveAll}
           groups={groups}
           groupId={groupId}
-          onToggleAll={toggleAll}
           onStopSelecting={stopSelecting}
           onSelectGroup={setGroupId}
           onSaveAll={confirmSaveAll}
