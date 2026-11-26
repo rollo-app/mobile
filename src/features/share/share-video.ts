@@ -4,8 +4,12 @@ import { META_APP_ID } from "@/config";
 import { PermissionDeniedError } from "@/features/gallery/save";
 import { shareVideoToInstagram } from "../../../modules/rollo-video";
 
-/** The longest film Instagram's Stories route takes whole. */
-export const STORIES_DIRECT_MAX_MS = 20_000;
+/**
+ * The longest film sent straight to Instagram's Stories editor. Meta documents 20 s for this route, but on the owner's
+ * iPhone (2026-11-26) a 41 s video went in whole, with nothing saved to Photos: every film (59 s at most) goes direct.
+ * The library route stays as the way out if Instagram ever starts refusing long ones.
+ */
+export const STORIES_DIRECT_MAX_MS = 59_000;
 const LIBRARY_URL = "instagram://story-camera";
 
 /** "stories" for a film Instagram's Stories route takes whole, "library" for a longer one (save to Photos, then open Instagram). */

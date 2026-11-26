@@ -12,9 +12,11 @@ beforeEach(() => {
 });
 
 describe("instagramRoute", () => {
-  it("takes a short film through Stories and a longer one through the library", () => {
+  it("takes every film up to 59 s straight to Stories; the library is only for a longer one", () => {
     expect(instagramRoute(19_000)).toBe("stories");
-    expect(instagramRoute(20_001)).toBe("library");
+    expect(instagramRoute(41_000)).toBe("stories");
+    expect(instagramRoute(59_000)).toBe("stories");
+    expect(instagramRoute(59_001)).toBe("library");
   });
 });
 
@@ -26,7 +28,7 @@ describe("shareVideoToInstagramApp", () => {
   });
 
   it("saves a long film and then opens Instagram", async () => {
-    await expect(shareVideoToInstagramApp("file:///v.mp4", 30_000)).resolves.toBe("library");
+    await expect(shareVideoToInstagramApp("file:///v.mp4", 60_000)).resolves.toBe("library");
     expect(Asset.create).toHaveBeenCalledWith("file:///v.mp4");
     expect(Linking.openURL).toHaveBeenCalledWith("instagram://story-camera");
     expect(shareVideoToInstagram).not.toHaveBeenCalled();
@@ -39,7 +41,7 @@ describe("shareVideoToInstagramApp", () => {
 
   it("rejects and opens nothing when Photos is denied", async () => {
     (requestPermissionsAsync as jest.Mock).mockResolvedValueOnce({ granted: false, canAskAgain: true });
-    await expect(shareVideoToInstagramApp("file:///v.mp4", 30_000)).rejects.toBeInstanceOf(PermissionDeniedError);
+    await expect(shareVideoToInstagramApp("file:///v.mp4", 60_000)).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(Linking.openURL).not.toHaveBeenCalled();
   });
 });

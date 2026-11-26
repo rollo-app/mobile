@@ -240,6 +240,10 @@ iPhone 15 Pro Max, build 1.5.0 instalado, demo del Reel (8 paradas, 14 imágenes
 
 Lo que pidió el dueño al verlo: un botón de cerrar a la vista durante la película (o cerrar deslizando hacia abajo) y la foto de perfil del autor en cada foto.
 
+## Instagram, probado en el iPhone (2026-11-26)
+
+Stories directo con el video de 41 s **entra entero** al editor de historias, sin guardar nada en el teléfono, también con el build de desarrollo. Por eso el botón "Instagram" manda siempre directo a Stories (`STORIES_DIRECT_MAX_MS` = 59 s). Guardar en Fotos y abrir Instagram queda en el código solo como salida si Instagram dejara de aceptar videos largos. Meta sigue documentando 20 s para esta vía: es un comportamiento observado, no garantizado.
+
 ## Pendiente de probar en el iPhone del dueño
 
 1. **El motor en pantalla** (Ajustes → Desarrollo → "Motor propio · demo del Reel"): fluidez, carga y memoria. Los números salen en Metro (`[engine]`).
