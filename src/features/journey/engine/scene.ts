@@ -624,7 +624,7 @@ export function frameAt(scene: Scene, t: number): FrameModel {
 }
 
 /** 1858 -> "1.858". */
-function thousands(n: number): string {
+export function thousands(n: number): string {
   return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
