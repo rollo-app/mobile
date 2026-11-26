@@ -2,6 +2,7 @@ import { useIsFocused, useLocalSearchParams } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { ContestCard } from "@/features/contest/contest-card";
 import { GalleryScreen } from "@/features/gallery/gallery-screen";
+import { RollVideoBanner } from "@/features/share/roll-video-banner";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { colors, spacing } from "@/ui/theme";
 import { RollOverview } from "./roll-overview";
@@ -47,6 +48,7 @@ export function RevealedRollScreen({
             toolbar={!showRoll}
             onSelectionChange={onSelectionChange}
             onShare={onShare}
+            videoBanner={<RollVideoBanner tripId={tripId} />}
             header={<ContestCard tripId={tripId} enabled={contestEnabled} focused={focused} style={{ margin: spacing.md }} />}
           />
         </View>

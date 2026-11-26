@@ -64,12 +64,15 @@ export function GalleryScreen({
   toolbar: showToolbar = true,
   onSelectionChange,
   header,
+  videoBanner,
   onShare,
 }: {
   tripId: string;
   toolbar?: boolean;
   /** Shown at the very top of the grid (the contest card). */
   header?: ReactNode;
+  /** The roll's video card: between the summary and the faces, and never while selecting. */
+  videoBanner?: ReactNode;
   /** How many photos are selected while selecting, null otherwise: the screen that owns the header shows it as the title. */
   onSelectionChange?: (count: number | null) => void;
   /** "Compartir" in the toolbar; given by the roll screen when the roll can be shared. */
@@ -312,6 +315,7 @@ export function GalleryScreen({
         ListHeaderComponent={
           <>
             {heading}
+            {!selecting && videoBanner}
             {people.length > 0 && (
               <View style={styles.people}>
                 <PeopleRow people={people} selectedId={authorId} onSelect={setAuthorId} />

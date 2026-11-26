@@ -4,9 +4,8 @@ import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { localDay } from "@/features/capture/quota";
-import { filmBlocked, filmCandidates, filmStopCount } from "@/features/journey/film-photos";
-import { SHEET_MAX, sheetBlocked, sheetCandidates, sheetPick, type SheetChoices } from "@/features/journey/sheet/sheet-photos";
+import { filmCandidates } from "@/features/journey/film-photos";
+import { sheetCandidates, sheetPick } from "@/features/journey/sheet/sheet-photos";
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
@@ -14,12 +13,12 @@ import { memberTotal } from "@/features/trips/member-total";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Footnote, Loading } from "@/ui/components";
-import { videoAvailable } from "../../../modules/rollo-video";
 import { colors, spacing, tintHex, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
 import { useFilmSelection } from "./film-selection";
 import { FilmShare } from "./journey-share";
+import { useRollVideos } from "./use-roll-videos";
 import { useSheetChoices } from "./sheet-selection";
 import { canShareInvite, inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
@@ -99,22 +98,12 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const feedFailed = isCollage && !!feedError;
   const empty = isCollage && ready && candidates.length === 0 && !feedFailed;
   const filmPool = useMemo(() => filmCandidates(photos), [photos]);
-  // Recorrido is offered only where the roll has a film (a route of at least two stops) and the build has the video module.
-  const startsAt = detail?.trip.startsAt;
-  const timezone = detail?.trip.timezone;
-  // buildStops over every candidate is not free: only when the candidates or the first day change.
-  const poolStops = useMemo(
-    () => (startsAt === undefined || timezone === undefined ? 0 : filmStopCount(filmPool, localDay(startsAt, timezone))),
-    [filmPool, startsAt, timezone],
-  );
-  const canFilm = isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && filmBlocked(detail, poolStops) === null;
-  // The summary film is offered wherever the roll qualifies, alongside the route when there is one.
+  // Recorrido and Resumen are offered where the roll has them (the same decision as the gallery's banner).
+  const videos = useRollVideos({ detail, photos, ready: isCollage && ready, feedFailed });
+  const canFilm = videos.includes("route");
+  const canSheet = videos.includes("sheet");
   const sheetPhotos = useMemo(() => sheetCandidates(photos), [photos]);
   const sheet = useMemo(() => sheetPick(sheetPhotos, sheetChoices), [sheetPhotos, sheetChoices]);
-  // Offered from the candidates alone: taking photos out (even below the minimum) must not remove the way back to the picker.
-  const sheetOffered = useMemo(() => Math.min(sheetPhotos.length, SHEET_MAX), [sheetPhotos]);
-  const canSheet =
-    isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && sheetBlocked(detail, sheetOffered) === null;
   const pieces = useMemo<SharePiece[]>(() => ["collage", ...(canFilm ? (["route"] as const) : []), ...(canSheet ? (["sheet"] as const) : [])], [canFilm, canSheet]);
   // A film that is no longer offered falls back to Collage; "journey" with no route lands on the summary, as it always did.
   const selected: SharePiece = pieces.includes(picked) ? picked : picked === "route" && canSheet ? "sheet" : "collage";
