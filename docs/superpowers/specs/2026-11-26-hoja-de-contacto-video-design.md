@@ -1,6 +1,8 @@
 # La hoja de contacto en video — diseño
 
-Fecha: 2026-11-26 · Estado: **aprobado por el dueño (2026-11-26)** para pasar al plan, después de ver el prototipo dibujado en la Mac; en su iPhone todavía no lo vio. Plan: `docs/superpowers/plans/2026-11-26-hoja-de-contacto-video.md`.
+Fecha: 2026-11-26 · Estado: **implementado en `feature/recorrido-en-video` (2026-11-26)**, aprobado por el dueño sobre el prototipo dibujado en la Mac; la versión de producción se dibujó fuera del celular (38 s con 25 fotos y 8 destacadas) y **falta que la vea en su iPhone**. Plan: `docs/superpowers/plans/2026-11-26-hoja-de-contacto-video.md`.
+
+Pendiente después de la revisión: las destacadas usan la miniatura de ~800 px (como el recorrido, hasta que el dueño juzgue la nitidez); la película deja fuera las últimas no destacadas para completar filas, pero el contador y el selector las cuentan como "en la hoja".
 
 Es el video para los rollos **sin recorrido**. Se apoya en `2026-11-26-recorrido-en-video-design.md`: mismo motor, misma exportación, mismos destinos.
 
