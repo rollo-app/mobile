@@ -62,9 +62,10 @@ describe("useFilm", () => {
     await waitFor(() => expect(result.current.status).toBe("ready"));
     const film = result.current;
     if (film.status !== "ready") throw new Error("not ready");
-    expect(film.scene.durationMs).toBeLessThanOrEqual(59_000);
+    expect(film.film.durationMs).toBeLessThanOrEqual(59_000);
     expect(film.stops).toHaveLength(2);
-    expect(film.scene.input.closingStats).toContain("9 fotos");
+    if (film.film.kind !== "route") throw new Error("not a route film");
+    expect(film.film.scene.input.closingStats).toContain("9 fotos");
   });
 
   it("does nothing while disabled", async () => {
@@ -105,7 +106,7 @@ describe("useFilm", () => {
     const versionOf = async (a: Parameters<typeof useFilm>[0]) => {
       const { result, unmount } = await renderHook(() => useFilm(a));
       await waitFor(() => expect(result.current.status).toBe("ready"));
-      const v = result.current.status === "ready" ? result.current.version : "";
+      const v = result.current.status === "ready" ? result.current.film.version : "";
       await unmount();
       return v;
     };
@@ -159,8 +160,8 @@ describe("useFilm", () => {
     await waitFor(() => expect(layersMock).toHaveBeenCalledTimes(1));
     await rerender(args({ seed: 7 }));
     await waitFor(() => expect(result.current.status).toBe("ready"));
-    const seven = result.current.status === "ready" ? result.current.version : "";
+    const seven = result.current.status === "ready" ? result.current.film.version : "";
     await act(async () => release([{ image: {}, src: {} }] as never));
-    expect(result.current.status === "ready" && result.current.version).toBe(seven);
+    expect(result.current.status === "ready" && result.current.film.version).toBe(seven);
   });
 });

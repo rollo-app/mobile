@@ -500,7 +500,7 @@ describe("Compartir: Recorrido", () => {
   const video = jest.mocked(shareVideo);
   const FILE = { uri: "file:///cache/rollo-recorrido.mp4", bytes: 1000, frames: 30 };
   const readyFilm = (version = "v1", durationMs = 30_000) =>
-    ({ status: "ready", scene: {}, assets: {}, stops: [], photos: [], durationMs, version }) as unknown as filmHook.Film;
+    ({ status: "ready", film: { kind: "route", scene: {}, assets: {}, durationMs, restAt: 0, version }, stops: [], photos: [] }) as unknown as filmHook.Film;
 
   // Two places far apart, so the share cut gives two stops.
   const at = (id: string, lat: number, lng: number) => item(id, { lat, lng });

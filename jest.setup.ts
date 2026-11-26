@@ -563,6 +563,7 @@ jest.mock("@/features/share/film-export", () => ({
 }));
 // useFilm pulls in Skia and the map's native modules: tests that render Compartir get a film that never finishes loading, and the share screen's own test sets what it returns.
 jest.mock("@/features/journey/use-film", () => ({ useFilm: jest.fn(() => ({ status: "loading", done: 0, total: 0 })) }));
+jest.mock("@/features/journey/use-sheet-film", () => ({ useSheetFilm: jest.fn(() => ({ status: "loading", done: 0, total: 0 })) }));
 jest.mock("@/features/journey/film-player", () => {
   const React = require("react");
   const { View } = require("react-native");

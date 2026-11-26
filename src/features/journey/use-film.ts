@@ -7,6 +7,7 @@ import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
 import { avatarUri } from "@/features/profile/avatar-style";
 import { fileId } from "@/features/share/file-id";
 import type { TripDetail } from "@/features/trips/actions";
+import type { AnyFilm } from "./any-film";
 import { filmCandidates } from "./film-photos";
 import { incomplete, layoutTexts, loadLayers, loadPhotos } from "./engine/assets";
 import type { Assets } from "./engine/draw";
@@ -19,7 +20,7 @@ export type Film =
   | { status: "loading"; done: number; total: number }
   | { status: "error"; offline: boolean; retry: () => void }
   | { status: "no-route" }
-  | { status: "ready"; scene: Scene; assets: Assets; stops: Stop[]; photos: FilmPhoto[]; durationMs: number; version: string };
+  | { status: "ready"; film: AnyFilm; stops: Stop[]; photos: FilmPhoto[] };
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -128,7 +129,12 @@ export function useFilm(args: { tripId: string; photos: RevealedPhoto[]; token: 
         if (!live) return;
         const assets: Assets = { layers, photos: loaded, texts: layoutTexts(scene.texts, FILM_FRAME) };
         if (incomplete(assets)) throw new Error("incomplete film assets");
-        set({ status: "ready", scene, assets, stops, photos: used, durationMs: scene.durationMs, version });
+        set({
+          status: "ready",
+          film: { kind: "route", scene, assets, durationMs: scene.durationMs, restAt: scene.input.timeline.doneAt, version },
+          stops,
+          photos: used,
+        });
       } catch {
         const offline = await isOffline();
         set({ status: "error", offline, retry });
@@ -141,6 +147,6 @@ export function useFilm(args: { tripId: string; photos: RevealedPhoto[]; token: 
   }, [enabled, token, name, startsAt, endsAt, timezone, totalUploaded, seed, version, attempt, retry]);
 
   // After a seed or photo change the old result is for another version until the effect runs: never hand it out.
-  if (film.status === "ready" && film.version !== version) return LOADING;
+  if (film.status === "ready" && film.film.version !== version) return LOADING;
   return film;
 }

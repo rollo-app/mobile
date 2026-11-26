@@ -47,7 +47,7 @@ export function useFilmExport(
   const last = useRef<Destination>("save");
   const deliverRef = useRef(deliver);
   deliverRef.current = deliver;
-  const version = film.status === "ready" ? film.version : null;
+  const version = film.status === "ready" ? film.film.version : null;
 
   const cancel = useCallback(() => {
     if (run.current) run.current.cancelled = true;
@@ -74,7 +74,7 @@ export function useFilmExport(
       let release!: () => void;
       settled.current = new Promise<void>((resolve) => (release = resolve));
       try {
-        let file = cache.current?.version === film.version ? cache.current.file : null;
+        let file = cache.current?.version === film.film.version ? cache.current.file : null;
         if (!file) {
           cache.current = null;
           setState({ status: "exporting", done: 0, total: 0, destination });
@@ -82,7 +82,7 @@ export function useFilmExport(
           // The player must be paused on screen before this thread starts drawing the same scene: wait for the commit and a UI frame.
           await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(undefined))));
           if (token.cancelled) return;
-          const made = await exportFilmToFile(film, { tripId }, {
+          const made = await exportFilmToFile(film.film, { tripId }, {
             isCancelled: () => token.cancelled,
             onProgress: (done, total) => {
               if (!token.cancelled) setState({ status: "exporting", done, total, destination });
@@ -90,7 +90,7 @@ export function useFilmExport(
           });
           if (!made || token.cancelled) return;
           file = made;
-          cache.current = { version: film.version, file };
+          cache.current = { version: film.film.version, file };
         }
         if (!token.cancelled) setState(IDLE);
         await deliverRef.current(destination, file, film);
@@ -145,8 +145,8 @@ export function JourneyShare({
     } else if (destination === "more") {
       await shareVideoMore(file.uri);
     } else {
-      const route = await shareVideoToInstagramApp(file.uri, ready.durationMs);
-      setNote(route === "library" ? ready.version : null);
+      const route = await shareVideoToInstagramApp(file.uri, ready.film.durationMs);
+      setNote(route === "library" ? ready.film.version : null);
     }
   }, []);
   const exporter = useFilmExport(film, tripId, deliver);
@@ -170,7 +170,7 @@ export function JourneyShare({
     <>
       <View style={styles.previewArea} onLayout={onLayout}>
         {ready && !noRoute ? (
-          <FilmPlayer scene={ready.scene} assets={ready.assets} height={previewHeight} playing={!exporting} paused={exporting} />
+          <FilmPlayer film={ready.film} height={previewHeight} playing={!exporting} paused={exporting} />
         ) : (
           <View style={[styles.placeholder, { height: previewHeight, width: previewHeight * STORY_RATIO }]}>
             {film.status === "loading" && !noRoute && (
@@ -224,7 +224,7 @@ export function JourneyShare({
               />
             </>
           )}
-          {!exporting && note === ready.version && <Text style={[type.caption, styles.hint]}>Lo guardamos en tus fotos. Elegilo en tu historia.</Text>}
+          {!exporting && note === ready.film.version && <Text style={[type.caption, styles.hint]}>Lo guardamos en tus fotos. Elegilo en tu historia.</Text>}
           {!exporting && exporter.failed === "denied" && <PermissionNotice />}
           {!exporting && exporter.failed === "failed" && (
             <View style={styles.failureInline}>

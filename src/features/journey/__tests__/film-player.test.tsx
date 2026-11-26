@@ -1,5 +1,6 @@
 import { act, fireEvent, render } from "@testing-library/react-native";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
+import type { AnyFilm } from "../any-film";
 import type { Assets } from "../engine/draw";
 import type { Scene } from "../engine/model";
 import { drawFrame } from "../engine/draw";
@@ -48,9 +49,10 @@ jest.mock("@/ui/use-reduce-motion", () => ({ useReduceMotion: jest.fn() }));
 const useReduceMotionMock = jest.mocked(useReduceMotion);
 const scene = { durationMs: 1000, input: { timeline: { doneAt: 800 } } } as unknown as Scene;
 const assets = { layers: [], photos: {}, texts: [] } as unknown as Assets;
+const film: AnyFilm = { kind: "route", scene, assets, durationMs: 1000, restAt: 800, version: "v1" };
 
 function player(extra: Partial<Parameters<typeof FilmPlayer>[0]> = {}) {
-  return <FilmPlayer scene={scene} assets={assets} height={640} playing paused={false} {...extra} />;
+  return <FilmPlayer film={film} height={640} playing paused={false} {...extra} />;
 }
 
 beforeEach(() => {

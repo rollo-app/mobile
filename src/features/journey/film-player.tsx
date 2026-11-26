@@ -4,9 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { radius, type } from "@/ui/theme";
 import { useReduceMotion } from "@/ui/use-reduce-motion";
-import { drawFrame, type Assets } from "./engine/draw";
-import type { Scene } from "./engine/model";
-import { frameAt } from "./engine/scene";
+import { drawAnyFilm, type AnyFilm } from "./any-film";
 import { FILM_FRAME } from "./route";
 
 /** What the derived value paints: the first frame, the film running, or the closing title held. */
@@ -15,19 +13,17 @@ const RUNNING = 1;
 const HELD = 2;
 
 /**
- * The film in a 9:16 box of `height`. Plays once from the start when `playing`, holds the closing title (before the end card) when it ends, and draws nothing while `paused` (an export is drawing the same scene on another thread).
- * A new `scene` while playing restarts from 0, and `onEnd` fires again at its end.
+ * The film in a 9:16 box of `height`. Plays once from the start when `playing`, holds the closing title (before the end card) when it ends, and draws nothing while `paused` (an export is drawing the same film on another thread).
+ * A new `film` while playing restarts from 0, and `onEnd` fires again at its end.
  */
 export function FilmPlayer({
-  scene,
-  assets,
+  film,
   height,
   playing,
   paused,
   onEnd,
 }: {
-  scene: Scene;
-  assets: Assets;
+  film: AnyFilm;
   height: number;
   playing: boolean;
   paused: boolean;
@@ -67,9 +63,9 @@ export function FilmPlayer({
     const timer = setTimeout(() => {
       mode.value = HELD;
       onEndRef.current?.();
-    }, scene.durationMs);
+    }, film.durationMs);
     return () => clearTimeout(timer);
-  }, [running, still, scene, clock, startAt, mode]);
+  }, [running, still, film, clock, startAt, mode]);
 
   const picture = useDerivedValue(() => {
     const recorder = Skia.PictureRecorder();
@@ -79,16 +75,16 @@ export function FilmPlayer({
       const m = mode.value;
       const elapsed = clock.value - startAt.value;
       let t = 0;
-      if (m === HELD || (m === RUNNING && elapsed >= scene.durationMs)) t = scene.input.timeline.doneAt;
+      if (m === HELD || (m === RUNNING && elapsed >= film.durationMs)) t = film.restAt;
       else if (m === RUNNING) t = elapsed;
       try {
-        drawFrame(canvas, scene, frameAt(scene, t), assets);
+        drawAnyFilm(canvas, film, t);
       } catch {
         // a frame that fails to draw is left empty
       }
     }
     return recorder.finishRecordingAsPicture();
-  }, [scene, assets, paused]);
+  }, [film, paused]);
 
   return (
     <View testID="film-player" style={{ width: boxWidth, height, backgroundColor: "#000", overflow: "hidden" }}>
