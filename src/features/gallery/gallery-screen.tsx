@@ -47,7 +47,7 @@ const GAP = 2;
 
 const keyExtractor = (item: GridItem) => item.key;
 const getItemType = (item: GridItem) => item.kind;
-// Chapter headers, heroes and quotes take the whole row.
+// Chapter headers, heroes and quote rows (a cell plus its text) take the whole row; a quote row is one cell tall.
 const overrideItemLayout = (layout: { span?: number }, item: GridItem) => {
   if (item.kind !== "photo") layout.span = COLUMNS;
 };
@@ -205,7 +205,20 @@ export function GalleryScreen({
       const { photo } = item;
       const own = revealed && !!me && photo.authorUserId === me.id;
       if (item.kind === "quote")
-        return <QuoteRow photo={photo} timeZone={timeZone} selecting={selecting} selected={selected.has(photo.id)} onPress={onCellPress} />;
+        return (
+          <QuoteRow
+            photo={photo}
+            token={token}
+            size={size}
+            timeZone={timeZone}
+            selecting={selecting}
+            selected={selected.has(photo.id)}
+            own={own}
+            onPress={onCellPress}
+            onToggleFeatured={onToggleFeatured}
+            onOwnAction={onOwnAction}
+          />
+        );
       if (item.kind === "hero")
         return (
           <View style={styles.hero}>

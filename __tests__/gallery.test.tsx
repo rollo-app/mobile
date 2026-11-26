@@ -251,6 +251,22 @@ describe("Gallery", () => {
     await waitFor(() => expect(screen).toHavePathname("/photo/b"));
   });
 
+  it("shows the captioned photo next to its text, as a regular cell, once", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    await screen.findByRole("button", { name: /^Cita: el glaciar/ });
+    expect(screen.getAllByTestId("gallery-thumb-b")).toHaveLength(1);
+  });
+
+  it("selects the photo when its text is pressed while selecting", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(two());
+    await open();
+    await fireEvent.press(await screen.findByRole("button", { name: "Seleccionar" }));
+    await fireEvent.press(screen.getByRole("button", { name: /^Cita: el glaciar/ }));
+    expect(screen.getByRole("button", { name: "Guardar (1)" })).toBeVisible();
+    expect(screen).not.toHavePathname("/photo/b");
+  });
+
   it("filters by tapping a face and back with Todos", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
