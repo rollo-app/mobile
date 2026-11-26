@@ -1,6 +1,6 @@
 # Recorrido en video: exportar y compartir — diseño
 
-Fecha: 2026-11-26 · Estado: **aprobado por el dueño (2026-11-26)**. Dos puntos esperan una prueba en su iPhone (ver "Pendiente de probar"). Plan del primer paso: `docs/superpowers/plans/2026-11-26-recorrido-video-modulo-y-exportacion.md`.
+Fecha: 2026-11-26 · Estado: **aprobado por el dueño (2026-11-26)**. Dos puntos esperan una prueba en su iPhone (ver "Pendiente de probar"). Plan del primer paso: `docs/superpowers/plans/2026-11-26-recorrido-video-modulo-y-exportacion.md`. Paso 2 (motor de verdad y "Recorrido" en Compartir): `docs/superpowers/plans/2026-11-26-recorrido-motor-y-compartir.md`, implementado en la rama; falta que el dueño lo pruebe en su iPhone. Por ahora el video exportado usa las miniaturas de las fotos (~800 px), no la versión de visualización reducida.
 
 Es la tercera pieza de "Compartir" que anticipaba `2026-11-25-compartir-en-stories-design.md`. El prototipo vive en el worktree `mobile-revelado` (rama `spike/mapa-se-revela`, sin commitear, descartable): `src/features/journey/`.
 
