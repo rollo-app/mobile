@@ -571,14 +571,14 @@ describe("Compartir: Recorrido", () => {
       story.instagramStoriesAvailable.mockResolvedValue(true);
     });
 
-    it("offers Afiche next to Recorrido on a roll with a route", async () => {
+    it("offers Afiche before Recorrido on a roll with a route", async () => {
       await openFilm();
-      const labels = ["Collage", "Recorrido", "Afiche"].map((name) => screen.getByRole("button", { name }));
+      const labels = ["Collage", "Afiche", "Recorrido"].map((name) => screen.getByRole("button", { name }));
       expect(labels).toHaveLength(3);
       expect(screen.getByRole("button", { name: "Afiche" })).toBeVisible();
-      // Relative order in the control: Collage, Recorrido, Afiche.
+      // Relative order in the control: the two images first (Collage, Afiche), then the videos.
       const names = screen.getAllByRole("button").map((b) => b.props.accessibilityLabel).filter((n) => ["Collage", "Recorrido", "Afiche"].includes(n));
-      expect(names).toEqual(["Collage", "Recorrido", "Afiche"]);
+      expect(names).toEqual(["Collage", "Afiche", "Recorrido"]);
     });
 
     it("does not offer Afiche without a route", async () => {

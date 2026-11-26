@@ -105,7 +105,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const canSheet = videos.includes("sheet");
   const sheetPhotos = useMemo(() => sheetCandidates(photos), [photos]);
   const sheet = useMemo(() => sheetPick(sheetPhotos, sheetChoices), [sheetPhotos, sheetChoices]);
-  const pieces = useMemo<SharePiece[]>(() => ["collage", ...(canFilm ? (["route"] as const) : []), ...(canPoster ? (["poster"] as const) : []), ...(canSheet ? (["sheet"] as const) : [])], [canFilm, canPoster, canSheet]);
+  // The two still images first (Collage, Afiche), then the two videos.
+  const pieces = useMemo<SharePiece[]>(() => ["collage", ...(canPoster ? (["poster"] as const) : []), ...(canFilm ? (["route"] as const) : []), ...(canSheet ? (["sheet"] as const) : [])], [canFilm, canPoster, canSheet]);
   // A film that is no longer offered falls back to Collage; "journey" with no route lands on the summary, as it always did.
   const selected: SharePiece = pieces.includes(picked) ? picked : picked === "route" && canSheet ? "sheet" : "collage";
   const journeyOn = selected !== "collage";

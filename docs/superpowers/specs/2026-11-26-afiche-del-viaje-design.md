@@ -41,7 +41,7 @@ Exactamente los rollos que tienen Recorrido: viaje (no evento), revelado, no pri
 
 ## Dónde vive
 
-Un segmento más en "Compartir": **Collage | Recorrido | Afiche | Resumen**, visible solo cuando el rollo tiene Recorrido. Muestra la vista previa del afiche y las mismas píldoras que el collage: **Instagram** (el afiche va como fondo de la historia, a pantalla completa), **WhatsApp** y **Más opciones**. No hay "Guardar en Fotos" (el collage tampoco lo ofrece; se llega por "Más opciones").
+Un segmento más en "Compartir": **Collage | Afiche | Recorrido | Resumen** (primero las dos imágenes, después los dos videos; *dueño, 2026-11-26*), visible solo cuando el rollo tiene Recorrido. Muestra la vista previa del afiche y las mismas píldoras que el collage: **Instagram** (el afiche va como fondo de la historia, a pantalla completa), **WhatsApp** y **Más opciones**. No hay "Guardar en Fotos" (el collage tampoco lo ofrece; se llega por "Más opciones").
 
 Usa las mismas fotos que el Recorrido: si el usuario eligió fotos para el video, el afiche sale de esas. No tiene selector propio.
 
@@ -83,7 +83,6 @@ Las reglas del Recorrido, sin excepciones:
 ## Decisiones mías (no del dueño)
 
 - "Lugares" cuenta paradas, no ciudades distintas.
-- Orden de segmentos: Afiche al lado de Recorrido.
 - Si no se consigue el nombre de una ciudad (sin conexión al geocodificar), el afiche sale igual, sin ese nombre.
 - Pines que se pisan (paradas muy cercanas en un viaje largo) se dibujan en orden, el último arriba, como en el video.
 
