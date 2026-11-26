@@ -3,6 +3,11 @@ import * as Clipboard from "expo-clipboard";
 import { act, fireEvent, renderRouter, screen, waitFor } from "expo-router/testing-library";
 import { Text } from "react-native";
 import { setCollageSelection } from "@/features/share/collage-selection";
+import * as filmExport from "@/features/share/film-export";
+import { setFilmSelection } from "@/features/share/film-selection";
+import * as shareVideo from "@/features/share/share-video";
+import * as filmHook from "@/features/journey/use-film";
+import { cancelVideo } from "../modules/rollo-video";
 import "@/test/reanimated";
 import * as composeStillModule from "@/features/share/compose-still";
 import * as renderCollageModule from "@/features/share/render-collage";
@@ -28,6 +33,20 @@ jest.mock("@/features/share/share-story", () => ({
   shareMore: jest.fn(),
 }));
 jest.mock("@/features/share/asset-uri", () => ({ assetUri: jest.fn(async (m: unknown) => `file:///assets/${(m as { testUri: string }).testUri.split("/").pop()}`) }));
+let mockVideoAvailable = true;
+jest.mock("../modules/rollo-video", () => ({
+  get videoAvailable() {
+    return mockVideoAvailable;
+  },
+  cancelVideo: jest.fn(),
+  shareVideoToInstagram: jest.fn(),
+}));
+jest.mock("@/features/share/share-video", () => ({
+  saveVideo: jest.fn(),
+  shareVideoMore: jest.fn(),
+  shareVideoToInstagramApp: jest.fn(),
+  instagramRoute: jest.requireActual("@/features/share/share-video").instagramRoute,
+}));
 const trips = jest.mocked(tripActions);
 const collage = jest.mocked(renderCollageModule.renderCollageCard);
 const invite = jest.mocked(renderInviteModule.renderInviteCard);
@@ -101,7 +120,7 @@ const item = (id: string, over: Partial<tripActions.Feed["items"][number]> = {})
 
 const feed = (items: tripActions.Feed["items"], revealed = true): tripActions.Feed => ({ revealed, revealAt: Date.now() - DAY, items, nextCursor: null });
 
-async function open(kind: "collage" | "invite", d = detail(), items = [item("a"), item("b")]) {
+async function open(kind: "collage" | "invite" | "journey", d = detail(), items = [item("a"), item("b")]) {
   trips.fetchTrip.mockResolvedValue(d);
   trips.fetchFeedPage.mockResolvedValue(feed(items, d.trip.revealed));
   await renderRouter({ ...routes, "share-pick": () => <Text>pick stub</Text> }, { initialUrl: `/share-story?tripId=${SUR}&kind=${kind}` });
@@ -110,6 +129,8 @@ async function open(kind: "collage" | "invite", d = detail(), items = [item("a")
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  mockVideoAvailable = true;
+  setFilmSelection(SUR, []);
   setCollageSelection(SUR, []);
   for (const mock of Object.values(trips)) (mock as Partial<jest.Mock>).mockReset?.();
   await signInAs({ trips: [tripSummary(SUR, "Viaje al sur")] });
@@ -471,3 +492,221 @@ describe("Compartir screen", () => {
     expect(Burnt.toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Link copiado" }));
   });
 });
+
+describe("Compartir: Recorrido", () => {
+  const useFilm = jest.mocked(filmHook.useFilm);
+  const exportFile = jest.mocked(filmExport.exportFilmToFile);
+  const video = jest.mocked(shareVideo);
+  const FILE = { uri: "file:///cache/rollo-recorrido.mp4", bytes: 1000, frames: 30 };
+  const readyFilm = (version = "v1", durationMs = 30_000) =>
+    ({ status: "ready", scene: {}, assets: {}, stops: [], photos: [], durationMs, version }) as unknown as filmHook.Film;
+
+  // Two places far apart, so the share cut gives two stops.
+  const at = (id: string, lat: number, lng: number) => item(id, { lat, lng });
+  const TWO_PLACES = [at("a", -41.13, -71.31), at("b", -41.14, -71.32), at("c", -42.9, -71.3), at("d", -42.91, -71.31)];
+  const revealed = (over: Partial<tripActions.Trip> = {}) => detail({ revealed: true, ...over });
+
+  async function openFilm(d = revealed(), items = TWO_PLACES, kind: "collage" | "journey" = "collage") {
+    await open(kind, d, items);
+    await screen.findByRole("button", { name: kind === "collage" ? "Instagram" : "Más opciones" });
+  }
+  async function toRecorrido() {
+    await fireEvent.press(await screen.findByRole("button", { name: "Recorrido" }));
+  }
+
+  beforeEach(() => {
+    useFilm.mockReset();
+    useFilm.mockReturnValue(readyFilm());
+    exportFile.mockReset();
+    exportFile.mockResolvedValue(FILE);
+    video.saveVideo.mockResolvedValue(undefined);
+    video.shareVideoMore.mockResolvedValue(undefined);
+    video.shareVideoToInstagramApp.mockResolvedValue("stories");
+  });
+
+  it("shows Collage | Recorrido on a revealed roll with a route, opening on Collage with no film loaded", async () => {
+    await openFilm();
+    expect(screen.getByRole("button", { name: "Collage" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Recorrido" })).toBeVisible();
+    expect(screen.queryByTestId("film-player")).toBeNull();
+    for (const call of useFilm.mock.calls) expect(call[0].enabled).toBe(false);
+  });
+
+  it.each([
+    ["an event", () => revealed({ type: "event" }), TWO_PLACES, () => filesReady()],
+    ["a private roll", () => revealed({ featuringDisabled: true }), TWO_PLACES, () => screen.findByText(/es privado/)],
+    ["a roll with a single place", () => revealed(), [at("a", -41.13, -71.31), at("b", -41.14, -71.32)], () => filesReady()],
+  ])("%s shows no control", async (_name, make, items, settled) => {
+    await open("collage", make(), items as tripActions.Feed["items"]);
+    // The screen has decided what to show (the collage, or the private note) before we look for the control.
+    await settled();
+    expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
+  });
+
+  it("shows no control when the build has no video module", async () => {
+    mockVideoAvailable = false;
+    await open("collage", revealed(), TWO_PLACES);
+    await filesReady();
+    expect(screen.queryByRole("button", { name: "Recorrido" })).toBeNull();
+  });
+
+  it("kind=journey opens on Recorrido", async () => {
+    await openFilm(revealed(), TWO_PLACES, "journey");
+    expect(screen.getByTestId("film-player")).toBeVisible();
+  });
+
+  it("Recorrido: shows the player, the three pills, and Otra versión asks useFilm for another seed", async () => {
+    await openFilm();
+    await toRecorrido();
+    expect(await screen.findByTestId("film-player")).toHaveProp("accessibilityLabel", "playing");
+    expect(screen.getByRole("button", { name: "Instagram" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Guardar video" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Más opciones" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Oscuro" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "WhatsApp" })).toBeNull();
+    const before = useFilm.mock.calls.at(-1)![0].seed;
+    expect(before).toBe(1);
+    await fireEvent.press(screen.getByRole("button", { name: "Otra versión" }));
+    expect(useFilm.mock.calls.at(-1)![0].seed).not.toBe(before);
+    expect(useFilm.mock.calls.at(-1)![0].enabled).toBe(true);
+  });
+
+  it("Recorrido: the strip's plus opens the film picker", async () => {
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Elegir fotos" }));
+    expect(screen).toHavePathname("/share-pick");
+    expect(screen).toHaveSearchParams({ tripId: SUR, kind: "journey" });
+  });
+
+  it("Guardar video exports once with the player paused, saves, and Más opciones reuses the file", async () => {
+    let finish!: (file: typeof FILE) => void;
+    exportFile.mockImplementationOnce(
+      (_film, _input, options) =>
+        new Promise((resolve) => {
+          options.onProgress(21, 50);
+          finish = resolve;
+        }),
+    );
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    expect(await screen.findByText("Armando el video… 42 %")).toBeVisible();
+    expect(screen.getByTestId("film-cancel")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Guardar video" })).toBeNull();
+    expect(screen.getByTestId("film-player")).toHaveProp("accessibilityLabel", "paused");
+    await act(async () => finish(FILE));
+    await waitFor(() => expect(video.saveVideo).toHaveBeenCalledWith(FILE.uri));
+    expect(Burnt.toast).toHaveBeenCalledWith({ title: "Guardado en Fotos", preset: "done" });
+    expect(exportFile).toHaveBeenCalledTimes(1);
+    expect(exportFile.mock.calls[0]![1]).toEqual({ tripId: SUR });
+
+    await fireEvent.press(await screen.findByRole("button", { name: "Más opciones" }));
+    await waitFor(() => expect(video.shareVideoMore).toHaveBeenCalledWith(FILE.uri));
+    expect(exportFile).toHaveBeenCalledTimes(1);
+  });
+
+  it("Instagram by the library route leaves the note until the version changes", async () => {
+    video.shareVideoToInstagramApp.mockResolvedValue("library");
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Instagram" }));
+    expect(await screen.findByText("Lo guardamos en tus fotos. Elegilo en tu historia.")).toBeVisible();
+    expect(video.shareVideoToInstagramApp).toHaveBeenCalledWith(FILE.uri, 30_000);
+    useFilm.mockReturnValue(readyFilm("v2"));
+    await fireEvent.press(screen.getByRole("button", { name: "Otra versión" }));
+    expect(screen.queryByText("Lo guardamos en tus fotos. Elegilo en tu historia.")).toBeNull();
+  });
+
+  /** An export that waits, and ends the way the real one does when cancelled. */
+  function hangingExport() {
+    let options!: Parameters<typeof filmExport.exportFilmToFile>[2];
+    exportFile.mockImplementationOnce(
+      (_film, _input, o) =>
+        new Promise((resolve) => {
+          options = o;
+          const timer = setInterval(() => {
+            if (o.isCancelled()) {
+              clearInterval(timer);
+              cancelVideo();
+              resolve(null);
+            }
+          }, 5);
+        }),
+    );
+    return () => options;
+  }
+
+  it("Cancelar during the export cancels the video and brings the pills back", async () => {
+    hangingExport();
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    await fireEvent.press(await screen.findByTestId("film-cancel"));
+    expect(await screen.findByRole("button", { name: "Guardar video" })).toBeVisible();
+    await waitFor(() => expect(cancelVideo).toHaveBeenCalled());
+    expect(video.saveVideo).not.toHaveBeenCalled();
+    expect(screen.getByTestId("film-player")).toHaveProp("accessibilityLabel", "playing");
+  });
+
+  it("changing the selection during an export cancels it", async () => {
+    const getOptions = hangingExport();
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    await screen.findByText(/Armando el video…/);
+    useFilm.mockReturnValue(readyFilm("v2"));
+    await act(async () => setFilmSelection(SUR, ["a", "c"]));
+    expect(await screen.findByRole("button", { name: "Guardar video" })).toBeVisible();
+    expect(getOptions().isCancelled()).toBe(true);
+    await waitFor(() => expect(cancelVideo).toHaveBeenCalled());
+  });
+
+  it("an export failure says so with a retry", async () => {
+    exportFile.mockRejectedValueOnce(new Error("boom"));
+    await openFilm();
+    await toRecorrido();
+    await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
+    expect(await screen.findByText("No se pudo armar el video. Probá de nuevo.")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+    await waitFor(() => expect(video.saveVideo).toHaveBeenCalledWith(FILE.uri));
+  });
+
+  it("offline load error shows the connection message and a retry", async () => {
+    const retry = jest.fn();
+    useFilm.mockReturnValue({ status: "error", offline: true, retry });
+    await openFilm();
+    await toRecorrido();
+    expect(await screen.findByText("Para armar el recorrido hace falta conexión.")).toBeVisible();
+    await fireEvent.press(screen.getByRole("button", { name: "Reintentar" }));
+    expect(retry).toHaveBeenCalled();
+  });
+
+  it("another load error shows the generic message", async () => {
+    useFilm.mockReturnValue({ status: "error", offline: false, retry: jest.fn() });
+    await openFilm();
+    await toRecorrido();
+    expect(await screen.findByText("No se pudo armar el recorrido. Probá de nuevo.")).toBeVisible();
+  });
+
+  it("while loading, says it is building the film", async () => {
+    useFilm.mockReturnValue({ status: "loading", done: 0, total: 3 });
+    await openFilm();
+    await toRecorrido();
+    expect(await screen.findByText("Armando el recorrido…")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Guardar video" })).toBeNull();
+  });
+
+  it("no-route after a selection shows the line, keeps the strip and offers no pills", async () => {
+    await openFilm();
+    await toRecorrido();
+    await screen.findByRole("button", { name: "Guardar video" });
+    useFilm.mockReturnValue({ status: "no-route" });
+    await act(async () => setFilmSelection(SUR, ["a", "b"]));
+    expect(await screen.findByText("Con estas fotos no hay recorrido: elegí fotos de al menos dos lugares.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Guardar video" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Elegir fotos" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Recorrido" })).toBeVisible();
+  });
+});
+

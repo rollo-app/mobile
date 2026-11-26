@@ -4,15 +4,21 @@ import { router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { localDay } from "@/features/capture/quota";
+import { filmBlocked, filmCandidates, filmStopCount } from "@/features/journey/film-photos";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
 import { memberTotal } from "@/features/trips/member-total";
 import { useFeed } from "@/features/trips/use-feed";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { ErrorText, Footnote, Loading } from "@/ui/components";
+import { videoAvailable } from "../../../modules/rollo-video";
 import { colors, spacing, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
+import { useFilmSelection } from "./film-selection";
+import { JourneyShare } from "./journey-share";
+import { ModeChips, type ShareMode } from "./mode-chips";
 import { canShareInvite, inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
@@ -36,12 +42,22 @@ function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string |
   return detail.trip.revealed ? "Este rollo ya se reveló: ya no se puede invitar a más gente." : "Este rollo está lleno: no se puede invitar a más gente.";
 }
 
+/** A new random seed for the film, different from the current one. */
+function nextSeed(current: number): number {
+  let next = current;
+  while (next === current) next = 1 + Math.floor(Math.random() * 2_147_483_646);
+  return next;
+}
+
 /** "Compartir": builds the Stories image (collage or invitation), previews it and offers Instagram Stories, the system sheet and, for the collage, choosing the photos. */
-export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" }) {
+export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" | "journey" }) {
   const { detail, error: detailError } = useTripDetail(tripId);
   const { photos, token, complete, loadAll } = useRevealedPhotos(tripId);
   const { feed, loading: feedLoading, error: feedError, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
   const selection = useCollageSelection(tripId);
+  const filmSelection = useFilmSelection(tripId);
+  const [mode, setMode] = useState<ShareMode>(kind === "journey" ? "journey" : "collage");
+  const [filmSeed, setFilmSeed] = useState(1);
   const [style, setStyle] = useState(DEFAULT_STYLE);
   const [loadedAll, setLoadedAll] = useState(false);
   const [instagram, setInstagram] = useState(false);
@@ -49,7 +65,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const [shareFailed, setShareFailed] = useState(false);
   const insets = useSafeAreaInsets();
   const [area, setArea] = useState({ width: 0, height: 0 });
-  const isCollage = kind === "collage";
+  // The collage tab and the film tab both pick from the whole roll; only the invitation is its own thing.
+  const isCollage = kind !== "invite";
 
   useEffect(() => {
     let active = true;
@@ -73,14 +90,19 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const thumbhashes = useMemo(() => feed?.items.map((i) => i.thumbhash) ?? [], [feed]);
 
   // The list offers Compartir on every roll without knowing these: say why there's nothing to share instead of drawing a card.
-  const blocked = detail === null ? null : blockedReason(detail, kind);
+  const blocked = detail === null ? null : blockedReason(detail, isCollage ? "collage" : "invite");
   const ready = detail !== null && !blocked && (isCollage ? complete || loadedAll : !feedLoading);
   // No photos because the feed failed to load is an error with a retry, not "no photos".
   const feedFailed = isCollage && !!feedError;
   const empty = isCollage && ready && candidates.length === 0 && !feedFailed;
+  const filmPool = useMemo(() => filmCandidates(photos), [photos]);
+  // Recorrido is offered only where the roll has a film (a route of at least two stops) and the build has the video module.
+  const canFilm =
+    isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && filmBlocked(detail, filmStopCount(filmPool, localDay(detail.trip.startsAt, detail.trip.timezone))) === null;
+  const journeyOn = mode === "journey" && canFilm;
   const stripPhotos = useMemo(() => (isCollage ? collagePhotos(candidates, selection, SEED) : []), [isCollage, candidates, selection]);
   const build = useMemo(() => {
-    if (!detail || !ready || empty || feedFailed) return null;
+    if (!detail || !ready || empty || feedFailed || journeyOn) return null;
     const { trip } = detail;
     if (isCollage) {
       const caption = collageCaption({ startsAt: trip.startsAt, endsAt: trip.endsAt, timeZone: trip.timezone, people: memberTotal(detail) });
@@ -95,10 +117,10 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
         swatches: inviteSwatches(thumbhashes),
         style,
       });
-  }, [detail, ready, empty, feedFailed, isCollage, candidates, selection, thumbhashes, style]);
+  }, [detail, ready, empty, feedFailed, journeyOn, isCollage, candidates, selection, thumbhashes, style]);
 
-  const version = `${tripId}:${kind}:${isCollage ? selection.join(",") : ""}`;
-  const assets = useStoryAssets(build, version, kind, style);
+  const version = `${tripId}:${isCollage ? "collage" : "invite"}:${isCollage ? selection.join(",") : ""}`;
+  const assets = useStoryAssets(build, version, isCollage ? "collage" : "invite", style);
 
   /** The invitation has no link inside the image: it travels with the share. `copy`: also in the clipboard (the system sheet doesn't touch it). */
   async function share(send: (link: string | undefined) => Promise<void>, copy: boolean) {
@@ -163,14 +185,27 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <RetryPill onPress={() => void refetchFeed()} />
         </View>
       )}
-      {assets.error && (
+      {!journeyOn && assets.error && (
         <View style={styles.failure}>
           <ErrorText>No se pudo armar la imagen. Probá de nuevo.</ErrorText>
           <RetryPill onPress={assets.retry} />
         </View>
       )}
-      {!detailError && !blocked && !empty && !feedFailed && !assets.error && build === null && <Loading />}
-      {build !== null && !assets.error && (
+      {canFilm && <ModeChips value={mode} onChange={setMode} />}
+      {journeyOn && detail !== null && (
+        <JourneyShare
+          tripId={tripId}
+          detail={detail}
+          candidates={filmPool}
+          selection={filmSelection}
+          token={token}
+          seed={filmSeed}
+          onOtherVersion={() => setFilmSeed(nextSeed)}
+          instagram={instagram}
+        />
+      )}
+      {!journeyOn && !detailError && !blocked && !empty && !feedFailed && !assets.error && build === null && <Loading />}
+      {!journeyOn && build !== null && !assets.error && (
         <>
           <View style={styles.previewArea} onLayout={onPreviewArea}>
             <StoryPreview style={style} card={assets.card} height={previewHeight} />

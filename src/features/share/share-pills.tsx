@@ -60,6 +60,17 @@ export function SharePills({
   );
 }
 
+/** The pills of the Recorrido: Instagram (primary, only when available), Guardar video and Más opciones. */
+export function VideoPills({ instagram, onInstagram, onSave, onMore }: { instagram: boolean; onInstagram: () => void; onSave: () => void; onMore: () => void }) {
+  return (
+    <View style={styles.row}>
+      {instagram && <Pill label="Instagram" primary logo="instagram" disabled={false} onPress={onInstagram} />}
+      <Pill label="Guardar video" disabled={false} onPress={onSave} />
+      <Pill label="Más opciones" disabled={false} onPress={onMore} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   column: { gap: 8 },
   row: { flexDirection: "row", justifyContent: "center", gap: 6 },

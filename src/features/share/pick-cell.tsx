@@ -15,16 +15,18 @@ export type PickCellProps = {
   order: number | null;
   /** The selection is full and this photo isn't in it. */
   dimmed: boolean;
+  /** Show the position number; false shows a check instead (the order does not matter). */
+  numbered?: boolean;
   onPress: (id: string) => void;
 };
 
 /** One candidate in the picker grid: memoized, it re-renders only when its own number or dimming changes. */
-export const PickCell = memo(function PickCell({ photo, index, total, token, size, order, dimmed, onPress }: PickCellProps) {
+export const PickCell = memo(function PickCell({ photo, index, total, token, size, order, dimmed, numbered = true, onPress }: PickCellProps) {
   return (
     <Pressable
       testID={`pick-cell-${photo.id}`}
       accessibilityRole="button"
-      accessibilityLabel={`Foto ${index + 1} de ${total}${order !== null ? `, elegida ${order}` : ""}`}
+      accessibilityLabel={`Foto ${index + 1} de ${total}${order !== null ? (numbered ? `, elegida ${order}` : ", elegida") : ""}`}
       accessibilityState={{ selected: order !== null }}
       onPress={() => onPress(photo.id)}
       style={[styles.cell, { width: size, height: size }]}
@@ -44,7 +46,7 @@ export const PickCell = memo(function PickCell({ photo, index, total, token, siz
       {order !== null && (
         <View style={styles.badge}>
           <Text testID={`pick-badge-${photo.id}`} style={[type.caption, styles.badgeText]}>
-            {order}
+            {numbered ? order : "✓"}
           </Text>
         </View>
       )}

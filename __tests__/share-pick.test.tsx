@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { act, fireEvent, renderRouter, screen } from "expo-router/testing-library";
 import { collageCandidates, pickCollage } from "@/features/share/collage";
 import { getCollageSelection, setCollageSelection } from "@/features/share/collage-selection";
+import { getFilmSelection, setFilmSelection } from "@/features/share/film-selection";
 import { SharePickScreen } from "@/features/share/share-pick-screen";
 import * as tripActions from "@/features/trips/actions";
 import { signInAs, tripSummary } from "@/test/account";
@@ -190,3 +191,45 @@ describe("Elegir fotos", () => {
     expect(screen).toHavePathname("/blocked");
   });
 });
+
+describe("Elegir fotos for the recorrido", () => {
+  const located = (id: string) => ({ ...item(id), lat: -41.13, lng: -71.31 });
+  const many = Array.from({ length: 17 }, (_, i) => `q${i + 1}`);
+
+  async function openJourney() {
+    setCollageSelection(SUR, []);
+    setFilmSelection(SUR, []);
+    trips.fetchFeedPage.mockResolvedValue({
+      revealed: true,
+      revealAt: Date.now() - 1000,
+      items: [...many.map(located), item("nogeo")],
+      nextCursor: null,
+    });
+    await renderRouter({ ...routes, "share-pick": () => <SharePickScreen tripId={SUR} kind="journey" /> }, { initialUrl: "/blocked" });
+    await act(async () => router.push("/share-pick"));
+    await screen.findByTestId("pick-cell-q1");
+  }
+
+  it("does not offer a photo without coordinates", async () => {
+    await openJourney();
+    expect(screen.queryByTestId("pick-cell-nogeo")).toBeNull();
+  });
+
+  it("refuses the 16th tap and writes the film selection, not the collage's", async () => {
+    await openJourney();
+    await screen.findByText("En el recorrido · 15 de 15");
+    // Starts from the photos the film shows (15 at most): drop one, then the cap lets exactly one more in.
+    for (const id of many.slice(0, 15)) expect(badge(id)).toHaveTextContent("✓");
+    await fireEvent.press(cell("q16"));
+    expect(badge("q16")).toBeNull();
+    expect(haptics.impactAsync).toHaveBeenCalledTimes(1);
+    await fireEvent.press(cell("q1"));
+    await fireEvent.press(cell("q16"));
+    expect(badge("q16")).toHaveTextContent("✓");
+    await fireEvent.press(screen.getByRole("button", { name: "Listo" }));
+    expect(getFilmSelection(SUR)).toEqual(expect.arrayContaining(["q16", "q2"]));
+    expect(getFilmSelection(SUR)).toHaveLength(15);
+    expect(getCollageSelection(SUR)).toEqual([]);
+  });
+});
+

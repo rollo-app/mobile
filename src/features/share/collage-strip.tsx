@@ -9,7 +9,7 @@ const SIZE = 52;
 const SHOWN = 4;
 
 /** The first 4 photos the collage uses right now, numbered, plus a "+" to change them. Tappable only when `onPress` is given. */
-export function CollageStrip({ photos, token, onPress }: { photos: RevealedPhoto[]; token: string | null; onPress: (() => void) | null }) {
+export function CollageStrip({ photos, token, onPress, subject = "collage" }: { photos: RevealedPhoto[]; token: string | null; onPress: (() => void) | null; subject?: "collage" | "recorrido" }) {
   const count = photos.length;
   const extra = count - SHOWN;
   const content = (
@@ -48,7 +48,7 @@ export function CollageStrip({ photos, token, onPress }: { photos: RevealedPhoto
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Elegir fotos"
-      accessibilityHint={count === 1 ? "El collage tiene 1 foto" : `El collage tiene ${count} fotos`}
+      accessibilityHint={`${subject === "collage" ? "El collage" : "El recorrido"} tiene ${count === 1 ? "1 foto" : `${count} fotos`}`}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
