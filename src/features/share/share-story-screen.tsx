@@ -6,6 +6,7 @@ import { type LayoutChangeEvent, StyleSheet, Text, useColorScheme, View } from "
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { localDay } from "@/features/capture/quota";
 import { filmBlocked, filmCandidates, filmStopCount } from "@/features/journey/film-photos";
+import { sheetBlocked, sheetCandidates, sheetPick } from "@/features/journey/sheet/sheet-photos";
 import { SegmentedControl } from "@expo/ui/community/segmented-control";
 import { useRevealedPhotos } from "@/features/media/revealed";
 import type { TripDetail } from "@/features/trips/actions";
@@ -18,7 +19,8 @@ import { colors, spacing, tintHex, type } from "@/ui/theme";
 import { collageCandidates, collageCaption } from "./collage";
 import { collagePhotos, useCollageSelection } from "./collage-selection";
 import { useFilmSelection } from "./film-selection";
-import { JourneyShare } from "./journey-share";
+import { FilmShare } from "./journey-share";
+import { useSheetChoices } from "./sheet-selection";
 import { canShareInvite, inviteCaption, inviteLink, inviteSwatches, whatsAppInviteMessage } from "./invite";
 import { renderCollageCard } from "./render-collage";
 import { assetUri } from "./asset-uri";
@@ -35,8 +37,7 @@ import { RetryPill } from "./retry-pill";
 /** Fixed seed: with no selection, the collage is always the same random pick. */
 const SEED = 1;
 
-const MODES = ["Collage", "Recorrido"];
-type ShareMode = "collage" | "journey";
+type ShareMode = "collage" | "film";
 
 /** Why this roll has nothing to share as `kind`, or null if it can be shared. */
 function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string | null {
@@ -52,8 +53,9 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const { feed, loading: feedLoading, error: feedError, refetch: refetchFeed } = useFeed(tripId, { mode: "all" });
   const selection = useCollageSelection(tripId);
   const filmSelection = useFilmSelection(tripId);
+  const sheetChoices = useSheetChoices(tripId);
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
-  const [mode, setMode] = useState<ShareMode>(kind === "journey" ? "journey" : "collage");
+  const [mode, setMode] = useState<ShareMode>(kind === "journey" ? "film" : "collage");
   // Drawn once per visit: the preview and the exported video of one visit always match, and nothing changes it.
   const [filmSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff) + 1);
   const [style, setStyle] = useState(DEFAULT_STYLE);
@@ -103,7 +105,13 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
     [filmPool, startsAt, timezone],
   );
   const canFilm = isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && filmBlocked(detail, poolStops) === null;
-  const journeyOn = mode === "journey" && canFilm;
+  // The summary film is the second piece only where there is no route.
+  const sheetPhotos = useMemo(() => sheetCandidates(photos), [photos]);
+  const sheet = useMemo(() => sheetPick(sheetPhotos, sheetChoices), [sheetPhotos, sheetChoices]);
+  const canSheet =
+    !canFilm && isCollage && videoAvailable && ready && !empty && !feedFailed && detail !== null && sheetBlocked(detail, sheet.cells.length) === null;
+  const secondKind = canFilm ? "route" : canSheet ? "sheet" : null;
+  const journeyOn = mode === "film" && secondKind !== null;
   const stripPhotos = useMemo(() => (isCollage ? collagePhotos(candidates, selection, SEED) : []), [isCollage, candidates, selection]);
   const build = useMemo(() => {
     if (!detail || !ready || empty || feedFailed || journeyOn) return null;
@@ -195,24 +203,19 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           <RetryPill onPress={assets.retry} />
         </View>
       )}
-      {canFilm && (
+      {secondKind !== null && (
         <SegmentedControl
-          values={MODES}
+          values={["Collage", secondKind === "route" ? "Recorrido" : "Resumen"]}
           tintColor={tintHex[scheme]}
           selectedIndex={journeyOn ? 1 : 0}
-          onValueChange={(v) => setMode(v === "Recorrido" ? "journey" : "collage")}
+          onValueChange={(v) => setMode(v === "Collage" ? "collage" : "film")}
         />
       )}
-      {journeyOn && detail !== null && (
-        <JourneyShare
-          tripId={tripId}
-          detail={detail}
-          candidates={filmPool}
-          selection={filmSelection}
-          token={token}
-          seed={filmSeed}
-          instagram={instagram}
-        />
+      {journeyOn && detail !== null && secondKind === "route" && (
+        <FilmShare kind="route" tripId={tripId} detail={detail} candidates={filmPool} selection={filmSelection} token={token} seed={filmSeed} instagram={instagram} />
+      )}
+      {journeyOn && detail !== null && secondKind === "sheet" && (
+        <FilmShare kind="sheet" tripId={tripId} detail={detail} pick={sheet} token={token} seed={filmSeed} instagram={instagram} />
       )}
       {!journeyOn && !detailError && !blocked && !empty && !feedFailed && !assets.error && build === null && <Loading />}
       {!journeyOn && build !== null && !assets.error && (
