@@ -1,4 +1,4 @@
-// The "Recorrido" half of Compartir: the film's preview, its photos, "Otra versión" and the export to a video.
+// The "Recorrido" half of Compartir: the film's preview, its photos and the export to a video. The arrangement is random (the screen draws one seed per visit) and not the user's to choose.
 import * as Burnt from "burnt";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -119,7 +119,6 @@ export function JourneyShare({
   selection,
   token,
   seed,
-  onOtherVersion,
   instagram,
 }: {
   tripId: string;
@@ -129,7 +128,6 @@ export function JourneyShare({
   selection: readonly string[];
   token: string | null;
   seed: number;
-  onOtherVersion: () => void;
   instagram: boolean;
 }) {
   const [area, setArea] = useState({ width: 0, height: 0 });
@@ -218,9 +216,6 @@ export function JourneyShare({
             </View>
           ) : (
             <>
-              <Pressable accessibilityRole="button" accessibilityLabel="Otra versión" onPress={onOtherVersion} style={({ pressed }) => [styles.other, pressed && styles.pressed]}>
-                <Text style={[type.footnote, styles.otherText]}>Otra versión</Text>
-              </Pressable>
               <VideoPills
                 instagram={instagram}
                 onInstagram={() => void exporter.start("instagram")}
@@ -253,8 +248,6 @@ const styles = StyleSheet.create({
   progressText: { color: colors.secondaryLabel, fontVariant: ["tabular-nums"] },
   cancel: { height: 40, paddingHorizontal: 18, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: colors.fill },
   cancelText: { fontWeight: "600", color: colors.label },
-  other: { alignSelf: "center", paddingVertical: 4, paddingHorizontal: 8 },
-  otherText: { fontWeight: "600", color: colors.tint },
   hint: { color: colors.secondaryLabel, textAlign: "center" },
   pressed: { opacity: 0.6 },
 });

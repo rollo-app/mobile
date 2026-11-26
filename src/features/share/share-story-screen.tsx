@@ -45,13 +45,6 @@ function blockedReason(detail: TripDetail, kind: "collage" | "invite"): string |
   return detail.trip.revealed ? "Este rollo ya se reveló: ya no se puede invitar a más gente." : "Este rollo está lleno: no se puede invitar a más gente.";
 }
 
-/** A new random seed for the film, different from the current one. */
-function nextSeed(current: number): number {
-  let next = current;
-  while (next === current) next = 1 + Math.floor(Math.random() * 2_147_483_646);
-  return next;
-}
-
 /** "Compartir": builds the Stories image (collage or invitation), previews it and offers Instagram Stories, the system sheet and, for the collage, choosing the photos. */
 export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "collage" | "invite" | "journey" }) {
   const { detail, error: detailError } = useTripDetail(tripId);
@@ -61,7 +54,8 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
   const filmSelection = useFilmSelection(tripId);
   const scheme = useColorScheme() === "dark" ? "dark" : "light";
   const [mode, setMode] = useState<ShareMode>(kind === "journey" ? "journey" : "collage");
-  const [filmSeed, setFilmSeed] = useState(1);
+  // Drawn once per visit: the preview and the exported video of one visit always match, and nothing changes it.
+  const [filmSeed] = useState(() => Math.floor(Math.random() * 0x7fffffff) + 1);
   const [style, setStyle] = useState(DEFAULT_STYLE);
   const [loadedAll, setLoadedAll] = useState(false);
   const [instagram, setInstagram] = useState(false);
@@ -217,7 +211,6 @@ export function ShareStoryScreen({ tripId, kind }: { tripId: string; kind: "coll
           selection={filmSelection}
           token={token}
           seed={filmSeed}
-          onOtherVersion={() => setFilmSeed(nextSeed)}
           instagram={instagram}
         />
       )}

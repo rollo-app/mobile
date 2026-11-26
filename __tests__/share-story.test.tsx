@@ -556,7 +556,7 @@ describe("Compartir: Recorrido", () => {
     expect(screen.getByTestId("film-player")).toBeVisible();
   });
 
-  it("Recorrido: shows the player, the three pills, and Otra versión asks useFilm for another seed", async () => {
+  it("Recorrido: shows the player and the three pills, with no Otra versión and one stable random seed", async () => {
     await openFilm();
     await toRecorrido();
     expect(await screen.findByTestId("film-player")).toHaveProp("accessibilityLabel", "playing");
@@ -565,10 +565,13 @@ describe("Compartir: Recorrido", () => {
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Oscuro" })).toBeNull();
     expect(screen.queryByRole("button", { name: "WhatsApp" })).toBeNull();
-    const before = useFilm.mock.calls.at(-1)![0].seed;
-    expect(before).toBe(1);
-    await fireEvent.press(screen.getByRole("button", { name: "Otra versión" }));
-    expect(useFilm.mock.calls.at(-1)![0].seed).not.toBe(before);
+    expect(screen.queryByRole("button", { name: "Otra versión" })).toBeNull();
+    const seed = useFilm.mock.calls.at(-1)![0].seed;
+    expect(Number.isInteger(seed) && seed > 0).toBe(true);
+    // Re-rendering the same mount (a new selection) keeps the seed.
+    await act(async () => setFilmSelection(SUR, ["a", "c"]));
+    const seeds = useFilm.mock.calls.filter((c) => c[0].enabled).map((c) => c[0].seed);
+    expect(new Set(seeds)).toEqual(new Set([seed]));
     expect(useFilm.mock.calls.at(-1)![0].enabled).toBe(true);
   });
 
@@ -615,7 +618,7 @@ describe("Compartir: Recorrido", () => {
     expect(await screen.findByText("Lo guardamos en tus fotos. Elegilo en tu historia.")).toBeVisible();
     expect(video.shareVideoToInstagramApp).toHaveBeenCalledWith(FILE.uri, 30_000);
     useFilm.mockReturnValue(readyFilm("v2"));
-    await fireEvent.press(screen.getByRole("button", { name: "Otra versión" }));
+    await act(async () => setFilmSelection(SUR, ["a", "c"]));
     expect(screen.queryByText("Lo guardamos en tus fotos. Elegilo en tu historia.")).toBeNull();
   });
 
@@ -726,9 +729,9 @@ describe("Compartir: Recorrido", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Guardar video" }));
     await waitFor(() => expect(video.saveVideo).toHaveBeenCalledTimes(1));
     useFilm.mockReturnValue(readyFilm("v2"));
-    await fireEvent.press(screen.getByRole("button", { name: "Otra versión" }));
+    await act(async () => setFilmSelection(SUR, ["a", "c"]));
     useFilm.mockReturnValue(readyFilm("v1"));
-    await fireEvent.press(screen.getByRole("button", { name: "Otra versión" }));
+    await act(async () => setFilmSelection(SUR, ["a", "b", "c"]));
     await fireEvent.press(await screen.findByRole("button", { name: "Más opciones" }));
     await waitFor(() => expect(video.shareVideoMore).toHaveBeenCalledTimes(1));
     expect(exportFile).toHaveBeenCalledTimes(2);
