@@ -258,6 +258,22 @@ describe("Gallery", () => {
     expect(screen.getAllByTestId("gallery-thumb-b")).toHaveLength(1);
   });
 
+  it("a mirrored quote row opens the viewer from its text and from its photo", async () => {
+    mocked.fetchFeedPage.mockResolvedValue(
+      feed([
+        item("a", { takenAt: Date.parse("2027-01-12T15:00:00Z"), caption: "primera" }),
+        item("b", { day: "2027-01-13", takenAt: Date.parse("2027-01-13T16:00:00Z"), caption: "segunda" }),
+      ]),
+    );
+    await open();
+    await fireEvent.press(await screen.findByRole("button", { name: /^Cita: segunda/ }));
+    await waitFor(() => expect(screen).toHavePathname("/photo/b"));
+    router.back();
+    await waitFor(() => expect(screen).toHavePathname("/gallery"));
+    await fireEvent.press(await screen.findByTestId("gallery-thumb-b"));
+    await waitFor(() => expect(screen).toHavePathname("/photo/b"));
+  });
+
   it("selects the photo when its text is pressed while selecting", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();

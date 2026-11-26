@@ -211,6 +211,7 @@ export function GalleryScreen({
             token={token}
             size={size}
             timeZone={timeZone}
+            side={item.side}
             selecting={selecting}
             selected={selected.has(photo.id)}
             own={own}

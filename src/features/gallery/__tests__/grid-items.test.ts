@@ -107,6 +107,21 @@ describe("diaryItems", () => {
     expect(diaryItems([chapter("c1", photos)], 3).map(label)).toEqual(["C:c1", "p:a", "p:c", "q:b"]);
   });
 
+  it("quote rows alternate left and right across chapters, in order", () => {
+    const a = [rp("a1", { caption: "x" }), rp("a2")];
+    const b = [rp("b1", { caption: "x" }), rp("b2"), rp("b3"), rp("b4"), rp("b5", { caption: "y" }), rp("b6"), rp("b7"), rp("b8", { likeCount: 5 })];
+    const sides = diaryItems([chapter("c1", a), chapter("c2", b)], 3).flatMap((i) => (i.kind === "quote" ? [[i.photo.id, i.side]] : []));
+    expect(sides).toEqual([["a1", "left"], ["b1", "right"], ["b5", "left"]]);
+  });
+
+  it("a chapter without quotes does not consume a turn", () => {
+    const quoteless = [rp("n1"), rp("n2")];
+    const sides = diaryItems([chapter("c1", [rp("a", { caption: "x" })]), chapter("c2", quoteless), chapter("c3", [rp("b", { caption: "x" })])], 3).flatMap(
+      (i) => (i.kind === "quote" ? [i.side] : []),
+    );
+    expect(sides).toEqual(["left", "right"]);
+  });
+
   it("keys are unique across chapters", () => {
     const a = ids(6, "a").map((id) => rp(id, { caption: "x" }));
     const b = ids(6, "b").map((id) => rp(id, { caption: "y" }));

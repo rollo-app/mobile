@@ -5,7 +5,7 @@ import { pickHero, pickQuotes } from "./chapter-picks";
 export type GridItem =
   | { kind: "chapter"; key: string; chapter: Chapter }
   | { kind: "hero"; key: string; photo: RevealedPhoto }
-  | { kind: "quote"; key: string; photo: RevealedPhoto }
+  | { kind: "quote"; key: string; photo: RevealedPhoto; side: "left" | "right" }
   | { kind: "photo"; key: string; photo: RevealedPhoto; column: number };
 
 /** Where each quote row goes: after this many regular photos (a whole number of rows, or all of them). */
@@ -29,6 +29,8 @@ function quoteSlots(grid: RevealedPhoto[], quotes: RevealedPhoto[], columns: num
 /** The diary as one flat list: per chapter a header, its hero, then rows of photos; each quoted photo (up to two) leaves the grid and gets a row of its own (photo + caption) at its natural place snapped to a row boundary. */
 export function diaryItems(chapters: Chapter[], columns: number): GridItem[] {
   const items: GridItem[] = [];
+  // Quote rows alternate sides across the whole list (a chapter without quotes takes no turn).
+  let quoteCount = 0;
   for (const chapter of chapters) {
     items.push({ kind: "chapter", key: `chapter:${chapter.key}`, chapter });
     const hero = pickHero(chapter.photos);
@@ -43,7 +45,7 @@ export function diaryItems(chapters: Chapter[], columns: number): GridItem[] {
     const pushQuotesAt = (count: number) => {
       while (next < slots.length && slots[next]!.after === count) {
         const { photo } = slots[next++]!;
-        items.push({ kind: "quote", key: `quote:${photo.id}`, photo });
+        items.push({ kind: "quote", key: `quote:${photo.id}`, photo, side: quoteCount++ % 2 === 0 ? "left" : "right" });
       }
     };
     pushQuotesAt(0);
