@@ -3,12 +3,11 @@ import * as Network from "expo-network";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { localDay } from "@/features/capture/quota";
 import { memberColor } from "@/features/map/member-color";
-import { mediaSource, type RevealedPhoto } from "@/features/media/revealed";
-import { avatarUri } from "@/features/profile/avatar-style";
+import type { RevealedPhoto } from "@/features/media/revealed";
 import { fileId } from "@/features/share/file-id";
 import type { TripDetail } from "@/features/trips/actions";
 import type { AnyFilm } from "./any-film";
-import { filmCandidates } from "./film-photos";
+import { filmCandidates, toFilmPhoto } from "./film-photos";
 import { incomplete, layoutTexts, loadLayers, loadPhotos } from "./engine/assets";
 import type { Assets } from "./engine/draw";
 import { buildScene, sceneInput } from "./engine/scene";
@@ -23,24 +22,6 @@ export type Film =
   | { status: "ready"; film: AnyFilm; stops: Stop[]; photos: FilmPhoto[] };
 
 const DAY = 24 * 60 * 60 * 1000;
-
-function toFilmPhoto(p: RevealedPhoto, token: string): FilmPhoto | null {
-  if (p.lat === null || p.lng === null) return null;
-  const avatar = avatarUri(p.author.avatarUrl);
-  return {
-    id: p.id,
-    authorId: p.author.id,
-    authorName: p.author.name,
-    authorAvatar: avatar ? { uri: avatar } : null,
-    lat: p.lat,
-    lng: p.lng,
-    takenAt: p.takenAt,
-    day: p.day,
-    likeCount: p.likeCount,
-    thumb: mediaSource(p.thumbPath, token),
-    display: mediaSource(p.displayPath, token),
-  };
-}
 
 async function isOffline(): Promise<boolean> {
   try {
