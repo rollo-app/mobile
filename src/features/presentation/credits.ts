@@ -2,7 +2,7 @@ import type { RevealedPhoto } from "@/features/media/revealed";
 import { formatTime } from "@/features/trips/phase";
 import { dateFormatter } from "@/lib/intl";
 import { formatCount } from "./format";
-import { dayNumber, localDay } from "./story";
+import { dayNumber, localDay } from "./local-day";
 
 export type AwardKind = "firstLight" | "nightShift" | "script" | "locations" | "camera";
 export type Award = { kind: AwardKind; title: string; names: string[]; detail: string; photo: RevealedPhoto };

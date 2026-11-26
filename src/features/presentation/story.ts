@@ -1,7 +1,7 @@
 import type { RevealedPhoto } from "@/features/media/revealed";
 import { formatDate } from "@/features/trips/phase";
-import { dateFormatter } from "@/lib/intl";
 import { computeCredits, type Award } from "./credits";
+import { dayNumber, localDay } from "./local-day";
 
 export type StoryStats = {
   photos: number;
@@ -31,12 +31,6 @@ export const MAX_VIDEO_MS = 15_000;
 /** A day never lasts more than this many stories: past it, a selection of its best moments. */
 export const MAX_STORY_PER_DAY = 30;
 
-const DAY_MS = 86_400_000;
-export const localDay = (ms: number, timeZone: string) => dateFormatter("en-CA", { timeZone }).format(ms);
-export const dayNumber = (day: string) => {
-  const [y, m, d] = day.split("-").map(Number);
-  return Date.UTC(y!, m! - 1, d!) / DAY_MS;
-};
 
 const byTime = (a: RevealedPhoto, b: RevealedPhoto) => a.takenAt - b.takenAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
