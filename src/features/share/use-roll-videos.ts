@@ -4,13 +4,13 @@ import { useRevealedPhotos, type RevealedPhoto } from "@/features/media/revealed
 import type { TripDetail } from "@/features/trips/actions";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { videoAvailable } from "../../../modules/rollo-video";
-import { rollVideoCounts, rollVideos, type RollVideoKind } from "./roll-videos";
+import { rollHasPoster, rollVideoCounts, rollVideos, type RollVideoKind } from "./roll-videos";
 
 /**
- * The videos of a roll from data the caller already has (the share screen). `ready`: the whole feed is in; `feedFailed`: it could not be loaded.
- * The array keeps its identity while the answer doesn't change.
+ * The videos of a roll (and whether it has a poster) from data the caller already has (the share screen). `ready`: the whole feed is in; `feedFailed`: it could not be loaded.
+ * The stop counts are computed once for both answers; `videos` keeps its identity while its answer doesn't change.
  */
-export function useRollVideos(args: { detail: TripDetail | null; photos: RevealedPhoto[]; ready: boolean; feedFailed: boolean }): RollVideoKind[] {
+export function useRollPieces(args: { detail: TripDetail | null; photos: RevealedPhoto[]; ready: boolean; feedFailed: boolean }): { videos: RollVideoKind[]; poster: boolean } {
   const { detail, photos, ready, feedFailed } = args;
   const startsAt = detail?.trip.startsAt;
   const timezone = detail?.trip.timezone;
@@ -19,7 +19,14 @@ export function useRollVideos(args: { detail: TripDetail | null; photos: Reveale
     () => rollVideoCounts(photos, startsAt === undefined || timezone === undefined ? null : localDay(startsAt, timezone)),
     [photos, startsAt, timezone],
   );
-  return useMemo(() => rollVideos({ detail, videoAvailable, ready, feedFailed, ...counts }), [detail, ready, feedFailed, counts]);
+  const videos = useMemo(() => rollVideos({ detail, videoAvailable, ready, feedFailed, ...counts }), [detail, ready, feedFailed, counts]);
+  const poster = rollHasPoster({ detail, ready, feedFailed, poolStops: counts.poolStops });
+  return useMemo(() => ({ videos, poster }), [videos, poster]);
+}
+
+/** The videos of a roll from data the caller already has. The array keeps its identity while the answer doesn't change. */
+export function useRollVideos(args: { detail: TripDetail | null; photos: RevealedPhoto[]; ready: boolean; feedFailed: boolean }): RollVideoKind[] {
+  return useRollPieces(args).videos;
 }
 
 /**

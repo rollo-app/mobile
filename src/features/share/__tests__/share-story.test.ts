@@ -2,7 +2,7 @@ import { Linking, Share as NativeShare } from "react-native";
 import { File } from "expo-file-system";
 import Share from "react-native-share";
 import { META_APP_ID } from "@/config";
-import { instagramStoriesAvailable, isShareCancel, shareImageToWhatsApp, shareMore, shareTextToWhatsApp, shareToInstagramStories, writeShareFile } from "../share-story";
+import { instagramStoriesAvailable, isShareCancel, shareImageToInstagramStories, shareImageToWhatsApp, shareMore, shareTextToWhatsApp, shareToInstagramStories, writeShareFile } from "../share-story";
 
 describe("instagramStoriesAvailable", () => {
   it("is false without an app id and doesn't ask the system", async () => {
@@ -48,6 +48,16 @@ describe("shareToInstagramStories", () => {
   it("has no linkText key without a link", async () => {
     await shareToInstagramStories(input);
     expect(Share.shareSingle).toHaveBeenLastCalledWith(expect.not.objectContaining({ linkText: expect.anything() }));
+  });
+});
+
+describe("shareImageToInstagramStories", () => {
+  it("shares an image as the story background", async () => {
+    await shareImageToInstagramStories("file:///a.jpg");
+    const arg = (Share.shareSingle as jest.Mock).mock.calls.at(-1)![0];
+    expect(arg).toEqual(expect.objectContaining({ social: Share.Social.INSTAGRAM_STORIES, appId: META_APP_ID, backgroundImage: "file:///a.jpg" }));
+    expect(arg).not.toHaveProperty("stickerImage");
+    expect(arg).not.toHaveProperty("backgroundVideo");
   });
 });
 

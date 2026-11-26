@@ -51,6 +51,12 @@ export async function shareToInstagramStories({ stickerUri, backgroundVideoUri, 
   });
 }
 
+/** Opens Instagram's Stories editor with the image as the full-screen background and nothing on top (the poster). */
+export async function shareImageToInstagramStories(imageUri: string): Promise<void> {
+  const social = Share.Social.INSTAGRAM_STORIES as Social.InstagramStories;
+  await Share.shareSingle({ social, appId: META_APP_ID, backgroundImage: imageUri });
+}
+
 /** The system share sheet ("Más opciones"). React Native's Share.share resolves with `dismissedAction` on dismiss and never throws for it. */
 export async function shareMore(uri: string, message?: string): Promise<void> {
   await SystemShare.share({ url: uri, message });

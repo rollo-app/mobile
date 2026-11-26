@@ -1,6 +1,6 @@
 # Afiche del viaje — diseño
 
-Fecha: 2026-11-26 · Estado: **pendiente de aprobación del dueño**. La versión del afiche (pines con foto + nombres de ciudad) la eligió el dueño de tres maquetas el 2026-11-26.
+Fecha: 2026-11-26 · Estado: **aprobado por el dueño (2026-11-26)**. La versión del afiche (pines con foto + nombres de ciudad) la eligió el dueño de tres maquetas el 2026-11-26.
 
 Es la cuarta pieza de "Compartir", después del collage, el Recorrido y el Resumen (`2026-11-25-compartir-en-stories-design.md`, `2026-11-26-recorrido-en-video-design.md`).
 
