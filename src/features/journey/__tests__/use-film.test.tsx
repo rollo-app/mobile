@@ -118,6 +118,37 @@ describe("useFilm", () => {
     expect(layersMock).toHaveBeenCalledTimes(1);
   });
 
+  it("never returns the old film for one render after the seed changes", async () => {
+    const seen: string[] = [];
+    const { result, rerender } = await renderHook((a: Parameters<typeof useFilm>[0]) => {
+      const film = useFilm(a);
+      seen.push(`${a.seed}:${film.status}`);
+      return film;
+    }, { initialProps: args() });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    seen.length = 0;
+    await rerender(args({ seed: 5 }));
+    expect(seen[0]).toBe("5:loading");
+  });
+
+  it("waits for the token, requesting nothing, then loads", async () => {
+    const { result, rerender } = await renderHook((a: Parameters<typeof useFilm>[0]) => useFilm(a), { initialProps: args({ token: null }) });
+    expect(result.current.status).toBe("loading");
+    expect(layersMock).not.toHaveBeenCalled();
+    await rerender(args({ token: "tok" }));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+  });
+
+  it("never loads a non-shareable photo or a video", async () => {
+    const mixed = [...two, { ...photo("hidden", 3, -36), shareable: false }, { ...photo("clip", 4, -36), type: "video" }] as RevealedPhoto[];
+    const { result } = await renderHook(() => useFilm(args({ photos: mixed })));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    const ids = photosMock.mock.calls.flatMap((c) => c[0].map((i) => i.id));
+    expect(ids).toEqual(expect.arrayContaining(["a", "b"]));
+    expect(ids).not.toContain("hidden");
+    expect(ids).not.toContain("clip");
+  });
+
   it("ignores a run that was superseded while loading", async () => {
     let release: (v: never) => void = () => undefined;
     layersMock.mockImplementationOnce(() => new Promise((r) => (release = r as never)));

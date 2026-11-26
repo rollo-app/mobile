@@ -52,7 +52,11 @@ async function isOffline(): Promise<boolean> {
 
 const LOADING: Film = { status: "loading", done: 0, total: 0 };
 
-/** `version` changes with the trip, the photo set and the seed: an exported file belongs to one version. */
+/**
+ * `version` changes with the trip, the photo set and the seed: an exported file belongs to one version.
+ * `enabled` must only be true for a roll where `filmBlocked(...)` is null (the screen decides); the hook itself only ever
+ * uses `filmCandidates(photos)`.
+ */
 export function useFilm(args: { tripId: string; photos: RevealedPhoto[]; token: string | null; detail: TripDetail; seed: number; enabled: boolean }): Film {
   const { tripId, photos, token, detail, seed, enabled } = args;
   const [film, setFilm] = useState<Film>(LOADING);
@@ -77,6 +81,7 @@ export function useFilm(args: { tripId: string; photos: RevealedPhoto[]; token: 
   const totalUploaded = detail.totalUploaded;
 
   useEffect(() => {
+    // No token yet (it is on its way): stay loading and request nothing until it arrives.
     if (!enabled || !token) {
       setFilm(LOADING);
       return;
@@ -89,9 +94,9 @@ export function useFilm(args: { tripId: string; photos: RevealedPhoto[]; token: 
 
     void (async () => {
       try {
-        const filmPhotos = latest.current;
+        const used = latest.current;
         const firstDay = localDay(startsAt, timezone);
-        const stops = buildStops(filmPhotos, FILM_CUTS.share, firstDay);
+        const stops = buildStops(used, FILM_CUTS.share, firstDay);
         if (stops.length < 2) {
           set({ status: "no-route" });
           return;
@@ -123,7 +128,7 @@ export function useFilm(args: { tripId: string; photos: RevealedPhoto[]; token: 
         if (!live) return;
         const assets: Assets = { layers, photos: loaded, texts: layoutTexts(scene.texts, FILM_FRAME) };
         if (incomplete(assets)) throw new Error("incomplete film assets");
-        set({ status: "ready", scene, assets, stops, photos: filmPhotos, durationMs: scene.durationMs, version });
+        set({ status: "ready", scene, assets, stops, photos: used, durationMs: scene.durationMs, version });
       } catch {
         const offline = await isOffline();
         set({ status: "error", offline, retry });
@@ -135,5 +140,7 @@ export function useFilm(args: { tripId: string; photos: RevealedPhoto[]; token: 
     };
   }, [enabled, token, name, startsAt, endsAt, timezone, totalUploaded, seed, version, attempt, retry]);
 
+  // After a seed or photo change the old result is for another version until the effect runs: never hand it out.
+  if (film.status === "ready" && film.version !== version) return LOADING;
   return film;
 }
