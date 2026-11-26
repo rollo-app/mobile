@@ -12,6 +12,7 @@ import { Button, ErrorText, Loading, Screen } from "@/ui/components";
 import { SHARE_ICON } from "@/ui/share-icon";
 import { colors, spacing } from "@/ui/theme";
 import { RevealedRollScreen } from "./revealed-roll-screen";
+import { RollViewSwitch } from "./roll-view-switch";
 import { RollBoard } from "./roll-board";
 
 /** A roll's own screen: before the reveal the board, after it "Galería | Rollo". */
@@ -57,7 +58,13 @@ export function RollScreen({ tripId, view }: { tripId: string; view?: string }) 
           options={{
             ...header,
             title: trip.name,
-            headerTitle: selecting ? () => <SelectionHeaderTitle count={selection} /> : undefined,
+            // Revealed: "Galería | Rollo" is the bar's title (the name is large in the content; `title` stays for
+            // the back button and VoiceOver). While selecting, the count takes its place.
+            headerTitle: selecting
+              ? () => <SelectionHeaderTitle count={selection} />
+              : revealed
+                ? () => <RollViewSwitch view={view} />
+                : undefined,
           }}
         />
       )}

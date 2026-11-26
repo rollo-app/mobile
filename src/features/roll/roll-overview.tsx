@@ -7,6 +7,7 @@ import { OriginalsNotice } from "@/features/trips/originals-notice-text";
 import { useTripDetail } from "@/features/trips/use-trip-detail";
 import { Button, ErrorText, Loading, Screen } from "@/ui/components";
 import { colors, spacing, type } from "@/ui/theme";
+import { RollTitle } from "./roll-title";
 import { RollEssentials } from "./roll-essentials";
 import { rollSummary } from "./summary";
 import { memberTotal } from "@/features/trips/member-total";
@@ -27,6 +28,7 @@ export function RollOverview({ tripId, focused }: { tripId: string; /** The scre
       {!error && !detail && <Loading />}
       {detail && (
         <>
+          <RollTitle name={detail.trip.name} />
           <ContestCard tripId={tripId} enabled={!!detail.trip.contest?.enabled} focused={focused} />
           <EventBoardHero detail={detail} />
           <Text style={[type.subhead, styles.summary]}>

@@ -17,7 +17,7 @@ export function useGallerySelection(shown: RevealedPhoto[]) {
   const allSelected = shown.length > 0 && shown.every((p) => selected.has(p.id));
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(shown.map((p) => p.id)));
 
-  const start = () => setSelecting(true);
+  const start = useCallback(() => setSelecting(true), []);
   const stop = () => {
     setSelecting(false);
     setSelected(new Set());

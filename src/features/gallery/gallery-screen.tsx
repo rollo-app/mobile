@@ -30,6 +30,7 @@ import { GalleryToolbar } from "./gallery-toolbar";
 import { chapterCenter } from "./place";
 import { authorsOf, filterByAuthor, filterByGroup } from "./group";
 import { diaryItems, type GridItem } from "./grid-items";
+import { GalleryHeading } from "./gallery-heading";
 import { HeroCell } from "./hero-cell";
 import { peopleOrder } from "./people-order";
 import { PeopleRow } from "./people-row";
@@ -242,11 +243,22 @@ export function GalleryScreen({
   );
   const listExtra = useMemo(() => ({ selecting, selected, token, revealed, meId: me?.id }), [selecting, selected, token, revealed, me?.id]);
 
+  // "Seleccionar" only in the view in front, when there are photos, and not while already selecting.
+  const heading = (
+    <GalleryHeading
+      name={detail?.trip.name}
+      summary={summary}
+      onSelect={showToolbar && !selecting && photos.length > 0 ? startSelecting : undefined}
+      selectDisabled={busy}
+    />
+  );
+
   let body;
-  if (loading) body = <>{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
+  if (loading) body = <>{heading}{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
   else if (error && photos.length === 0)
     body = (
       <>
+        {heading}
         {header}
         <View style={styles.center}>
           <ErrorText>{error}</ErrorText>
@@ -255,10 +267,11 @@ export function GalleryScreen({
       </>
     );
   else if (photos.length === 0 && (hasMore || loadingMore) && !loadMoreError)
-    body = <>{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
+    body = <>{heading}{header}<ActivityIndicator style={{ marginTop: spacing.xl }} /></>;
   else if (photos.length === 0)
     body = (
       <>
+        {heading}
         {header}
         <View style={styles.center}>
           <Text style={[type.body, { color: colors.secondaryLabel }]}>Este rollo no tiene fotos</Text>
@@ -285,7 +298,7 @@ export function GalleryScreen({
         }
         ListHeaderComponent={
           <>
-            {summary !== null && <Text style={[type.subhead, styles.summary]}>{summary}</Text>}
+            {heading}
             {people.length > 0 && (
               <View style={styles.people}>
                 <PeopleRow people={people} selectedId={authorId} onSelect={setAuthorId} />
@@ -326,14 +339,11 @@ export function GalleryScreen({
           selecting={selecting}
           allSelected={allSelected}
           canSelectAll={complete}
-          busy={busy}
-          hasPhotos={photos.length > 0}
           canSaveAll={canSaveAll}
           groups={groups}
           groupId={groupId}
           onToggleAll={toggleAll}
           onStopSelecting={stopSelecting}
-          onStartSelecting={startSelecting}
           onSelectGroup={setGroupId}
           onSaveAll={confirmSaveAll}
           onShare={onShare}
@@ -365,7 +375,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
-  summary: { color: colors.secondaryLabel, paddingHorizontal: spacing.md, paddingTop: spacing.sm },
   people: { paddingTop: spacing.md },
   hero: { paddingBottom: GAP },
   // Columns split the width evenly; the cell hugs the outer edge in the first and last column and sits centered in the

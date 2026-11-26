@@ -399,7 +399,7 @@ describe("Gallery", () => {
     expect(screen.getByRole("header", { name: "Otras fotos" })).toBeVisible();
   });
 
-  it("has Seleccionar and the ⋯ menu together in the header toolbar", async () => {
+  it("has Seleccionar in the content under the name and the ⋯ menu in the header toolbar", async () => {
     mocked.fetchFeedPage.mockResolvedValue(two());
     await open();
     await screen.findByText("Martes 12 de enero");
