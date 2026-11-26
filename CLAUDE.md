@@ -349,7 +349,7 @@ El backend vive en [rollo-app/backend](https://github.com/rollo-app/backend).
   a mano) + `openapi-fetch`. `unwrap()` convierte el `{ error }` del server en `ApiError`.
 - Paquetes nativos del revelado y "Arrancó el rollo": **Reanimated 4 + `react-native-worklets`**, **`@shopify/react-native-skia`** (shaders SkSL),
   **`react-native-pulsar`** (hápticos continuos), **`expo-audio`** (plugin con `enableBackgroundPlayback: false`: no toca la sesión de audio de
-  la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados). Agregarlos o cambiarlos
+  la app y respeta el modo silencio) y el **módulo local de Expo en Swift `modules/rollo-symbol`** (SF Symbols animados), más el módulo local **`modules/rollo-video`** (Swift: escribe cuadros a un mp4 H.264 con `VideoWriter` y le pasa un video a Instagram Stories o Reels; wrapper `index.ts`, sin él `videoAvailable` es `false`; su escritor se chequea con `npm run check:video-writer`). Agregarlos o cambiarlos
   pide `npx expo prebuild --clean` + `npx expo run:ios --device`; si no, el dev build viejo no los tiene.
 - **Gesture Handler** (`react-native-gesture-handler`, `ReanimatedSwipeable` para borrar comentarios deslizando) es nativo: agregarlo pide `npx expo prebuild --clean` + `npx expo run:ios --device`.
 - **VisionCamera** (`react-native-vision-camera` v5 + sus dependencias `react-native-nitro-modules` y `react-native-nitro-image`; cámara de la captura y del
@@ -390,6 +390,7 @@ src/
   test/                 helpers de tests: rutas de la app (routes.ts) y SQLite en memoria
 __tests__/              tests de pantallas con navegación real (renderRouter)
 modules/rollo-symbol/   Módulo local de Expo (Swift): vista nativa de SF Symbols con transición magic replace; wrapper JS con fallback
+modules/rollo-video/    Módulo local de Expo (Swift): escribe cuadros a mp4 y manda un video a Instagram; wrapper JS (`videoAvailable`); tocarlo pide `npx expo prebuild --clean` + rebuild
 ```
 
 Reglas:
